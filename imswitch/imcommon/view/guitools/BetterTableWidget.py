@@ -189,11 +189,7 @@ class BetterTableWidget(QTableWidget):
         self.insertRow(rowNumber)  # Insert a row.
         
         if data is not None:
-            if self.labelName is not None:
-                newRowItem = [self.default for _ in range(self.columnCount()-1)]
-                newRowItem.append(f"{self.labelName} {rowNumber}")
-            else:
-                newRowItem = [self.default for _ in range(self.columnCount())]
+            newRowItem = data
         else:
             if self.labelName is not None:
                 newRowItem = [self.default for _ in range(self.columnCount()-1)]

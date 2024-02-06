@@ -74,7 +74,7 @@ class PycroManagerController(ImConWidgetController):
         self._widget.sigSnapRequested.connect(self.snap)
         self._widget.sigRecToggled.connect(self.toggleRecording)
         
-        self._widget.sigTableDataDumped.connect(self.parseTableData)
+        self._widget.sigTableDataToController.connect(self.parseTableData)
         self._widget.sigTableLoaded.connect(self.readPointsJSONData)
         self.xyScan = None
         self.xyzScan = None
@@ -366,15 +366,16 @@ class PycroManagerController(ImConWidgetController):
         if coordinates == 'XY':
             self.xyScan = PycroManagerXYScan(
                 [
-                    PycroManagerXYPoint(**point) for point in points
+                    PycroManagerXYPoint(X=point[0], Y=point[1], Label=point[2]) for point in points
                 ]
             )
         else:
             self.xyzScan = PycroManagerXYZScan(
                 [
-                    PycroManagerXYZPoint(**point) for point in points
+                    PycroManagerXYPoint(X=point[0], Y=point[1], Z=point[2], Label=point[3]) for point in points
                 ]
             )
+        
         
     def readPointsJSONData(self, coordinates: str, filePath: str):
         """ Reads the JSON file containing the points data and creates a list of points.

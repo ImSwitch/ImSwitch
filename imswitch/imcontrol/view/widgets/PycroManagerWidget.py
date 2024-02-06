@@ -1,7 +1,7 @@
 import os
 import time
 import json
-from typing import List, Dict
+from typing import List, Dict, Union
 from qtpy import QtCore, QtWidgets
 from imswitch.imcommon.model import dirtools
 from imswitch.imcommon.framework import Signal
@@ -26,7 +26,7 @@ class PycroManagerWidget(Widget):
     sigSnapRequested = Signal()
     sigRecToggled = Signal(bool)  # (enabled)
     
-    sigTableDataDumped = Signal(str, list) # ("XY"/"XYZ", tableData)
+    sigTableDataToController = Signal(str, list) # ("XY"/"XYZ", tableData)
     sigTableLoaded = Signal(str, str) # ("XY"/"XYZ", filePath)
 
     def __init__(self, *args, **kwargs):
@@ -50,7 +50,7 @@ class PycroManagerWidget(Widget):
         }
         
         # Graphical elements
-        recTitle = QtWidgets.QLabel('<h2><strong>PycroManager acquisition engine</strong></h2>')
+        recTitle = QtWidgets.QLabel('<h2><strong>Pycro-Manager acquisition engine</strong></h2>')
         recTitle.setTextFormat(QtCore.Qt.RichText)
         
         # Folder and filename fields
@@ -268,10 +268,10 @@ class PycroManagerWidget(Widget):
         self.specifyXYList.clicked.connect(lambda checked: __evaluateSpaceState(checked, PycroManagerAcquisitionMode.XYList))
         self.specifyXYZList.clicked.connect(lambda checked: __evaluateSpaceState(checked, PycroManagerAcquisitionMode.XYZList))
         
-        self.openXYListTableButton.clicked.connect(lambda: self.openTableWidget(["X", "Y"]))
+        self.openXYListTableButton.clicked.connect(lambda: self.openPositionsTableWidget(["X", "Y"]))
         self.loadXYListButton.clicked.connect(lambda: self.loadTableData("XY"))
         
-        self.openXYZListTableButton.clicked.connect(lambda: self.openTableWidget(["X", "Y", "Z"]))
+        self.openXYZListTableButton.clicked.connect(lambda: self.openPositionsTableWidget(["X", "Y", "Z"]))
         self.loadXYZListButton.clicked.connect(lambda: self.loadTableData("XYZ"))
         
         self.snapSaveModeList.currentIndexChanged.connect(self.sigSnapSaveModeChanged)
@@ -280,7 +280,7 @@ class PycroManagerWidget(Widget):
         self.snapButton.clicked.connect(self.sigSnapRequested)
         self.recButton.toggled.connect(self.sigRecToggled)
     
-    def openTableWidget(self, coordinates: List[str]):
+    def openPositionsTableWidget(self, coordinates: List[str]):
         """ Opens a dialog to specify the XY coordinates list. """
         coordStr = "".join(coordinates)
         self.XYtableWidget = PositionsTableDialog(
@@ -294,12 +294,12 @@ class PycroManagerWidget(Widget):
         # and a copy is kept for updating the table widget
         # next time the user opens it again.
         self.XYtableWidget.sigTableDataDumped.connect(self.__storeTableDataLocally)
-        self.XYtableWidget.sigTableDataDumped.connect(lambda tableData: 
-            self.sigTableDataDumped.emit(coordStr, tableData)
+        self.XYtableWidget.sigTableDataDumped.connect(lambda coordinates, tableData: 
+            self.sigTableDataToController.emit(coordinates, tableData)
         )
         self.XYtableWidget.show()
     
-    def __storeTableDataLocally(self, coordinates: str, data: List[dict]):
+    def __storeTableDataLocally(self, coordinates: str, data: List[Dict[str, Union[str, int, float]]]):
         self._dataCache[coordinates] = data
     
     def loadTableData(self, coordinates: str):

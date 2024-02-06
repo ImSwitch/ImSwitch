@@ -7,6 +7,7 @@ from qtpy.QtWidgets import (
     QDialog,
     QGridLayout,
 )
+from copy import copy
 from imswitch.imcommon.model import dirtools
 from os.path import join
 
@@ -56,7 +57,7 @@ def askForFolderPath(widget, caption=None, defaultFolder=None):
 
 class PositionsTableDialog(QDialog):
     
-    sigTableDataDumped = QtCore.Signal(list)
+    sigTableDataDumped = QtCore.Signal(str, list)
     
     def __init__(self, 
                 title: str, 
@@ -80,7 +81,7 @@ class PositionsTableDialog(QDialog):
         
         # Create the add row button
         self.addPosButton = BetterPushButton("Add position")
-        self.addPosButton.clicked.connect(self.pointsTableWidget.addNewRow)  # Connect the button to a function.
+        self.addPosButton.clicked.connect(lambda: self.pointsTableWidget.addNewRow())  # Connect the button to a function.
         
         # Create the remove row button
         self.removePosButton = BetterPushButton("Remove position")
@@ -119,13 +120,12 @@ class PositionsTableDialog(QDialog):
     
     def accept(self) -> None:
         data = []
-        keys = self.coordinates
+        keys = copy(self.coordinates)
         if self.pointsTableWidget.labelName is not None:
             keys.append("Label")
         for row in range(self.pointsTableWidget.rowCount()):
-            rowData = self._parseRowElements(row)
-            data.append({key: value for key, value in zip(keys, rowData)})
-        self.sigTableDataDumped.emit(data)
+            data.append(self._parseRowElements(row))
+        self.sigTableDataDumped.emit("".join(self.coordinates), data)
         super().accept()
     
     def setRemoveButtonStatus(self, _):

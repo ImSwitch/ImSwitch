@@ -201,12 +201,14 @@ class BetterTableWidget(QTableWidget):
             if type(item) == int:
                 self.setCellWidget(rowNumber, col, QSpinBox(self))
                 self.cellWidget(rowNumber, col).setAlignment(Qt.AlignCenter)
+                self.cellWidget(rowNumber, col).setValue(item)
             elif type(item) == float:
                 self.setCellWidget(rowNumber, col, QDoubleSpinBox(self))
                 self.cellWidget(rowNumber, col).setAlignment(Qt.AlignCenter)
+                self.cellWidget(rowNumber, col).setValue(item)
             else:
-                self.setItem(rowNumber, col, QTableWidgetItem(str(item)))  
-                self.item(rowNumber, col).setTextAlignment(Qt.AlignCenter)          
+                self.setItem(rowNumber, col, QTableWidgetItem(str(item))) 
+                self.item(rowNumber, col).setTextAlignment(Qt.AlignCenter)
 
     def removeSelectedRow(self):
         """ Remove currently selected row from the table. Automatically clears selection.

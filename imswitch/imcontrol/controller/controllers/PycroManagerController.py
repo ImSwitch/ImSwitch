@@ -285,7 +285,7 @@ class PycroManagerController(ImConWidgetController):
                         xyStage = next((dev for dev in mmcorePositionersList if "".join(dev.axes) == "XY"), None)
                         if xyStage is not None:
                             self._master.pycroManagerAcquisition.core.set_xy_stage_device(xyStage.name)
-                            self.__logger.info("XY stage selected: ", self._master.pycroManagerAcquisition.core.get_xy_stage_device())
+                            self.__logger.info(f"XY stage selected: {self._master.pycroManagerAcquisition.core.get_xy_stage_device()}")
                             retStatus = False
                         else:
                             msg = "No XY stages are currently configured. Recording aborted."
@@ -304,8 +304,8 @@ class PycroManagerController(ImConWidgetController):
                         if xyStage is not None and zStage is not None:
                             self._master.pycroManagerAcquisition.core.set_xy_stage_device(xyStage.name)
                             self._master.pycroManagerAcquisition.core.set_focus_device(zStage.name)
-                            self.__logger.info("XY stage selected: ", self._master.pycroManagerAcquisition.core.get_xy_stage_device())
-                            self.__logger.info("Z stage selected: ", self._master.pycroManagerAcquisition.core.get_focus_device())
+                            self.__logger.info(f"XY stage selected: {self._master.pycroManagerAcquisition.core.get_xy_stage_device()}")
+                            self.__logger.info(f"Z stage selected: {self._master.pycroManagerAcquisition.core.get_focus_device()}")
                         else:
                             ax = ""
                             if xyStage is None and zStage is None:
@@ -366,13 +366,13 @@ class PycroManagerController(ImConWidgetController):
         if coordinates == 'XY':
             self.xyScan = PycroManagerXYScan(
                 [
-                    PycroManagerXYPoint(X=point[0], Y=point[1], Label=point[2]) for point in points
+                    PycroManagerXYPoint(**point) for point in points
                 ]
             )
         else:
             self.xyzScan = PycroManagerXYZScan(
                 [
-                    PycroManagerXYPoint(X=point[0], Y=point[1], Z=point[2], Label=point[3]) for point in points
+                    PycroManagerXYPoint(**point) for point in points
                 ]
             )
         
@@ -386,15 +386,16 @@ class PycroManagerController(ImConWidgetController):
                 if coordinates == 'XY':
                     self.xyScan = PycroManagerXYScan(
                         [
-                            PycroManagerXYPoint(**data) for data in json.load(file)
+                            PycroManagerXYPoint(**point) for point in json.load(file)
                         ]
                     )
                 else:
                     self.xyzScan = PycroManagerXYZScan(
                         [
-                            PycroManagerXYZPoint(**data) for data in json.load(file)
+                            PycroManagerXYZPoint(**point) for point in json.load(file)
                         ]
                     )
+                self.__logger.info(f"Loaded {coordinates} points from {filePath}")
             except Exception as e:
                 errorMsg = f"Error reading JSON file {filePath}: {e}"
                 self.__logger.error(errorMsg)

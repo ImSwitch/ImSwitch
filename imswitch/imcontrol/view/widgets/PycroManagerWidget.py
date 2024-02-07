@@ -34,8 +34,7 @@ class PycroManagerWidget(Widget):
         
         # Table widgets; they need to remain alive otherwise
         # the widget automatically closes.
-        self.XYTableWidget = None
-        self.XYZTableWidget = None
+        self.tableWidget = None
         
         # Cache for table data. The controller cannot
         # communicate information back to the viewer after
@@ -283,34 +282,33 @@ class PycroManagerWidget(Widget):
     def openPositionsTableWidget(self, coordinates: List[str]):
         """ Opens a dialog to specify the XY coordinates list. """
         coordStr = "".join(coordinates)
-        self.XYtableWidget = PositionsTableDialog(
+        self.tableWidget = PositionsTableDialog(
             title=f"{coordStr} coordinates table",
             default=0.0,
             initData=self._dataCache[coordStr],
             coordinates=coordinates
-        )
-        
+            )
         # Collected data is sent to the controller
         # and a copy is kept for updating the table widget
-        # next time the user opens it again.
-        self.XYtableWidget.sigTableDataDumped.connect(self.__storeTableDataLocally)
-        self.XYtableWidget.sigTableDataDumped.connect(lambda coordinates, tableData: 
-            self.sigTableDataToController.emit(coordinates, tableData)
-        )
-        self.XYtableWidget.show()
+        # next time the user opens it again.        
+        self.tableWidget.sigTableDataDumped.connect(self.__storeTableDataLocally)
+        self.tableWidget.sigTableDataDumped.connect(self.sigTableDataToController)
+        self.tableWidget.show()
     
     def __storeTableDataLocally(self, coordinates: str, data: List[Dict[str, Union[str, int, float]]]):
         self._dataCache[coordinates] = data
     
     def loadTableData(self, coordinates: str):
-        fileFilter = "JSON (*.json);;CSV (*.csv)"
+        # TODO: implement CSV reading
+        fileFilter = "JSON (*.json)"
         filePath = askForFilePath(self, 
                                 caption=f"Load {coordinates} coordinates table", 
                                 defaultFolder=dirtools.UserFileDirs.Root,
                                 nameFilter=fileFilter)
         if filePath is not None:
             with open(filePath, "r") as file:
-                self._dataCache[coordinates] = json.load(file)
+                data = json.load(file)
+                self._dataCache[coordinates] = data
             self.sigTableLoaded.emit(coordinates, filePath)
     
     def displayErrorMessage(self, title: str, type: str, errorMsg: str):

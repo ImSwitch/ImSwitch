@@ -1,5 +1,6 @@
 from json import dump
 from typing import Union, List
+from collections import OrderedDict
 from .BetterTableWidget import BetterTableWidget
 from .BetterPushButton import BetterPushButton
 from qtpy import QtCore, QtWidgets
@@ -124,7 +125,8 @@ class PositionsTableDialog(QDialog):
         if self.pointsTableWidget.labelName is not None:
             keys.append("Label")
         for row in range(self.pointsTableWidget.rowCount()):
-            data.append(self._parseRowElements(row))
+            rowData = self._parseRowElements(row)
+            data.append(OrderedDict({key: value for key, value in zip(keys, rowData)}))
         self.sigTableDataDumped.emit("".join(self.coordinates), data)
         super().accept()
     

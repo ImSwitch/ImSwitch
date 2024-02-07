@@ -60,7 +60,7 @@ class BetterTableWidget(QTableWidget):
         
         if sanityCheck:
             for data in initData:
-                self.addNewRow(data)
+                self.addNewRow(list(data.values()))
         else:
             self.addNewRow()  # Add the first row.
         

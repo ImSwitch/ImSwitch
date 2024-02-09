@@ -258,80 +258,85 @@ class PycroManagerController(ImConWidgetController):
         If a condition occurs such as the recording would fail (no stages available, missing data points),
         a warning is sent to the UI and the recording is not triggered.
         """
-        
         errTitle = "Recording aborted"
         retStatus = True
 
-        def getMMCorePositioners() -> list:
-            """ Returns a list of positioners part of the MMCore suite in the currently loaded configuration. """
-            return [dev for dev in self._master.positionersManager._subManagers.values() if dev.__class__.__name__ == "PyMMCorePositionerManager"]
-        
         if self.spaceRecMode != PycroManagerAcquisitionMode.Absent:
-            mmcorePositionersList = getMMCorePositioners()
-            if len(mmcorePositionersList) == 0:
+            if not self.__checkMMCorePositioners():
                 msg = "No MMCore positioners were found in the setupInfo. Recording aborted."
                 self.__logger.warning(msg)
                 self.sigErrorCondition.emit(errTitle, "warning", msg)
                 retStatus = False
             else:
                 if self.spaceRecMode & PycroManagerAcquisitionMode.XYList:
-                    if self.xyScan is None:
+                    if not self.__checkXYPoints():
                         msg = "No XY points were specified. Recording aborted."
                         self.__logger.warning(msg)
                         self.sigErrorCondition.emit(errTitle, "warning", msg)
                         retStatus = False
                     else:
-                        # TODO: what happens if we have multiple XY stages?
-                        xyStage = next((dev for dev in mmcorePositionersList if "".join(dev.axes) == "XY"), None)
-                        if xyStage is not None:
-                            self._master.pycroManagerAcquisition.core.set_xy_stage_device(xyStage.name)
-                            self.__logger.info(f"XY stage selected: {self._master.pycroManagerAcquisition.core.get_xy_stage_device()}")
-                            retStatus = False
-                        else:
+                        if not self.__selectXYStage():
                             msg = "No XY stages are currently configured. Recording aborted."
-                            self.__logger.warning("msg")
+                            self.__logger.warning(msg)
                             self.sigErrorCondition.emit(errTitle, "warning", msg)
                             retStatus = False
                 elif self.spaceRecMode & PycroManagerAcquisitionMode.XYZList:
-                    if self.xyzScan is None:
+                    if not self.__checkXYZPoints():
                         msg = "No XYZ points were specified. Recording aborted."
                         self.__logger.warning(msg)
                         self.sigErrorCondition.emit(errTitle, "warning", msg)
                         retStatus = False
                     else:
-                        xyStage = next((dev for dev in mmcorePositionersList if "".join(dev.axes) == "XY"), None)
-                        zStage = next((dev for dev in mmcorePositionersList if "".join(dev.axes) == "Z"), None)
-                        if xyStage is not None and zStage is not None:
-                            self._master.pycroManagerAcquisition.core.set_xy_stage_device(xyStage.name)
-                            self._master.pycroManagerAcquisition.core.set_focus_device(zStage.name)
-                            self.__logger.info(f"XY stage selected: {self._master.pycroManagerAcquisition.core.get_xy_stage_device()}")
-                            self.__logger.info(f"Z stage selected: {self._master.pycroManagerAcquisition.core.get_focus_device()}")
-                        else:
-                            ax = ""
-                            if xyStage is None and zStage is None:
-                                ax = "XY and Z"
-                            elif xyStage is None:
-                                ax = "XY"
-                            else:
-                                ax = "Z"
+                        if not self.__selectXYStage() or not self.__selectZStage():
+                            ax = "XY and Z" if self.xyStage is None and self.zStage is None else "XY" if self.xyStage is None else "Z"
                             msg = f"No {ax} stages are currently configured. Recording aborted."
                             self.__logger.warning(msg)
                             self.sigErrorCondition.emit(errTitle, "warning", msg)
-                            
                 elif self.spaceRecMode & PycroManagerAcquisitionMode.ZStack:
-                    # TODO: it may happen that the widgets do not hold any content;
-                    # keep an eye on this.
-                    zStage = next((dev for dev in mmcorePositionersList if "".join(dev.axes) == "Z"), None)
-                    if zStage is not None:
-                        self._master.pycroManagerAcquisition.core.set_focus_device(zStage.name)
-                        self.__logger.info("Z stage selected: ", self._master.pycroManagerAcquisition.core.get_focus_device())
-                    else:
-                        msg = "No Z stages is currently configured. Recording aborted."
+                    if not self.__selectZStage():
+                        msg = "No Z stage is currently configured. Recording aborted."
                         self.__logger.warning(msg)
                         self.sigErrorCondition.emit(errTitle, "warning", msg)
                         retStatus = False
 
         return retStatus
+
+    def __checkMMCorePositioners(self) -> bool:
+        """ Returns True if MMCore positioners are found in the setupInfo. """
+        mmcorePositionersList = [dev for dev in self._master.positionersManager._subManagers.values() if dev.__class__.__name__ == "PyMMCorePositionerManager"]
+        return len(mmcorePositionersList) > 0
+
+    def __checkXYPoints(self) -> bool:
+        """ Returns True if XY points are specified. """
+        return self.xyScan is not None
+
+    def __checkXYZPoints(self) -> bool:
+        """ Returns True if XYZ points are specified. """
+        return self.xyzScan is not None
+
+    def __selectXYStage(self) -> bool:
+        """ Selects the XY stage and returns True if found, False otherwise. """
+        mmcorePositionersList = self.__getMMCorePositioners()
+        self.xyStage = next((dev for dev in mmcorePositionersList if "".join(dev.axes) == "XY"), None)
+        if self.xyStage is not None:
+            self._master.pycroManagerAcquisition.core.set_xy_stage_device(self.xyStage.name)
+            self.__logger.info(f"XY stage selected: {self._master.pycroManagerAcquisition.core.get_xy_stage_device()}")
+            return True
+        return False
+
+    def __selectZStage(self) -> bool:
+        """ Selects the Z stage and returns True if found, False otherwise. """
+        mmcorePositionersList = self.__getMMCorePositioners()
+        self.zStage = next((dev for dev in mmcorePositionersList if "".join(dev.axes) == "Z"), None)
+        if self.zStage is not None:
+            self._master.pycroManagerAcquisition.core.set_focus_device(self.zStage.name)
+            self.__logger.info(f"Z stage selected: {self._master.pycroManagerAcquisition.core.get_focus_device()}")
+            return True
+        return False
+
+    def __getMMCorePositioners(self) -> list:
+        """ Returns a list of positioners part of the MMCore suite in the currently loaded configuration. """
+        return [dev for dev in self._master.positionersManager._subManagers.values() if dev.__class__.__name__ == "PyMMCorePositionerManager"]
 
     def recordingStarted(self):
         self._widget.setFieldsEnabled(False)

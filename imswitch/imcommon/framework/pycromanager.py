@@ -43,6 +43,9 @@ class PycroManagerXYScan:
     
     def __array__(self) -> ndarray:
         return array([(point.X, point.Y) for point in self.points])
+
+    def __len__(self) -> int:
+        return len(self.points)
     
     def labels(self) -> Union[None, List[str]]:
         """ Returns the scan labels as list of strings, or None if all labels are empty.
@@ -58,6 +61,9 @@ class PycroManagerXYZScan:
     
     def __array__(self) -> ndarray:
         return array([(point.X, point.Y, point.Z) for point in self.points])
+    
+    def __len__(self) -> int:
+        return len(self.points)
     
     def labels(self) -> Union[None, List[str]]:
         """ Returns the scan labels as list of strings, or None if all labels are empty.

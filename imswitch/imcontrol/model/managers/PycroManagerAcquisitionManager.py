@@ -3,7 +3,7 @@ from imswitch.imcommon.framework import Signal, SignalInterface, Worker, Thread,
 from imswitch.imcommon.model import initLogger, SaveMode
 from tifffile.tifffile import TiffWriter
 from typing import Dict
-import os
+import os, json
 import numpy as np
 
 
@@ -98,7 +98,7 @@ class PycroManagerAcquisitionManager(SignalInterface):
             self.__acquisitionThread.started.disconnect()
             self.__acquisitionThread.finished.disconnect()
         except TypeError:
-            self.__logger.error("Attempted to disconnect a non-connected signal")
+            pass
 
 class PycroManagerAcqWorker(Worker):
     def __init__(self, manager: PycroManagerAcquisitionManager) -> None:
@@ -107,10 +107,21 @@ class PycroManagerAcqWorker(Worker):
         self.__manager = manager
         width, height = self.__manager.core.get_image_width(), self.__manager.core.get_image_height()
         self.__localBuffer = np.zeros((height, width), dtype=np.uint16)
+
+        # TODO: usage of a local variable would
+        # enable to dynamicall abort recording
+        # if requested by the UI... needs implementation
+        self.__acquisition = None
         self.recordingArgs : Dict[str, dict] = None
         self.live = False
     
     def __parse_notification(self, msg: AcqNotification):
+        # TODO: this notification works to send updates
+        # to the recording progress bar for recording;
+        # as live view bypasses saving data to disk,
+        # this notification is never reached;
+        # find another notification type to send updates
+        # during live acquisition
         if msg.is_image_saved_notification():
             self.manager.sigPycroManagerNotificationUpdated.emit(msg.id)
 
@@ -123,10 +134,12 @@ class PycroManagerAcqWorker(Worker):
 
         self.__logger.info("Starting acquisition")
         self.manager.sigRecordingStarted.emit()
-        with Acquisition(**self.recordingArgs["Acquisition"]) as acq:
-            acq.acquire(events)
+        with Acquisition(**self.recordingArgs["Acquisition"]) as self.__acquisition:
+            self.__acquisition.acquire(events)
+        
+        # dataset file handler causes a warning if not closed properly;
+        self.__acquisition.get_dataset().close()
         self.manager.sigRecordingEnded.emit()
-        del acq
     
     def liveView(self):
         self.__logger.info("Starting live view")
@@ -138,12 +151,12 @@ class PycroManagerAcqWorker(Worker):
         # for live view we only redirect incoming images to the local buffer
         self.recordingArgs["Acquisition"].pop("directory")
         self.recordingArgs["Acquisition"].pop("name")
-        acq = Acquisition(**self.recordingArgs["Acquisition"])
+        self.__acquisition = Acquisition(**self.recordingArgs["Acquisition"])
 
         while self.live:
-            acq.acquire(events)
-        acq.mark_finished()
-        del acq
+            self.__acquisition.acquire(events)
+        self.__acquisition.mark_finished()
+        
         self.__logger.info("Live view stopped")
     
     @property

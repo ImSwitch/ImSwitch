@@ -35,7 +35,7 @@ class FLIMLabsWidget(NapariHybridWidget):
         self.tabs.addTab(self.tab_settings, "Settings")
         self.tabs.addTab(self.tab_stage_scanning, "Stage Scanning")
         
-
+        self.layer = None
         self.init_ui()
         # create the layout of the tabs
         mainLayout = QtWidgets.QVBoxLayout(self)
@@ -237,6 +237,14 @@ class FLIMLabsWidget(NapariHybridWidget):
         return generalParameters   
         
 
+    def getImage(self):
+        if self.layer is not None:
+            return self.img.image
+
+    def setImage(self, im, name="FLIM Image", colormap='gray'):
+        if self.layer is None or self.layer.name not in self.viewer.layers:
+            self.layer = self.viewer.add_image(im, rgb=False, name=name, blending='additive', colormap=colormap)
+        self.layer.data = im
 
     
         

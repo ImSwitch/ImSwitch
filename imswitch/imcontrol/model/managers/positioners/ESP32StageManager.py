@@ -357,10 +357,10 @@ class ESP32StageManager(PositionerManager):
             self._motor.home_xyz()
             [self.setPosition(axis=axis, value=0) for axis in ["X","Y","Z"]]
 
-    def startStageScanning(self, nStepsLine=100, dStepsLine=1, nTriggerLine=1, nStepsPixel=100, dStepsPixel=1, nTriggerPixel=1, delayTimeStep=10, nFrames=5):
+    def startStageScanning(self, nStepsLine=100, dStepsLine=1, nTriggerLine=1, nStepsPixel=100, dStepsPixel=1, nTriggerPixel=1, delayTimeStep=10, nFrames=5, isBlocking=False):
         self._motor.startStageScanning(nStepsLine=nStepsLine, dStepsLine=dStepsLine, nTriggerLine=nTriggerLine, 
                                        nStepsPixel=nStepsPixel, dStepsPixel=dStepsPixel, nTriggerPixel=nTriggerPixel, 
-                                       delayTimeStep=delayTimeStep, nFrames=nFrames)
+                                       delayTimeStep=delayTimeStep, nFrames=nFrames, isBlocking=isBlocking)
 
     def stopStageScanning(self):
         self._motor.stopStageScanning()

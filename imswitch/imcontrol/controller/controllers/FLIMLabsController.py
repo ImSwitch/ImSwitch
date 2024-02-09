@@ -53,8 +53,12 @@ class FLIMLabsController(LiveUpdatedController):
         )
     
         # start the data receiving thread
-        self.FLIMLabsSocket = WebSocketClient()
-        self.FLIMLabsSocket.connect()
+        self.flim_ws = FLIMWebsocketClient()
+        self.flim_ws.connect()
+
+        # set image dimensions
+        self.flim_ws.setImageDimensions(256, 256)
+        self.flim_ws.setcallback_linedata(self.displayFLIMImage)
 
         # Connect FLIMLabsWidget signals
         if not imswitch.IS_HEADLESS:
@@ -71,7 +75,17 @@ class FLIMLabsController(LiveUpdatedController):
             # imaging
             self._widget.start_button_imaging.clicked.connect(self.start_imaging)
             self._widget.stop_button_imaging.clicked.connect(self.stop_imaging)
+
+            self.sigImageReceived.connect(self.displayFLIMImageNapari)
             
+    def displayFLIMImage(self, image, name="FLIM Image", colormap='gray'):
+        self.mImage = image
+        self.mImageName = name
+        self.mImageColormap = colormap
+        self.sigImageReceived.emit()
+
+    def displayFLIMImageNapari(self):
+        self._widget.setImage(self.mImage, name=self.mImageName, colormap=self.mImageColormap)
             
     def start_scouting(self):
         mParametersScouting = self._widget.getScoutingParameters()
@@ -150,9 +164,8 @@ class FLIMLabsController(LiveUpdatedController):
         self.FLIMLabsC.setPixelOffsetTop(mParameters["pixelOffsetTop"])
         self.FLIMLabsC.setPixelOffsetBottom(mParameters["pixelOffsetBottom"])
         self.FLIMLabsC.setPixelSize(mParameters["pixelsize"])
-        
-        
-            
+        self.flim_ws.setImageDimensions(mParameters["Npixel_x"], mParameters["Npixel_y"])
+                  
 
 class FLIMLabsREST:
     def __init__(self, firmware_selected="firmwares\\\\image_pattern_2.bit",
@@ -356,12 +369,28 @@ if __name__ == '__main__':
     )
     
     
-class WebSocketClient:
+import websocket
+import struct
+import threading
+import time
+import numpy as np
+import cv2
+
+class FLIMWebsocketClient:
     def __init__(self, url='ws://localhost:3030/data', reconnect_interval=5):
         self.url = url
         self.reconnect_interval = reconnect_interval
         self.socket = None
         self.error_mode = False
+        self.mImage = None
+        self.width = 0
+        self.height = 0
+
+    def setImageDimensions(self, width, height):
+        self.width = width
+        self.height = height
+        self.mImage = np.zeros((self.width, self.height))
+        
 
     def connect(self):
         def on_message(ws, message):
@@ -464,10 +493,23 @@ class WebSocketClient:
         elif isinstance(msg, ImagingExperimentEndData):
             self.process_imaging_experiment_end_data(msg)
 
-    def process_line_data(self, msg):
+    def setcallback_linedata(self, callback):
+        self.callback_linedata = callback
+
+    def process_line_data(self, msg, iUpdate = 8):
         # Implement your logic for LineData here
-        print("Received LineData:", msg.frame, msg.line, msg.channel, msg.data)
-        pass
+        #print("Received LineData:", msg.frame, msg.line, msg.channel, msg.data)
+        nLines = int(len(msg.data))
+        iLine = int(msg.line)
+
+        if self.mImage is not None:
+            try:
+                self.mImage[msg.line] = msg.data
+            except:
+                pass
+
+        if self.callback_linedata is not None and (iLine*iUpdate)%nLines==0: # update image every 8 lines:
+            self.callback_linedata(self.mImage)
 
     def process_curve_data(self, msg):
         # Implement your logic for CurveData here
@@ -521,9 +563,6 @@ class PhasorData:
 class ImagingExperimentEndData:
     def __init__(self, intensity_file):
         self.intensity_file = intensity_file
-
-
-
 
 
 

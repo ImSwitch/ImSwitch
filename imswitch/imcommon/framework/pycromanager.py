@@ -18,12 +18,6 @@ class PycroManagerAcquisitionMode(IntFlag):
     XYZList = auto()
 
 @dataclass(frozen=True)
-class PycroManagerZStack:
-    start: float
-    end: float
-    step: float
-
-@dataclass(frozen=True)
 class PycroManagerXYPoint:
     X: float
     Y: float
@@ -47,12 +41,20 @@ class PycroManagerXYScan:
     def __len__(self) -> int:
         return len(self.points)
     
+    def __post_init__(self) -> None:
+        # Pycro-Manager notification ID includes the label (when provided);
+        # we keep track of the index for UI updates (progress bar)
+        self.__labelsIdx = {point.Label : i for point, i in zip(self.points, range(len(self.points)))}  
+    
     def labels(self) -> Union[None, List[str]]:
         """ Returns the scan labels as list of strings, or None if all labels are empty.
         """
         labelList = [point.Label for point in self.points]
         listEmpty = all([label == "" for label in labelList])
         return labelList if not listEmpty else None
+    
+    def getIndex(self, idx: Union[str, int]) -> int:
+        return idx if type(idx) == int else self.__labelsIdx[idx]
 
 @dataclass_json
 @dataclass
@@ -64,6 +66,11 @@ class PycroManagerXYZScan:
     
     def __len__(self) -> int:
         return len(self.points)
+
+    def __post_init__(self) -> None:
+        # Pycro-Manager notification ID includes the label (when provided);
+        # we keep track of the index for UI updates (progress bar)
+        self.__labelsIdx = {point.Label : i for point, i in zip(self.points, range(len(self.points)))}  
     
     def labels(self) -> Union[None, List[str]]:
         """ Returns the scan labels as list of strings, or None if all labels are empty.
@@ -71,3 +78,6 @@ class PycroManagerXYZScan:
         labelList = [point.Label for point in self.points]
         listEmpty = all([label == "" for label in labelList])
         return labelList if not listEmpty else None
+    
+    def getIndex(self, idx: Union[str, int]) -> int:
+        return idx if type(idx) == int else self.__labelsIdx[idx]

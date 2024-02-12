@@ -3,7 +3,6 @@ from typing import Optional, Union, List, Dict
 from imswitch.imcommon.framework import Signal
 from imswitch.imcommon.framework.pycromanager import (
     PycroManagerAcquisitionMode,
-    PycroManagerZStack,
     PycroManagerXYScan,
     PycroManagerXYZScan,
     PycroManagerXYPoint,
@@ -76,6 +75,7 @@ class PycroManagerController(ImConWidgetController):
         
         self._widget.sigTableDataToController.connect(self.parseTableData)
         self._widget.sigTableLoaded.connect(self.readPointsJSONData)
+        self.selectedScan = None
         self.xyScan = None
         self.xyzScan = None
         
@@ -242,8 +242,8 @@ class PycroManagerController(ImConWidgetController):
     def __calculateTimeIntervalS(self) -> int:
         if self.timeRecMode & PycroManagerAcquisitionMode.Time:
             return (self._widget.getTimeToRec() * 1000 / float(self._master.pycroManagerAcquisition.core.get_exposure())) * 1e-3
-        else:
-            return 0
+        else: # PycroManagerAcquisitionMode.Frames:
+            return [self._master.pycroManagerAcquisition.core.get_exposure() / 1000 for _ in range(self._widget.getNumExpositions())]
     
     def __checkLabels(self) -> Union[None, list]:
         if self.spaceRecMode & PycroManagerAcquisitionMode.XYList:
@@ -350,7 +350,10 @@ class PycroManagerController(ImConWidgetController):
     def recordingEnded(self):
         self.recordingCycleEnded()        
     
-    def updateProgressBars(self, newProgressDict: Dict[str, int]) -> None:
+    def updateProgressBars(self, newProgressDict: Dict[str, Union[int, str]]) -> None:
+        # if the position is a label, we convert it to the index
+        if "position" in newProgressDict:
+            newProgressDict["position"] = self.selectedScan.getIndex(newProgressDict["position"])
         self._widget.updateProgressBars(newProgressDict)
     
     def specTimeMode(self, mode: PycroManagerAcquisitionMode):
@@ -374,12 +377,14 @@ class PycroManagerController(ImConWidgetController):
                     PycroManagerXYPoint(**point) for point in points
                 ]
             )
+            self.selectedScan = self.xyScan
         else:
             self.xyzScan = PycroManagerXYZScan(
                 [
                     PycroManagerXYPoint(**point) for point in points
                 ]
             )
+            self.selectedScan = self.xyzScan
         
         
     def readPointsJSONData(self, coordinates: str, filePath: str):
@@ -394,12 +399,14 @@ class PycroManagerController(ImConWidgetController):
                             PycroManagerXYPoint(**point) for point in json.load(file)
                         ]
                     )
+                    self.selectedScan = self.xyScan
                 else:
                     self.xyzScan = PycroManagerXYZScan(
                         [
                             PycroManagerXYZPoint(**point) for point in json.load(file)
                         ]
                     )
+                    self.selectedScan = self.xyzScan
                 self.__logger.info(f"Loaded {coordinates} points from {filePath}")
             except Exception as e:
                 errorMsg = f"Error reading JSON file {filePath}: {e}"

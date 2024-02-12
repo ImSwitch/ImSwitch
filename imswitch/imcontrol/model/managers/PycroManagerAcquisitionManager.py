@@ -32,7 +32,7 @@ class PycroManagerAcquisitionManager(SignalInterface):
         self.__liveTimer.timeout.connect(lambda : self.sigLiveImageUpdated.emit(self.__acquisitionWorker.localBuffer))
         self.__liveTimer.setInterval(100)
 
-    def snap(self, folder: str, savename: str, saveMode: SaveMode, attrs: dict):
+    def snap(self, folder: str, savename: str, saveMode: SaveMode, attrs: dict) -> None:
         """ Snaps an image calling an instance of the Pycro-Manager backend Core. 
         """
         # TODO: support multiple extension types?
@@ -72,27 +72,25 @@ class PycroManagerAcquisitionManager(SignalInterface):
     def core(self) -> Core:
         return self.__core
     
-    def startRecording(self, recordingArgs: dict):
-        self.__acquisitionWorker.recordingArgs = recordingArgs
-        self.__acquisitionThread.started.connect(self.__acquisitionWorker.record)
+    def startRecording(self, recordingArgs: Dict[str, dict]) -> None:
+        self.__acquisitionThread.started.connect(lambda: self.__acquisitionWorker.record(recordingArgs))
         self.__acquisitionThread.finished.connect(self.__postInterruptionHandle)
         self.__acquisitionThread.start()
 
     def endRecording(self) -> None:
         self.__postInterruptionHandle()
     
-    def startLiveView(self, recordingArgs: dict):
-        self.__acquisitionWorker.recordingArgs = recordingArgs
-        self.__acquisitionThread.started.connect(self.__acquisitionWorker.liveView)
+    def startLiveView(self, recordingArgs: Dict[str, dict]) -> None:
+        self.__acquisitionThread.started.connect(lambda: self.__acquisitionWorker.liveView(recordingArgs))
         self.__acquisitionThread.finished.connect(self.__postInterruptionHandle)
         self.__acquisitionThread.start()
         self.__liveTimer.start()
 
-    def stopLiveView(self):
+    def stopLiveView(self) -> None:
         self.__liveTimer.stop()
         self.__acquisitionWorker.live = False
     
-    def __postInterruptionHandle(self):
+    def __postInterruptionHandle(self) -> None:
         try:
             self.__acquisitionThread.quit()
             self.__acquisitionThread.started.disconnect()
@@ -107,56 +105,58 @@ class PycroManagerAcqWorker(Worker):
         self.__manager = manager
         width, height = self.__manager.core.get_image_width(), self.__manager.core.get_image_height()
         self.__localBuffer = np.zeros((height, width), dtype=np.uint16)
-
-        # TODO: usage of a local variable would
-        # enable to dynamicall abort recording
-        # if requested by the UI... needs implementation
-        self.__acquisition = None
-        self.recordingArgs : Dict[str, dict] = None
         self.live = False
     
-    def __parse_notification(self, msg: AcqNotification):
-        # TODO: this notification works to send updates
-        # to the recording progress bar for recording;
-        # as live view bypasses saving data to disk,
-        # this notification is never reached;
-        # find another notification type to send updates
-        # during live acquisition
-        if msg.is_image_saved_notification():
+    def __parse_record_notification(self, msg: AcqNotification) -> None:
+        if msg.is_image_saved_notification(): # recording notification: image saved
+            self.manager.sigPycroManagerNotificationUpdated.emit(msg.id)
+    
+    def __parse_live_notification(self, msg: AcqNotification) -> None:
+        if msg.phase == AcqNotification.Camera.POST_EXPOSURE:
             self.manager.sigPycroManagerNotificationUpdated.emit(msg.id)
 
-    def __store_live_local(self, image: np.ndarray, _: dict):
+    def __store_live_local(self, image: np.ndarray, _: dict) -> None:
         self.__localBuffer = image.astype(np.uint16)
 
-    def record(self) -> None:
-        events = multi_d_acquisition_events(**self.recordingArgs["multi_d_acquisition_events"])
-        self.recordingArgs["Acquisition"]["notification_callback_fn"] = self.__parse_notification
+    def record(self, recordingArgs: Dict[str, dict]) -> None:
+        events = multi_d_acquisition_events(**recordingArgs["multi_d_acquisition_events"])
+        recordingArgs["Acquisition"]["notification_callback_fn"] = self.__parse_record_notification
 
         self.__logger.info("Starting acquisition")
         self.manager.sigRecordingStarted.emit()
-        with Acquisition(**self.recordingArgs["Acquisition"]) as self.__acquisition:
-            self.__acquisition.acquire(events)
+        with Acquisition(**recordingArgs["Acquisition"]) as acq:
+            acq.acquire(events)
         
         # dataset file handler causes a warning if not closed properly;
-        self.__acquisition.get_dataset().close()
+        acq.get_dataset().close()
+        
+        # TODO: is this necessary?
+        del acq
+        
         self.manager.sigRecordingEnded.emit()
     
-    def liveView(self):
+    def liveView(self, recordingArgs: Dict[str, dict]) -> None:
         self.__logger.info("Starting live view")
         self.live = True
-        events = multi_d_acquisition_events(**self.recordingArgs["multi_d_acquisition_events"])
-        self.recordingArgs["Acquisition"]["notification_callback_fn"] = self.__parse_notification
-        self.recordingArgs["Acquisition"]["image_process_fn"] = self.__store_live_local
+        events = multi_d_acquisition_events(**recordingArgs["multi_d_acquisition_events"])
+        recordingArgs["Acquisition"]["notification_callback_fn"] = self.__parse_live_notification
+        recordingArgs["Acquisition"]["image_process_fn"] = self.__store_live_local
 
         # for live view we only redirect incoming images to the local buffer
-        self.recordingArgs["Acquisition"].pop("directory")
-        self.recordingArgs["Acquisition"].pop("name")
-        self.__acquisition = Acquisition(**self.recordingArgs["Acquisition"])
+        recordingArgs["Acquisition"].pop("directory")
+        recordingArgs["Acquisition"].pop("name")
+        acq = Acquisition(**recordingArgs["Acquisition"])
+
+        milestone = recordingArgs["multi_d_acquisition_events"]["num_time_points"] - 1
 
         while self.live:
-            self.__acquisition.acquire(events)
-        self.__acquisition.mark_finished()
+            future = acq.acquire(events)
+            future.await_execution({"time" : milestone}, AcqNotification.Camera.POST_EXPOSURE)
+        acq.mark_finished()
         
+        # TODO: is this necessary?
+        del acq
+
         self.__logger.info("Live view stopped")
     
     @property

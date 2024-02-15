@@ -30,24 +30,28 @@ class ScanWidgetOpt(NapariHybridWidget):
         """
         return self.scanPar['Rotator'].currentIndex()
 
-    def getOptSteps(self):
-        """ Returns the user-input number fo rotation steps. """
+    def getOptSteps(self) -> int:
+        """ Returns the user-input number of OPTsteps. """
         return self.scanPar['OptStepsEdit'].value()
 
-    def getHotStd(self):
-        """ Returns the user-input STD cutoff for the hot pixel correction. """
-        return float(self.scanPar['HotPixelsStdEdit'].text())
+    def setOptSteps(self, value: int) -> None:
+        """ Setter for number for OPT steps. """
+        self.scanPar['OptStepsEdit'].setValue(value)
 
-    def getAverages(self):
+    def getHotStd(self) -> float:
+        """ Returns the user-input STD cutoff for the hot pixel correction. """
+        return self.scanPar['HotPixelsStdEdit'].value()
+
+    def getAverages(self) -> int:
         """ Returns the user-input number of averages for the
         hot pixel correction.
         """
-        return int(self.scanPar['AveragesEdit'].text())
+        return self.scanPar['AveragesEdit'].value()
 
-    def getLiveReconIdx(self):
-        return int(self.scanPar['LiveReconIdxEdit'].text())
-    
-    def setLiveReconIdx(self, value):
+    def getLiveReconIdx(self) -> int:
+        return self.scanPar['LiveReconIdxEdit'].value()
+
+    def setLiveReconIdx(self, value: int) -> None:
         self.scanPar['LivereconIdxEdit'].setValue(int(value))
 
     def updateHotPixelCount(self, count):
@@ -110,13 +114,18 @@ class ScanWidgetOpt(NapariHybridWidget):
     def widgetLayout(self):
         self.scanPar['GetHotPixels'] = guitools.BetterPushButton('Hot Pixels')
 
-        self.scanPar['HotPixelsStdEdit'] = QtWidgets.QLineEdit('5')
+        self.scanPar['HotPixelsStdEdit'] = QtWidgets.QDoubleSpinBox()
+        self.scanPar['HotPixelsStdEdit'].setRange(1, 100)  # step 1 by default
+        self.scanPar['HotPixelsStdEdit'].setValue(5)
+        self.scanPar['HotPixelsStdEdit'].setDecimals(1)
         self.scanPar['HotPixelsStdEdit'].setToolTip(
             'Hot pixel is identified as counts > mean + STD.',
             )
         self.scanPar['HotPixelsStdLabel'] = QtWidgets.QLabel('STD cutoff')
 
-        self.scanPar['AveragesEdit'] = QtWidgets.QLineEdit('30')
+        self.scanPar['AveragesEdit'] = QtWidgets.QSpinBox()
+        self.scanPar['AveragesEdit'].setRange(1, 1000)  # step is 1 by default
+        self.scanPar['AveragesEdit'].setValue(30)
         self.scanPar['AveragesEdit'].setToolTip(
             'Average N frames for Hot pixels aquistion.',
             )
@@ -158,7 +167,7 @@ class ScanWidgetOpt(NapariHybridWidget):
             )
         self.scanPar['LiveReconButton'].setCheckable(True)
         self.scanPar['LiveReconIdxEdit'] = QtWidgets.QSpinBox()
-        self.scanPar['LiveReconIdxEdit'].setRange(0, 10000)  # step is 1 by default
+        self.scanPar['LiveReconIdxEdit'].setRange(0, 10000)  # step 1 by default
         self.scanPar['LiveReconIdxEdit'].setValue(200)
         self.scanPar['LiveReconIdxEdit'].setToolTip(
             'Line px of the camera to reconstruct live via FBP',

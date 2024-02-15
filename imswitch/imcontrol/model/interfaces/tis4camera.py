@@ -1,5 +1,6 @@
 import numpy as np
 import imagingcontrol4 as ic4
+from enum import Enum
 
 from imswitch.imcommon.model import initLogger
 
@@ -16,7 +17,12 @@ class CameraTIS4:
         cam_names = ic4.DeviceEnum.devices()
         self.model = cam_names[cameraNo]
         self.cam = ic4.Grabber()
-        self.snapSink = ic4.SnapSink()
+        self.buffers = ic4.SnapSink.AllocationStrategy(
+                            num_buffers_alloc_on_connect=1,
+                            num_buffers_allocation_threshold=0,
+                            num_buffers_free_threshold=3,
+                            num_buffers_max=2)
+        self.snapSink = ic4.SnapSink(strategy=self.buffers)
 
         self.local_init(pixel_format)
 
@@ -46,6 +52,10 @@ class CameraTIS4:
         else:
             self.__logger.warning('Unknown exposure time unit, assuming ms.')
             self.exposure_conv_factor = 1
+
+        # for the purposes of adjusting the timeout for frame grabber
+        self.exposure = self.cam.device_property_map.get_value_float(
+                                ic4.PropId.EXPOSURE_TIME) / self.exposure_conv_factor
 
         # set pixel format, not needed because it gets set in the manager
         if reinit:
@@ -78,8 +88,11 @@ class CameraTIS4:
         self.cam.acquisition_stop()  # stop imaging
 
     def grabFrame(self):
-        image = self.snapSink.snap_single(5000)
-        frame = image.numpy_wrap()[:, :, 0]
+        image = self.snapSink.snap_single(int(1.2*self.exposure))
+        # fixing the leaks
+        # frame = image.numpy_wrap()[:, :, 0]
+        frame = image.numpy_copy()[:, :, 0]
+        image.release()
 
         # shift bits if necessary, works
         if self.pixel_format == '12bit':
@@ -117,6 +130,7 @@ class CameraTIS4:
             self.cam.device_property_map.set_value(
                                 ic4.PropId.EXPOSURE_TIME,
                                 property_value*self.exposure_conv_factor)
+            self.exposure = property_value*self.exposure_conv_factor
         elif property_name == 'image_height':
             self.cam.device_property_map.set_value(
                                 ic4.PropId.HEIGHT,

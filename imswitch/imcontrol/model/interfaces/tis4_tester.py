@@ -73,7 +73,7 @@ grabber.device_property_map.set_value(ic4.PropId.HEIGHT, 1536)
 for i in range(5):
     try:
         grabber.stream_setup(sink,
-                     setup_option=1)#ic4.StreamSetupOption.DEFER_ACQUISITION_START)
+                    setup_option=1)#ic4.StreamSetupOption.DEFER_ACQUISITION_START)
         # Grab a single image out of the data stream.
         grabber.acquisition_start()
         image = sink.snap_single(4000)

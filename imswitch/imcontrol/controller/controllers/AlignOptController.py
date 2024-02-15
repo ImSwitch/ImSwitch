@@ -2,7 +2,6 @@ from PyQt5.QtCore import pyqtSlot
 
 import numpy as np
 from scipy.signal import correlate
-import pdb
 import pyqtgraph as pg
 
 from imswitch.imcommon.model import initLogger
@@ -210,7 +209,7 @@ class AlignCOR():
     def __init__(self, name, img_stack, shift):
         self.name = name
         if len(img_stack) != 2:
-            raise IndexError('Check if Snap save mode contains save to display')
+            raise IndexError('Snap save mode should contain save to display')
         # img_stack is opt acquired at 0 and 180 deg
         self.img_stack_raw = img_stack
         self.shift = shift

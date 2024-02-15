@@ -155,7 +155,7 @@ class ScanControllerOpt(ImConWidgetController):
         self.demo.sinoReady.connect(self.wait)
         # self.mtx.lock()
         time.sleep(2)
-        self._widget.scanPar['OptStepsEdit'].setText('32')
+        self._widget.scanPar['OptStepsEdit'].setValue(32)
         self._logger.info('waiting...')
 
     @pyqtSlot()

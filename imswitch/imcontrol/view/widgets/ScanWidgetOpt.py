@@ -1,6 +1,7 @@
 from qtpy import QtCore, QtWidgets
 import numpy as np
 import pyqtgraph as pg
+import time
 
 from imswitch.imcontrol.view import guitools as guitools
 from .basewidgets import NapariHybridWidget
@@ -12,7 +13,7 @@ class ScanWidgetOpt(NapariHybridWidget):
 
     sigRotStepDone = QtCore.Signal()
     sigRunScanClicked = QtCore.Signal()
-    sigSetImage = QtCore.Signal()
+    # sigSetImage = QtCore.Signal()
 
     def __post_init__(self, *args, **kwargs):
         self.grid = QtWidgets.QGridLayout()
@@ -52,7 +53,7 @@ class ScanWidgetOpt(NapariHybridWidget):
         return self.scanPar['LiveReconIdxEdit'].value()
 
     def setLiveReconIdx(self, value: int) -> None:
-        self.scanPar['LivereconIdxEdit'].setValue(int(value))
+        self.scanPar['LiveReconIdxEdit'].setValue(int(value))
 
     def updateHotPixelCount(self, count):
         self.scanPar['HotPixelCount'].setText(f'Count: {count:d}')
@@ -92,10 +93,14 @@ class ScanWidgetOpt(NapariHybridWidget):
 
     def setImage(self, im, colormap="gray", name="",
                  pixelsize=(1, 20, 20), translation=(0, 0, 0), step=0):
+        print('IN THE setImage')
         if len(im.shape) == 2:
             print('2D image supposedly', im.shape)
             translation = (translation[0], translation[1])
+
+        print(self.layer, self.viewer.layers, name)
         if self.layer is None or name not in self.viewer.layers:
+            print('im', im.shape)
             self.layer = self.viewer.add_image(im, rgb=False,
                                                colormap=colormap,
                                                scale=pixelsize,
@@ -103,13 +108,15 @@ class ScanWidgetOpt(NapariHybridWidget):
                                                name=name,
                                                blending='translucent')
         try:
-            print(step, im.shape)
-            self.viewer.dims.current_step = (step+1, im.shape[1], im.shape[2])
+            print('try setImage', step, im.shape, (step+1, im.shape[1], im.shape[2]))
+            self.viewer.dims.current_step = (step, im.shape[1], im.shape[2])
         except Exception as e:
             print('Except from dims', e)
         self.layer.data = im
         self.layer.contrast_limits = (np.min(im), np.max(im))
-        self.sigSetImage.emit()
+        print('end of setImage', self.layer.data.shape)
+        # time.sleep(0.2)
+        # self.sigSetImage.emit()
 
     def widgetLayout(self):
         self.scanPar['GetHotPixels'] = guitools.BetterPushButton('Hot Pixels')
@@ -187,6 +194,8 @@ class ScanWidgetOpt(NapariHybridWidget):
         self.scanPar['StopButton'] = QtWidgets.QPushButton('Stop')
         self.scanPar['SaveButton'] = QtWidgets.QCheckBox('Save')
         self.scanPar['SaveButton'].setCheckable(True)
+        self.scanPar['noRamButton'] = QtWidgets.QCheckBox('no RAM')
+        self.scanPar['noRamButton'].setCheckable(True)
 
         self.liveReconPlot = pg.ImageView()
         self.intensityPlot = pg.PlotWidget()
@@ -267,6 +276,7 @@ class ScanWidgetOpt(NapariHybridWidget):
         self.grid.addWidget(self.scanPar['StartButton'], currentRow, 0)
         self.grid.addWidget(self.scanPar['StopButton'], currentRow, 1)
         self.grid.addWidget(self.scanPar['SaveButton'], currentRow, 2)
+        self.grid.addWidget(self.scanPar['noRamButton'], currentRow, 3)
 
         currentRow += 1
         self.grid.addWidget(self.tabs, currentRow, 0, 1, -1)

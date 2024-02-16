@@ -233,6 +233,12 @@ class MockArduinoStepper(QObject):
     def get_pos(self):
         return self.current_pos
 
+    def move_finished_callback(self):
+        print('HAHHAHAHH')
+        self.turning = False
+        self.move_done.emit(self.turning)
+        self.opt_step_done.emit('bla')
+
     @pyqtSlot()
     def moverel_angle(self):
         print('waiting moverel_angle')
@@ -247,19 +253,23 @@ class MockArduinoStepper(QObject):
         self.turning = True
         time.sleep(1)
         self.current_pos = (100, 200)
-        self.turning = False
-        self.move_done.emit(self.turning)
-        time.sleep(0.2)
-        self.opt_step_done.emit('opt_step_done emit')
+        self.move_finished_callback()
+
+        # self.turning = False
+        # self.move_done.emit(self.turning)
+        # # time.sleep(0.2)
+        # print('inbetween emits from arduino stepper')
+        # self.opt_step_done.emit('opt_step_done emit')
 
     def moveabs_angle(self):
         print('waiting')
         self.turning = True
         time.sleep(0.5)
         self.current_pos = (100, 100)
-        self.turning = False
-        self.move_done.emit(self.turning)
-        self.opt_step_done.emit()
+        self.move_finished_callback()
+        # self.turning = False
+        # self.move_done.emit(self.turning)
+        # self.opt_step_done.emit()
 
     def moveabs_steps(self, position):
         print('waiting')

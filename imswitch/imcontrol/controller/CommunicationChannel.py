@@ -70,6 +70,8 @@ class CommunicationChannel(SignalInterface):
 
     sigScanEnded = Signal()
 
+    sigOptStepDone = Signal()  # motor step over, move to post_step
+
     sigSLMMaskUpdated = Signal(object)  # (mask)
 
     sigToggleBlockScanWidget = Signal(bool)

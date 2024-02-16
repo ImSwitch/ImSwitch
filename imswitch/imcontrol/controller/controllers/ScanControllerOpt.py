@@ -59,6 +59,10 @@ class ScanControllerOpt(ImConWidgetController):
         self._widget.scanPar['SaveButton'].clicked.connect(self.updateSaveFlag)
         self.updateSaveFlag()
 
+        # noRAM flag
+        self._widget.scanPar['noRamButton'].clicked.connect(self.updateRamFlag)
+        self.updateRamFlag()
+
         # live recon
         self._widget.scanPar['LiveReconIdxEdit'].valueChanged.connect(self.updateLiveReconIdx)
         self.updateLiveReconIdx()
@@ -94,21 +98,23 @@ class ScanControllerOpt(ImConWidgetController):
         # but I cannot connect second slot to it I think. In the end, for normal motor stepping
         # opt_step_done is emitted, but not connected, while in the case of OPT I connect it to the
         # post_step here.
+        self.__optSteps = self.getOptSteps()
+
         if self._widget.scanPar['MockOpt'].isChecked():
             self.prepareOptMock()
         else:
-            self._master.rotatorsManager[
-                self.__rotators[self.motorIdx]]._motor.opt_step_done.connect(
-                                                        self.post_step)
-        self.__optSteps = self.getOptSteps()
-
-        # Checking for divisability of motor steps and OPT steps.
-        if self.__motor_steps % self.__optSteps != 0:
-            retval = self.raiseStepMess()
-            # hex value associated with Cancel button of QMessageBox
-            if int(retval) == int(0x00400000):
-                self.stopOpt()
-                return
+            # self._master.rotatorsManager[
+            #     self.__rotators[self.motorIdx]]._motor.opt_step_done.connect(
+            #                                             self.post_step)
+            self._commChannel.sigOptStepDone.connect(self.post_step)
+            # Checking for divisability of motor steps and OPT steps.
+            # this is necessary only for the real OPT, not Mock
+            if self.__motor_steps % self.__optSteps != 0:
+                retval = self.raiseStepMess()
+                # hex value associated with Cancel button of QMessageBox
+                if int(retval) == int(0x00400000):
+                    self.stopOpt()
+                    return
 
         # equidistant steps for the OPT scan in absolute values.
         self.opt_steps = np.linspace(0, self.__motor_steps, self.__optSteps,
@@ -119,14 +125,16 @@ class ScanControllerOpt(ImConWidgetController):
 
         # live reconstruction
         if self.liveRecon:
-            self.reconIdx = self.updateLiveReconIdx()
+            # self.reconIdx = self.updateLiveReconIdx()
+            self.updateLiveReconIdx()
             self.currentRecon = None  # avoid update_recon in the first step
-
+        print('going to start OPT')
         self.startOpt()
 
     def startOpt(self):
         """run OPT, set flags and move to step zero rotator position
         """
+        print('curernt recon., should be None', self.currentRecon)
         self.detector.startAcquisition()
         self.enableWidget(False)
         if not self.isOptRunning:
@@ -137,7 +145,7 @@ class ScanControllerOpt(ImConWidgetController):
 
     def wait(self):
         self._logger.info('inside wait')
-        self.mtx.unlock()
+        # self.mtx.unlock()
 
     def prepareOptMock(self):
         """
@@ -145,17 +153,21 @@ class ScanControllerOpt(ImConWidgetController):
         finish to post_step_mock()
         """
         self._logger.info('Preparing Mock experiment')
-        self.mtx = QMutex()
+        # self.mtx = QMutex()
         self._master.rotatorsManager[
             self.__rotators[self.motorIdx]]._motor.opt_step_done.connect(
                                                     self.post_step_mock)
+        # Ideally I would do this, but cannot because motor cannot emit
+        # bacause it is not an imswitch class
+        # self._commChannel.sigOptStepDone.connect(self.post_step_mock)
 
         # here generate stack of projections
-        self.demo = DemoData(resolution=32, bin_factor=1)
+        self.demo = DemoData(resolution=self.__optSteps)
         self.demo.sinoReady.connect(self.wait)
+        # self.demo.generateData()
         # self.mtx.lock()
-        time.sleep(2)
-        self._widget.scanPar['OptStepsEdit'].setValue(32)
+        # time.sleep(2)
+        # self._widget.scanPar['OptStepsEdit'].setValue(32)
         self._logger.info('waiting...')
 
     @pyqtSlot()
@@ -163,16 +175,28 @@ class ScanControllerOpt(ImConWidgetController):
         """ Move a specific rotator to an absolute position. """
         self._master.rotatorsManager[name].move_abs_steps(dist)
 
-    def post_step(self, s):
+    def post_step(self):
         """Acquire image after motor step is done, move to next step """
+        self._logger.info('in the opt post step')
         self.handleSnap()
+        self.handleSave()
+        self.handlePlots()
         self.nextStep()
 
-    def post_step_mock(self, s):
+    def post_step_mock(self):
         """Get image from the demo sinogram data, call next step. """
+        self._logger.info('in the opt mock post step')
         self.frame = self.demo.sinogram[self.__currentStep]
-        self.optStack = self.demo.sinogram[:self.__currentStep]
-        self.sigImageReceived.emit('OPT stack', self.optStack)
+        print('self.frame', self.frame.shape)
+        if self.noRAM:  # no volume in napari, only last frame
+            self.sigImageReceived.emit('Last Frame', self.frame)
+        else:
+            self.optStack = self.demo.sinogram[:self.__currentStep+1, :, :]
+            print('a', self.optStack.shape)
+            self.sigImageReceived.emit('OPT stack', self.optStack)
+
+        self.handleSave()
+        self.handlePlots()
         self.nextStep()
 
     def nextStep(self):
@@ -180,6 +204,8 @@ class ScanControllerOpt(ImConWidgetController):
         Update live reconstruction, stop OPT in case of last step,
         otherwise move motor again.
         """
+        self._widget.updateCurrentStep(self.__currentStep + 1)
+
         # updating live reconstruction
         if self.liveRecon:
             self.updateLiveRecon()
@@ -203,6 +229,7 @@ class ScanControllerOpt(ImConWidgetController):
         self.sigImageReceived.disconnect()
         self._master.rotatorsManager[
             self.__rotators[self.motorIdx]]._motor.opt_step_done.disconnect()
+        # self._commChannel.sigOptStepDone.disconnect()
         self._logger.info("OPT stopped.")
 
     ##################
@@ -214,23 +241,28 @@ class ScanControllerOpt(ImConWidgetController):
         to the OPT stack, save projection, update the stability plot.
         """
         self.frame = self.detector.getLatestFrame()
-        if self.isOptRunning:
+        if not self.isOptRunning:
+            return
+
+        if self.noRAM:  # no volume in napari, only last frame
+            self.sigImageReceived.emit('Last Frame', self.frame)
+        else:  # volume in RAM and displayed in napari
             self.allFrames.append(self.frame)
 
             self.optStack = np.array(self.allFrames)
             self.sigImageReceived.emit('OPT stack', self.optStack)
 
-            if self.saveOpt:
-                self.saveImage(self.frame,
-                               self.saveSubfolder,
-                               f'{self.__currentStep:04}')
+    def handleSave(self):
+        if self.saveOpt:
+            self.saveImage(self.frame,
+                           self.saveSubfolder,
+                           f'{self.__currentStep:04}')
 
-            # update intensity monitoring plot, This should be there for the
-            # mock too no? Needs refactoring
-            self.signalStability.process_img(self.frame, self.__currentStep)
-            self.updateStabilityPlot()
-
-            self._widget.updateCurrentStep(self.__currentStep + 1)
+    def handlePlots(self):
+        # update intensity monitoring plot, This should be there for the
+        # mock too no? Needs refactoring
+        self.signalStability.process_img(self.frame, self.__currentStep)
+        self.updateStabilityPlot()
 
     def displayImage(self, name, frame):
         """
@@ -241,7 +273,8 @@ class ScanControllerOpt(ImConWidgetController):
             frame (np.ndarray): image or stack
         """
         # subsample stack
-        if self.isOptRunning:
+        if self.isOptRunning and not self.noRAM:
+            print('frame shape', frame.shape, self.__currentStep)
             self._widget.setImage(np.uint16(frame),
                                   colormap="gray",
                                   name=name,
@@ -272,9 +305,14 @@ class ScanControllerOpt(ImConWidgetController):
                 self.currentRecon = FBPlive(
                     self.frame[self.reconIdx, :],
                     self.__optSteps)
-            except IndexError:
-                self._logger.warning('Index error, reconstruction will proceed on the central camera line')
-                self.setLiveReconIdx(self.frame.shape[0]//2)
+            except (ValueError, IndexError):
+                self._logger.warning(
+                    'Index error, reconstructions changed to central line')
+                self.setLiveReconIdx(self.frame.shape[0] // 2)
+                print('recon idx',
+                      self.reconIdx, self.frame.shape,
+                      self.frame[self.reconIdx, :].shape,
+                      )
                 self.currentRecon = FBPlive(
                     self.frame[self.reconIdx, :],
                     self.__optSteps)
@@ -292,7 +330,7 @@ class ScanControllerOpt(ImConWidgetController):
         """
         self._widget.liveReconPlot.clear()
         self._widget.liveReconPlot.setImage(image)
-        self._widget.updateCurrentReconStep(self.__currentStep+1)
+        self._widget.updateCurrentReconStep(self.__currentStep + 1)
 
     ##################
     # Helper methods #
@@ -371,6 +409,10 @@ class ScanControllerOpt(ImConWidgetController):
         """ Update saving flag from the widget value """
         self.saveOpt = self._widget.scanPar['SaveButton'].isChecked()
 
+    def updateRamFlag(self):
+        """ Update noRAM flag from the widget value """
+        self.noRAM = self._widget.scanPar['noRamButton'].isChecked()
+
     def updateStabilityPlot(self):
         """ Update OPT stability plot from 4 corners of the stack """
         self._widget.intensityPlot.clear()
@@ -386,13 +428,10 @@ class ScanControllerOpt(ImConWidgetController):
                 pen=pg.mkPen(colors[i], width=1.5),
             )
 
-    def updateLiveReconIdx(self):
-        """ Get camera line index for the live reconstruction.
-
-        Returns:
-            int: Index of the image array
-        """
-        return self._widget.getLiveReconIdx()
+    def updateLiveReconIdx(self) -> None:
+        """ Get camera line index for the live reconstruction. """
+        print('updateLiveReconIdx call')
+        self.reconIdx = self._widget.getLiveReconIdx()
 
     def setLiveReconIdx(self, value: int):
         """ Set camera line index for the live reconstruction
@@ -402,7 +441,7 @@ class ScanControllerOpt(ImConWidgetController):
         """
         self._widget.setLiveReconIdx(value)
 
-    def getRotators(self):
+    def getRotators(self) -> None:
         """ Get a list of all rotators."""
         self.__rotators = self._master.rotatorsManager.getAllDeviceNames()
 
@@ -574,9 +613,9 @@ class ScanControllerOpt(ImConWidgetController):
         """
         Automatic saving of the correction to the \Corrections folder.
         Based on the selected STD cutoff in the widget identifies pixels which
-        have intensity higher than mean of all pixels + STD cutoff multiples of STD.
-        Calculates and displays count of hot pixels and average intensity of both
-        hot and non-hot pixels.
+        have intensity higher than mean of all pixels + STD cutoff multiples
+        of STD. Calculates and displays count of hot pixels and average
+        intensity of both hot and non-hot pixels.
         """
         self.saveImage(self.hot_pixels, 'Corrections', 'corr_hot')
         std_cutoff = self.getStdCutoff()
@@ -648,7 +687,8 @@ class ScanControllerOpt(ImConWidgetController):
         Args:
             frame (np.ndarray): image array
             subfolder (str): datetime string for unique folder identification
-            filename (str, optional): part of the filename can be specified. Defaults to "corr".
+            filename (str, optional): part of the filename can be specified.
+                Defaults to "corr".
             fileExtension (str, optional): Image format. Defaults to "tiff".
         """
         filePath = self.getSaveFilePath(
@@ -659,7 +699,10 @@ class ScanControllerOpt(ImConWidgetController):
         self._logger.debug(filePath)
         tif.imwrite(filePath, frame, append=False)
 
-    def getSaveFilePath(self, subfolder: str, filename: str, extension: str)-> os.path:
+    def getSaveFilePath(self, subfolder: str,
+                        filename: str,
+                        extension: str,
+                        ) -> os.path:
         """Sets datetime part of the filename, combines parts of the
         filename, ensures existance of the saving folder and returns
         the full savings path
@@ -764,11 +807,17 @@ class FBPlive():
                 radon_filtered = np.real(ifft(projection)[:self.radon_img_shape])
 
                 if interpolation == 'linear':
-                    interpolant = interp1d(self.x, radon_filtered, kind='linear',
-                                           bounds_error=False, fill_value=0)
+                    interpolant = interp1d(self.x,
+                                           radon_filtered,
+                                           kind='linear',
+                                           bounds_error=False,
+                                           fill_value=0)
                 elif interpolation == 'cubic':
-                    interpolant = interp1d(self.x, radon_filtered, kind='cubic',
-                                           bounds_error=False, fill_value=0)
+                    interpolant = interp1d(self.x,
+                                           radon_filtered,
+                                           kind='cubic',
+                                           bounds_error=False,
+                                           fill_value=0)
                 else:
                     raise ValueError
                 self.output[:, :, i] += interpolant(t) * (np.pi/(2*self.n_steps))
@@ -782,7 +831,8 @@ class FBPlive():
 
             # interpolation on the circle
             interpolation = 'linear'
-            t = self.ypr * np.cos(self.theta[step]) - self.xpr * np.sin(self.theta[step])
+            t = (self.ypr * np.cos(self.theta[step]) -
+                 self.xpr * np.sin(self.theta[step]))
             if interpolation == 'linear':
                 interpolant = interp1d(self.x, radon_filtered, kind='linear',
                                        bounds_error=False, fill_value=0)
@@ -823,20 +873,24 @@ class DemoData(QObject):
 
     sinoReady = pyqtSignal()
 
-    def __init__(self, resolution=128, bin_factor=1) -> None:
+    def __init__(self, resolution=128) -> None:
         super(QObject, self).__init__()
         self.size = resolution  # int
         self.idx = 0
-        self.binning_factor = bin_factor  # not sure it can do hardware binning
-        self.accum = False
         self.thread = QThread(parent=self)
         self.radon = Get_radon(self.size)
-        self.radon.moveToThread(self.thread)
-        self.thread.started.connect(self.radon.get_sinogram)
-        # self.radon.get_sinogram()
-        self.radon.finished.connect(self.sino)
-        self.radon.finished.connect(self.thread.quit)
-        self.thread.finished.connect(self.thread.quit)
+        # self.radon.moveToThread(self.thread)
+        # self.thread.started.connect(self.radon.get_sinogram)
+        
+        # self.radon.finished.connect(self.sino)
+        # self.radon.finished.connect(self.thread.quit)
+        # self.thread.finished.connect(self.thread.quit)
+
+        s = self.radon.get_sinogram()
+        self.sino(s)
+
+    def generateData(self):
+        print('not here')
         self.thread.start()
 
     def sino(self, data):
@@ -870,7 +924,8 @@ class Get_radon(QObject):
         mx = np.amax(sinogram)
         sinogram = (sinogram/mx*255).astype('int16')
         print('emitting', sinogram.shape)
-        self.finished.emit(sinogram)
+        # self.finished.emit(sinogram)
+        return sinogram
 
     def loading_message(self):
         msg = QtWidgets.QMessageBox()
@@ -882,6 +937,8 @@ class Get_radon(QObject):
         return retval
 
 
+# These functions are adapted from tomopy package
+# https://tomopy.readthedocs.io/en/stable/
 def _totuple(size, dim):
     """
     Converts size to tuple.

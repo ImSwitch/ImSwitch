@@ -103,10 +103,13 @@ class ScanControllerOpt(ImConWidgetController):
         if self._widget.scanPar['MockOpt'].isChecked():
             self.prepareOptMock()
         else:
-            # self._master.rotatorsManager[
-            #     self.__rotators[self.motorIdx]]._motor.opt_step_done.connect(
-            #                                             self.post_step)
-            self._commChannel.sigOptStepDone.connect(self.post_step)
+            self._master.rotatorsManager[
+                self.__rotators[self.motorIdx]]._motor.opt_step_done.connect(
+                                                        self.post_step)
+            # Ideally I would do this, but cannot because motor cannot emit
+            # bacause it is not an imswitch class
+            # self._commChannel.sigOptStepDone.connect(self.post_step)
+
             # Checking for divisability of motor steps and OPT steps.
             # this is necessary only for the real OPT, not Mock
             if self.__motor_steps % self.__optSteps != 0:

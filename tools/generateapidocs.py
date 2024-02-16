@@ -75,20 +75,10 @@ dummyModuleCommChannel = ModuleCommunicationChannel()
 modules = [imcontrol, imreconstruct]  # imscripting excluded
 for modulePackage in modules:
     kwargs = {}
-    if modulePackage == imcontrol:
+    if False and modulePackage == imcontrol:
         kwargs['overrideSetupInfo'] = ViewSetupInfo.from_json(
             """
             {
-                "scan": {
-                    "scanDesigner": "BetaScanDesigner",
-                    "scanDesignerParams": {
-                        "return_time": 0.01
-                    },
-                    "TTLCycleDesigner": "BetaTTLCycleDesigner",
-                    "TTLCycleDesignerParams": {},
-                    "sampleRate": 100000
-                },
-                "availableWidgets": true
             }
             """
         )

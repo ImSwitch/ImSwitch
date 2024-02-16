@@ -6,6 +6,16 @@ api.imcontrol
 
    These functions are available in the api.imcontrol object. 
 
+   .. method:: acquireImage() -> None
+
+   .. method:: calibrateObjective()
+
+   .. method:: changeScanPower(laserName, laserValue)
+
+   .. method:: executeFunction(code: str)
+
+   .. method:: getCurrentObjective()
+
    .. method:: getDetectorNames() -> List[str]
 
       Returns the device names of all detectors. These device names can
@@ -16,35 +26,43 @@ api.imcontrol
       Returns the device names of all lasers. These device names can be
       passed to other laser-related functions. 
 
-   .. method:: getPositionerNames() -> List[str]
+   .. method:: getVariable(variable_name: str)
 
-      Returns the device names of all positioners. These device names can
-      be passed to other positioner-related functions. 
+   .. method:: get_image() -> starlette.responses.StreamingResponse
 
-   .. method:: getPositionerPositions() -> Dict[str, Dict[str, float]]
+   .. method:: moveToObjectiveID(objectiveID, posObjective1=None, posObjective2=None)
 
-      Returns the positions of all positioners. 
+   .. method:: post_json(path: str, payload: dict) -> str
 
-   .. method:: loadScanParamsFromFile(filePath: str) -> None
+      Sends the specified command to the RS232 device and returns a
+      string encoded from the received bytes. 
 
-      Loads scanning parameters from the specified file. 
+   .. method:: sendTrigger(triggerId: int)
 
-   .. method:: movePositioner(positionerName: str, axis: str, dist: float) -> None
+      Sends a trigger puls through external device 
 
-      Moves the specified positioner axis by the specified number of
-      micrometers. 
+   .. method:: send_serial(payload: str) -> str
 
-   .. method:: runScan() -> None
+      Sends the specified command to the RS232 device and returns a
+      string encoded from the received bytes. 
 
-      Runs a scan with the set scanning parameters. 
+   .. method:: setAllLED(state=None, intensity=None)
 
-   .. method:: saveScanParamsToFile(filePath: str) -> None
+   .. method:: setAllLEDOff()
 
-      Saves the set scanning parameters to the specified file. 
+   .. method:: setAllLEDOn()
 
    .. method:: setDetectorBinning(detectorName: str, binning: int) -> None
 
       Sets binning value for the specified detector. 
+
+   .. method:: setDetectorExposureTime(detectorName: str = None, exposureTime: float = 1) -> None
+
+      Sets the exposure time for the specified detector. 
+
+   .. method:: setDetectorGain(detectorName: str = None, gain: float = 0) -> None
+
+      Sets the gain for the specified detector. 
 
    .. method:: setDetectorParameter(detectorName: str, parameterName: str, value: Any) -> None
 
@@ -61,6 +79,10 @@ api.imcontrol
       Sets which detectors to record. One can also pass -1 as the
       argument to record the current detector, or -2 to record all detectors.
       
+
+   .. method:: setIntensity(intensity=None)
+
+   .. method:: setLED(LEDid, state=None)
 
    .. method:: setLaserActive(laserName: str, active: bool) -> None
 
@@ -82,15 +104,6 @@ api.imcontrol
    .. method:: setLiveViewGridVisible(visible: bool) -> None
 
       Sets whether the LiveView grid is visible. 
-
-   .. method:: setPositioner(positionerName: str, axis: str, position: float) -> None
-
-      Moves the specified positioner axis to the specified position. 
-
-   .. method:: setPositionerStepSize(positionerName: str, stepSize: float) -> None
-
-      Sets the step size of the specified positioner to the specified
-      number of micrometers. 
 
    .. method:: setRecFilename(filename: Optional[str]) -> None
 
@@ -124,39 +137,39 @@ api.imcontrol
       Sets the recording mode to record until recording is manually
       stopped. 
 
-   .. method:: signals() -> Mapping[str, imswitch.imcommon.framework.qt.Signal]
+   .. method:: setSpecial(pattern, intensity=255, getReturn=False)
 
-      Returns signals that can be used with e.g. the getWaitForSignal
-      action. Currently available signals are:
-      
-      - acquisitionStarted
-      - acquisitionStopped
-      - recordingStarted
-      - recordingEnded
-      - scanEnded
-      
-      They can be accessed like this: api.imcontrol.signals().scanEnded
-      
+   .. method:: snapImage(output: bool = False, toList: bool = True) -> Optional[list]
 
-   .. method:: snapImage() -> None
-
+      
       Take a snap and save it to a .tiff file at the set file path. 
+      output: if True, return the numpy array of the image as a list if toList is True, or as a numpy array if toList is False
+      toList: if True, return the numpy array of the image as a list, otherwise return it as a numpy array
+      
+
+   .. method:: snapImageToPath(fileName: str = '.')
+
+      Take a snap and save it to a .tiff file at the given fileName. 
+
+   .. method:: snapNumpyToFastAPI(detectorName: str = None, resizeFactor: float = 1) -> starlette.responses.Response
+
+      
+      Taking a snap and return it as a FastAPI Response object.
+      detectorName: the name of the detector to take the snap from. If None, take the snap from the first detector.
+      resizeFactor: the factor by which to resize the image. If <1, the image will be downscaled, if >1, nothing will happen.
+      
 
    .. method:: startRecording() -> None
 
       Starts recording with the set settings to the set file path. 
 
-   .. method:: stepPositionerDown(positionerName: str, axis: str) -> None
-
-      Moves the specified positioner axis in negative direction by its
-      set step size. 
-
-   .. method:: stepPositionerUp(positionerName: str, axis: str) -> None
-
-      Moves the specified positioner axis in positive direction by its
-      set step size. 
-
    .. method:: stopRecording() -> None
 
       Stops recording. 
+
+   .. method:: video_feeder() -> starlette.responses.StreamingResponse
+
+      
+      return a generator that converts frames into jpeg's reads to stream
+      
 

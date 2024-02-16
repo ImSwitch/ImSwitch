@@ -15,7 +15,11 @@ import imswitch
 import uvicorn
 from functools import wraps
 import os
-
+import socket 
+import time
+import zeroconf
+from zeroconf import ServiceInfo, Zeroconf
+import socket
 from fastapi.middleware.cors import CORSMiddleware
 
 from http.server import HTTPServer, BaseHTTPRequestHandler
@@ -54,7 +58,9 @@ class ImSwitchServer(Worker):
         self._canceled = False
 
         self.__logger =  initLogger(self)
-
+        
+        # start broadcasting server IP
+        self.startmdns()
 
     def run(self):
 
@@ -89,6 +95,9 @@ class ImSwitchServer(Worker):
     def stop(self):
         self.__logger.debug("Stopping ImSwitchServer")
         self._daemon.shutdown()
+        print("Unregistering...")
+        zeroconf.unregister_service(self.info)
+        zeroconf.close()
 
 
     # SRC: https://code-maven.com/static-server-in-python
@@ -139,6 +148,38 @@ class ImSwitchServer(Worker):
             print(e)
             return
 
+
+
+    def get_ip(self):
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            s.connect(('10.255.255.255', 1))
+            IP = s.getsockname()[0]
+        except Exception:
+            IP = '127.0.0.1'
+        finally:
+            s.close()
+        return IP
+
+    def startmdns(self):
+        service_type = "_https._tcp.local."  # Changed to HTTPS
+        service_name = "imswitch._https._tcp.local."
+        server_ip = self.get_ip()
+        server_port = 8001  # Change to your server's port
+
+        self.info = ServiceInfo(
+            service_type,
+            service_name,
+            addresses=[socket.inet_aton(server_ip)],
+            port=server_port,
+            properties={},
+        )
+
+        zeroconf = Zeroconf()
+        print(f"Registering service {service_name}, type {service_type}, at {server_ip}:{server_port}")
+        zeroconf.register_service(self.info)
+
+        
 
 
     @app.get("/")
@@ -225,6 +266,7 @@ class ImSwitchServer(Worker):
                 pass
 
         '''
+
 
 
         def includePyro(func):

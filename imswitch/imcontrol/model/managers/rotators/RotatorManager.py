@@ -1,11 +1,11 @@
-from abc import ABC, abstractmethod
+from abc import abstractmethod
+from imswitch.imcommon.framework import Signal, SignalInterface
 
-from typing import Dict, List
-
-
-class RotatorManager(ABC):
+class RotatorManager(SignalInterface):
     """ Abstract base class for managers that control rotators. Each type of
     rotator corresponds to a manager derived from this class. """
+
+    sigOptStepDone = Signal()
 
     @abstractmethod
     def __init__(self, rotatorInfo, name: str, *args, **kwargs):
@@ -15,7 +15,6 @@ class RotatorManager(ABC):
             name: The unique name that the device is identified with in the
               setup file.
         """
-        print('RR', rotatorInfo)
         self._rotatorInfo = rotatorInfo
         self._position = 0
         self.__name = name
@@ -33,14 +32,18 @@ class RotatorManager(ABC):
     @abstractmethod
     def move_rel(self, move_dist: float):
         """ Moves the rotator by the specified distance.
-        Derived classes will update the position field manually.
+        Derived classes will update the position field manually;
+        position updates can be monitored by implementing the
+        sigOptStepDone signal in the derived class.
         """
         pass
 
     @abstractmethod
     def move_abs(self, move_pos: float):
         """ Adjusts the rotator to the specified position.
-        Derived classes will update the position field manually.
+        Derived classes will update the position field manually;
+        position updates can be monitored by implementing the
+        sigOptStepDone signal in the derived class.
         """
         pass
 

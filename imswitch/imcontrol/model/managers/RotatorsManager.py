@@ -1,12 +1,22 @@
+from imswitch.imcommon.framework import SignalInterface, Signal
 from .MultiManager import MultiManager
 
 
-class RotatorsManager(MultiManager):
+class RotatorsManager(MultiManager, SignalInterface):
     """ RotatorsManager interface for dealing with RotatorManagers. It is
     a MultiManager for rotators. """
+    
+    sigOptStepDone = Signal(str)
 
-    def __init__(self, positionerInfos, **lowLevelManagers):
-        super().__init__(positionerInfos, 'rotators', **lowLevelManagers)
+    def __init__(self, rotatorsInfo, **lowLevelManagers):
+        MultiManager.__init__(rotatorsInfo, 'rotators', **lowLevelManagers)
+        SignalInterface.__init__(self)
+        
+        for rotatorName, rotatorInfo in rotatorsInfo.items():
+            # Connect signals
+            self._subManagers[rotatorName].sigOptStepDone.connect(
+                lambda: self.sigOptStepDone.emit(rotatorName)
+            )
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

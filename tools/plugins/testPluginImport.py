@@ -22,7 +22,8 @@ def list_installed_plugins(entry_point_groups):
 entry_point_groups = [
     'imswitch.implugins.detectors',
     'imswitch.implugins.lasers',
-    'imswitch.implugins.positioner'
+    'imswitch.implugins.positioner', 
+    "imswitch.implugins.widgets",
 ]
 
 list_installed_plugins(entry_point_groups)
@@ -31,8 +32,9 @@ list_installed_plugins(entry_point_groups)
 def load_plugins_by_category():
     plugins_by_category = {
         'detectors': [],
-        'lasers': [],
-        'positioner': []
+    ^^  ^        'lasers': [],
+        'positioner': [], 
+        "widgets": [],
         }
     for category in plugins_by_category.keys():
         for entry_point in pkg_resources.iter_entry_points(f'imswitch.implugins.{category}'):

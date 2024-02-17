@@ -4,6 +4,7 @@ from imswitch.imcommon.model import initLogger
 
 from imswitch.imcommon.model import pythontools
 
+import pkg_resources
 
 class MultiManager(ABC):
     """ Abstract class for a manager used to control a group of sub-managers.
@@ -19,13 +20,21 @@ class MultiManager(ABC):
                 # Create sub-manager
                 #self.__logger.debug(f'{currentPackage}.{subManagersPackage}, {managedDeviceInfo.managerName}')
                 #self.__logger.debug(managedDeviceInfo)
-                package = importlib.import_module(
-                    pythontools.joinModulePath(f'{currentPackage}.{subManagersPackage}',
-                                            managedDeviceInfo.managerName)
-                )
-                manager = getattr(package, managedDeviceInfo.managerName)
-                self._subManagers[managedDeviceName] = manager(
-                    managedDeviceInfo, managedDeviceName, **lowLevelManagers)
+                try:
+                    package = importlib.import_module(
+                        pythontools.joinModulePath(f'{currentPackage}.{subManagersPackage}',
+                                                managedDeviceInfo.managerName)
+                    )
+                    manager = getattr(package, managedDeviceInfo.managerName)
+                    self._subManagers[managedDeviceName] = manager(
+                        managedDeviceInfo, managedDeviceName, **lowLevelManagers)
+
+                except: 
+                    # try to import from the implugins
+                    for entry_point in pkg_resources.iter_entry_points(f'imswitch.implugins.{subManagersPackage}'):
+                        manager = entry_point.load()                                
+                        self._subManagers[managedDeviceName] = manager(
+                            managedDeviceInfo, managedDeviceName, **lowLevelManagers)
 
     def hasDevices(self):
         """ Returns whether this manager manages any devices. """

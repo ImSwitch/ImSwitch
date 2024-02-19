@@ -193,9 +193,13 @@ class ArduinoRotatorManager(RotatorManager):
             steps = value
         else:
             steps = self.deg2steps(value)
-        self.board.stepper_get_current_position(
-                        self.motor,
-                        self.current_position_callback)
+
+        if self.motor is not None:  # real rotator
+            self.board.stepper_get_current_position(
+                            self.motor,
+                            self.current_position_callback)
+        else:
+            self.current_position_callback((0, 0, 0))
         self.start_move.connect(self.moveRelSteps)
         self.move_done.connect(self.post_move)
         self.steps = steps - self.current_pos[0]
@@ -209,13 +213,17 @@ class ArduinoRotatorManager(RotatorManager):
         self.get_position()
         self.start_move.disconnect()
         self.move_done.disconnect()
-        self.board.stepper_get_current_position(
-                        self.motor,
-                        self.current_position_callback)
+        if self.motor is not None:  # real rotator
+            self.board.stepper_get_current_position(
+                            self.motor,
+                            self.current_position_callback)
+        else:
+            self.current_position_callback((0, 0, 0))
         time.sleep(.2)
         self.trigger_update_position()
 
     def trigger_update_position(self):
+        print('trigger_update_positin')
         self.emit_trigger_update_position()
 
     #######################
@@ -259,12 +267,12 @@ class ArduinoRotatorManager(RotatorManager):
             self.board.stepper_set_current_position(
                                     self.motor, steps)
 
-    def is_running_callback(self, data):
-        """Check if motor is running"""
-        if data[1]:
-            self.turning = True
-        else:
-            self.turning = False
+    # def is_running_callback(self, data):
+    #     """Check if motor is running"""
+    #     if data[1]:
+    #         self.turning = True
+    #     else:
+    #         self.turning = False
 
     def set_zero_pos(self):
         self.board.stepper_set_current_position(

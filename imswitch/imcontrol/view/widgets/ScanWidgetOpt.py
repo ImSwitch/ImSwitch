@@ -115,7 +115,7 @@ class ScanWidgetOpt(NapariHybridWidget):
         self.layer.data = im
         self.layer.contrast_limits = (np.min(im), np.max(im))
         print('end of setImage', self.layer.data.shape)
-        # time.sleep(0.2)
+        time.sleep(0.2)
         # self.sigSetImage.emit()
 
     def widgetLayout(self):

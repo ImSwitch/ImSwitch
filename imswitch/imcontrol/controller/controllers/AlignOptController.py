@@ -81,8 +81,6 @@ class AlignOptController(ImConWidgetController):
         case of last step,
         otherwise move motor again.
         """
-        # memory saving option needs to set in the recording controller.
-        # self.sigRequestSnap.emit()
         self.handleSnap()
 
         self.__currentStep += 1

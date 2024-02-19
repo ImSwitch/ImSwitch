@@ -73,7 +73,6 @@ class ArduinoRotatorManager(RotatorManager):
         except Exception:
             self.__logger.warning(f'Failed to initialize Arduino stepper motor {self._device_id}, loading mocker')
             self.board = MockBoard()
-            self.motor = None
             self.current_pos = (0, 0)
             self.init_mock()
 
@@ -165,8 +164,13 @@ class ArduinoRotatorManager(RotatorManager):
         """Move self.steps relative to the current position """
         self.board.stepper_move(self.motor, int(self.steps))
         self.turning = True
-        self.board.stepper_run(self.motor,
-                               completion_callback=self.move_finished_callback)
+        if self.motor is not None:  # real rotator
+            self.board.stepper_run(
+                self.motor,
+                completion_callback=self.move_finished_callback)
+        else:  # mock rotator
+            time.sleep(.2)
+            self.move_finished_callback('Mock')
 
     def move_rel(self, angle):
         """Calculate steps from angle and run

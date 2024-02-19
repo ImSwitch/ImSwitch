@@ -52,7 +52,6 @@ class PycroManagerController(ImConWidgetController):
         # Connect signals from CommunicationChannel
         self._commChannel.sigRecordingStarted.connect(self.recordingStarted)
         self._commChannel.sigRecordingEnded.connect(self.recordingEnded)
-        self._commChannel.sigUpdatePycroManagerNotification.connect(self.updateProgressBars)
         self._commChannel.sharedAttrs.sigAttributeSet.connect(self.attrChanged)
         self._commChannel.sigSnapImg.connect(self.snap)
         self._commChannel.sigStartRecordingExternal.connect(self.startRecording)
@@ -129,8 +128,15 @@ class PycroManagerController(ImConWidgetController):
 
             # before launching the recording, we stop the live view if this is running
             self.sigToggleLive.emit(False)
+            self._commChannel.sigUpdatePycroManagerNotification.connect(self.updateProgressBars)
             self._master.pycroManagerAcquisition.startRecording(recordingArgs)
         else:
+            # if the signal was never connected,
+            # we bypass the exception
+            try:
+                self._commChannel.sigUpdatePycroManagerNotification.disconnect(self.updateProgressBars)
+            except:
+                pass
             self._master.pycroManagerAcquisition.endRecording()
 
             # resume live view if previously running
@@ -141,12 +147,13 @@ class PycroManagerController(ImConWidgetController):
             return
         self.updateRecAttrs(isSnapping=False)
         self.setupProgressBars()
-        recordingArgs = self.packRecordingArguments()
-        self._master.pycroManagerAcquisition.startLiveView(recordingArgs)
+        self._commChannel.sigUpdatePycroManagerNotification.connect(self.updateProgressBars)
+        self._master.pycroManagerAcquisition.startLiveView(self.packRecordingArguments())
 
     def stopLiveAcquisition(self):
+        self._commChannel.sigUpdatePycroManagerNotification.disconnect(self.updateProgressBars)
         self._master.pycroManagerAcquisition.stopLiveView()
-        self._widget.updateProgressBars({key : 0 for key in self._widget.progressBarsKeys})
+        self.recordingCycleEnded()
     
     def updateImage(self, image: np.ndarray):
         self._commChannel.sigUpdateImage.emit(

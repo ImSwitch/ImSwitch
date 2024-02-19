@@ -141,6 +141,7 @@ class PycroManagerAcqWorker(Worker):
         acq.get_dataset().close()
         self.manager.sigRecordingEnded.emit()
 
+        self.__logger.info("Acquisition ended")
         # TODO: is this necessary?
         del acq
     
@@ -158,6 +159,8 @@ class PycroManagerAcqWorker(Worker):
         self.recordingArgs["Acquisition"].pop("name")
         
         # get last time point for the future milestone
+        # TODO: depending on the requested acquisition, multiple milestones
+        # on different axis are required (i.e. XY, XYZ, different channels, etc.)
         milestone = self.recordingArgs["multi_d_acquisition_events"]["num_time_points"] - 1
 
         with Acquisition(**self.recordingArgs["Acquisition"]) as acq:

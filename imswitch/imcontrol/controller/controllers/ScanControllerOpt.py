@@ -92,26 +92,14 @@ class ScanControllerOpt(ImConWidgetController):
         self.saveSubfolder = datetime.now().strftime("%Y_%m_%d-%H-%M-%S")
         self.sigImageReceived.connect(self.displayImage)
 
-        # arduino stepper signal after move is finished.
-        # TODO: confusing because I have signal move_done, which is used to run post_move on
-        # the ArduinoRotatorManager
-        # but I cannot connect second slot to it I think. In the end, for normal motor stepping
-        # opt_step_done is emitted, but not connected, while in the case of OPT I connect it to the
-        # post_step here.
         self.__optSteps = self.getOptSteps()
 
         if self._widget.scanPar['MockOpt'].isChecked():
             self.prepareOptMock()
         else:
-            # self._master.rotatorsManager[
-            #     self.__rotators[self.motorIdx]]._motor.opt_step_done.connect(
-            #                                             self.post_step)
             self._master.rotatorsManager[
                 self.__rotators[self.motorIdx]].sigOptStepDone.connect(
                                                         self.post_step)
-            # Ideally I would do this, but cannot because motor cannot emit
-            # bacause it is not an imswitch class
-            # self._commChannel.sigOptStepDone.connect(self.post_step)
 
             # Checking for divisability of motor steps and OPT steps.
             # this is necessary only for the real OPT, not Mock
@@ -163,9 +151,6 @@ class ScanControllerOpt(ImConWidgetController):
         self._master.rotatorsManager[
             self.__rotators[self.motorIdx]].sigOptStepDone.connect(
                                                     self.post_step_mock)
-        # Ideally I would do this, but cannot because motor cannot emit
-        # bacause it is not an imswitch class
-        # self._commChannel.sigOptStepDone.connect(self.post_step_mock)
 
         # here generate stack of projections
         self.demo = DemoData(resolution=self.__optSteps)

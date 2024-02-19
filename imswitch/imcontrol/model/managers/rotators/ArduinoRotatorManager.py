@@ -47,6 +47,7 @@ class ArduinoRotatorManager(RotatorManager):
     def __init__(self, rotatorInfo, name, *args, **kwargs):
         super().__init__(rotatorInfo, name, *args, **kwargs)
         self.__logger = initLogger(self)
+        self.__logger.info(name, self.name)
 
         if rotatorInfo is None:
             return
@@ -130,7 +131,7 @@ class ArduinoRotatorManager(RotatorManager):
                                 self.current_position_callback,
                                 )
         time.sleep(.2)
-        print('current position', self.current_pos)
+        print('ArduinoRotatorManager current position', self.current_pos)
         return self.current_pos
 
     def set_rot_speed(self, speed):
@@ -237,7 +238,7 @@ class ArduinoRotatorManager(RotatorManager):
         print('callback move finished', data)
         self.turning = False
         self.move_done.emit(self.turning)
-        self.sigOptStepDone.emit(self.__name)
+        self.sigOptStepDone.emit()
 
     def emit_trigger_update_position(self):
         self.update_position.emit()

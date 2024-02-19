@@ -117,6 +117,11 @@ class PycroManagerAcqWorker(Worker):
             self.manager.sigPycroManagerNotificationUpdated.emit(json.dumps(msg.id))
     
     def __parse_live_notification(self, msg: AcqNotification) -> None:
+        # TODO: apparently, msg.is_image_saved_notification()
+        # should work as well, but it doesn't;
+        # this is something which doesn't work probably on the
+        # pycromanager side; for now we use the POST_EXPOSURE
+        # phase to trigger notification
         if msg.phase == AcqNotification.Camera.POST_EXPOSURE:
             self.manager.sigPycroManagerNotificationUpdated.emit(json.dumps(msg.id))
 
@@ -136,6 +141,7 @@ class PycroManagerAcqWorker(Worker):
         acq.get_dataset().close()
         self.manager.sigRecordingEnded.emit()
 
+        # TODO: is this necessary?
         del acq
     
     def liveView(self) -> None:
@@ -150,14 +156,19 @@ class PycroManagerAcqWorker(Worker):
         # ensures that the images are not saved to disk
         self.recordingArgs["Acquisition"].pop("directory")
         self.recordingArgs["Acquisition"].pop("name")
-        acq = Acquisition(**self.recordingArgs["Acquisition"])
+        
+        # get last time point for the future milestone
+        milestone = self.recordingArgs["multi_d_acquisition_events"]["num_time_points"] - 1
 
-        while self.live:
-            acq.acquire(events)
-        acq.abort()
+        with Acquisition(**self.recordingArgs["Acquisition"]) as acq:
+            while self.live:
+                future = acq.acquire(events)
+                future.await_execution({"time": milestone}, AcqNotification.Camera.POST_EXPOSURE)
+            acq.abort()
 
         self.__logger.info("Live view stopped")
 
+        # TODO: is this necessary?
         del acq
     
     @property

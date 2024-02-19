@@ -75,7 +75,6 @@ class PycroManagerController(ImConWidgetController):
         
         self._widget.sigTableDataToController.connect(self.parseTableData)
         self._widget.sigTableLoaded.connect(self.readPointsJSONData)
-        self.selectedScan = None
         self.xyScan = None
         self.xyzScan = None
         
@@ -350,10 +349,8 @@ class PycroManagerController(ImConWidgetController):
     def recordingEnded(self):
         self.recordingCycleEnded()        
     
-    def updateProgressBars(self, newProgressDict: Dict[str, Union[int, str]]) -> None:
-        # if the position is a label, we convert it to the index
-        if "position" in newProgressDict:
-            newProgressDict["position"] = self.selectedScan.getIndex(newProgressDict["position"])
+    def updateProgressBars(self, newProgressDict: str) -> None:
+        newProgressDict = json.loads(newProgressDict)
         self._widget.updateProgressBars(newProgressDict)
     
     def specTimeMode(self, mode: PycroManagerAcquisitionMode):
@@ -377,14 +374,12 @@ class PycroManagerController(ImConWidgetController):
                     PycroManagerXYPoint(**point) for point in points
                 ]
             )
-            self.selectedScan = self.xyScan
         else:
             self.xyzScan = PycroManagerXYZScan(
                 [
                     PycroManagerXYPoint(**point) for point in points
                 ]
             )
-            self.selectedScan = self.xyzScan
         
         
     def readPointsJSONData(self, coordinates: str, filePath: str):
@@ -399,14 +394,12 @@ class PycroManagerController(ImConWidgetController):
                             PycroManagerXYPoint(**point) for point in json.load(file)
                         ]
                     )
-                    self.selectedScan = self.xyScan
                 else:
                     self.xyzScan = PycroManagerXYZScan(
                         [
                             PycroManagerXYZPoint(**point) for point in json.load(file)
                         ]
                     )
-                    self.selectedScan = self.xyzScan
                 self.__logger.info(f"Loaded {coordinates} points from {filePath}")
             except Exception as e:
                 errorMsg = f"Error reading JSON file {filePath}: {e}"

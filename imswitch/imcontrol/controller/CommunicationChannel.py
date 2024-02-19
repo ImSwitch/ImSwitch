@@ -60,7 +60,7 @@ class CommunicationChannel(SignalInterface):
 
     sigUpdateRecFrameNum = Signal(int)  # (frameNumber)
     
-    sigUpdatePycroManagerNotification = Signal(dict)  # (pycromanagerMsgId)
+    sigUpdatePycroManagerNotification = Signal(str)  # (pycromanagerMsgId)
 
     sigUpdateRecTime = Signal(int)  # (recTime)
 

@@ -112,7 +112,7 @@ class CameraPCO:
             self.is_streaming = True
 
     def stop_live(self):
-        if self.is_streaming:
+        if self.is_streaming or self.camera.is_recording:
             # start data acquisition
             self.camera.stop()
             self.is_streaming = False
@@ -143,7 +143,7 @@ class CameraPCO:
     def getLast(self, is_resize=True):
         # Display in the liveview
         # ensure that only fresh frames are being returned
-        while self.frame_id_last >= self.frameID and self.is_streaming:
+        while self.frame_id_last >= self.frameID and self.camera.is_recording:
             self.frame_raw_metadata = self.camera.image(image_index=-1)
             #time.sleep(0.001)
             self.frame = self.frame_raw_metadata[0]
@@ -159,10 +159,12 @@ class CameraPCO:
         self.frameid_buffer.clear()
         self.frame_buffer.clear()
         
-    def getLastChunk(self):
+    def getLastChunk(self, timeout=-1):
         # save on disk
-        images, metadatas = self.camera.images() 
-        return images
+        if self.camera.is_recording:
+            images, metadatas = self.camera.images() 
+            self.frame = self.camera.images()[0] # FIXME: Sneaky but should at least update the viewer if it's called from the main loop
+            return images
     
     def setROI(self,hpos=None,vpos=None,hsize=None,vsize=None):
         return hpos,vpos,hsize,vsize
@@ -227,25 +229,7 @@ class CameraPCO:
         self.camera.record(self.NBuffer, "ring buffer")
         if waitForFirstImage: self.camera.wait_for_first_image()        
         
-    def set_frame(self, user_param, frame):
-        if frame is None:
-            self.__logger.error("Getting image failed.")
-            return
-        if frame.get_status() != 0:
-            self.__logger.error("Got an incomplete frame")
-            return
-        numpy_image = frame.get_numpy_array()
-        if numpy_image is None:
-            return
-        self.frame = numpy_image
-        self.frame_id = frame.get_frame_id()
-        self.timestamp = time.time()
-        
-        if self.binning > 1:
-            numpy_image = cv2.resize(numpy_image, dsize=None, fx=1/self.binning, fy=1/self.binning, interpolation=cv2.INTER_AREA)
-    
-        self.frame_buffer.append(numpy_image)
-        self.frameid_buffer.append(self.frame_id)
+
     
 
 # Copyright (C) ImSwitch developers 2021

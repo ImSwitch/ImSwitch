@@ -244,8 +244,6 @@ class SIMController(ImConWidgetController):
         if self._widget.startSIMAcquisition.text() == "Start":
             # start live processing => every frame is captured by the update() function. It also handles the pattern addressing
             self.iReconstructed = 0
-            #  Start acquisition if not started already
-            #self._master.detectorsManager.startAcquisition(liveView=False)
             
             # reset the pattern iterator
             self.nSyncCameraSLM = self._widget.getFrameSyncVal()
@@ -253,6 +251,9 @@ class SIMController(ImConWidgetController):
             
             # switch back to internal trigger            
             if self.IS_FASTAPISIM:
+                #  need to be in trigger mode 
+                self._master.detectorsManager.startAcquisition(liveView=False)
+            
                 self.detector.setParameter("trigger_source","External start")
                 self.detector.setParameter("buffer_size",9)
                 self.detector.flushBuffers()
@@ -803,32 +804,38 @@ class SIMClient:
     def start_viewer(self):
         url = self.base_url + self.commands["start"]
         response = requests.get(url)
-        return response.json()
+        try: return response.json()
+        except: return -1
 
     def start_viewer_single_loop(self, number_of_runs):
         url = f"{self.base_url}{self.commands['single_run']}{number_of_runs}"
         response = requests.get(url)
-        return response.json()
+        try: return response.json()
+        except: return -1
 
     def wait_for_viewer_completion(self):
         url = self.base_url + self.commands["pattern_compeleted"]
         response = requests.get(url)
-        return response.json()
+        try: return response.json()
+        except: return -1
 
     def set_pause(self, period):
         url = f"{self.base_url}{self.commands['pause_time']}{period}"
         response = requests.get(url)
-        return response.json()
+        try: return response.json()
+        except: return -1
 
     def stop_loop(self):
         url = self.base_url + self.commands["stop_loop"]
         response = requests.get(url)
-        return response.json()
+        try: return response.json()
+        except: return -1
 
     def set_wavelength(self, wavelength):
         url = f"{self.base_url}{self.commands['pattern_wl']}{wavelength}"
         response = requests.get(url)
-        return response.json()
+        try: return response.json()
+        except: return -1
 
 
       

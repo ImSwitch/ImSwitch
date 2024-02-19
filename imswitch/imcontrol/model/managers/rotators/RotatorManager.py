@@ -1,6 +1,7 @@
 from abc import abstractmethod
 from imswitch.imcommon.framework import Signal, SignalInterface
 
+
 class RotatorManager(SignalInterface):
     """ Abstract base class for managers that control rotators. Each type of
     rotator corresponds to a manager derived from this class. """
@@ -15,6 +16,7 @@ class RotatorManager(SignalInterface):
             name: The unique name that the device is identified with in the
               setup file.
         """
+        super().__init__()
         self._rotatorInfo = rotatorInfo
         self._position = 0
         self.__name = name

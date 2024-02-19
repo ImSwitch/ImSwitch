@@ -1,7 +1,9 @@
 from imswitch.imcommon.model import VFileItem, initLogger
 from imswitch.imcontrol.model import (
-    DetectorsManager, LasersManager, MultiManager, NidaqManager, PositionersManager, RecordingManager, RS232sManager, 
-    ScanManagerPointScan, ScanManagerBase, ScanManagerMoNaLISA, SLMManager, StandManager, RotatorsManager,
+    DetectorsManager, LasersManager, MultiManager, NidaqManager,
+    PositionersManager, RecordingManager, RS232sManager, 
+    ScanManagerPointScan, ScanManagerBase, ScanManagerMoNaLISA,
+    SLMManager, StandManager, RotatorsManager,
     ScanManagerOpt
 )
 
@@ -29,12 +31,15 @@ class MasterController:
             'rs232sManager': self.rs232sManager
         }
 
-        self.detectorsManager = DetectorsManager(self.__setupInfo.detectors, updatePeriod=300,
+        self.detectorsManager = DetectorsManager(self.__setupInfo.detectors,
+                                                 updatePeriod=300,
                                                  **lowLevelManagers)
         self.lasersManager = LasersManager(self.__setupInfo.lasers,
                                            **lowLevelManagers)
-        self.positionersManager = PositionersManager(self.__setupInfo.positioners,
-                                                     **lowLevelManagers)
+        self.positionersManager = PositionersManager(
+                                        self.__setupInfo.positioners,
+                                        **lowLevelManagers,
+                                        )
         self.rotatorsManager = RotatorsManager(self.__setupInfo.rotators,
                                                **lowLevelManagers)
 
@@ -83,7 +88,7 @@ class MasterController:
         self.recordingManager.sigMemoryRecordingAvailable.connect(self.memoryRecordingAvailable)
 
         self.slmManager.sigSLMMaskUpdated.connect(cc.sigSLMMaskUpdated)
-        
+
         self.rotatorsManager.sigOptStepDone.connect(cc.sigOptStepDone)
 
     def memoryRecordingAvailable(self, name, file, filePath, savedToDisk):

@@ -2,7 +2,8 @@ from .PositionerManager import PositionerManager
 
 
 class MockPositionerManager(PositionerManager):
-    """ PositionerManager for mock positioner used for repeating measurements and/or timelapses.
+    """ PositionerManager for mock positioner used for repeating measurements
+    and/or timelapses.
 
     Manager properties:
 

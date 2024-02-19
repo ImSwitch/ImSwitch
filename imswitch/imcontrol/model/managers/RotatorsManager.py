@@ -5,13 +5,14 @@ from .MultiManager import MultiManager
 class RotatorsManager(MultiManager, SignalInterface):
     """ RotatorsManager interface for dealing with RotatorManagers. It is
     a MultiManager for rotators. """
-    
+
     sigOptStepDone = Signal(str)
 
     def __init__(self, rotatorsInfo, **lowLevelManagers):
-        MultiManager.__init__(rotatorsInfo, 'rotators', **lowLevelManagers)
+        MultiManager.__init__(self, rotatorsInfo, 'rotators', **lowLevelManagers)
         SignalInterface.__init__(self)
-        
+        print('in RotatorsManager', rotatorsInfo)
+
         for rotatorName, rotatorInfo in rotatorsInfo.items():
             # Connect signals
             self._subManagers[rotatorName].sigOptStepDone.connect(

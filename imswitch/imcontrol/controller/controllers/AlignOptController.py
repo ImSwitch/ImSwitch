@@ -53,12 +53,12 @@ class AlignOptController(ImConWidgetController):
         self._widget.scanPar['StartButton'].setEnabled(False)
 
         self._master.rotatorsManager[
-            self.__rotators[self.motorIdx]]._motor.opt_step_done.connect(
+            self.__rotators[self.motorIdx]].sigOptStepDone.connect(
                 self.post_step)
 
         # equidistant steps for the OPT scan in absolute values.
         curPos = self._master.rotatorsManager[
-            self.__rotators[self.motorIdx]]._motor.current_pos[0]
+            self.__rotators[self.motorIdx]].current_pos[0]
         counterPos = (curPos + self.__motor_steps//2) % self.__motor_steps
         self.opt_steps = [curPos, counterPos]
         self.allFrames = []
@@ -74,7 +74,7 @@ class AlignOptController(ImConWidgetController):
     @pyqtSlot()
     def moveAbsRotator(self, name, dist):
         """ Move a specific rotator to a certain position. """
-        self._master.rotatorsManager[name].move_abs_steps(dist)
+        self._master.rotatorsManager[name].move_abs(dist, inSteps=True)
 
     def post_step(self):
         """Acquire image after motor step is done, stop OPT in
@@ -102,7 +102,7 @@ class AlignOptController(ImConWidgetController):
         self.sigImageReceived.emit('OPT stack', self.optStack)
 
         self._master.rotatorsManager[
-            self.__rotators[self.motorIdx]]._motor.opt_step_done.disconnect()
+            self.__rotators[self.motorIdx]].sigOptStepDone.disconnect()
         self._widget.scanPar['StartButton'].setEnabled(True)
 
     ##################
@@ -202,7 +202,7 @@ class AlignOptController(ImConWidgetController):
     def updateRotator(self):
         self.motorIdx = self._widget.getRotatorIdx()
         self.__motor_steps = self._master.rotatorsManager[
-            self.__rotators[self.motorIdx]]._motor._steps_per_turn
+            self.__rotators[self.motorIdx]]._steps_per_turn
 
 
 class AlignCOR():

@@ -103,8 +103,11 @@ class ScanControllerOpt(ImConWidgetController):
         if self._widget.scanPar['MockOpt'].isChecked():
             self.prepareOptMock()
         else:
+            # self._master.rotatorsManager[
+            #     self.__rotators[self.motorIdx]]._motor.opt_step_done.connect(
+            #                                             self.post_step)
             self._master.rotatorsManager[
-                self.__rotators[self.motorIdx]]._motor.opt_step_done.connect(
+                self.__rotators[self.motorIdx]].sigOptStepDone.connect(
                                                         self.post_step)
             # Ideally I would do this, but cannot because motor cannot emit
             # bacause it is not an imswitch class
@@ -158,7 +161,7 @@ class ScanControllerOpt(ImConWidgetController):
         self._logger.info('Preparing Mock experiment')
         # self.mtx = QMutex()
         self._master.rotatorsManager[
-            self.__rotators[self.motorIdx]]._motor.opt_step_done.connect(
+            self.__rotators[self.motorIdx]].sigOptStepDone.connect(
                                                     self.post_step_mock)
         # Ideally I would do this, but cannot because motor cannot emit
         # bacause it is not an imswitch class
@@ -176,7 +179,7 @@ class ScanControllerOpt(ImConWidgetController):
     @pyqtSlot()
     def moveAbsRotator(self, name, dist):
         """ Move a specific rotator to an absolute position. """
-        self._master.rotatorsManager[name].move_abs_steps(dist)
+        self._master.rotatorsManager[name].move_abs(dist, inSteps=True)
 
     def post_step(self):
         """Acquire image after motor step is done, move to next step """
@@ -231,7 +234,7 @@ class ScanControllerOpt(ImConWidgetController):
         self.enableWidget(True)
         self.sigImageReceived.disconnect()
         self._master.rotatorsManager[
-            self.__rotators[self.motorIdx]]._motor.opt_step_done.disconnect()
+            self.__rotators[self.motorIdx]].sigOptStepDone.disconnect()
         # self._commChannel.sigOptStepDone.disconnect()
         self._logger.info("OPT stopped.")
 
@@ -366,7 +369,7 @@ class ScanControllerOpt(ImConWidgetController):
         """
         self.motorIdx = self._widget.getRotatorIdx()
         self.__motor_steps = self._master.rotatorsManager[
-            self.__rotators[self.motorIdx]]._motor._steps_per_turn
+            self.__rotators[self.motorIdx]]._steps_per_turn
 
         self._widget.scanPar['StepsPerRevLabel'].setText(
             f'{self.__motor_steps:d} steps/rev')

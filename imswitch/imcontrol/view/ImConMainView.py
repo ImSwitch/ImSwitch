@@ -8,8 +8,8 @@ from imswitch.imcommon.model import initLogger
 from imswitch.imcommon.view import PickDatasetsDialog
 from . import widgets
 from .PickSetupDialog import PickSetupDialog
-from .PickUC2BoardConfigDialog import PickUC2BoardConfigDialog
-
+import pkg_resources
+import importlib
 
 class ImConMainView(QtWidgets.QMainWindow):
     sigLoadParamsFromHDF5 = QtCore.Signal()
@@ -35,7 +35,7 @@ class ImConMainView(QtWidgets.QMainWindow):
             self.pickDatasetsDialog = PickDatasetsDialog(self, allowMultiSelect=False)
 
 
-            
+
             # Menu Bar
             menuBar = self.menuBar()
             file = menuBar.addMenu('&File')
@@ -146,6 +146,19 @@ class ImConMainView(QtWidgets.QMainWindow):
                 dockArea, 'right'
             )
 
+            # if we load the widget as a plugin we have to set a default position
+            # filter those enabeldDockKeys that are not in rightDockInfos
+            pluginDockKeys = [key for key in enabledDockKeys if key not in rightDockInfos]
+            # add the pluginDockKeys to the rightDockInfos with default position
+            for widgetKey in pluginDockKeys:
+                rightDockInfos[widgetKey] = _DockInfo(name=widgetKey, yPosition=0)
+
+            rightDocks = self._addDocks(
+                {k: v for k, v in rightDockInfos.items() if k in enabledDockKeys},
+                dockArea, 'right'
+            )
+
+
 
             self._addDocks(
                 {k: v for k, v in leftDockInfos.items() if k in enabledDockKeys},
@@ -171,6 +184,14 @@ class ImConMainView(QtWidgets.QMainWindow):
         # self.showMaximized()
         # self.setMaximumSize(1720,900)
 
+        # Adjust dock sizes (the window has to be maximized first for this to work properly)
+        if 'Settings' in self.docks:
+            self.docks['Settings'].setStretch(1, 5)
+            self.docks['Settings'].container().setStretch(3, 1)
+        if len(rightDocks) > 0:
+            rightDocks[-1].setStretch(1, 5)
+        if 'Image' in self.docks:
+            self.docks['Image'].setStretch(7, 1)
 
     def addShortcuts(self, shortcuts):
         if not imswitch.IS_HEADLESS:
@@ -202,11 +223,19 @@ class ImConMainView(QtWidgets.QMainWindow):
         prevDock = None
         prevDockYPosition = -1
         for widgetKey, dockInfo in dockInfoDict.items():
-            self.widgets[widgetKey] = self.factory.createWidget(
-                getattr(widgets, f'{widgetKey}Widget')
-                if widgetKey != 'Scan' else
-                getattr(widgets, f'{widgetKey}Widget{self.viewSetupInfo.scan.scanWidgetType}')
-            )
+            try:
+                self.widgets[widgetKey] = self.factory.createWidget(
+                    getattr(widgets, f'{widgetKey}Widget')
+                    if widgetKey != 'Scan' else
+                    getattr(widgets, f'{widgetKey}Widget{self.viewSetupInfo.scan.scanWidgetType}')
+                )
+            except:
+                # try to get it from the plugins
+                for entry_point in pkg_resources.iter_entry_points(f'imswitch.implugins.widgets'):
+                    if entry_point.name == f'{widgetKey}widget':
+                        packageWidget = entry_point.load()
+                        self.widgets[widgetKey] = self.factory.createWidget(packageWidget)
+                        break
             self.docks[widgetKey] = Dock(dockInfo.name, size=(1, 1))
             self.docks[widgetKey].addWidget(self.widgets[widgetKey])
             if prevDock is None:

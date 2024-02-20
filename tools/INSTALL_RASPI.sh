@@ -1,4 +1,6 @@
 #!/bin/bash
+sudo rm /usr/lib/python3.11/EXTERNALLY-MANAGED
+sudo date --set="20 FEB 2024"
 
 # Navigate to Downloads directory
 cd ~/Downloads

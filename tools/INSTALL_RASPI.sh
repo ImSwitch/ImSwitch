@@ -13,7 +13,7 @@ wget https://github.com/conda-forge/miniforge/releases/latest/download/Mambaforg
 bash Mambaforge-pypy3-Linux-aarch64.sh -b
 
 # Initialize Mambaforge immediately without needing to log off/in
-source ~/mambaforge/bin/activate
+source ~/mambaforge-pypy3/bin/activate
 
 # Create a new environment with Python 3.9
 mamba create -n imswitch python=3.9 -y
@@ -34,6 +34,10 @@ cd ~/Downloads/ImSwitch
 sudo apt-get install python3-pyqt5 -y
 pip install -r requirements-jetsonorin.txt
 pip install -e . --no-deps
+
+# Download configs
+cd ~/
+git clone https://github.com/openUC2/ImSwitchConfig
 
 # Install PyQt via mamba
 mamba install pyqt -y

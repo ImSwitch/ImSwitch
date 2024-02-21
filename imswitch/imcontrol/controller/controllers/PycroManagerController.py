@@ -76,6 +76,7 @@ class PycroManagerController(ImConWidgetController):
         self._widget.sigTableLoaded.connect(self.readPointsJSONData)
         self.xyScan = None
         self.xyzScan = None
+        self.selectedScan = None
         
         # Feedback signal to the widget in case of failure to load JSON file
         self.sigErrorCondition.connect(self._widget.displayErrorMessage)
@@ -358,6 +359,8 @@ class PycroManagerController(ImConWidgetController):
     
     def updateProgressBars(self, newProgressDict: str) -> None:
         newProgressDict = json.loads(newProgressDict)
+        if "position" in newProgressDict:
+            newProgressDict["position"] = self.selectedScan.getIndex(newProgressDict["position"])
         self._widget.updateProgressBars(newProgressDict)
     
     def specTimeMode(self, mode: PycroManagerAcquisitionMode):
@@ -381,12 +384,14 @@ class PycroManagerController(ImConWidgetController):
                     PycroManagerXYPoint(**point) for point in points
                 ]
             )
+            self.selectedScan = self.xyScan
         else:
             self.xyzScan = PycroManagerXYZScan(
                 [
                     PycroManagerXYPoint(**point) for point in points
                 ]
             )
+            self.selectedScan = self.xyzScan
         
         
     def readPointsJSONData(self, coordinates: str, filePath: str):
@@ -401,12 +406,14 @@ class PycroManagerController(ImConWidgetController):
                             PycroManagerXYPoint(**point) for point in json.load(file)
                         ]
                     )
+                    self.selectedScan = self.xyScan
                 else:
                     self.xyzScan = PycroManagerXYZScan(
                         [
                             PycroManagerXYZPoint(**point) for point in json.load(file)
                         ]
                     )
+                    self.selectedScan = self.xyzScan
                 self.__logger.info(f"Loaded {coordinates} points from {filePath}")
             except Exception as e:
                 errorMsg = f"Error reading JSON file {filePath}: {e}"

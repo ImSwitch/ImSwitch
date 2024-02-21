@@ -140,6 +140,17 @@ class PycroManagerWidget(Widget):
             # will be shown when recording starts
             progressBar.hide()
             self.progressBarsWidgets[key] = progressBar
+        
+        # Acquisition order widgets
+        self.acqOrderLabel = QtWidgets.QLabel()
+        self.acqOrderLabel.setText("<a href=\"https://pycro-manager.readthedocs.io/en/latest/apis.html#multi-d-acquisition-events\">Acquisition order</a>")
+        self.acqOrderLabel.setToolTip("Acquisition order for multi-dimensional acquisition events. Click for more information.")
+        self.acqOrderLabel.setTextFormat(QtCore.Qt.TextFormat.RichText)
+        self.acqOrderLabel.setTextInteractionFlags(QtCore.Qt.TextInteractionFlag.TextBrowserInteraction)
+        self.acqOrderLabel.setOpenExternalLinks(True)
+
+        self.acqOrderEdit = QtWidgets.QLineEdit("tcpz")
+        self.acqOrderEdit.textChanged.connect(self.validateAcquisitionOrder)
 
         # Timing group button for managing 
         # mutually exclusive checkboxes
@@ -215,6 +226,10 @@ class PycroManagerWidget(Widget):
 
         recGrid.addWidget(self.recSaveModeLabel, gridRow, 0)
         recGrid.addWidget(self.recSaveModeList, gridRow, 1, 1, -1)
+        gridRow += 1
+
+        recGrid.addWidget(self.acqOrderLabel, gridRow, 0)
+        recGrid.addWidget(self.acqOrderEdit, gridRow, 1, 1, -1)
         gridRow += 1
         
         for _, progressBar in self.progressBarsWidgets.items():
@@ -314,6 +329,9 @@ class PycroManagerWidget(Widget):
     def displayErrorMessage(self, title: str, type: str, errorMsg: str):
         showInformationMessage(self, title, type, errorMsg)
     
+    def getAcquisitionOrder(self) -> str:
+        return self.acqOrderEdit.text()
+
     def getZStackValues(self) -> dict:
         return (float(self.startZEdit.text()),
                 float(self.endZEdit.text()),
@@ -406,6 +424,12 @@ class PycroManagerWidget(Widget):
     def updateProgressBars(self, newValsDict: Dict[str, int]) -> None:
         for key, value in newValsDict.items():
             self.progressBarsWidgets[key].setValue(value)
+    
+    def validateAcquisitionOrder(self, text: str) -> None:
+        if text == "" or not all(allowed in "tcpz" for allowed in text) or len(text) > len("tcpz"):
+            self.acqOrderEdit.setStyleSheet("border: 1px solid red;")
+        else:
+            self.acqOrderEdit.setStyleSheet("")
 
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

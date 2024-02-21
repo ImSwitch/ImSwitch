@@ -4,6 +4,8 @@ from dataclasses_json import dataclass_json
 from typing import Union, List
 from enum import Enum, IntFlag, auto
 
+ACQUISITION_ORDER_DEFAULT = "tcpz"
+
 class PycroManagerAcquisitionEngine(Enum):
     Acquistion = 1
     # TODO: implement XY tiled acquisition

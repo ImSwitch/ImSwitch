@@ -2,6 +2,7 @@ import os, time, json, numpy as np
 from typing import Optional, Union, List, Dict
 from imswitch.imcommon.framework import Signal
 from imswitch.imcommon.framework.pycromanager import (
+    ACQUISITION_ORDER_DEFAULT,
     PycroManagerAcquisitionMode,
     PycroManagerXYScan,
     PycroManagerXYZScan,
@@ -229,7 +230,7 @@ class PycroManagerController(ImConWidgetController):
                 "xy_positions": np.array(self.xyScan) if self.spaceRecMode & PycroManagerAcquisitionMode.XYList else None,
                 "xyz_positions": np.array(self.xyzScan) if self.spaceRecMode & PycroManagerAcquisitionMode.XYZList else None,
                 "position_labels": self.__checkLabels(),
-                "order": "tpcz" # todo: make this a parameter in the widget
+                "order": self._widget.getAcquisitionOrder()
             },
             "tags" : {
                 # TODO: attributes should be reworked
@@ -260,39 +261,44 @@ class PycroManagerController(ImConWidgetController):
         else:
             return None
     
+    # TODO: HUGE SPAGHETTI; needs desperate refactor
     def performSanityCheck(self) -> bool:
         """ Checks the validity of the incoming recording request.
         If a condition occurs such as the recording would fail (no stages available, missing data points),
         a warning is sent to the UI and the recording is not triggered.
         """
         errTitle = "Recording aborted"
-        retStatus = True
+
+        if self.__checkAcquisitionOrderString(self._widget.getAcquisitionOrder()):
+            self.sigErrorCondition.emit("Operation aborted", "error", "Unrecognized recording order, aborting operation.")
+            return False
+
 
         if self.spaceRecMode != PycroManagerAcquisitionMode.Absent:
             if not self.__checkMMCorePositioners():
                 msg = "No MMCore positioners were found in the setupInfo. Recording aborted."
                 self.__logger.warning(msg)
                 self.sigErrorCondition.emit(errTitle, "warning", msg)
-                retStatus = False
+                return False
             else:
                 if self.spaceRecMode & PycroManagerAcquisitionMode.XYList:
                     if not self.__checkXYPoints():
                         msg = "No XY points were specified. Recording aborted."
                         self.__logger.warning(msg)
                         self.sigErrorCondition.emit(errTitle, "warning", msg)
-                        retStatus = False
+                        return False
                     else:
                         if not self.__selectXYStage():
                             msg = "No XY stages are currently configured. Recording aborted."
                             self.__logger.warning(msg)
                             self.sigErrorCondition.emit(errTitle, "warning", msg)
-                            retStatus = False
+                            return False
                 elif self.spaceRecMode & PycroManagerAcquisitionMode.XYZList:
                     if not self.__checkXYZPoints():
                         msg = "No XYZ points were specified. Recording aborted."
                         self.__logger.warning(msg)
                         self.sigErrorCondition.emit(errTitle, "warning", msg)
-                        retStatus = False
+                        return False
                     else:
                         if not self.__selectXYStage() or not self.__selectZStage():
                             ax = "XY and Z" if self.xyStage is None and self.zStage is None else "XY" if self.xyStage is None else "Z"
@@ -304,9 +310,15 @@ class PycroManagerController(ImConWidgetController):
                         msg = "No Z stage is currently configured. Recording aborted."
                         self.__logger.warning(msg)
                         self.sigErrorCondition.emit(errTitle, "warning", msg)
-                        retStatus = False
+                        return False
+        
+        return True
 
-        return retStatus
+    def __checkAcquisitionOrderString(self, order: str) -> bool:
+        """ Checks if the acquisition order string is not empty and is a subset of the ACQUISITION_ORDER_DEFAULT string. If either condition
+        is reached, returns `True`; otherwise `False`.
+        """
+        return order == "" or not all(allowed in ACQUISITION_ORDER_DEFAULT for allowed in order) or len(order) > len(ACQUISITION_ORDER_DEFAULT)
 
     def __checkMMCorePositioners(self) -> bool:
         """ Returns True if MMCore positioners are found in the setupInfo. """

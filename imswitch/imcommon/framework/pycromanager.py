@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 from dataclasses_json import dataclass_json
 from typing import Union, List
 from enum import Enum, IntFlag, auto
+from typing import Callable
 
 ACQUISITION_ORDER_DEFAULT = "tcpz"
 
@@ -83,3 +84,23 @@ class PycroManagerXYZScan:
     
     def getIndex(self, idx: Union[str, int]) -> int:
         return idx if type(idx) == int else self.__labelsIdx[idx]
+
+class PycroManagerHookContainer:
+
+    __slots__ = [
+        "image_process_fn",
+        "event_generation_hook_fn",
+        "pre_hardware_hook_fn",
+        "post_hardware_hook_fn",
+        "post_camera_hook_fn",
+        "notification_callback_fn",
+        "image_saved_fn"
+    ]
+
+    image_process_fn : Callable 
+    event_generation_hook_fn : Callable
+    pre_hardware_hook_fn : Callable
+    post_hardware_hook_fn : Callable
+    post_camera_hook_fn : Callable
+    notification_callback_fn : Callable
+    image_saved_fn : Callable

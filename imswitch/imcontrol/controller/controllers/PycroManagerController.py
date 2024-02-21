@@ -1,4 +1,5 @@
 import os, time, json, numpy as np
+from re import fullmatch
 from typing import Optional, Union, List, Dict
 from imswitch.imcommon.framework import Signal
 from imswitch.imcommon.framework.pycromanager import (
@@ -315,10 +316,12 @@ class PycroManagerController(ImConWidgetController):
         return True
 
     def __checkAcquisitionOrderString(self, order: str) -> bool:
-        """ Checks if the acquisition order string is not empty and is a subset of the ACQUISITION_ORDER_DEFAULT string. If either condition
-        is reached, returns `True`; otherwise `False`.
+        """ Checks if the acquisition order string is not empty, 
+        is a subset of the ACQUISITION_ORDER_DEFAULT string,
+        and that string length is between boundaries.
+        If any condition is reached, returns `True`; otherwise `False`.
         """
-        return order == "" or not all(allowed in ACQUISITION_ORDER_DEFAULT for allowed in order) or len(order) > len(ACQUISITION_ORDER_DEFAULT)
+        return not fullmatch(f"^[{ACQUISITION_ORDER_DEFAULT}]{1,4}$", order) is not None
 
     def __checkMMCorePositioners(self) -> bool:
         """ Returns True if MMCore positioners are found in the setupInfo. """

@@ -1,6 +1,7 @@
 import os
 import time
 import json
+from re import fullmatch
 from typing import List, Dict, Union
 from qtpy import QtCore, QtWidgets
 from imswitch.imcommon.model import dirtools
@@ -426,7 +427,7 @@ class PycroManagerWidget(Widget):
             self.progressBarsWidgets[key].setValue(value)
     
     def validateAcquisitionOrder(self, text: str) -> None:
-        if text == "" or not all(allowed in "tcpz" for allowed in text) or len(text) > len("tcpz"):
+        if not fullmatch("^[tcpz]{1,4}$", text) is not None:
             self.acqOrderEdit.setStyleSheet("border: 1px solid red;")
         else:
             self.acqOrderEdit.setStyleSheet("")

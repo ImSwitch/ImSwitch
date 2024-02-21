@@ -119,11 +119,20 @@ class ScanControllerOpt(ImConWidgetController):
 
         # live reconstruction
         if self.liveRecon:
-            # self.reconIdx = self.updateLiveReconIdx()
             self.updateLiveReconIdx()
             self.currentRecon = None  # avoid update_recon in the first step
         print('going to start OPT')
-        self.startOpt()
+        self.thread = QThread()
+        self.thread.started.connect(self.startOpt)
+        self.thread.finished.connect(self.printEnd)
+        self.thread.finished.connect(self.thread.quit)
+        self.thread.start()
+
+        # self.startOpt()
+
+    def printEnd(self):
+        print('#######################')
+        print('OPT ended')
 
     def startOpt(self):
         """run OPT, set flags and move to step zero rotator position
@@ -131,15 +140,16 @@ class ScanControllerOpt(ImConWidgetController):
         print('curernt recon., should be None', self.currentRecon)
         self.detector.startAcquisition()
         self.enableWidget(False)
+        # TODO: init time monitoring
+        # this will put timeflags at certain execution points
+        # which in the stopOpt will make a report and will be saved
+        # in the metadata.
+        # self.timeMonitor = ExecOptMonitor()
         if not self.isOptRunning:
             self.isOptRunning = True
             self.__currentStep = 0
             self.moveAbsRotator(self.__rotators[self.motorIdx],
                                 self.opt_steps[self.__currentStep])
-
-    def wait(self):
-        self._logger.info('inside wait')
-        # self.mtx.unlock()
 
     def prepareOptMock(self):
         """
@@ -154,11 +164,6 @@ class ScanControllerOpt(ImConWidgetController):
 
         # here generate stack of projections
         self.demo = DemoData(resolution=self.__optSteps)
-        self.demo.sinoReady.connect(self.wait)
-        # self.demo.generateData()
-        # self.mtx.lock()
-        # time.sleep(2)
-        # self._widget.scanPar['OptStepsEdit'].setValue(32)
         self._logger.info('waiting...')
 
     @pyqtSlot()
@@ -218,9 +223,9 @@ class ScanControllerOpt(ImConWidgetController):
         self.isOptRunning = False
         self.enableWidget(True)
         self.sigImageReceived.disconnect()
+        self.thread.quit()
         self._master.rotatorsManager[
             self.__rotators[self.motorIdx]].sigOptStepDone.disconnect()
-        # self._commChannel.sigOptStepDone.disconnect()
         self._logger.info("OPT stopped.")
 
     ##################
@@ -250,8 +255,6 @@ class ScanControllerOpt(ImConWidgetController):
                            f'{self.__currentStep:04}')
 
     def handlePlots(self):
-        # update intensity monitoring plot, This should be there for the
-        # mock too no? Needs refactoring
         self.signalStability.process_img(self.frame, self.__currentStep)
         self.updateStabilityPlot()
 
@@ -861,28 +864,18 @@ class FBPlive():
 
 
 class DemoData(QObject):
-
-    sinoReady = pyqtSignal()
-
     def __init__(self, resolution=128) -> None:
         super(QObject, self).__init__()
         self.size = resolution  # int
         self.idx = 0
-        self.thread = QThread(parent=self)
         self.radon = Get_radon(self.size)
-        # self.radon.moveToThread(self.thread)
-        # self.thread.started.connect(self.radon.get_sinogram)
-        
-        # self.radon.finished.connect(self.sino)
-        # self.radon.finished.connect(self.thread.quit)
-        # self.thread.finished.connect(self.thread.quit)
+        self.radon.progress.connect(self.printProgress)
 
         s = self.radon.get_sinogram()
         self.sino(s)
 
-    def generateData(self):
-        print('not here')
-        self.thread.start()
+    def printProgress(self, value: int):
+        print(value)
 
     def sino(self, data):
         """Setting sinogram variable of phantom
@@ -893,7 +886,6 @@ class DemoData(QObject):
         """
         print('setting sino variable')
         self.sinogram = np.rollaxis(data, 2)
-        self.sinoReady.emit()
 
 
 class Get_radon(QObject):
@@ -901,7 +893,6 @@ class Get_radon(QObject):
         super(QObject, self).__init__()
         self.size = size
 
-    finished = pyqtSignal(np.ndarray)
     progress = pyqtSignal(int)
 
     def get_sinogram(self):
@@ -914,8 +905,6 @@ class Get_radon(QObject):
             sinogram[i, :, :] = radon(data[i, :, :], theta=angles)
         mx = np.amax(sinogram)
         sinogram = (sinogram/mx*255).astype('int16')
-        print('emitting', sinogram.shape)
-        # self.finished.emit(sinogram)
         return sinogram
 
     def loading_message(self):

@@ -166,7 +166,7 @@ class RecordingManager(SignalInterface):
 
     def startRecording(self, detectorNames, recMode, savename, saveMode, attrs,
                        saveFormat=SaveFormat.HDF5, singleMultiDetectorFile=False, singleLapseFile=False,
-                       recFrames=None, recTime=None):
+                       recFrames=None, recTime=None, numCamTTL = None):
         """ Starts a recording with the specified detectors, recording mode,
         file name prefix and attributes to save to the recording per detector.
         In SpecFrames mode, recFrames (the number of frames) must be specified,
@@ -182,6 +182,7 @@ class RecordingManager(SignalInterface):
         self.__recordingWorker.saveFormat = saveFormat
         self.__recordingWorker.attrs = attrs
         self.__recordingWorker.recFrames = recFrames
+        self.__recordingWorker.numCamTTL = numCamTTL
         self.__recordingWorker.recTime = recTime
         self.__recordingWorker.singleMultiDetectorFile = singleMultiDetectorFile
         self.__recordingWorker.singleLapseFile = singleLapseFile
@@ -387,7 +388,11 @@ class RecordingWorker(Worker):
                 if recFrames is None:
                     raise ValueError('recFrames must be specified in SpecFrames, ScanOnce or'
                                      ' ScanLapse mode')
-
+                
+                numCamTTL = self.numCamTTL
+                if numCamTTL is not None:
+                    recFrames = numCamTTL * recFrames
+                    
                 while (self.__recordingManager.record and
                        any([currentFrame[detectorName] < recFrames
                             for detectorName in self.detectorNames])):

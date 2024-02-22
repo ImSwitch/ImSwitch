@@ -175,6 +175,7 @@ class RecordingController(ImConWidgetController):
                 self._master.recordingManager.startRecording(**self.recordingArgs)
             elif self.recMode == RecMode.ScanOnce:
                 self.recordingArgs['recFrames'] = self._commChannel.getNumScanPositions()
+                self.recordingArgs['numCamTTL'] = self._commChannel.getNumCamTTL()
                 self._master.recordingManager.startRecording(**self.recordingArgs)
                 time.sleep(0.3)
                 self._commChannel.sigRunScan.emit(True, False)

@@ -166,7 +166,13 @@ class SuperScanController(ImConWidgetController):
     def getNumScanPositions(self):
         """ Returns the number of scan positions for the configured scan. """
         _, positions, _ = self._master.scanManager.getScanSignalsDict(self._analogParameterDict)
+        cam_TTL = self._master.scanManager.getTTLCycleSignalsDict(self._digitalParameterDict)['CAM'].tolist()
+        num_Cam_TTL = len ([i for i in range(len(cam_TTL)-1) if cam_TTL[i+1]-cam_TTL[i] == 1]) #counting for first True in list
+        #print(f"numcamTTL: {num_Cam_TTL}")
+        #print(f"x*y: {functools.reduce(lambda x, y: x * y, positions)}")
         numPositions = functools.reduce(lambda x, y: x * y, positions)
+        numPositions = numPositions * num_Cam_TTL
+        #print(f"numPositions: {numPositions}")
         return numPositions
 
     def saveScan(self):

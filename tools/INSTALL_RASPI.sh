@@ -43,10 +43,17 @@ git clone https://github.com/openUC2/ImSwitchConfig
 mamba install pyqt -y
 
 # Clone additional repository
+
+# Install HIK camera drivers
 cd ~/Downloads
-git clone https://github.com/hongquanli/octopi-research
+wget https://www.hikrobotics.com/cn2/source/support/software/MVS_STD_GML_V2.1.2_231116.zip
+unzip MVS_STD_GML_V2.1.2_231116.zip
+sudo dpkg -i MVS-2.1.2_aarch64_20231116.deb
+source ~/.bashrc
 
 # Install Daheng camera drivers
+cd ~/Downloads
+git clone https://github.com/hongquanli/octopi-research
 cd octopi-research/software/drivers\ and\ libraries/daheng\ camera/Galaxy_Linux-armhf_Gige-U3_32bits-64bits_1.3.1911.9271/
 chmod +x Galaxy_camera.run
 sudo ./Galaxy_camera.run # This command might require user interaction

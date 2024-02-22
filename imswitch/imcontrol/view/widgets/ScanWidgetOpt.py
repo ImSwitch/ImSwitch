@@ -192,6 +192,7 @@ class ScanWidgetOpt(NapariHybridWidget):
         # Start and Stop buttons
         self.scanPar['StartButton'] = QtWidgets.QPushButton('Start')
         self.scanPar['StopButton'] = QtWidgets.QPushButton('Stop')
+        self.scanPar['PlotReportButton'] = QtWidgets.QPushButton('Report')
         self.scanPar['SaveButton'] = QtWidgets.QCheckBox('Save')
         self.scanPar['SaveButton'].setCheckable(True)
         self.scanPar['noRamButton'] = QtWidgets.QCheckBox('no RAM')
@@ -226,8 +227,8 @@ class ScanWidgetOpt(NapariHybridWidget):
         currentRow += 1
 
         self.grid.addWidget(self.scanPar['GetHotPixels'], currentRow, 0)
-        self.grid.addWidget(self.scanPar['HotPixelsStdLabel'], currentRow, 1)
-        self.grid.addWidget(self.scanPar['HotPixelsStdEdit'], currentRow, 2)
+        self.grid.addWidget(self.scanPar['HotPixelsStdEdit'], currentRow, 1)
+        self.grid.addWidget(self.scanPar['HotPixelsStdLabel'], currentRow, 2)
 
         currentRow += 1
 
@@ -268,15 +269,16 @@ class ScanWidgetOpt(NapariHybridWidget):
         currentRow += 1
 
         self.grid.addWidget(self.scanPar['CurrentStepLabel'], currentRow, 0)
-        self.grid.addWidget(self.scanPar['CurrentReconStepLabel'], currentRow, 1)
-
+        # self.grid.addWidget(self.scanPar['CurrentReconStepLabel'], currentRow, 1)
+        self.grid.addWidget(self.scanPar['SaveButton'], currentRow, 1)
+        self.grid.addWidget(self.scanPar['noRamButton'], currentRow, 2)
         currentRow += 1
 
         # Start and Stop buttons
         self.grid.addWidget(self.scanPar['StartButton'], currentRow, 0)
         self.grid.addWidget(self.scanPar['StopButton'], currentRow, 1)
-        self.grid.addWidget(self.scanPar['SaveButton'], currentRow, 2)
-        self.grid.addWidget(self.scanPar['noRamButton'], currentRow, 3)
+        self.grid.addWidget(self.scanPar['PlotReportButton'], currentRow, 2)
+        
 
         currentRow += 1
         self.grid.addWidget(self.tabs, currentRow, 0, 1, -1)

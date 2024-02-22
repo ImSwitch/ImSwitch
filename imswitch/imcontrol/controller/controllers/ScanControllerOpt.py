@@ -7,6 +7,10 @@ from scipy.interpolate import interp1d
 import tifffile as tif
 import os
 from datetime import datetime
+from collections import defaultdict
+import matplotlib
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.figure import Figure
 
 from functools import partial
 import numpy as np
@@ -72,6 +76,7 @@ class ScanControllerOpt(ImConWidgetController):
         # currently using local acquistion loop
         self._widget.scanPar['StartButton'].clicked.connect(self.initOpt)
         self._widget.scanPar['StopButton'].clicked.connect(self.stopOpt)
+        self._widget.scanPar['PlotReportButton'].clicked.connect(self.plotReport)
 
     # JA: method to add your metadata to recordings
     # TODO: metadata still not taken care of
@@ -124,30 +129,25 @@ class ScanControllerOpt(ImConWidgetController):
         print('going to start OPT')
         self.thread = QThread()
         self.thread.started.connect(self.startOpt)
-        self.thread.finished.connect(self.printEnd)
+        # self.thread.finished.connect(self.printEnd)
         self.thread.finished.connect(self.thread.quit)
         self.thread.start()
-
-        # self.startOpt()
-
-    def printEnd(self):
-        print('#######################')
-        print('OPT ended')
 
     def startOpt(self):
         """run OPT, set flags and move to step zero rotator position
         """
-        print('curernt recon., should be None', self.currentRecon)
         self.detector.startAcquisition()
         self.enableWidget(False)
         # TODO: init time monitoring
         # this will put timeflags at certain execution points
         # which in the stopOpt will make a report and will be saved
         # in the metadata.
-        # self.timeMonitor = ExecOptMonitor()
+        self.timeMonitor = ExecOptMonitor()
+        self.timeMonitor.addStart()
         if not self.isOptRunning:
             self.isOptRunning = True
             self.__currentStep = 0
+            self.timeMonitor.addStamp('motor', self.__currentStep, 'beg')
             self.moveAbsRotator(self.__rotators[self.motorIdx],
                                 self.opt_steps[self.__currentStep])
 
@@ -173,15 +173,20 @@ class ScanControllerOpt(ImConWidgetController):
 
     def post_step(self):
         """Acquire image after motor step is done, move to next step """
+        self.timeMonitor.addStamp('motor', self.__currentStep, 'end')
         self._logger.info('in the opt post step')
+        self.timeMonitor.addStamp('snap', self.__currentStep, 'beg')
         self.handleSnap()
+        self.timeMonitor.addStamp('plots', self.__currentStep, 'beg')
         self.handleSave()
         self.handlePlots()
         self.nextStep()
 
     def post_step_mock(self):
         """Get image from the demo sinogram data, call next step. """
+        self.timeMonitor.addStamp('motor', self.__currentStep, 'end')
         self._logger.info('in the opt mock post step')
+        self.timeMonitor.addStamp('snap', self.__currentStep, 'beg')
         self.frame = self.demo.sinogram[self.__currentStep]
         print('self.frame', self.frame.shape)
         if self.noRAM:  # no volume in napari, only last frame
@@ -190,7 +195,7 @@ class ScanControllerOpt(ImConWidgetController):
             self.optStack = self.demo.sinogram[:self.__currentStep+1, :, :]
             print('a', self.optStack.shape)
             self.sigImageReceived.emit('OPT stack', self.optStack)
-
+        self.timeMonitor.addStamp('plots', self.__currentStep, 'beg')
         self.handleSave()
         self.handlePlots()
         self.nextStep()
@@ -200,10 +205,12 @@ class ScanControllerOpt(ImConWidgetController):
         Update live reconstruction, stop OPT in case of last step,
         otherwise move motor again.
         """
+        self.timeMonitor.addStamp('plots', self.__currentStep, 'end')
         self._widget.updateCurrentStep(self.__currentStep + 1)
 
         # updating live reconstruction
         if self.liveRecon:
+            self.timeMonitor.addStamp('live-recon', self.__currentStep, 'beg')
             self.updateLiveRecon()
 
         self.__currentStep += 1
@@ -211,6 +218,7 @@ class ScanControllerOpt(ImConWidgetController):
         if self.__currentStep > len(self.opt_steps)-1:
             self.stopOpt()
         else:
+            self.timeMonitor.addStamp('motor', self.__currentStep, 'beg')
             self.moveAbsRotator(self.__rotators[self.motorIdx],
                                 self.opt_steps[self.__currentStep])
 
@@ -219,6 +227,7 @@ class ScanControllerOpt(ImConWidgetController):
         Stop OPT acquisition and enable buttons.
         Update local flags and and disconnect signals.
         """
+        self.timeMonitor.addFinish()
         self.detector.stopAcquisition()
         self.isOptRunning = False
         self.enableWidget(True)
@@ -227,6 +236,12 @@ class ScanControllerOpt(ImConWidgetController):
         self._master.rotatorsManager[
             self.__rotators[self.motorIdx]].sigOptStepDone.disconnect()
         self._logger.info("OPT stopped.")
+        self.timeMonitor.makeReport()
+
+    def plotReport(self):
+        self.SW = SecondWindow(self.timeMonitor.reportOut)
+        self.SW.resize(1500, 700)
+        self.SW.show()
 
     ##################
     # Image handling #
@@ -266,6 +281,7 @@ class ScanControllerOpt(ImConWidgetController):
             name (str): napari layer name
             frame (np.ndarray): image or stack
         """
+        self.timeMonitor.addStamp('snap', self.__currentStep, 'end')
         # subsample stack
         if self.isOptRunning and not self.noRAM:
             print('frame shape', frame.shape, self.__currentStep)
@@ -314,6 +330,7 @@ class ScanControllerOpt(ImConWidgetController):
             self.updateLiveReconPlot(self.currentRecon.output)
         except TypeError:
             self._logger.info(f'Wrong type: {type(self.currentRecon.output)}')
+        self.timeMonitor.addStamp('live-recon', self.__currentStep, 'end')
 
     def updateLiveReconPlot(self, image):
         """
@@ -339,6 +356,7 @@ class ScanControllerOpt(ImConWidgetController):
         """
         self._widget.scanPar['StartButton'].setEnabled(value)
         self._widget.scanPar['StopButton'].setEnabled(not value)
+        self._widget.scanPar['PlotReportButton'].setEnabled(value)
         self._widget.scanPar['SaveButton'].setEnabled(value)
         self._widget.scanPar['LiveReconIdxEdit'].setEnabled(value)
         self._widget.scanPar['OptStepsEdit'].setEnabled(value)
@@ -605,7 +623,7 @@ class ScanControllerOpt(ImConWidgetController):
 
     def process_hot_pixels(self):
         """
-        Automatic saving of the correction to the \Corrections folder.
+        Automatic saving of the correction to the /Corrections folder.
         Based on the selected STD cutoff in the widget identifies pixels which
         have intensity higher than mean of all pixels + STD cutoff multiples
         of STD. Calculates and displays count of hot pixels and average
@@ -672,7 +690,8 @@ class ScanControllerOpt(ImConWidgetController):
         self.detector.stopAcquisition()
         self.nFrames.emit()
 
-    def saveImage(self, frame, subfolder, filename="corr", fileExtension="tiff"):
+    def saveImage(self, frame, subfolder, filename="corr",
+                  fileExtension="tiff"):
         """
         Constructs saving path and saves the image. Method adapted from
         UC2/STORMreconController from https://github.com/openUC2 fork of
@@ -725,6 +744,58 @@ class ScanControllerOpt(ImConWidgetController):
             os.makedirs(dirPath)
 
         return newPath
+
+
+class SecondWindow(QtWidgets.QMainWindow):
+    def __init__(self, report):
+        super(SecondWindow, self).__init__()
+        self.main_widget = QtWidgets.QWidget()
+        self.setCentralWidget(self.main_widget)
+
+        layout = QtWidgets.QVBoxLayout(self.main_widget)
+        sc = MyMplCanvas(report, self.main_widget, width=300, height=300)
+        layout.addWidget(sc)
+
+
+class MyMplCanvas(FigureCanvas):
+    def __init__(self, report, parent=None, width=300, height=300):
+        fig = Figure(figsize=(width, height))
+        # fig, ax = plt.subplots(1, 3)
+        self.ax1 = fig.add_subplot(131)
+        self.ax2 = fig.add_subplot(132)
+        self.ax3 = fig.add_subplot(133)
+
+        self.compute_figure(report)
+
+        FigureCanvas.__init__(self, fig)
+        self.setParent(parent)
+
+        FigureCanvas.setSizePolicy(self, QtWidgets.QSizePolicy.Expanding,
+                                   QtWidgets.QSizePolicy.Expanding)
+        FigureCanvas.updateGeometry(self)
+
+    def compute_figure(self, report: dict):
+        keys = report.keys()
+        mean, std, percTime, tseries = [], [], [], []
+        my_cmap = matplotlib.colormaps.get_cmap("viridis")
+        colors = my_cmap(np.linspace(0, 1, len(keys)))
+        for _, v in report.items():
+            percTime.append(v['PercTime'])
+            mean.append(v['Mean'])
+            std.append(v['STD'])
+            tseries.append(v['Tseries'])
+        self.ax1.bar(keys, percTime, color=colors)
+        self.ax1.set_ylabel('Percentage of Total exp. time [%]')
+        self.ax2.bar(keys, mean, color=colors,
+                     yerr=std, align='center',
+                     ecolor='black', capsize=10)
+        self.ax2.set_ylabel('Mean time per operation [s]')
+
+        for i, k in enumerate(keys):
+            self.ax3.plot(tseries[i][:, 0], tseries[i][:, 1], 'o', label=k)
+        self.ax3.set_yscale('log')
+        self.ax3.set_ylabel('duration [s]')
+        self.ax3.legend()
 
 
 class Stability():
@@ -867,7 +938,6 @@ class DemoData(QObject):
     def __init__(self, resolution=128) -> None:
         super(QObject, self).__init__()
         self.size = resolution  # int
-        self.idx = 0
         self.radon = Get_radon(self.size)
         self.radon.progress.connect(self.printProgress)
 
@@ -915,6 +985,67 @@ class Get_radon(QObject):
         retval = msg.exec_()
         print(retval)
         return retval
+
+
+class ExecOptMonitor():
+    def __init__(self):
+        self.report = defaultdict(lambda: [])
+
+    def addStamp(self, key: str, idx: int, tag: str):
+        self.report[key].append((idx, tag, datetime.now()))
+
+    def addStart(self):
+        self.report['start'] = datetime.now()
+
+    def addFinish(self):
+        self.report['end'] = datetime.now()
+        try:
+            self.totalTime = (self.report['end'] - self.report['start']).total_seconds()
+        except:
+            print('Not possible to calculate total experimental time.')
+
+    def getReport(self):
+        return self.report
+
+    def makeReport(self):
+        # create statistical report on the time spent
+        # on various tasks
+        self.reportOut = {}
+        print()
+        print('############ Time Report #############')
+        print('######################################')
+        print(f'Total exp. time: {np.round(self.totalTime, 3)} s')
+        print('Beg and end times', self.report['start'], self.report['end'])
+        for k, _ in self.report.items():
+            if k in ['start', 'end']:
+                continue
+            self.processKey(k)
+        print('######################################')
+
+    def processKey(self, key):
+        # first the integrated time spent
+        idxs, tags, stamps = zip(*self.report[key])
+        i = 0
+        diffs, steps = [], []
+        while i < len(stamps)-1:
+            if (idxs[i] == idxs[i+1] and tags[i] == 'beg' and tags[i+1] == 'end'):
+                diffs.append((stamps[i+1] - stamps[i]).total_seconds())
+                steps.append(idxs[i])  # append for time evolution
+            i += 1
+        if len(diffs) != len(stamps) // 2:
+            print('Some data were not matched')
+        print(f'Total {key}: {sum(diffs)} s, Mean (STD): {np.round(np.mean(diffs), 3)} ({np.round(np.std(diffs), 3)}) s')
+        print(f'Perc. of Total experimental time: {np.round(sum(diffs)/self.totalTime * 100, 3)} %', end='\n')
+        print()
+
+        # save processed report to self.reportOut
+        report = {}
+        report['Total'] = np.sum(diffs)
+        report['Mean'] = np.mean(diffs)
+        report['STD'] = np.std(diffs)
+        report['Tseries'] = np.array([steps, diffs]).T
+        report['PercTime'] = np.sum(diffs)/self.totalTime * 100
+        self.reportOut[key] = report
 
 
 # These functions are adapted from tomopy package

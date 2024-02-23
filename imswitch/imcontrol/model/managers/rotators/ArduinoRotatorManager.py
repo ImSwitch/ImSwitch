@@ -1,190 +1,224 @@
 from imswitch.imcommon.model import initLogger
+from imswitch.imcommon.framework import Signal, SignalInterface
+from imswitch.imcommon.model.utils import stepsToAngle, angleToSteps
 from .RotatorManager import RotatorManager
-import time
-import numpy as np
+from typing import Union, Tuple, Dict, Callable
+from enum import IntEnum
 from telemetrix import telemetrix
-from PyQt5.QtCore import pyqtSignal, pyqtSlot
+from time import sleep
+from apscheduler.schedulers.background import BackgroundScheduler
 
+class MotorInterface(IntEnum):
+    StepperDriver = 1
+    FULL2WIRE     = 2
+    FULL3WIRE     = 3
+    FULL4WIRE     = 4
+    HALF3WIRE     = 6
+    HALF4WIRE     = 8
 
-class MockBoard():
-    def stepper_get_current_position(self, *args, **kwargs):
-        print('calling board')
-        return
+    def isPinConfigOK(self, pinConfig: Dict[str, int]) -> bool:
+        return len(pinConfig) == PIN_CONFIGS_NUM[self]
 
-    def stepper_set_speed(self, *args, **kwargs):
-        pass
+PIN_CONFIGS_NUM = {
+    MotorInterface.StepperDriver: 2,
+    MotorInterface.FULL2WIRE    : 2,
+    MotorInterface.FULL3WIRE    : 3,
+    MotorInterface.FULL4WIRE    : 4,
+    MotorInterface.HALF3WIRE    : 3,
+    MotorInterface.HALF4WIRE    : 4
+}
 
-    def stepper_set_max_speed(self, *args, **kwargs):
-        pass
+class TelemetrixInterface(telemetrix.Telemetrix):
+    """ Expanding the Telemetrix 
+    class to store additional parameters 
+    related to the manager handling.
+    """
+    currentPosition : Tuple[int, int] = (0, 0) # (steps, degrees)
+    stepsPerTurn : int = 0
 
-    def stepper_set_acceleration(self, *args, **kwargs):
-        pass
+class MockBoard(SignalInterface):
+    """ Mock class implementing placeholder methods for the a Telemetrix-supported board.
+    It's instantiated when the actual board is not found, or when the user wants 
+    to run the software in a non-hardware environment. Uses `APScheduler` to simulate
+    a continously rotating stepper motor when requested.
+    """
 
-    def stepper_move(self, *args, **kwargs):
-        pass
+    def __init__(self) -> None:
+        super().__init__()
+        self.__logger = initLogger(self)
+        self.__speed: int = 0
+        self.__maxSpeed: int = 0
+        self.__stepsToTurn: int = 0
+        self.currentPosition: Tuple[int, int] = (0, 0) # (steps, degrees)
+        self.stepsPerTurn: int = 0
+        self.motorIDCount: int = 0
+        self.__mockScheduler = BackgroundScheduler()
 
-    def stepper_run(self, *args, **kwargs):
-        print('has to be stuck here')
-        return True
+    def stepper_get_current_position(self, motor_id: int, callback: Callable) -> None:
+        self.__logger.info(f'Mock board (motor {motor_id}) getting current position. Callback name: {callback.__name__}')
+    
+    def set_pin_mode_stepper(self, interface=1, pin1=2, pin2=3, pin3=4, pin4=5, enable=True) -> int:
+        interface = MotorInterface(interface)
+        pins = {
+            'pin1': pin1,
+            'pin2': pin2,
+            'pin3': pin3,
+            'pin4': pin4
+        }
+        self.__logger.info(f'Mock board setting pin mode for stepper motor. Interface: {interface}, pins: {pins}, enable: {enable}')
+        self.motorIDCount += 1
+        return self.motorIDCount
+        
 
-    def stepper_run_speed(self, *args, **kwargs):
-        pass
+    def stepper_set_speed(self, motor_id: int, speed: int) -> None:
+        if speed > self.__maxSpeed:
+            self.__logger.warning(f"Exceeding maximum speed for motor {motor_id}. Setting to maximum speed {self.__maxSpeed}.")
+        else:
+            self.__logger.info(f"Mock board setting speed to {speed}")
+            self.__speed = speed
 
-    def stepper_stop(self, *args, **kwargs):
-        pass
+    def stepper_set_max_speed(self, _: int, max_speed: int) -> None:
+        self.__maxSpeed = max_speed
+
+    def stepper_set_acceleration(self, _: int, acceleration: int) -> None:
+        self.__logger.info(f"Mock board setting acceleration to {acceleration}")
+
+    def stepper_move(self, _: int, steps: int) -> None:
+        self.__stepsToTurn = steps
+
+    def stepper_run(self, _: int, callback: Callable) -> None:
+        """ Simulates the movement of the stepper motor.
+
+        Args:
+            _ (`int`): motor ID (unused in this method)
+            callback (`Callable`): callback function to execute after the movement is done.
+                                Receives the new position as an argument, formatted as a tuple (steps, degrees).
+        """
+        newPosition = (self.currentPosition[0] + self.__stepsToTurn) % self.stepsPerTurn
+        self.currentPosition = (newPosition, stepsToAngle(newPosition))
+        callback(self.currentPosition)
+
+    def stepper_run_speed(self, motor_id: int) -> None:
+        self.__logger.info(f"Mock board running motor {motor_id} continously at speed {self.__speed}")
+        self.__mockScheduler.add_job(self.__mock_continous_movement, 'interval', seconds=1)
+
+    def stepper_stop(self, motor_id: int) -> None:
+        self.__logger.info(f"Mock board stopping motor {motor_id} continous movement.")
+    
+    def stepper_set_current_position(self, _: int, position: int) -> None:
+        self.currentPosition = (position, stepsToAngle(position))
 
     def shutdown(self):
-        pass
-
+        self.__logger.info('Mock board shutting down.')
+    
+    def __mock_continous_movement(self):
+        """ Simulates the continous movement of the stepper motor.
+        Triggered by the background schedulers, calculates the new position.
+        """
+        newPosition = (self.currentPosition[0] + self.__stepsToTurn) % self.stepsPerTurn
+        self.currentPosition = (newPosition, stepsToAngle(newPosition))
 
 class ArduinoRotatorManager(RotatorManager):
     """ Arduino stepper motor manager.
     """
-    start_move = pyqtSignal()
-    move_done = pyqtSignal(bool)
-    update_position = pyqtSignal()
+    sigMoveStarted = Signal()
 
     def __init__(self, rotatorInfo, name, *args, **kwargs):
         super().__init__(rotatorInfo, name, *args, **kwargs)
         self.__logger = initLogger(self)
-        self.__logger.info(name, self.name)
 
         if rotatorInfo is None:
-            return
-        self._device_id = rotatorInfo.managerProperties['motorListIndex']
-        self._steps_per_turn = rotatorInfo.managerProperties['stepsPerTurn']
-
-        self.speed = 100
-        self.max_speed = 900
-        self.acc = 200
+            self.__logger.error('No rotator info provided in the configuration file')
+            raise ValueError('No rotator info providided in the configuration file')
+        self._deviceID = rotatorInfo.managerProperties['motorListIndex']
+        self._stepsPerTurn = rotatorInfo.managerProperties['stepsPerTurn']
+        self.speed = rotatorInfo.managerProperties['startSpeed']
+        self.maximumspeed = rotatorInfo.managerProperties['maximumSpeed']
+        self.acceleration = rotatorInfo.managerProperties['acceleration']
         self.board = None
-        self.motor = None
-        self.turning = None
-        self.current_pos = None
-        # checking every wait_const if the movement is over
-        self.wait_const = 0.5
-        self._getMotorObj()
+        self.motorID = None
+        self.turning = False
+        self.__setupBoardConnection()
 
-    def _getMotorObj(self):
+        # to interface with the asynchronous communication with the Telemetrix interface,
+        # we use sigOptStepDone signal to notify the end of the movement
+        # and call the relative method to update the position
+        self.sigOptStepDone.connect(self.readPositionAfterMove)
+
+    def __setupBoardConnection(self):
+        """ Initializes the handle to the hardware interface. If no hardware is found, a mock object is used instead.
+        """
         try:
-            self.init_board()
-            self.init_motor()
-            self.__logger.info(f'Initialized Arduino stepper motor {self._device_id}')
+            self.__logger.info(f'Trying to initialize Arduino stepper motor {self._deviceID}')
+            self.board = self.__initializeBoard()
+            self.__logger.info("Success")
         except Exception:
-            self.__logger.warning(f'Failed to initialize Arduino stepper motor {self._device_id}, loading mocker')
+            self.__logger.warning(f'Failed to initialize Arduino stepper motor {self._deviceID}, loading mocker')
             self.board = MockBoard()
-            self.current_pos = (0, 0)
-            self.init_mock()
+        
+        self.__initializeMotor()
+        self.board.stepsPerTurn = self._stepsPerTurn
+        self.board.currentPosition = (0, 0)
 
     def close(self):
         """
-        Shutdown board
-        TODO: what if in continuous movement, or lost communication?
+        Shutdown board. If the motor is currently moving, it will stop it.
         """
-        print('Motor shutting down.')
-        return self.board.shutdown()
+        self.__logger.info('Motor shutting down.')
+        if self.turning:
+            self.board.stepper_stop(self.motorID)
+        self.sigOptStepDone.disconnect(self.readPositionAfterMove)
+        self.board.shutdown()
 
-    def init_board(self):
+    def __initializeBoard(self) -> Union[TelemetrixInterface, MockBoard]:
+        """ Initializes communication with the Telemetrix firmware. If no board is found, a mock object is used instead.
+        """
+        board = None
         try:
-            self.board = telemetrix.Telemetrix()
-            time.sleep(4.5)
+            self.__logger.info('Initializing Telemetrix interface.')
+            board = TelemetrixInterface()
+            self.__logger.info('Telemetrix interface initialized')
         except Exception:
-            self.__logger.warning('Board Init failed')
+            self.__logger.warning('Failed to initialize Telemetrix board. Setting up mock object.')
+            board = MockBoard()
+        return board
 
-    def init_motor(self):
-        """Motor initialization
-
-        Raises:
-            ValueError: if unknown motor type
+    def __initializeMotor(self):
+        """ Initializes the board motor pin configuration.
+        If the board handle is a mock object, it will call placeholder methods.
         """
-        if self._device_id == 0:
-            self.motor = self.board.set_pin_mode_stepper(
-                            interface=4,
-                            pin1=8, pin2=10, pin3=9, pin4=11,
-                        )
-        elif self._device_id == 1:
-            self.motor = self.board.set_pin_mode_stepper(
-                            interface=1,
-                            pin1=2, pin2=3,
-                        )
-
-        self.set_max_speed(self.max_speed)
-        self.turning = False
-        self.board.stepper_set_current_position(
-                                    self.motor, 0)
-
-        self.set_rot_speed(self.speed)
-        self.set_accel(self.acc)
-
-    def get_position(self):
-        """
-        Get current absolute position of the motor.
-        Position can be reset (set to 0) by set_zero_pos()
-
-        Returns:
-            tuple: position in (steps, degrees).
-        """
-        # updates self.current_pos in steps between 0- steps_per_turn
-        self.board.stepper_get_current_position(
-                                self.motor,
-                                self.current_position_callback,
-                                )
-        time.sleep(.2)
-        print('ArduinoRotatorManager current position', self.current_pos)
-        return self.current_pos
-
-    def set_rot_speed(self, speed):
-        self.speed = speed
-        try:
-            self.board.stepper_set_speed(
-                self.motor,
-                speed)
-        except Exception:
-            self.__logger.warning('Initialize motor first')
-
-    def set_max_speed(self, speed):
-        """Set maximum speed of the given motor"""
-        self.max_speed = speed
-        try:
-            self.board.stepper_set_max_speed(
-                self.motor,
-                self.max_speed)
-        except Exception:
-            self.__logger.warning('Initialize a motor first.')
-
-    def set_accel(self, acc):
-        self.acc = acc
-        self.board.stepper_set_acceleration(self.motor, acc)
-
-    def set_wait_const(self, const):
-        self.wait_const = const
-
-    @pyqtSlot()
-    def moveRelSteps(self):
-        """Move self.steps relative to the current position """
-        self.board.stepper_move(self.motor, int(self.steps))
+        # TODO: move pin configuration to the JSON configuration file
+        if self._deviceID == 0:
+            self.motorID = self.board.set_pin_mode_stepper(interface=4,
+                                                        pin1=8, pin2=10, pin3=9, pin4=11)
+        elif self._deviceID == 1:
+            self.motorID = self.board.set_pin_mode_stepper(interface=1,
+                                                        pin1=2, pin2=3)
+        self.board.stepper_set_max_speed(self.motorID, self.maximumspeed)
+        self.board.stepper_set_current_position(self.motorID, 0)
+        
+        self.board.stepper_set_speed(self.motorID, self.speed)
+        self.board.stepper_set_acceleration(self.motorID, self.acceleration)
+    
+    def moveRelSteps(self, steps: int) -> None:
+        """ Move self.steps relative to the current position """
         self.turning = True
-        if self.motor is not None:  # real rotator
-            self.board.stepper_run(
-                self.motor,
-                completion_callback=self.move_finished_callback)
-        else:  # mock rotator
-            time.sleep(.2)
-            self.move_finished_callback('Mock')
+        self.board.stepper_move(self.motorID, int(steps))
+        self.board.stepper_run(self.motorID, self.moveFinishedCallback)
 
     def move_rel(self, angle):
-        """Calculate steps from angle and run
-        move_rel_steps method"""
-        steps = self.deg2steps(angle)
-
-        self.start_move.connect(self.moveRelSteps)
-        self.move_done.connect(self.post_move)
-        self.steps = steps
-        self.start_move.emit()
+        """Method implemented from base class.
+        Performs a movement relative to the current position.
+        """
+        steps = angleToSteps(angle)
+        self.turning = True
+        self.board.stepper_move(self.motorID, steps)
+        self.board.stepper_run(self.motorID, self.moveFinishedCallback)
 
     def move_abs(self, value, inSteps=False):
-        """Converts angle to steps and calls
-        move_abs_steps()
+        """Method implemented from base class.
+        Moves the stepper to an absolute position, based on the current 
+        stored position (in steps).
 
         Args:
             angle (int): rotation angle.
@@ -192,39 +226,17 @@ class ArduinoRotatorManager(RotatorManager):
         if inSteps:
             steps = value
         else:
-            steps = self.deg2steps(value)
+            steps = angleToSteps(value)
+        
+        self.turning = True
+        self.board.stepper_move(self.motorID, steps - self.currentPosition[0])
+        self.board.stepper_run(self.motorID, self.moveFinishedCallback)
 
-        if self.motor is not None:  # real rotator
-            self.board.stepper_get_current_position(
-                            self.motor,
-                            self.current_position_callback)
-        else:
-            self.current_position_callback((0, 0, 0))
-        self.start_move.connect(self.moveRelSteps)
-        self.move_done.connect(self.post_move)
-        self.steps = steps - self.current_pos[0]
-        self.start_move.emit()
-
-    def post_move(self):
-        """Every step's signal move_done ios connected to this
-        function. Disconnects signal and takes care of current
-        position values.
+    def readPositionAfterMove(self):
+        """ Slot connected to sigMoveDone signal.
+        Updates the current position read by the interface.
         """
-        self.get_position()
-        self.start_move.disconnect()
-        self.move_done.disconnect()
-        if self.motor is not None:  # real rotator
-            self.board.stepper_get_current_position(
-                            self.motor,
-                            self.current_position_callback)
-        else:
-            self.current_position_callback((0, 0, 0))
-        time.sleep(.2)
-        self.trigger_update_position()
-
-    def trigger_update_position(self):
-        print('trigger_update_positin')
-        self.emit_trigger_update_position()
+        self.board.stepper_get_current_position(self.motorID, self.currentPositionCallback)
 
     #######################
     # Continuous rotation #
@@ -234,179 +246,36 @@ class ArduinoRotatorManager(RotatorManager):
         Move the stepper motor and keep cheking the
         for the running is over in the while loop.
         """
-        self.board.stepper_set_speed(self.motor, self.speed)
+        self.board.stepper_set_speed(self.motorID, self.speed)
         self.turning = True
-        self.board.stepper_run_speed(
-            self.motor)
+        self.board.stepper_run_speed(self.motorID)
 
     def stop_cont_rot(self):
         self.turning = False
-        self.board.stepper_stop(self.motor)
+        self.board.stepper_stop(self.motorID)
 
     #############
     # Callbacks #
     #############
-    def move_finished_callback(self, data):
-        print('callback move finished', data)
+    def moveFinishedCallback(self, data: Tuple[int, int]) -> None:
+        self.__logger.info(f'Move done (step: {data[0]}, angle: {data[1]}°)')
         self.turning = False
-        self.move_done.emit(self.turning)
         self.sigOptStepDone.emit()
 
-    def emit_trigger_update_position(self):
-        self.update_position.emit()
-
-    def current_position_callback(self, data):
+    def currentPositionCallback(self, data: Tuple[int, int]) -> None:
         """
         Current position data in form of
         motor_id, current position in steps, time_stamp
         """
         # for now tuple of steps, degrees
-        steps = data[2] % self._steps_per_turn
-        self.current_pos = (steps, self.steps2deg(steps))
+        steps = data[2] % self.board.stepsPerTurn
+        self.board.currentPosition = (steps, stepsToAngle(steps))
         if steps != data[2]:
-            self.board.stepper_set_current_position(
-                                    self.motor, steps)
+            self.board.stepper_set_current_position(self.motorID, steps)
 
-    # def is_running_callback(self, data):
-    #     """Check if motor is running"""
-    #     if data[1]:
-    #         self.turning = True
-    #     else:
-    #         self.turning = False
-
-    def set_zero_pos(self):
-        self.board.stepper_set_current_position(
-                                    self.motor, 0)
-        self.current_pos = (0, 0)
-
-    def deg2steps(self, d_deg):
-        d = d_deg/360 * self._steps_per_turn
-        if d >= 0:
-            d = np.floor(d)
-        else:
-            d = np.ceil(d)
-        return d
-
-    def steps2deg(self, position):
-        if position >= 0:
-            return position * 360 / self._steps_per_turn
-        else:
-            # second term is negative so + is correct (going counter clockwise)
-            return 360 + position * 360 / self._steps_per_turn
-
-    def init_mock(self):
-        pass
-
-
-class ArduinoRotatorManagerOld(RotatorManager):
-    """ Arduino stepper motor manager.
-    """
-    def __init__(self, rotatorInfo, name, *args, **kwargs):
-        super().__init__(rotatorInfo, name, *args, **kwargs)
-        self.__logger = initLogger(self)
-
-        if rotatorInfo is None:
-            return
-        self._device_id = rotatorInfo.managerProperties['motorListIndex']
-        self._steps_per_turn = rotatorInfo.managerProperties['stepsPerTurn']
-
-        self._motor = self._getMotorObj(self._device_id, self._steps_per_turn)
-        self._position = self._motor.get_pos()
-
-    def get_position(self):
-        """ Return the position as a float. """
-        return self._position
-
-    def move_rel(self, angle):
-        """Calculate steps from angle and run
-        move_rel_steps method"""
-        steps = self._motor.deg2steps(angle)
-        self.move_rel_steps(steps)
-
-    def move_rel_steps(self, steps):
-        """Move rotator relative by steps equal to steps.
-        Connects arduinoStepper signals and waits until the movement
-        finishes.
-
-        Args:
-            steps (int): number of motor steps
-        """
-        self._motor.start_move.connect(self._motor.moverel_steps)
-        self._motor.move_done.connect(self.post_move)
-        self._motor.steps = steps
-        self._motor.start_move.emit()
-
-    def post_move(self):
-        """Every step's signal move_done ios connected to this
-        function. Disconnects signal and takes care of current
-        position values.
-        """
-        self._position = self._motor.get_pos()
-        self._motor.start_move.disconnect()
-        self._motor.move_done.disconnect()
-        self._motor.board.stepper_get_current_position(
-                        self._motor.motor,
-                        self._motor.current_position_callback)
-        time.sleep(.2)
-        self.trigger_update_position()
-
-    def move_abs(self, angle):
-        """Converts angle to steps and calls
-        move_abs_steps()
-
-        Args:
-            angle (int): rotation angle.
-        """
-        steps = self._motor.deg2steps(angle)
-        self.move_abs_steps(steps)
-
-    def move_abs_steps(self, steps):
-        """Absolute movement, which is converted to relative in
-        respect to current position.
-
-        Args:
-            steps (int): number of motor steps
-        """
-        self._motor.board.stepper_get_current_position(
-                        self._motor.motor,
-                        self._motor.current_position_callback)
-
-        # calculate relative steps from current position
-        to_move = steps - self._motor.current_pos[0]
-        self.move_rel_steps(to_move)
-
-    def trigger_update_position(self):
-        self._motor.emit_trigger_update_position()
-
-    def set_zero_pos(self):
-        self._motor.set_zero_pos()
-        self._position = self._motor.get_pos()
-
-    def set_rot_speed(self, speed):
-        self._motor.set_rot_speed(speed)
-
-    def start_cont_rot(self):
-        self._motor.start_cont_rot()
-
-    def stop_cont_rot(self):
-        self._motor.stop_cont_rot()
-
-    def set_sync_in_pos(self, abs_pos_deg):
-        self._motor.set_sync_in_settings(abs_pos_deg)
-
-    def _getMotorObj(self, device_id, steps_per_turn):
-        try:
-            from imswitch.imcontrol.model.interfaces.arduinoStepper import ArduinoStepper
-            motor = ArduinoStepper(device_id, steps_per_turn)
-            self.__logger.info(f'Initialized Arduino stepper motor {device_id}')
-        except Exception:
-            self.__logger.warning(f'Failed to initialize Arduino stepper motor {device_id}, loading mocker')
-            from imswitch.imcontrol.model.interfaces.arduinoStepper import MockArduinoStepper
-            motor = MockArduinoStepper(device_id, steps_per_turn)
-        return motor
-
-    def close(self):
-        self._motor.close()
+    def set_zero_pos(self) -> None:
+        self.board.stepper_set_current_position(self.motorID, 0)
+        self.currentPosition = (0, 0)
 
 
 # Copyright (C) 2020-2023 ImSwitch developers

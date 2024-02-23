@@ -31,7 +31,6 @@ class ImConMainView(QtWidgets.QMainWindow):
         self.viewSetupInfo = viewSetupInfo
         if not imswitch.IS_HEADLESS:
             self.pickSetupDialog = PickSetupDialog(self)
-            self.PickUC2BoardConfigDialog = PickUC2BoardConfigDialog(self)
             self.pickDatasetsDialog = PickDatasetsDialog(self, allowMultiSelect=False)
 
 
@@ -207,10 +206,6 @@ class ImConMainView(QtWidgets.QMainWindow):
 
     def showPickDatasetsDialogBlocking(self):
         result = self.pickDatasetsDialog.exec_()
-        return result == QtWidgets.QDialog.Accepted
-
-    def showConfigSetupDialogBlocking(self):
-        result = self.PickUC2BoardConfigDialog.exec_()
         return result == QtWidgets.QDialog.Accepted
 
     def closeEvent(self, event):

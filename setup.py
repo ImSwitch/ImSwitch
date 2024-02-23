@@ -56,6 +56,8 @@ setup(
         "fastAPI >= 0.86.0",
         "uvicorn[standard] >= 0.19.0",
         "matplotlib >= 3.6",
+        "websockets >= 10.0",
+        "websocket-client >= 1.2"
     ],
     entry_points={
         "console_scripts": [

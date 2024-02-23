@@ -390,6 +390,11 @@ class RecordingController(ImConWidgetController):
         return self._widget.getTimelapseFreq()
 
 
+    def stop_stream(self):
+        self.streamRunning = False
+        self.streamstarted = False
+        self.manager = None
+        
     def start_stream(self):
         '''
         return a generator that converts frames into jpeg's reads to stream
@@ -402,7 +407,7 @@ class RecordingController(ImConWidgetController):
         self.fx = self.fy = .1
         
         try:
-            while True:
+            while self.streamRunning:
                 output_frame = detectorNum1.getLatestFrame()
                 if output_frame is None:
                     continue
@@ -415,16 +420,15 @@ class RecordingController(ImConWidgetController):
                     continue
                 self.manager.put(encodedImage)
         except:
-            self.streamstarted = False
+            self.streamRunning = False
                 
-    
     def streamer(self):
         from multiprocessing import Queue
         if not self.streamstarted:
             import threading
             self.manager = Queue(maxsize=10)
+            self.streamRunning = True
             threading.Thread(target=self.start_stream).start()
-            self.streamstarted = True
         try:
 
             while self.manager:
@@ -435,11 +439,17 @@ class RecordingController(ImConWidgetController):
 
 
     @APIExport(runOnUIThread=False)
-    def video_feeder(self) -> StreamingResponse:
+    def video_feeder(self, startStream: bool = True) -> StreamingResponse:
         '''
         return a generator that converts frames into jpeg's reads to stream
         '''
-        return StreamingResponse(self.streamer(), media_type="multipart/x-mixed-replace;boundary=frame")
+        if startStream:
+            return StreamingResponse(self.streamer(), media_type="multipart/x-mixed-replace;boundary=frame")
+        else:
+            self.stop_stream()
+            return "stream stopped"
+
+
 
 
 

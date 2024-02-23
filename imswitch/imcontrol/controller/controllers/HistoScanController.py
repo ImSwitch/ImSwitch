@@ -357,9 +357,13 @@ class HistoScanController(LiveUpdatedController):
 
     def goToPosition(self, posX, posY):
         # {"task":"/motor_act",     "motor":     {         "steppers": [             { "stepperid": 1, "position": -1000, "speed": 30000, "isabs": 0, "isaccel":1, "isen":0, "accel":500000}     ]}}
+        currentPosition = self.stages.getPosition()
         self.stages.move(value=(posX,posY), axis="XY", is_absolute=True, is_blocking=False, acceleration=(self.acceleration,self.acceleration))
         self._commChannel.sigUpdateMotorPosition.emit()
-        
+        newPosition = self.stages.getPosition()
+        if currentPosition["X"]==newPosition["X"] and currentPosition["Y"]==newPosition["Y"]:
+            self._logger.error("Could not move to position - check if coordinates are within the allowed range or if the stage is homed properly.")
+            
     def displayImage(self):
         # a bit weird, but we cannot update outside the main thread
         name = self.histoScanStackName

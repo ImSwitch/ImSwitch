@@ -73,14 +73,16 @@ class PositionerController(ImConWidgetController):
                 speed = self._widget.getSpeed(positionerName, "X")
             else:
                 speed = self._widget.getSpeed(positionerName, axis)
-        
+        # set speed for the positioner
         self.setSpeed(positionerName=positionerName, speed=speed, axis=axis)
         try:
+            # special case for UC2 positioner that takes more arguments
             self._master.positionersManager[positionerName].move(dist, axis, isAbsolute, isBlocking)
             if dist is None:
                 self.__logger.info(f"Moving {positionerName}, axis {axis}, at speed {str(speed)}")
                 self._master.positionersManager[positionerName].moveForeverByAxis(speed=speed, axis=axis, is_stop=~(abs(speed)>0))            
         except Exception as e:
+            # if the positioner does not have the move method, use the default move method
             self._logger.error(e)
             self._master.positionersManager[positionerName].move(dist, axis)
         self._commChannel.sigUpdateMotorPosition.emit()

@@ -342,9 +342,12 @@ class MCTController(ImConWidgetController):
                             self.lasers[1].setEnabled(True)
                             time.sleep(.05)
                         elif autofocusParams['illuMethod']=="LED":
-                            self.leds[0].setValue(self.LEDValue)
-                            self.leds[0].setEnabled(True)
-                            time.sleep(.05)
+                            if len(self.leds)>0:
+                                self.leds[0].setValue(self.LEDValue)
+                                self.leds[0].setEnabled(True)
+                                time.sleep(.05)
+                            else:
+                                self.illu.setAll(1, (self.LEDValue,self.LEDValue,self.LEDValue))
 
                         self.doAutofocus(autofocusParams)
                         self.switchOffIllumination()
@@ -432,8 +435,7 @@ class MCTController(ImConWidgetController):
 
                 except Exception as e:
                     self._logger.error("Thread closes with Error: "+str(e))
-                    # close the controller ina nice way
-                    pass
+                    return 
 
             # pause to not overwhelm the CPU
             time.sleep(0.1)
@@ -577,8 +579,7 @@ class MCTController(ImConWidgetController):
                         tif.imwrite(filePath, lastFrame, append=True)
                         if turnOffIlluInBetween: 
                             if len(self.leds)>0:self.leds[0].setEnabled(False)
-                            if self.illu:self.illu.setAll(0,(0,0,0))
-                            
+                            if self.illu: self.illu.setAll(0,(0,0,0))
                             
                         self.LastStackLED.append(lastFrame.copy())
                     except:
@@ -661,8 +662,8 @@ class MCTController(ImConWidgetController):
         if len(self.leds) and not self.leds[0].enabled: self.leds[0].setEnabled(1)
         if len(self.leds): self.leds[0].setValue(self.LEDValue, getReturn=False)
         if self.illu: self.illu.setAll(1, (self.LEDValue,self.LEDValue,self.LEDValue))
-        if len(self.lasers)>0: self.lasers[0].power: self.lasers[0].setValue(0)
-        if len(self.lasers)>1: self.lasers[1].power: self.lasers[1].setValue(0)
+        if len(self.lasers)>0 and self.lasers[0].power: self.lasers[0].setValue(0)
+        if len(self.lasers)>1 and self.lasers[1].power: self.lasers[1].setValue(0)
 
     def __del__(self):
         pass

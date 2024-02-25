@@ -95,7 +95,7 @@ class MockBoard:
         self.__logger.info(f"Mock board stopping motor {motor_id} continous movement.")
     
     def stepper_set_current_position(self, _: int, position: int) -> None:
-        self.currentPosition = (position, stepsToAngle(position))
+        self.currentPosition = (position, stepsToAngle(position, self.stepsPerTurn))
 
     def shutdown(self):
         self.__logger.info('Mock board shutting down.')

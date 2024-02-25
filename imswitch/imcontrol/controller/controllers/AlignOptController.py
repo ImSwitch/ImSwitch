@@ -200,7 +200,7 @@ class AlignOptController(ImConWidgetController):
     def updateRotator(self):
         self.motorIdx = self._widget.getRotatorIdx()
         self.__motor_steps = self._master.rotatorsManager[
-            self.__rotators[self.motorIdx]]._steps_per_turn
+            self.__rotators[self.motorIdx]]._stepsPerTurn
 
 
 class AlignCOR():

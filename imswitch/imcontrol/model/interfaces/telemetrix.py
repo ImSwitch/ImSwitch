@@ -53,7 +53,9 @@ class MockBoard:
             'pin3': pin3,
             'pin4': pin4
         }
-        self.__logger.info(f'Mock board setting pin mode for stepper motor. Interface: {interface}, pins: {pins}, enable: {enable}')
+        self.__logger.info(f'Mock board setting pin mode for stepper motor.')
+        self.__logger.info(f"Interface: {interface}")
+        self.__logger.info(f"Pins: {pins}")
         self.motorIDCount += 1
         return self.motorIDCount
         
@@ -83,7 +85,7 @@ class MockBoard:
                                 Receives the new position as an argument, formatted as a tuple (steps, degrees).
         """
         newPosition = (self.currentPosition[0] + self.__stepsToTurn) % self.stepsPerTurn
-        self.currentPosition = (newPosition, stepsToAngle(newPosition))
+        self.currentPosition = (newPosition, stepsToAngle(newPosition, self.stepsPerTurn))
         callback(self.currentPosition)
 
     def stepper_run_speed(self, motor_id: int) -> None:

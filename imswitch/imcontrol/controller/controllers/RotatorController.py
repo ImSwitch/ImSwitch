@@ -33,13 +33,11 @@ class RotatorController(ImConWidgetController):
                                     pos: self.setSyncInMovement(name, pos))
         # update position workaround
         self._logger.info(f'motor name: {self.name}')
-        # self._master.rotatorsManager[self.name]._motor.update_position.connect(
-        #     self.updatePosition2,
-        # )
 
-        self._master.rotatorsManager[self.name].update_position.connect(
-            self.updatePosition2,
+        self._master.rotatorsManager[self.name].sigPositionUpdated.connect(
+            self.updatePosition,
         )
+        
         # Update current position in GUI
         self.updatePosition(name)
 
@@ -58,10 +56,6 @@ class RotatorController(ImConWidgetController):
         dist = dir * self._widget.getRelStepSize(name)
         self.__logger.debug(f'angle to rotate: {dist}')
         self._master.rotatorsManager[name].move_rel(dist)
-
-    def updatePosition2(self):
-        pos = self._master.rotatorsManager[self.name].get_position()
-        self._widget.updatePosition(self.name, pos[1])
 
     def moveAbs(self, name):
         pos = self._widget.getAbsPos(name)

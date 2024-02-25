@@ -37,7 +37,7 @@ class ArduinoRotatorManager(RotatorManager):
         if rotatorInfo is None:
             self.__logger.error('No rotator info provided in the configuration file')
             raise ValueError('No rotator info providided in the configuration file')
-        self.stepsPerTurn = rotatorInfo.managerProperties['stepsPerTurn']
+        self._stepsPerTurn = rotatorInfo.managerProperties['stepsPerTurn']
         self.speed = rotatorInfo.managerProperties['startSpeed']
         self.maximumspeed = rotatorInfo.managerProperties['maximumSpeed']
         self.acceleration = rotatorInfo.managerProperties['acceleration']        
@@ -70,7 +70,7 @@ class ArduinoRotatorManager(RotatorManager):
             self.__logger.warning(f'Failed to initialize Arduino stepper motor, loading mocker')
             self.board = MockBoard()
         
-        self.board.stepsPerTurn = self.stepsPerTurn
+        self.board.stepsPerTurn = self._stepsPerTurn
         self.board.currentPosition = (0, 0)
         self.__initializeMotor()
 
@@ -107,18 +107,12 @@ class ArduinoRotatorManager(RotatorManager):
         
         self.board.stepper_set_speed(self.motorID, self.speed)
         self.board.stepper_set_acceleration(self.motorID, self.acceleration)
-    
-    def moveRelSteps(self, steps: int) -> None:
-        """ Move self.steps relative to the current position """
-        self.turning = True
-        self.board.stepper_move(self.motorID, int(steps))
-        self.board.stepper_run(self.motorID, self.moveFinishedCallback)
 
     def move_rel(self, angle):
         """Method implemented from base class.
         Performs a movement relative to the current position.
         """
-        steps = angleToSteps(angle, self.stepsPerTurn)
+        steps = angleToSteps(angle, self._stepsPerTurn)
         self.turning = True
         self.board.stepper_move(self.motorID, steps)
         self.board.stepper_run(self.motorID, self.moveFinishedCallback)
@@ -135,10 +129,10 @@ class ArduinoRotatorManager(RotatorManager):
         if inSteps:
             steps = value
         else:
-            steps = angleToSteps(value, self.stepsPerTurn)
+            steps = angleToSteps(value, self._stepsPerTurn)
         
         self.turning = True
-        self.board.stepper_move(self.motorID, steps - self.currentPosition[0])
+        self.board.stepper_move(self.motorID, steps - self.board.currentPosition[0])
         self.board.stepper_run(self.motorID, self.moveFinishedCallback)
 
     def readPositionAfterMove(self):
@@ -146,6 +140,9 @@ class ArduinoRotatorManager(RotatorManager):
         Updates the current position read by the interface.
         """
         self.board.stepper_get_current_position(self.motorID, self.currentPositionCallback)
+    
+    def get_position(self) -> Tuple[int, int]:
+        return self.board.currentPosition
 
     #######################
     # Continuous rotation #
@@ -169,9 +166,11 @@ class ArduinoRotatorManager(RotatorManager):
     def moveFinishedCallback(self, data: Tuple[int, int]) -> None:
         self.__logger.info(f'Move done (step: {data[0]}, angle: {data[1]}°)')
         self.turning = False
+        self.readPositionAfterMove()
         
         # read back position and update local value
-        self.sigOptStepDone.emit()
+
+        self.sigPositionUpdated.emit(self.name)
 
     def currentPositionCallback(self, data: Tuple[int, int]) -> None:
         """
@@ -180,9 +179,10 @@ class ArduinoRotatorManager(RotatorManager):
         """
         # for now tuple of steps, degrees
         steps = data[2] % self.board.stepsPerTurn
-        self.board.currentPosition = (steps, stepsToAngle(steps, self.stepsPerTurn))
+        self.board.currentPosition = (steps, stepsToAngle(steps, self._stepsPerTurn))
         if steps != data[2]:
             self.board.stepper_set_current_position(self.motorID, steps)
+        self.sigPositionUpdated.emit()
 
     def set_zero_pos(self) -> None:
         self.board.stepper_set_current_position(self.motorID, 0)

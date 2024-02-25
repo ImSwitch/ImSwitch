@@ -375,7 +375,7 @@ class ScanControllerOpt(ImConWidgetController):
         """
         self.motorIdx = self._widget.getRotatorIdx()
         self.__motor_steps = self._master.rotatorsManager[
-            self.__rotators[self.motorIdx]]._steps_per_turn
+            self.__rotators[self.motorIdx]]._stepsPerTurn
 
         self._widget.scanPar['StepsPerRevLabel'].setText(
             f'{self.__motor_steps:d} steps/rev')

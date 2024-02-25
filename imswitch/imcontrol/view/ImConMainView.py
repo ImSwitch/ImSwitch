@@ -140,19 +140,20 @@ class ImConMainView(QtWidgets.QMainWindow):
             self.docks['Image'].addWidget(self.widgets['Image'])
             self.factory.setArgument('napariViewer', self.widgets['Image'].napariViewer)
             dockArea.addDock(self.docks['Image'], 'left')
+        # if we load the widget as a plugin we have to set a default position
+        # filter those enabeldDockKeys that are not in rightDockInfos
+        pluginDockKeys = [key for key in enabledDockKeys if (key not in rightDockInfos and key not in leftDockInfos and key!="Image")]
+        # add the pluginDockKeys to the rightDockInfos with default position
+        for widgetKey in pluginDockKeys:
+            rightDockInfos[widgetKey] = _DockInfo(name=widgetKey, yPosition=0)
+
         rightDocks = self._addDocks(
             {k: v for k, v in rightDockInfos.items() if k in enabledDockKeys},
             dockArea, 'right'
         )
 
-        # if we load the widget as a plugin we have to set a default position
-        # filter those enabeldDockKeys that are not in rightDockInfos
-        pluginDockKeys = [key for key in enabledDockKeys if key not in rightDockInfos]
-        # add the pluginDockKeys to the rightDockInfos with default position
-        for widgetKey in pluginDockKeys:
-            rightDockInfos[widgetKey] = _DockInfo(name=widgetKey, yPosition=0)
 
-        self._addDocks(
+        lefDocks = self._addDocks(
             {k: v for k, v in leftDockInfos.items() if k in enabledDockKeys},
             dockArea, 'left'
         )
@@ -220,8 +221,8 @@ class ImConMainView(QtWidgets.QMainWindow):
                 )
             except:
                 # try to get it from the plugins
-                for entry_point in pkg_resources.iter_entry_points(f'imswitch.implugins.widgets'):
-                    if entry_point.name == f'{widgetKey}widget':
+                for entry_point in pkg_resources.iter_entry_points(f'imswitch.implugins'):
+                    if entry_point.name == f'{widgetKey}_widget':
                         packageWidget = entry_point.load()
                         self.widgets[widgetKey] = self.factory.createWidget(packageWidget)
                         break

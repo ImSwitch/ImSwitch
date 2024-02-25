@@ -56,6 +56,7 @@ class ImConMainController(MainController):
 
         for widgetKey, widget in self.__mainView.widgets.items():
             try:
+                print(widgetKey)
                 self.controllers[widgetKey] = self.__factory.createController(
                     (getattr(controllers, f'{widgetKey}Controller')
                     if widgetKey != 'Scan' else
@@ -63,8 +64,8 @@ class ImConMainController(MainController):
                 )
             except:
                 #try to get it from the plugins
-                for entry_point in pkg_resources.iter_entry_points(f'imswitch.implugins.widgets'):
-                    if entry_point.name == f'{widgetKey}controller':
+                for entry_point in pkg_resources.iter_entry_points(f'imswitch.implugins'):
+                    if entry_point.name == f'{widgetKey}_controller':
                         packageController = entry_point.load()
                         self.controllers[widgetKey] = self.__factory.createController(packageController, widget)
                         break

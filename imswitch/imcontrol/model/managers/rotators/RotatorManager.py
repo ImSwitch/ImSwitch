@@ -6,6 +6,7 @@ class RotatorManager(SignalInterface):
     """ Abstract base class for managers that control rotators. Each type of
     rotator corresponds to a manager derived from this class. """
 
+    sigPositionUpdated = Signal(int, int) # (steps, degrees)
     sigOptStepDone = Signal()
 
     @abstractmethod

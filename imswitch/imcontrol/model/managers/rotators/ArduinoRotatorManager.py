@@ -40,7 +40,7 @@ class ArduinoRotatorManager(RotatorManager):
         self.stepsPerTurn = rotatorInfo.managerProperties['stepsPerTurn']
         self.speed = rotatorInfo.managerProperties['startSpeed']
         self.maximumspeed = rotatorInfo.managerProperties['maximumSpeed']
-        self.acceleration = rotatorInfo.managerProperties['acceleration']
+        self.acceleration = rotatorInfo.managerProperties['acceleration']        
         try:
             self.interface: MotorInterface = MotorInterface[rotatorInfo.managerProperties['interface']]
             self.pinConfig: Dict[str, int] = rotatorInfo.managerProperties['pinConfig']
@@ -70,9 +70,9 @@ class ArduinoRotatorManager(RotatorManager):
             self.__logger.warning(f'Failed to initialize Arduino stepper motor, loading mocker')
             self.board = MockBoard()
         
-        self.__initializeMotor()
         self.board.stepsPerTurn = self.stepsPerTurn
         self.board.currentPosition = (0, 0)
+        self.__initializeMotor()
 
     def close(self):
         """

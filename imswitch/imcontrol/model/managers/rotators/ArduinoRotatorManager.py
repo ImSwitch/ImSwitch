@@ -1,32 +1,12 @@
+from imswitch.imcontrol.model.interfaces import (
+    MockBoard, 
+    MotorInterface
+)
 from imswitch.imcommon.model import initLogger
-from imswitch.imcommon.framework import Signal, SignalInterface
 from imswitch.imcommon.model.utils import stepsToAngle, angleToSteps
 from .RotatorManager import RotatorManager
-from typing import Union, Tuple, Dict, Callable
-from enum import IntEnum
+from typing import Union, Tuple, Dict
 from telemetrix import telemetrix
-from time import sleep
-from apscheduler.schedulers.background import BackgroundScheduler
-
-class MotorInterface(IntEnum):
-    StepperDriver = 1
-    FULL2WIRE     = 2
-    FULL3WIRE     = 3
-    FULL4WIRE     = 4
-    HALF3WIRE     = 6
-    HALF4WIRE     = 8
-
-    def isPinConfigOK(self, pinConfig: Dict[str, int]) -> bool:
-        return len(pinConfig) == PIN_CONFIGS_NUM[self]
-
-PIN_CONFIGS_NUM = {
-    MotorInterface.StepperDriver: 2,
-    MotorInterface.FULL2WIRE    : 2,
-    MotorInterface.FULL3WIRE    : 3,
-    MotorInterface.FULL4WIRE    : 4,
-    MotorInterface.HALF3WIRE    : 3,
-    MotorInterface.HALF4WIRE    : 4
-}
 
 class TelemetrixInterface(telemetrix.Telemetrix):
     """ Expanding the Telemetrix 
@@ -36,92 +16,19 @@ class TelemetrixInterface(telemetrix.Telemetrix):
     currentPosition : Tuple[int, int] = (0, 0) # (steps, degrees)
     stepsPerTurn : int = 0
 
-class MockBoard(SignalInterface):
-    """ Mock class implementing placeholder methods for the a Telemetrix-supported board.
-    It's instantiated when the actual board is not found, or when the user wants 
-    to run the software in a non-hardware environment. Uses `APScheduler` to simulate
-    a continously rotating stepper motor when requested.
-    """
-
-    def __init__(self) -> None:
-        super().__init__()
-        self.__logger = initLogger(self)
-        self.__speed: int = 0
-        self.__maxSpeed: int = 0
-        self.__stepsToTurn: int = 0
-        self.currentPosition: Tuple[int, int] = (0, 0) # (steps, degrees)
-        self.stepsPerTurn: int = 0
-        self.motorIDCount: int = 0
-        self.__mockScheduler = BackgroundScheduler()
-
-    def stepper_get_current_position(self, motor_id: int, callback: Callable) -> None:
-        self.__logger.info(f'Mock board (motor {motor_id}) getting current position. Callback name: {callback.__name__}')
-    
-    def set_pin_mode_stepper(self, interface=1, pin1=2, pin2=3, pin3=4, pin4=5, enable=True) -> int:
-        interface = MotorInterface(interface)
-        pins = {
-            'pin1': pin1,
-            'pin2': pin2,
-            'pin3': pin3,
-            'pin4': pin4
-        }
-        self.__logger.info(f'Mock board setting pin mode for stepper motor. Interface: {interface}, pins: {pins}, enable: {enable}')
-        self.motorIDCount += 1
-        return self.motorIDCount
-        
-
-    def stepper_set_speed(self, motor_id: int, speed: int) -> None:
-        if speed > self.__maxSpeed:
-            self.__logger.warning(f"Exceeding maximum speed for motor {motor_id}. Setting to maximum speed {self.__maxSpeed}.")
-        else:
-            self.__logger.info(f"Mock board setting speed to {speed}")
-            self.__speed = speed
-
-    def stepper_set_max_speed(self, _: int, max_speed: int) -> None:
-        self.__maxSpeed = max_speed
-
-    def stepper_set_acceleration(self, _: int, acceleration: int) -> None:
-        self.__logger.info(f"Mock board setting acceleration to {acceleration}")
-
-    def stepper_move(self, _: int, steps: int) -> None:
-        self.__stepsToTurn = steps
-
-    def stepper_run(self, _: int, callback: Callable) -> None:
-        """ Simulates the movement of the stepper motor.
-
-        Args:
-            _ (`int`): motor ID (unused in this method)
-            callback (`Callable`): callback function to execute after the movement is done.
-                                Receives the new position as an argument, formatted as a tuple (steps, degrees).
-        """
-        newPosition = (self.currentPosition[0] + self.__stepsToTurn) % self.stepsPerTurn
-        self.currentPosition = (newPosition, stepsToAngle(newPosition))
-        callback(self.currentPosition)
-
-    def stepper_run_speed(self, motor_id: int) -> None:
-        self.__logger.info(f"Mock board running motor {motor_id} continously at speed {self.__speed}")
-        self.__mockScheduler.add_job(self.__mock_continous_movement, 'interval', seconds=1)
-
-    def stepper_stop(self, motor_id: int) -> None:
-        self.__logger.info(f"Mock board stopping motor {motor_id} continous movement.")
-    
-    def stepper_set_current_position(self, _: int, position: int) -> None:
-        self.currentPosition = (position, stepsToAngle(position))
-
-    def shutdown(self):
-        self.__logger.info('Mock board shutting down.')
-    
-    def __mock_continous_movement(self):
-        """ Simulates the continous movement of the stepper motor.
-        Triggered by the background schedulers, calculates the new position.
-        """
-        newPosition = (self.currentPosition[0] + self.__stepsToTurn) % self.stepsPerTurn
-        self.currentPosition = (newPosition, stepsToAngle(newPosition))
-
 class ArduinoRotatorManager(RotatorManager):
-    """ Arduino stepper motor manager.
+    """ Wrapper of a Telemetrix interface to an Arduino-controlled stepper motor.
+    
+    Manager properties:
+        - stepsPerTurn (`int`): number of steps needed to complete a full turn.
+        - startSpeed (`int`): initial speed of the motor.
+        - maximumSpeed (`int`): maximum speed of the motor.
+        - acceleration (`int`): acceleration of the motor.
+        - interface (`str`): the type of interface used to control the motor;
+            can be one of the following values: 'StepperDriver', 'FULL2WIRE', 'FULL3WIRE', 'FULL4WIRE', 'HALF3WIRE', 'HALF4WIRE'.
+        - pinConfig (`Dict[str, int]`): a string-int pair dictionary with the pin configuration for the selected interface;
+            the keys are `pin1`, `pin2`, `pin3`, `pin4`; the values are the pin numbers (integers).
     """
-    sigMoveStarted = Signal()
 
     def __init__(self, rotatorInfo, name, *args, **kwargs):
         super().__init__(rotatorInfo, name, *args, **kwargs)
@@ -130,11 +37,18 @@ class ArduinoRotatorManager(RotatorManager):
         if rotatorInfo is None:
             self.__logger.error('No rotator info provided in the configuration file')
             raise ValueError('No rotator info providided in the configuration file')
-        self._deviceID = rotatorInfo.managerProperties['motorListIndex']
-        self._stepsPerTurn = rotatorInfo.managerProperties['stepsPerTurn']
+        self.stepsPerTurn = rotatorInfo.managerProperties['stepsPerTurn']
         self.speed = rotatorInfo.managerProperties['startSpeed']
         self.maximumspeed = rotatorInfo.managerProperties['maximumSpeed']
         self.acceleration = rotatorInfo.managerProperties['acceleration']
+        try:
+            self.interface: MotorInterface = MotorInterface[rotatorInfo.managerProperties['interface']]
+            self.pinConfig: Dict[str, int] = rotatorInfo.managerProperties['pinConfig']
+            if not self.interface.isPinConfigOK(self.pinConfig):
+                raise ValueError('Invalid pin configuration for the selected interface')
+        except ValueError:
+            self.__logger.error('Invalid interface value in the configuration file. Check the configuration file.')
+            raise ValueError('Invalid interface value in the configuration file. Check the configuration file.')
         self.board = None
         self.motorID = None
         self.turning = False
@@ -149,15 +63,15 @@ class ArduinoRotatorManager(RotatorManager):
         """ Initializes the handle to the hardware interface. If no hardware is found, a mock object is used instead.
         """
         try:
-            self.__logger.info(f'Trying to initialize Arduino stepper motor {self._deviceID}')
+            self.__logger.info(f'Trying to initialize Arduino stepper motor (interface: {self.interface})')
             self.board = self.__initializeBoard()
             self.__logger.info("Success")
         except Exception:
-            self.__logger.warning(f'Failed to initialize Arduino stepper motor {self._deviceID}, loading mocker')
+            self.__logger.warning(f'Failed to initialize Arduino stepper motor, loading mocker')
             self.board = MockBoard()
         
         self.__initializeMotor()
-        self.board.stepsPerTurn = self._stepsPerTurn
+        self.board.stepsPerTurn = self.stepsPerTurn
         self.board.currentPosition = (0, 0)
 
     def close(self):
@@ -187,13 +101,7 @@ class ArduinoRotatorManager(RotatorManager):
         """ Initializes the board motor pin configuration.
         If the board handle is a mock object, it will call placeholder methods.
         """
-        # TODO: move pin configuration to the JSON configuration file
-        if self._deviceID == 0:
-            self.motorID = self.board.set_pin_mode_stepper(interface=4,
-                                                        pin1=8, pin2=10, pin3=9, pin4=11)
-        elif self._deviceID == 1:
-            self.motorID = self.board.set_pin_mode_stepper(interface=1,
-                                                        pin1=2, pin2=3)
+        self.motorID = self.board.set_pin_mode_stepper(interface=self.interface.value, **self.pinConfig)
         self.board.stepper_set_max_speed(self.motorID, self.maximumspeed)
         self.board.stepper_set_current_position(self.motorID, 0)
         
@@ -223,6 +131,7 @@ class ArduinoRotatorManager(RotatorManager):
         Args:
             angle (int): rotation angle.
         """
+        # TODO: move this check to controller
         if inSteps:
             steps = value
         else:
@@ -233,7 +142,7 @@ class ArduinoRotatorManager(RotatorManager):
         self.board.stepper_run(self.motorID, self.moveFinishedCallback)
 
     def readPositionAfterMove(self):
-        """ Slot connected to sigMoveDone signal.
+        """ Slot connected to sigOptStepDone signal.
         Updates the current position read by the interface.
         """
         self.board.stepper_get_current_position(self.motorID, self.currentPositionCallback)
@@ -260,6 +169,8 @@ class ArduinoRotatorManager(RotatorManager):
     def moveFinishedCallback(self, data: Tuple[int, int]) -> None:
         self.__logger.info(f'Move done (step: {data[0]}, angle: {data[1]}°)')
         self.turning = False
+        
+        # read back position and update local value
         self.sigOptStepDone.emit()
 
     def currentPositionCallback(self, data: Tuple[int, int]) -> None:

@@ -2,22 +2,32 @@ from setuptools import setup, find_packages
 
 # Version will be read from your package's __init__.py
 # Make sure __version__ is defined in imswitch/__init__.py
-from imswitch import __version__
+def get_version():
+    version_file = 'imswitch/__init__.py'
+    with open(version_file, 'r') as file:
+        for line in file:
+            if line.startswith('__version__'):
+                # Strip the line to remove whitespaces and newline characters,
+                # then split it on '=' and strip again to remove any remaining whitespaces.
+                # Finally, strip the quotes from the version string.
+                return line.strip().split('=')[1].strip().strip('\'"')
+    raise RuntimeError('Unable to find version string.')
+
 
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 setup(
     name="ImSwitch",
-    version=__version__,
-    author="Xavier Casas Moreno",
-    author_email="xaviercm@kth.se",
+    version=get_version(),
+    author="Benedict Diederich, Xavier Casas Moreno, et al.",
+    author_email="benedictdied@gmail.com",
     description="Microscopy control",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/kasasxav/ImSwitch",
+    url="https://github.com/openuc2/ImSwitch",
     project_urls={
-        "Bug Tracker": "https://github.com/kasasxav/ImSwitch/issues",
+        "Bug Tracker": "https://github.com/openuc2/ImSwitch/issues",
     },
     classifiers=[
         "Programming Language :: Python :: 3",

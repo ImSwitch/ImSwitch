@@ -20,7 +20,7 @@ class ArduinoRotatorManager(RotatorManager):
     """ Wrapper of a Telemetrix interface to an Arduino-controlled stepper motor.
     
     Manager properties:
-        - stepsPerTurn (`int`): number of steps needed to complete a full turn.
+        - stepsPerTurn (`int`): conversion factor for calculating the rotation angle from the number of steps.
         - startSpeed (`int`): initial speed of the motor.
         - maximumSpeed (`int`): maximum speed of the motor.
         - acceleration (`int`): acceleration of the motor.
@@ -118,7 +118,7 @@ class ArduinoRotatorManager(RotatorManager):
         """Method implemented from base class.
         Performs a movement relative to the current position.
         """
-        steps = angleToSteps(angle)
+        steps = angleToSteps(angle, self.stepsPerTurn)
         self.turning = True
         self.board.stepper_move(self.motorID, steps)
         self.board.stepper_run(self.motorID, self.moveFinishedCallback)
@@ -135,7 +135,7 @@ class ArduinoRotatorManager(RotatorManager):
         if inSteps:
             steps = value
         else:
-            steps = angleToSteps(value)
+            steps = angleToSteps(value, self.stepsPerTurn)
         
         self.turning = True
         self.board.stepper_move(self.motorID, steps - self.currentPosition[0])
@@ -180,7 +180,7 @@ class ArduinoRotatorManager(RotatorManager):
         """
         # for now tuple of steps, degrees
         steps = data[2] % self.board.stepsPerTurn
-        self.board.currentPosition = (steps, stepsToAngle(steps))
+        self.board.currentPosition = (steps, stepsToAngle(steps, self.stepsPerTurn))
         if steps != data[2]:
             self.board.stepper_set_current_position(self.motorID, steps)
 

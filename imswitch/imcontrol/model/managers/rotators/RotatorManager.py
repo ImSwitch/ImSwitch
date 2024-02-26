@@ -6,7 +6,7 @@ class RotatorManager(SignalInterface):
     """ Abstract base class for managers that control rotators. Each type of
     rotator corresponds to a manager derived from this class. """
 
-    sigPositionUpdated = Signal()
+    sigRotatorPositionUpdated = Signal()
 
     @abstractmethod
     def __init__(self, rotatorInfo, name: str, *args, **kwargs):
@@ -36,7 +36,7 @@ class RotatorManager(SignalInterface):
         """ Moves the rotator by the specified distance.
         Derived classes will update the position field manually;
         position updates can be monitored by implementing the
-        sigPositionUpdated signal in the derived class.
+        sigRotatorPositionUpdated signal in the derived class.
         """
         pass
 
@@ -45,7 +45,7 @@ class RotatorManager(SignalInterface):
         """ Adjusts the rotator to the specified position.
         Derived classes will update the position field manually;
         position updates can be monitored by implementing the
-        sigPositionUpdated signal in the derived class.
+        sigRotatorPositionUpdated signal in the derived class.
         """
         pass
 

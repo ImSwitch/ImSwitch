@@ -89,7 +89,7 @@ class MasterController:
 
         self.slmManager.sigSLMMaskUpdated.connect(cc.sigSLMMaskUpdated)
 
-        self.rotatorsManager.sigOptStepDone.connect(cc.sigOptStepDone)
+        self.rotatorsManager.sigRotatorPositionUpdated.connect(cc.sigRotatorPositionUpdated)
 
     def memoryRecordingAvailable(self, name, file, filePath, savedToDisk):
         self.__moduleCommChannel.memoryRecordings[name] = VFileItem(

@@ -6,7 +6,7 @@ class RotatorsManager(MultiManager, SignalInterface):
     """ RotatorsManager interface for dealing with RotatorManagers. It is
     a MultiManager for rotators. """
 
-    sigOptStepDone = Signal(str)
+    sigRotatorPositionUpdated = Signal(str)
 
     def __init__(self, rotatorsInfo, **lowLevelManagers):
         MultiManager.__init__(self, rotatorsInfo, 'rotators', **lowLevelManagers)
@@ -14,8 +14,8 @@ class RotatorsManager(MultiManager, SignalInterface):
 
         for rotatorName, rotatorInfo in rotatorsInfo.items():
             # Connect signals
-            self._subManagers[rotatorName].sigOptStepDone.connect(
-                lambda: self.sigOptStepDone.emit(rotatorName)
+            self._subManagers[rotatorName].sigRotatorPositionUpdated.connect(
+                lambda: self.sigRotatorPositionUpdated.emit(rotatorName)
             )
 
 

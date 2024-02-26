@@ -31,7 +31,7 @@ class RotatorController(ImConWidgetController):
         self._commChannel.sigSetSyncInMovementSettings.connect(
                                     lambda name,
                                     pos: self.setSyncInMovement(name, pos))
-        self._commChannel.sigPositionUpdated.connect(
+        self._commChannel.sigRotatorPositionUpdated.connect(
                                     lambda name: self.updatePosition(name)
         )
         

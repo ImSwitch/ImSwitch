@@ -70,7 +70,7 @@ class CommunicationChannel(SignalInterface):
 
     sigScanEnded = Signal()
 
-    sigOptStepDone = Signal(str)  # rotatorName
+    sigRotatorPositionUpdated = Signal(str)  # rotatorName
 
     sigSLMMaskUpdated = Signal(object)  # (mask)
 

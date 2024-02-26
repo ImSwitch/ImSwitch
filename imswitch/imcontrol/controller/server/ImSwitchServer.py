@@ -189,8 +189,8 @@ class ImSwitchServer(Worker):
 
 
         def includeAPI(str, func):
-            self.__logger.debug(str)
-            self.__logger.debug(func)
+            #self.__logger.debug(str)
+            #self.__logger.debug(func)
             @app.get(str)
             @wraps(func)
             async def wrapper(*args, **kwargs):

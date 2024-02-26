@@ -25,7 +25,7 @@ PIN_CONFIGS_NUM = {
     MotorInterface.HALF4WIRE    : 4
 }
 
-class MockBoard:
+class MockTelemetrixBoard:
     """ Mock class implementing placeholder methods for the a Telemetrix-supported board.
     It's instantiated when the actual board is not found, or when the user wants 
     to run the software in a non-hardware environment. Uses `APScheduler` to simulate

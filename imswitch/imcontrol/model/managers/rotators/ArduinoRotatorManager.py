@@ -1,5 +1,5 @@
 from imswitch.imcontrol.model.interfaces import (
-    MockBoard, 
+    MockTelemetrixBoard, 
     MotorInterface
 )
 from imswitch.imcommon.model import initLogger
@@ -62,14 +62,8 @@ class ArduinoRotatorManager(RotatorManager):
     def __setupBoardConnection(self):
         """ Initializes the handle to the hardware interface. If no hardware is found, a mock object is used instead.
         """
-        try:
-            self.__logger.info(f'Trying to initialize Arduino stepper motor (interface: {self.interface})')
-            self.board = self.__initializeBoard()
-            self.__logger.info("Success")
-        except Exception:
-            self.__logger.warning(f'Failed to initialize Arduino stepper motor, loading mocker')
-            self.board = MockBoard()
-        
+        self.__logger.info(f'Trying to initialize Arduino stepper motor (interface: {self.interface})')
+        self.board = self.__initializeBoard()        
         self.board.stepsPerTurn = self._stepsPerTurn
         self.board.currentPosition = (0, 0)
         self.__initializeMotor()
@@ -84,7 +78,7 @@ class ArduinoRotatorManager(RotatorManager):
         self.sigOptStepDone.disconnect(self.readPositionAfterMove)
         self.board.shutdown()
 
-    def __initializeBoard(self) -> Union[TelemetrixInterface, MockBoard]:
+    def __initializeBoard(self) -> Union[TelemetrixInterface, MockTelemetrixBoard]:
         """ Initializes communication with the Telemetrix firmware. If no board is found, a mock object is used instead.
         """
         board = None
@@ -94,7 +88,7 @@ class ArduinoRotatorManager(RotatorManager):
             self.__logger.info('Telemetrix interface initialized')
         except Exception:
             self.__logger.warning('Failed to initialize Telemetrix board. Setting up mock object.')
-            board = MockBoard()
+            board = MockTelemetrixBoard()
         return board
 
     def __initializeMotor(self):

@@ -1,7 +1,7 @@
-from PyQt5.QtCore import pyqtSlot
+
 from PyQt5 import QtWidgets
 import pyqtgraph as pg
-from PyQt5.QtCore import QObject, QThread, pyqtSignal, QMutex
+from PyQt5.QtCore import QObject, pyqtSignal
 from scipy.fftpack import fft, ifft
 from scipy.interpolate import interp1d
 import tifffile as tif
@@ -15,8 +15,9 @@ from matplotlib.figure import Figure
 from functools import partial
 import numpy as np
 
-from imswitch.imcommon.model import initLogger, dirtools
 from ..basecontrollers import ImConWidgetController
+from imswitch.imcommon.model import initLogger, dirtools
+from imswitch.imcommon.view.guitools.dialogtools import askYesNoQuestion
 from imswitch.imcommon.framework import Signal, Thread, Worker
 from skimage.transform import radon
 
@@ -84,8 +85,8 @@ class OPTWorker(Worker):
     """ OPT scan worker thread.
     
     Args:
-        detector (`DetectorManager`) : detector currently used by the OPT algorithm.
-        rotator (`RotatorManager`): rotator currently used by the OPT algorithm.
+        detector (`DetectorManager`): reference to the detector currently used by the OPT algorithm.
+        rotator (`RotatorManager`): reference to the rotator currently used by the OPT algorithm.
         optSteps (`np.ndarray`): array of equidistant steps for the OPT scan in absolute values.
     """
     def __init__(self, detector, rotator, optSteps) -> None:
@@ -110,11 +111,11 @@ class OPTWorker(Worker):
         if not self.isOptRunning:
             self.isOptRunning = True
             self.currentStep = 0
-            self.timeMonitor.addStamp('motor', self.__currentStep, 'beg')
+            self.timeMonitor.addStamp('motor', self.currentStep, 'beg')
             self.rotator.move_abs(self.optSteps[self.currentStep], inSteps=True)
 
 class ScanControllerOpt(ImConWidgetController):
-    """ OPT scan controller.
+    """ Optical Projection Tomography (OPT) scan controller.
     """
     sigImageReceived = Signal(str, np.ndarray)  # (name, frame array)
 
@@ -169,47 +170,49 @@ class ScanControllerOpt(ImConWidgetController):
         self._widget.scanPar['OptStepsEdit'].valueChanged.connect(self.updateOptSteps)
 
         # currently using local acquistion loop
-        self._widget.scanPar['StartButton'].clicked.connect(self.initOpt)
+        self._widget.scanPar['StartButton'].clicked.connect(self.prepareOPTScan)
         self._widget.scanPar['StopButton'].clicked.connect(self.stopOpt)
         self._widget.scanPar['PlotReportButton'].clicked.connect(self.plotReport)
 
+        # Communication channel signals connection
+        self._commChannel.sigRotatorPositionUpdated.connect(self.post_step)
+
     # JA: method to add your metadata to recordings
-    # TODO: metadata still not taken care of
+    # TODO: metadata still not taken care of, implement
     def setSharedAttr(self, rotatorName, meta1, meta2, attr, value):
-        self.settingAttr = True
-        try:
-            self._commChannel.sharedAttrs[
-                (_attrCategory, rotatorName, meta1, meta2, attr)] = value
-        finally:
-            self.settingAttr = False
+        pass
 
     #################
     # Main OPT scan #
     #################
-    def initOpt(self):
-        """ Initiate Opt scan.  """
+    def prepareOPTScan(self):
+        """ Initiate OPT scan.  """
+
+        if self._widget.scanPar['MockOpt'].isChecked():
+            # Checking for divisability of motor steps and OPT steps.
+            # this is necessary only for the real OPT, not Mock
+            if self.stepsPerTurn % self.__optSteps != 0:
+                text = "Steps per/rev should be divisable by number of OPT steps. \
+                        You can continue by casting the steps on integers and risk \
+                        imprecise measured angles. Or cancel scan."
+                confirmed = askYesNoQuestion(self._widget, "Motor steps not integer values.", " ".join(text.split()))
+                # hex value associated with Cancel button of QMessageBox
+                if not confirmed:
+                    return
+            self._logger.info('Demo experiment requested: preparing synthetic data.')
+            # here generate stack of projections
+            self.demo = DemoData(resolution=self.__optSteps)
+
         self.allFrames = []
         self.saveSubfolder = datetime.now().strftime("%Y_%m_%d-%H-%M-%S")
         self.sigImageReceived.connect(self.displayImage)
 
         self.__optSteps = self.getOptSteps()
 
-        self.rotator.sigOptStepDone.connect(self.post_step)
-        if self._widget.scanPar['MockOpt'].isChecked():
-            self.prepareOptMock()
-
-            # Checking for divisability of motor steps and OPT steps.
-            # this is necessary only for the real OPT, not Mock
-            if self.stepsPerTurn % self.__optSteps != 0:
-                retval = self.raiseStepMess()
-                # hex value associated with Cancel button of QMessageBox
-                if int(retval) == int(0x00400000):
-                    self.stopOpt()
-                    return
-
         # equidistant steps for the OPT scan in absolute values.
-        self.opt_steps = np.linspace(0, self.stepsPerTurn, self.__optSteps,
-                                     endpoint=False).astype(np.int_)
+        self.opt_steps = np.linspace(0, self.stepsPerTurn, 
+                                    self.__optSteps,
+                                    endpoint=False).astype(np.int_)
 
         # init intensity stability monitoring
         self.signalStability = Stability()
@@ -224,7 +227,6 @@ class ScanControllerOpt(ImConWidgetController):
         self.optWorker.moveToThread(self.optThread)
         
         self.enableWidget(False)
-        
         self.optThread.started.connect(self.optWorker.startOpt)
         self.optThread.start()
 
@@ -246,21 +248,6 @@ class ScanControllerOpt(ImConWidgetController):
             self.moveAbsRotator(self.__rotators[self.motorIdx],
                                 self.opt_steps[self.__currentStep])
 
-    def prepareOptMock(self):
-        """
-        Generate 3D phantom data and connects motor step
-        finish to post_step_mock()
-        """
-        self._logger.info('Preparing Mock experiment')
-        self._master.rotatorsManager[
-            self.__rotators[self.motorIdx]].sigOptStepDone.connect(
-                                                    self.post_step_mock)
-
-        # here generate stack of projections
-        self.demo = DemoData(resolution=self.__optSteps)
-        self._logger.info('waiting...')
-
-    @pyqtSlot()
     def moveAbsRotator(self, name, dist):
         """ Move a specific rotator to an absolute position. """
         self._master.rotatorsManager[name].move_abs(dist, inSteps=True)
@@ -547,30 +534,6 @@ class ScanControllerOpt(ImConWidgetController):
     ###################
     # Message windows #
     ###################
-    def raiseStepMess(self):
-        """
-        Warn user when selected number of OPT steps do divide the
-        motor steps and will not be exactly equidistant.
-
-        Returns:
-            hex: hexadecimal value of the button pressed.
-        """
-        msg = QtWidgets.QMessageBox()
-        msg.setIcon(QtWidgets.QMessageBox.Warning)
-        msg.setText("Motor steps not integer values.")
-        text = "Steps per/rev should be divisable by number of OPT steps. \
-            You can continue by casting the steps on integers and risk \
-            imprecise measured angles. Or cancel scan."
-        msg.setInformativeText(" ".join(text.split()))
-        msg.setStandardButtons(
-            QtWidgets.QMessageBox.Ok | QtWidgets.QMessageBox.Cancel)
-        btn_cancel = msg.button(QtWidgets.QMessageBox.Cancel)
-        btn_cancel.setText('Cnacel scan')
-        btn_measure = msg.button(QtWidgets.QMessageBox.Ok)
-        btn_measure.setText('Cast on int and measure')
-        retval = msg.exec_()
-        return retval
-
     def exec_hot_pixels(self):
         """
         Block camera message before acquisition of the dark-field counts,

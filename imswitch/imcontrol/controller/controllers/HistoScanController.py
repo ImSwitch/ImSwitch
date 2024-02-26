@@ -452,7 +452,7 @@ class HistoScanController(LiveUpdatedController):
             positionList = []
             for i in range(numberTilesX):
                 for j in range(numberTilesY):
-                    positionList.append((i*stepSizeX+initPosX-numberTilesX//2, j*stepSizeY+initPosY-numberTilesY//2))
+                    positionList.append((i*stepSizeX+initPosX-numberTilesX//2*stepSizeX, j*stepSizeY+initPosY-numberTilesY//2*stepSizeY))
             return positionList
         if illuSource is None:
             illuSource = self._master.lasersManager.getAllDeviceNames()[0]

@@ -221,8 +221,8 @@ class ESP32StageManager(PositionerManager):
             else: self._position[axis] = value
         elif axis == 'XY':
             # don't move to negative positions
-            if is_absolute and (value[0] < 0 or value[1] < 0): return
-            elif not is_absolute and (self._position["X"] + value[0] < 0 or self._position["Y"] + value[1] < 0): return
+            if (self.limitXenabled and self.limitYenabled) and is_absolute and (value[0] < 0 or value[1] < 0): return
+            elif (self.limitXenabled and self.limitYenabled) and not is_absolute and (self._position["X"] + value[0] < 0 or self._position["Y"] + value[1] < 0): return
             self._motor.move_xy(value, speed, acceleration=acceleration, is_absolute=is_absolute, is_enabled=isEnable, is_blocking=is_blocking, timeout=timeout)
             for i, iaxis in enumerate(("X", "Y")):
                 if not is_absolute:

@@ -14,13 +14,104 @@ from matplotlib.figure import Figure
 
 from functools import partial
 import numpy as np
-import time
 
 from imswitch.imcommon.model import initLogger, dirtools
 from ..basecontrollers import ImConWidgetController
-from imswitch.imcommon.framework import Signal
+from imswitch.imcommon.framework import Signal, Thread, Worker
 from skimage.transform import radon
 
+class ExecOptMonitor():
+    def __init__(self):
+        self.report = defaultdict(lambda: [])
+
+    def addStamp(self, key: str, idx: int, tag: str):
+        self.report[key].append((idx, tag, datetime.now()))
+
+    def addStart(self):
+        self.report['start'] = datetime.now()
+
+    def addFinish(self):
+        self.report['end'] = datetime.now()
+        try:
+            self.totalTime = (self.report['end'] - self.report['start']).total_seconds()
+        except:
+            print('Not possible to calculate total experimental time.')
+
+    def getReport(self):
+        return self.report
+
+    def makeReport(self):
+        # create statistical report on the time spent
+        # on various tasks
+        self.reportOut = {}
+        print()
+        print('############ Time Report #############')
+        print('######################################')
+        print(f'Total exp. time: {np.round(self.totalTime, 3)} s')
+        print('Beg and end times', self.report['start'], self.report['end'])
+        for k, _ in self.report.items():
+            if k in ['start', 'end']:
+                continue
+            self.processKey(k)
+        print('######################################')
+
+    def processKey(self, key):
+        # first the integrated time spent
+        idxs, tags, stamps = zip(*self.report[key])
+        i = 0
+        diffs, steps = [], []
+        while i < len(stamps)-1:
+            if (idxs[i] == idxs[i+1] and tags[i] == 'beg' and tags[i+1] == 'end'):
+                diffs.append((stamps[i+1] - stamps[i]).total_seconds())
+                steps.append(idxs[i])  # append for time evolution
+            i += 1
+        if len(diffs) != len(stamps) // 2:
+            print('Some data were not matched')
+        print(f'Total {key}: {sum(diffs)} s, Mean (STD): {np.round(np.mean(diffs), 3)} ({np.round(np.std(diffs), 3)}) s')
+        print(f'Perc. of Total experimental time: {np.round(sum(diffs)/self.totalTime * 100, 3)} %', end='\n')
+        print()
+
+        # save processed report to self.reportOut
+        report = {}
+        report['Total'] = np.sum(diffs)
+        report['Mean'] = np.mean(diffs)
+        report['STD'] = np.std(diffs)
+        report['Tseries'] = np.array([steps, diffs]).T
+        report['PercTime'] = np.sum(diffs)/self.totalTime * 100
+        self.reportOut[key] = report
+
+class OPTWorker(Worker):
+    """ OPT scan worker thread.
+    
+    Args:
+        detector (`DetectorManager`) : detector currently used by the OPT algorithm.
+        rotator (`RotatorManager`): rotator currently used by the OPT algorithm.
+        optSteps (`np.ndarray`): array of equidistant steps for the OPT scan in absolute values.
+    """
+    def __init__(self, detector, rotator, optSteps) -> None:
+        super().__init__()
+        self.detector = detector
+        self.rotator = rotator
+        self.optSteps = optSteps
+        self.currentStep = 0
+        self.timeMonitor = None
+    
+    def startOpt(self):
+        """ run OPT, set flags and move to step zero rotator position
+        """
+        self.detector.startAcquisition()
+        
+        # TODO: init time monitoring
+        # this will put timeflags at certain execution points
+        # which in the stopOpt will make a report and will be saved
+        # in the metadata.
+        self.timeMonitor = ExecOptMonitor()
+        self.timeMonitor.addStart()
+        if not self.isOptRunning:
+            self.isOptRunning = True
+            self.currentStep = 0
+            self.timeMonitor.addStamp('motor', self.__currentStep, 'beg')
+            self.rotator.move_abs(self.optSteps[self.currentStep], inSteps=True)
 
 class ScanControllerOpt(ImConWidgetController):
     """ OPT scan controller.
@@ -44,11 +135,15 @@ class ScanControllerOpt(ImConWidgetController):
         # Should it be synchronized with recording selector?
         allDetectorNames = self._master.detectorsManager.getAllDeviceNames()
         self.detector = self._master.detectorsManager[allDetectorNames[0]]
-
-        # connect updator, get rotators, populate combobox
-        self._widget.scanPar['Rotator'].currentIndexChanged.connect(
-            self.updateRotator)
-        self.getRotators()
+        
+        self.rotatorsList = self._master.rotatorsManager.getAllDeviceNames()
+        self.rotatorName = None
+        self.rotator = None
+        self.stepsPerTurn = 0
+        
+        self._widget.scanPar['Rotator'].currentIndexChanged.connect(self.updateRotator)
+        self.updateRotator()
+        
         for rotator in self.__rotators:
             self._widget.scanPar['Rotator'].addItem(rotator)
 
@@ -99,16 +194,13 @@ class ScanControllerOpt(ImConWidgetController):
 
         self.__optSteps = self.getOptSteps()
 
+        self.rotator.sigOptStepDone.connect(self.post_step)
         if self._widget.scanPar['MockOpt'].isChecked():
             self.prepareOptMock()
-        else:
-            self._master.rotatorsManager[
-                self.__rotators[self.motorIdx]].sigOptStepDone.connect(
-                                                        self.post_step)
 
             # Checking for divisability of motor steps and OPT steps.
             # this is necessary only for the real OPT, not Mock
-            if self.__motor_steps % self.__optSteps != 0:
+            if self.stepsPerTurn % self.__optSteps != 0:
                 retval = self.raiseStepMess()
                 # hex value associated with Cancel button of QMessageBox
                 if int(retval) == int(0x00400000):
@@ -116,7 +208,7 @@ class ScanControllerOpt(ImConWidgetController):
                     return
 
         # equidistant steps for the OPT scan in absolute values.
-        self.opt_steps = np.linspace(0, self.__motor_steps, self.__optSteps,
+        self.opt_steps = np.linspace(0, self.stepsPerTurn, self.__optSteps,
                                      endpoint=False).astype(np.int_)
 
         # init intensity stability monitoring
@@ -126,12 +218,15 @@ class ScanControllerOpt(ImConWidgetController):
         if self.liveRecon:
             self.updateLiveReconIdx()
             self.currentRecon = None  # avoid update_recon in the first step
-        print('going to start OPT')
-        self.thread = QThread()
-        self.thread.started.connect(self.startOpt)
-        # self.thread.finished.connect(self.printEnd)
-        self.thread.finished.connect(self.thread.quit)
-        self.thread.start()
+        self.__logger.info("Starting local OPT reconstruction thread.")
+        self.optThread = Thread()
+        self.optWorker = OPTWorker(self.detector, self.rotator)
+        self.optWorker.moveToThread(self.optThread)
+        
+        self.enableWidget(False)
+        
+        self.optThread.started.connect(self.optWorker.startOpt)
+        self.optThread.start()
 
     def startOpt(self):
         """run OPT, set flags and move to step zero rotator position
@@ -157,7 +252,6 @@ class ScanControllerOpt(ImConWidgetController):
         finish to post_step_mock()
         """
         self._logger.info('Preparing Mock experiment')
-        # self.mtx = QMutex()
         self._master.rotatorsManager[
             self.__rotators[self.motorIdx]].sigOptStepDone.connect(
                                                     self.post_step_mock)
@@ -373,16 +467,10 @@ class ScanControllerOpt(ImConWidgetController):
         number of steps per revolution (resolution of the motor),
         also displayed in the widget.
         """
-        self.motorIdx = self._widget.getRotatorIdx()
-        self.__motor_steps = self._master.rotatorsManager[
-            self.__rotators[self.motorIdx]]._stepsPerTurn
-
-        self._widget.scanPar['StepsPerRevLabel'].setText(
-            f'{self.__motor_steps:d} steps/rev')
-
-        self.__logger.debug(
-            f'Rotator: {self.__rotators[self.motorIdx]}, {self.__motor_steps} steps/rev',
-            )
+        self.rotatorName = self._master.rotatorsManager[self._widget.getRotatorIdx()]
+        self.rotator = self._master.rotatorsManager[self.rotatorName]
+        self.stepsPerTurn = self.rotator._stepsPerTurn
+        self._widget.scanPar['StepsPerRevLabel'].setText(f'{self.stepsPerTurn:d} steps/rev')
 
     def getOptSteps(self):
         """ Get the total rotation steps for an OPT experiment. """
@@ -442,7 +530,6 @@ class ScanControllerOpt(ImConWidgetController):
 
     def updateLiveReconIdx(self) -> None:
         """ Get camera line index for the live reconstruction. """
-        print('updateLiveReconIdx call')
         self.reconIdx = self._widget.getLiveReconIdx()
 
     def setLiveReconIdx(self, value: int):
@@ -985,67 +1072,6 @@ class Get_radon(QObject):
         retval = msg.exec_()
         print(retval)
         return retval
-
-
-class ExecOptMonitor():
-    def __init__(self):
-        self.report = defaultdict(lambda: [])
-
-    def addStamp(self, key: str, idx: int, tag: str):
-        self.report[key].append((idx, tag, datetime.now()))
-
-    def addStart(self):
-        self.report['start'] = datetime.now()
-
-    def addFinish(self):
-        self.report['end'] = datetime.now()
-        try:
-            self.totalTime = (self.report['end'] - self.report['start']).total_seconds()
-        except:
-            print('Not possible to calculate total experimental time.')
-
-    def getReport(self):
-        return self.report
-
-    def makeReport(self):
-        # create statistical report on the time spent
-        # on various tasks
-        self.reportOut = {}
-        print()
-        print('############ Time Report #############')
-        print('######################################')
-        print(f'Total exp. time: {np.round(self.totalTime, 3)} s')
-        print('Beg and end times', self.report['start'], self.report['end'])
-        for k, _ in self.report.items():
-            if k in ['start', 'end']:
-                continue
-            self.processKey(k)
-        print('######################################')
-
-    def processKey(self, key):
-        # first the integrated time spent
-        idxs, tags, stamps = zip(*self.report[key])
-        i = 0
-        diffs, steps = [], []
-        while i < len(stamps)-1:
-            if (idxs[i] == idxs[i+1] and tags[i] == 'beg' and tags[i+1] == 'end'):
-                diffs.append((stamps[i+1] - stamps[i]).total_seconds())
-                steps.append(idxs[i])  # append for time evolution
-            i += 1
-        if len(diffs) != len(stamps) // 2:
-            print('Some data were not matched')
-        print(f'Total {key}: {sum(diffs)} s, Mean (STD): {np.round(np.mean(diffs), 3)} ({np.round(np.std(diffs), 3)}) s')
-        print(f'Perc. of Total experimental time: {np.round(sum(diffs)/self.totalTime * 100, 3)} %', end='\n')
-        print()
-
-        # save processed report to self.reportOut
-        report = {}
-        report['Total'] = np.sum(diffs)
-        report['Mean'] = np.mean(diffs)
-        report['STD'] = np.std(diffs)
-        report['Tseries'] = np.array([steps, diffs]).T
-        report['PercTime'] = np.sum(diffs)/self.totalTime * 100
-        self.reportOut[key] = report
 
 
 # These functions are adapted from tomopy package

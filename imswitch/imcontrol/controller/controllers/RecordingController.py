@@ -212,6 +212,7 @@ class RecordingController(ImConWidgetController):
                 for detectorName in self.recordingArgs['detectorNames']
             }
             self.recordingArgs['recFrames'] = self._commChannel.getNumScanPositions()  # Update
+            self.recordingArgs['numCamTTL'] = self._commChannel.getNumCamTTL()
 
         self._master.recordingManager.startRecording(**self.recordingArgs)
         time.sleep(0.3)

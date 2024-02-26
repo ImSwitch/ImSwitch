@@ -31,11 +31,8 @@ class RotatorController(ImConWidgetController):
         self._commChannel.sigSetSyncInMovementSettings.connect(
                                     lambda name,
                                     pos: self.setSyncInMovement(name, pos))
-        # update position workaround
-        self._logger.info(f'motor name: {self.name}')
-
-        self._master.rotatorsManager[self.name].sigPositionUpdated.connect(
-            self.updatePosition,
+        self._commChannel.sigPositionUpdated.connect(
+                                    lambda name: self.updatePosition(name)
         )
         
         # Update current position in GUI

@@ -54,11 +54,6 @@ class ArduinoRotatorManager(RotatorManager):
         self.turning = False
         self.__setupBoardConnection()
 
-        # to interface with the asynchronous communication with the Telemetrix interface,
-        # we use sigOptStepDone signal to notify the end of the movement
-        # and call the relative method to update the position
-        self.sigOptStepDone.connect(self.readPositionAfterMove)
-
     def __setupBoardConnection(self):
         """ Initializes the handle to the hardware interface. If no hardware is found, a mock object is used instead.
         """
@@ -75,7 +70,6 @@ class ArduinoRotatorManager(RotatorManager):
         self.__logger.info('Motor shutting down.')
         if self.turning:
             self.board.stepper_stop(self.motorID)
-        self.sigOptStepDone.disconnect(self.readPositionAfterMove)
         self.board.shutdown()
 
     def __initializeBoard(self) -> Union[TelemetrixInterface, MockTelemetrixBoard]:
@@ -109,7 +103,7 @@ class ArduinoRotatorManager(RotatorManager):
         steps = angleToSteps(angle, self._stepsPerTurn)
         self.turning = True
         self.board.stepper_move(self.motorID, steps)
-        self.board.stepper_run(self.motorID, self.moveFinishedCallback)
+        self.board.stepper_run(self.motorID, self.__moveFinishedCallback)
 
     def move_abs(self, value, inSteps=False):
         """Method implemented from base class.
@@ -127,13 +121,7 @@ class ArduinoRotatorManager(RotatorManager):
         
         self.turning = True
         self.board.stepper_move(self.motorID, steps - self.board.currentPosition[0])
-        self.board.stepper_run(self.motorID, self.moveFinishedCallback)
-
-    def readPositionAfterMove(self):
-        """ Slot connected to sigOptStepDone signal.
-        Updates the current position read by the interface.
-        """
-        self.board.stepper_get_current_position(self.motorID, self.currentPositionCallback)
+        self.board.stepper_run(self.motorID, self.__moveFinishedCallback)
     
     def get_position(self) -> Tuple[int, int]:
         return self.board.currentPosition
@@ -157,21 +145,15 @@ class ArduinoRotatorManager(RotatorManager):
     #############
     # Callbacks #
     #############
-    def moveFinishedCallback(self, data: Tuple[int, int]) -> None:
+    def __moveFinishedCallback(self, data: Tuple[int, int]) -> None:
         self.__logger.info(f'Move done (step: {data[0]}, angle: {data[1]}°)')
         self.turning = False
-        self.readPositionAfterMove()
+
+        # we make a second callback to be sure of the final position
+        self.board.stepper_get_current_position(self.motorID, self.__currentPositionCallback)
         
-        # read back position and update local value
 
-        self.sigPositionUpdated.emit(self.name)
-
-    def currentPositionCallback(self, data: Tuple[int, int]) -> None:
-        """
-        Current position data in form of
-        motor_id, current position in steps, time_stamp
-        """
-        # for now tuple of steps, degrees
+    def __currentPositionCallback(self, data: Tuple[int, int]) -> None:
         steps = data[2] % self.board.stepsPerTurn
         self.board.currentPosition = (steps, stepsToAngle(steps, self._stepsPerTurn))
         if steps != data[2]:

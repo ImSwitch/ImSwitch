@@ -74,7 +74,10 @@ class ImageWidget(QtWidgets.QWidget):
         return self.imgLayers[name].data
 
     def setImage(self, name, im, scale):
-        self.imgLayers[name].data = im
+        print("Size of image: ", im.shape)
+        print("Size of layer data: ", self.imgLayers[name].data.shape)
+        self.imgLayers[name].data = np.squeeze(im)
+        
         self.imgLayers[name].scale = tuple(scale)
 
     def clearImage(self, name):

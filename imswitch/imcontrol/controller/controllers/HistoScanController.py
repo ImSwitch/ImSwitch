@@ -444,12 +444,18 @@ class HistoScanController(LiveUpdatedController):
         initialPosition = self.stages.getPosition()
         initPosX = initialPosition["X"]
         initPosY = initialPosition["Y"]
+        self.startHistoScanTileBasedByParameters(numberTilesX, numberTilesY, stepSizeX, stepSizeY, nTimes, tPeriod, illuSource, initPosX, initPosY)
+        
+    @APIExport(runOnUIThread=True)
+    def startHistoScanTileBasedByParameters(self, numberTilesX:int=2, numberTilesY:int=2, stepSizeX:int=100, stepSizeY:int=100, nTimes:int=1, tPeriod:int=1, illuSource:str=None, initPosX:int=0, initPosY:int=0):
         def computePositionList(numberTilesX, numberTilesY, stepSizeX, stepSizeY, initPosX, initPosY):
             positionList = []
             for i in range(numberTilesX):
                 for j in range(numberTilesY):
                     positionList.append((i*stepSizeX+initPosX-numberTilesX//2, j*stepSizeY+initPosY-numberTilesY//2))
             return positionList
+        if illuSource is None:
+            illuSource = self._master.lasersManager.getAllDeviceNames()[0]
         positionList = computePositionList(numberTilesX, numberTilesY, stepSizeX, stepSizeY, initPosX, initPosY)
         minPosX = np.min(positionList, axis=0)[0]
         maxPosX = np.max(positionList, axis=0)[0]

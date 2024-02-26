@@ -5,7 +5,7 @@ import time
 
 
 class MockCameraTIS:
-    def __init__(self, mocktype = None, mockstackpath=None):
+    def __init__(self, isRGB=False, mocktype = None, mockstackpath=None):
         self.properties = {
             'image_height': 500,
             'image_width': 500,
@@ -34,6 +34,7 @@ class MockCameraTIS:
         self.shape = (self.SensorHeight,self.SensorWidth)
         self.pixelSize = 1
         self.iFrame = 0
+        self.isRGB = isRGB
         
         self.camera = Camera()
         
@@ -102,7 +103,10 @@ class MockCameraTIS:
             beamCenter = [int(np.random.randn() * 30 + 250), int(np.random.randn() * 30 + 300)]
             img[beamCenter[0] - 10:beamCenter[0] + 10, beamCenter[1] - 10:beamCenter[1] + 10] = 1
             img = np.random.randn(img.shape[0],img.shape[1])
-        return np.abs(img)
+        if self.isRGB:
+            return np.stack([img, img, img], axis=2)
+        else: 
+            return np.abs(img)
 
     def getLast(self, is_resize=False):
         return self.grabFrame()

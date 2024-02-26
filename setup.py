@@ -67,7 +67,14 @@ setup(
         "uvicorn[standard] >= 0.19.0",
         "matplotlib >= 3.6",
         "websockets >= 10.0",
-        "websocket-client >= 1.2"
+        "websocket-client >= 1.2", 
+        "zeroconf >= 0.30", 
+        "opencv-python", 
+        "imjoy_rpc",
+        "imjoy",
+        "aiortc >= 1.3.0"
+        
+        
     ],
     entry_points={
         "console_scripts": [

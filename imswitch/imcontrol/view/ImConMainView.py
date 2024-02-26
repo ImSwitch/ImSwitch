@@ -227,7 +227,10 @@ class ImConMainView(QtWidgets.QMainWindow):
                         self.widgets[widgetKey] = self.factory.createWidget(packageWidget)
                         break
             self.docks[widgetKey] = Dock(dockInfo.name, size=(1, 1))
-            self.docks[widgetKey].addWidget(self.widgets[widgetKey])
+            try:self.docks[widgetKey].addWidget(self.widgets[widgetKey])
+            except:
+                self.__logger.error(f"Could not add widget {widgetKey} to dock {dockInfo.name}")
+                continue
             if prevDock is None:
                 dockArea.addDock(self.docks[widgetKey], position)
             elif dockInfo.yPosition > prevDockYPosition:

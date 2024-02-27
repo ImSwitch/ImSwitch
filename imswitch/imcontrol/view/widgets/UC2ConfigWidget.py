@@ -1,8 +1,6 @@
 import numpy as np
 import pyqtgraph as pg
 from PyQt5.QtWidgets import  QVBoxLayout, QHBoxLayout, QPushButton, QLineEdit, QLabel
-
-from imswitch.imcontrol.view import guitools
 from .basewidgets import Widget
 
 

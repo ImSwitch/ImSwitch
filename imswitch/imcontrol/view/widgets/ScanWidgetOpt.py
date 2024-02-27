@@ -116,7 +116,6 @@ class ScanWidgetOpt(NapariHybridWidget):
         self.layer.contrast_limits = (np.min(im), np.max(im))
         print('end of setImage', self.layer.data.shape)
         time.sleep(0.2)
-        # self.sigSetImage.emit()
 
     def widgetLayout(self):
         self.scanPar['GetHotPixels'] = guitools.BetterPushButton('Hot Pixels')
@@ -282,6 +281,12 @@ class ScanWidgetOpt(NapariHybridWidget):
 
         currentRow += 1
         self.grid.addWidget(self.tabs, currentRow, 0, 1, -1)
+    
+    def requestMockConfirmation(self):
+        text = "Steps per/rev should be divisable by number of OPT steps. \
+                You can continue by casting the steps on integers and risk \
+                imprecise measured angles. Or cancel scan."
+        return guitools.askYesNoQuestion(self, "Motor steps not integer values.", " ".join(text.split()))
 
 
 # Copyright (C) 2020-2022 ImSwitch developers

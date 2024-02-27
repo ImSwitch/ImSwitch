@@ -17,7 +17,6 @@ import numpy as np
 
 from ..basecontrollers import ImConWidgetController
 from imswitch.imcommon.model import initLogger, dirtools
-from imswitch.imcommon.view.guitools.dialogtools import askYesNoQuestion
 from imswitch.imcommon.framework import Signal, Thread, Worker
 from skimage.transform import radon
 
@@ -192,12 +191,8 @@ class ScanControllerOpt(ImConWidgetController):
             # Checking for divisability of motor steps and OPT steps.
             # this is necessary only for the real OPT, not Mock
             if self.stepsPerTurn % self.__optSteps != 0:
-                text = "Steps per/rev should be divisable by number of OPT steps. \
-                        You can continue by casting the steps on integers and risk \
-                        imprecise measured angles. Or cancel scan."
-                confirmed = askYesNoQuestion(self._widget, "Motor steps not integer values.", " ".join(text.split()))
-                # hex value associated with Cancel button of QMessageBox
-                if not confirmed:
+                # ask for confirmation
+                if not self._widget.requestMockConfirmation():
                     return
             self._logger.info('Demo experiment requested: preparing synthetic data.')
             # here generate stack of projections

@@ -20,29 +20,48 @@ from imswitch.imcommon.model import initLogger, dirtools
 from imswitch.imcommon.framework import Signal, Thread, Worker
 from skimage.transform import radon
 
-class ExecOptMonitor():
+class ScanExecutionMonitor:
+    """ An helper class dedicated to monitor the execution of an OPT scan.
+    It can be used to generate an experiment report with timing informations relative to each
+    step of the scan execution.
+    """
+
     def __init__(self):
         self.report = defaultdict(lambda: [])
 
     def addStamp(self, key: str, idx: int, tag: str):
+        """ Add a time stamp to the report.
+
+        Args:
+            key (`str`): identifier of the stamp; monitors the type of operation recorded.
+            idx (`int`): index of the current OPT scan step.
+            tag (`str`): tag to identify the beginning ("beg") or the end ("end") of the operation.
+        """
         self.report[key].append((idx, tag, datetime.now()))
 
-    def addStart(self):
+    def addStart(self) -> None:
+        """ Adds a starting key to the report. """
         self.report['start'] = datetime.now()
 
-    def addFinish(self):
+    def addFinish(self) -> None:
+        """ Adds an ending key to the report. """
         self.report['end'] = datetime.now()
         try:
             self.totalTime = (self.report['end'] - self.report['start']).total_seconds()
         except:
+            # TODO: ??? why should there be an exception?
             print('Not possible to calculate total experimental time.')
 
-    def getReport(self):
+    def getReport(self) -> dict:
+        """ Returns the report dictionary. """
         return self.report
 
     def makeReport(self):
-        # create statistical report on the time spent
-        # on various tasks
+        """
+        Creates a statistical report on the time spent
+        on various tasks. This can be used to evaluate 
+        the scan timing performances.
+        """
         self.reportOut = {}
         print()
         print('############ Time Report #############')
@@ -52,10 +71,11 @@ class ExecOptMonitor():
         for k, _ in self.report.items():
             if k in ['start', 'end']:
                 continue
-            self.processKey(k)
+            self.__processKey(k)
         print('######################################')
 
-    def processKey(self, key):
+    def __processKey(self, key):
+        """ Process a specific key of the report dictionary. Private class method. """
         # first the integrated time spent
         idxs, tags, stamps = zip(*self.report[key])
         i = 0
@@ -88,30 +108,72 @@ class OPTWorker(Worker):
         rotator (`RotatorManager`): reference to the rotator currently used by the OPT algorithm.
         optSteps (`np.ndarray`): array of equidistant steps for the OPT scan in absolute values.
     """
+    sigNewFrameCaptured = Signal(str, np.ndarray)  # (layerLabel, frame)
+
     def __init__(self, detector, rotator, optSteps) -> None:
         super().__init__()
         self.detector = detector
         self.rotator = rotator
+        self.timeMonitor = ScanExecutionMonitor()
+
+        # rotator configuration values
         self.optSteps = optSteps
         self.currentStep = 0
-        self.timeMonitor = None
+
+        # monitor flags
+        self.isOptRunning = False           # OPT scan running flag, default to False
+        self.noRAM = False                  # OPT live reconstruction not enabled, default to False
+        self.frameStack: np.ndarray = None  # OPT stack memory buffer
     
-    def startOpt(self):
+    def startOPTScan(self):
         """ run OPT, set flags and move to step zero rotator position
         """
-        self.detector.startAcquisition()
+        # initialize memory buffer
+        # TODO: make sure to get correct dtype from detector somehow...
+        # this needs to be changed at the API level at some point...
+        self.frameStack = np.zeros((len(self.optSteps), *self.detector.getFrameShape()), dtype=np.uint16)
+
+        self.detector.startAcquisition()        
+        self.isOptRunning = True
         
-        # TODO: init time monitoring
-        # this will put timeflags at certain execution points
-        # which in the stopOpt will make a report and will be saved
-        # in the metadata.
-        self.timeMonitor = ExecOptMonitor()
+        # TODO: how to save the final report in image metadata?
         self.timeMonitor.addStart()
-        if not self.isOptRunning:
-            self.isOptRunning = True
-            self.currentStep = 0
-            self.timeMonitor.addStamp('motor', self.currentStep, 'beg')
-            self.rotator.move_abs(self.optSteps[self.currentStep], inSteps=True)
+        
+        self.currentStep = 0
+
+        # we move the rotator to the first position
+        self.timeMonitor.addStamp('motor', self.currentStep, 'beg')
+        self.rotator.move_abs(self.optSteps[self.currentStep], inSteps=True)
+    
+    def requestNextStep(self):
+        pass
+
+    def postRotatorStep(self):
+        """ Triggered after emission of the sigPositionUpdated signal from the rotator.
+            The method will perform the following steps: capture the latest frame from the detector,
+            if the saving option is enabled, save the frame; update the stability plot
+            and finally trigger the next step. This workflow is repeated until
+            all the rotational steps are completed.
+        """
+        self.timeMonitor.addStamp('motor', self.currentStep, 'end')
+        self.timeMonitor.addStamp('snap', self.currentStep, 'beg')
+        self.getNextFrame()
+        self.timeMonitor.addStamp('plots', self.currentStep, 'beg')
+        self.handlePlots()
+        self.handleSave()
+        self.nextStep()
+    
+    def getNextFrame(self):
+        """
+        Captures the next frame from the detector. If live reconstruction
+        is enabled, the frame will be stored in the local memory buffer;
+        finally the frame will be displayed in the viewer.
+        """
+        if self.noRAM:  # no volume in napari, only last frame
+            self.sigNewFrameCaptured.emit(f'{self.detector.name}: latest frame', self.detector.getLatestFrame())
+        else:  # volume in RAM and displayed in napari
+            self.frameStack[self.currentStep] = self.detector.getLatestFrame()
+            self.sigNewFrameCaptured.emit(f'{self.detector.name}: OPT stack', self.frameStack)
 
 class ScanControllerOpt(ImConWidgetController):
     """ Optical Projection Tomography (OPT) scan controller.
@@ -122,9 +184,6 @@ class ScanControllerOpt(ImConWidgetController):
         super().__init__(*args, **kwargs)
 
         self.__logger = initLogger(self, tryInheritParent=True)
-
-        # Set up rotator in widget
-        self._widget.initControls()
 
         # Local flags
         self.liveRecon = False
@@ -176,6 +235,9 @@ class ScanControllerOpt(ImConWidgetController):
         # Communication channel signals connection
         self._commChannel.sigRotatorPositionUpdated.connect(self.post_step)
 
+        # local frame buffer pointer
+        self.frameStack = None
+
     # JA: method to add your metadata to recordings
     # TODO: metadata still not taken care of, implement
     def setSharedAttr(self, rotatorName, meta1, meta2, attr, value):
@@ -186,6 +248,8 @@ class ScanControllerOpt(ImConWidgetController):
     #################
     def prepareOPTScan(self):
         """ Initiate OPT scan.  """
+
+        self.__optSteps = self.getOptSteps()
 
         if self._widget.scanPar['MockOpt'].isChecked():
             # Checking for divisability of motor steps and OPT steps.
@@ -201,8 +265,6 @@ class ScanControllerOpt(ImConWidgetController):
         self.allFrames = []
         self.saveSubfolder = datetime.now().strftime("%Y_%m_%d-%H-%M-%S")
         self.sigImageReceived.connect(self.displayImage)
-
-        self.__optSteps = self.getOptSteps()
 
         # equidistant steps for the OPT scan in absolute values.
         self.opt_steps = np.linspace(0, self.stepsPerTurn, 
@@ -234,7 +296,7 @@ class ScanControllerOpt(ImConWidgetController):
         # this will put timeflags at certain execution points
         # which in the stopOpt will make a report and will be saved
         # in the metadata.
-        self.timeMonitor = ExecOptMonitor()
+        self.timeMonitor = ScanExecutionMonitor()
         self.timeMonitor.addStart()
         if not self.isOptRunning:
             self.isOptRunning = True

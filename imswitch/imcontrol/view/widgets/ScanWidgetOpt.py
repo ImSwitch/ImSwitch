@@ -21,103 +21,7 @@ class ScanWidgetOpt(NapariHybridWidget):
         self.scanPar = {}
         self.enabled = True
         self.layer = None
-
-    def initControls(self):
-        # populate widget
-        self.widgetLayout()
-
-    def getRotatorIdx(self):
-        """Returns currently selected rotator for the OPT
-        """
-        return self.scanPar['Rotator'].currentIndex()
-
-    def getOptSteps(self) -> int:
-        """ Returns the user-input number of OPTsteps. """
-        return self.scanPar['OptStepsEdit'].value()
-
-    def setOptSteps(self, value: int) -> None:
-        """ Setter for number for OPT steps. """
-        self.scanPar['OptStepsEdit'].setValue(value)
-
-    def getHotStd(self) -> float:
-        """ Returns the user-input STD cutoff for the hot pixel correction. """
-        return self.scanPar['HotPixelsStdEdit'].value()
-
-    def getAverages(self) -> int:
-        """ Returns the user-input number of averages for the
-        hot pixel correction.
-        """
-        return self.scanPar['AveragesEdit'].value()
-
-    def getLiveReconIdx(self) -> int:
-        return self.scanPar['LiveReconIdxEdit'].value()
-
-    def setLiveReconIdx(self, value: int) -> None:
-        self.scanPar['LiveReconIdxEdit'].setValue(int(value))
-
-    def updateHotPixelCount(self, count):
-        self.scanPar['HotPixelCount'].setText(f'Count: {count:d}')
-
-    def updateHotPixelMean(self, value):
-        self.scanPar['HotPixelMean'].setText(f'Hot mean: {value:.3f}')
-
-    def updateNonHotPixelMean(self, value):
-        self.scanPar['NonHotPixelMean'].setText(f'Non-hot mean: {value:.3f}')
-
-    def updateDarkMean(self, value):
-        self.scanPar['DarkMean'].setText(f'Dark mean: {value:.2f}')
-
-    def updateDarkStd(self, value):
-        self.scanPar['DarkStd'].setText(f'Dark STD: {value:.2f}')
-
-    def updateFlatMean(self, value):
-        self.scanPar['FlatMean'].setText(f'Flat mean: {value:.2f}')
-
-    def updateFlatStd(self, value):
-        self.scanPar['FlatStd'].setText(f'Flat STD: {value:.2f}')
-
-    def updateCurrentStep(self, value='-'):
-        self.scanPar['CurrentStepLabel'].setText(
-            f'Current Step: {value}/{self.getOptSteps()}'
-        )
-
-    def updateCurrentReconStep(self, value='-'):
-        self.scanPar['CurrentReconStepLabel'].setText(
-            f'Current Recon: {value}/{self.getOptSteps()}'
-        )
-
-    def setRotStepEnable(self, enabled):
-        """ For inactivating during scanning when ActivateButton pressed
-        and waiting for a scan. When scan finishes, enable again. """
-        self.scanPar['OptStepsEdit'].setEnabled(enabled)
-
-    def setImage(self, im, colormap="gray", name="",
-                 pixelsize=(1, 20, 20), translation=(0, 0, 0), step=0):
-        print('IN THE setImage')
-        if len(im.shape) == 2:
-            print('2D image supposedly', im.shape)
-            translation = (translation[0], translation[1])
-
-        print(self.layer, self.viewer.layers, name)
-        if self.layer is None or name not in self.viewer.layers:
-            print('im', im.shape)
-            self.layer = self.viewer.add_image(im, rgb=False,
-                                               colormap=colormap,
-                                               scale=pixelsize,
-                                               translate=translation,
-                                               name=name,
-                                               blending='translucent')
-        try:
-            print('try setImage', step, im.shape, (step+1, im.shape[1], im.shape[2]))
-            self.viewer.dims.current_step = (step, im.shape[1], im.shape[2])
-        except Exception as e:
-            print('Except from dims', e)
-        self.layer.data = im
-        self.layer.contrast_limits = (np.min(im), np.max(im))
-        print('end of setImage', self.layer.data.shape)
-        time.sleep(0.2)
-
-    def widgetLayout(self):
+        
         self.scanPar['GetHotPixels'] = guitools.BetterPushButton('Hot Pixels')
 
         self.scanPar['HotPixelsStdEdit'] = QtWidgets.QDoubleSpinBox()
@@ -281,6 +185,97 @@ class ScanWidgetOpt(NapariHybridWidget):
 
         currentRow += 1
         self.grid.addWidget(self.tabs, currentRow, 0, 1, -1)
+
+    def getRotatorIdx(self):
+        """Returns currently selected rotator for the OPT
+        """
+        return self.scanPar['Rotator'].currentIndex()
+
+    def getOptSteps(self) -> int:
+        """ Returns the user-input number of OPTsteps. """
+        return self.scanPar['OptStepsEdit'].value()
+
+    def setOptSteps(self, value: int) -> None:
+        """ Setter for number for OPT steps. """
+        self.scanPar['OptStepsEdit'].setValue(value)
+
+    def getHotStd(self) -> float:
+        """ Returns the user-input STD cutoff for the hot pixel correction. """
+        return self.scanPar['HotPixelsStdEdit'].value()
+
+    def getAverages(self) -> int:
+        """ Returns the user-input number of averages for the
+        hot pixel correction.
+        """
+        return self.scanPar['AveragesEdit'].value()
+
+    def getLiveReconIdx(self) -> int:
+        return self.scanPar['LiveReconIdxEdit'].value()
+
+    def setLiveReconIdx(self, value: int) -> None:
+        self.scanPar['LiveReconIdxEdit'].setValue(int(value))
+
+    def updateHotPixelCount(self, count):
+        self.scanPar['HotPixelCount'].setText(f'Count: {count:d}')
+
+    def updateHotPixelMean(self, value):
+        self.scanPar['HotPixelMean'].setText(f'Hot mean: {value:.3f}')
+
+    def updateNonHotPixelMean(self, value):
+        self.scanPar['NonHotPixelMean'].setText(f'Non-hot mean: {value:.3f}')
+
+    def updateDarkMean(self, value):
+        self.scanPar['DarkMean'].setText(f'Dark mean: {value:.2f}')
+
+    def updateDarkStd(self, value):
+        self.scanPar['DarkStd'].setText(f'Dark STD: {value:.2f}')
+
+    def updateFlatMean(self, value):
+        self.scanPar['FlatMean'].setText(f'Flat mean: {value:.2f}')
+
+    def updateFlatStd(self, value):
+        self.scanPar['FlatStd'].setText(f'Flat STD: {value:.2f}')
+
+    def updateCurrentStep(self, value='-'):
+        self.scanPar['CurrentStepLabel'].setText(
+            f'Current Step: {value}/{self.getOptSteps()}'
+        )
+
+    def updateCurrentReconStep(self, value='-'):
+        self.scanPar['CurrentReconStepLabel'].setText(
+            f'Current Recon: {value}/{self.getOptSteps()}'
+        )
+
+    def setRotStepEnable(self, enabled):
+        """ For inactivating during scanning when ActivateButton pressed
+        and waiting for a scan. When scan finishes, enable again. """
+        self.scanPar['OptStepsEdit'].setEnabled(enabled)
+
+    def setImage(self, im, colormap="gray", name="",
+                 pixelsize=(1, 20, 20), translation=(0, 0, 0), step=0):
+        print('IN THE setImage')
+        if len(im.shape) == 2:
+            print('2D image supposedly', im.shape)
+            translation = (translation[0], translation[1])
+
+        print(self.layer, self.viewer.layers, name)
+        if self.layer is None or name not in self.viewer.layers:
+            print('im', im.shape)
+            self.layer = self.viewer.add_image(im, rgb=False,
+                                               colormap=colormap,
+                                               scale=pixelsize,
+                                               translate=translation,
+                                               name=name,
+                                               blending='translucent')
+        try:
+            print('try setImage', step, im.shape, (step+1, im.shape[1], im.shape[2]))
+            self.viewer.dims.current_step = (step, im.shape[1], im.shape[2])
+        except Exception as e:
+            print('Except from dims', e)
+        self.layer.data = im
+        self.layer.contrast_limits = (np.min(im), np.max(im))
+        print('end of setImage', self.layer.data.shape)
+        time.sleep(0.2)
     
     def requestMockConfirmation(self):
         text = "Steps per/rev should be divisable by number of OPT steps. \

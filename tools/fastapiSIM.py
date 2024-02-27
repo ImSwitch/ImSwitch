@@ -8,10 +8,6 @@ import RPi.GPIO as GPIO
 import time
 import os
 
-#os.environ['DISPLAY']='0'
-
-
-#import matplotlib.pyplot as plt
 pygame.init()
 
 # screen resolution

@@ -5,7 +5,7 @@ import cv2
 import collections
 
 from imswitch.imcommon.model import initLogger
-
+import threading
 try:
     import pco
     from pco import sdk
@@ -45,6 +45,7 @@ class CameraPCO:
                              'external exposure start & software trigger',
                              'external exposure control'
                              ]
+        self.current_trigger_type = self.trigger_type[0]
 
         # reserve some space for the framebuffer
         self.NBuffer = 30
@@ -94,29 +95,32 @@ class CameraPCO:
         self.camera.stop()
         self.camera.configuration = {'trigger': 'external exposure start & software trigger'}
         self.camera.record(nFrames,'ring buffer')
-        self.camera.wait_for_first_image()
+        self.camera.wait_for_first_image(timeout=1)
         imageStack, stackMetadata = self.camera.images(blocksize=nFrames) #meta data will also returned
         self.camera.configuration = {'trigger': preTriggerMode}
         return imageStack, stackMetadata
     
         
-    def start_live(self, waitForFirstImage=True):
+    def start_live(self, waitForFirstImage=True, nFrameBuffer=None):
         if not self.is_streaming:
+            if nFrameBuffer is None:
+                nFrameBuffer = self.NBuffer
             # start data acquisition    
             try:
-                self.camera.record(number_of_images=self.NBuffer,mode='ring buffer')
-            except:
+                self.camera.record(number_of_images=nFrameBuffer,mode='ring buffer')
+            except Exception as e:
+                print(e)
                 self.camera.stop()
-                self.camera.record(number_of_images=self.NBuffer,mode='ring buffer')
-            if waitForFirstImage: self.camera.wait_for_first_image()
+                self.camera.record(number_of_images=nFrameBuffer,mode='ring buffer')
+            if waitForFirstImage: self.camera.wait_for_first_image(timeout=1)
             self.is_streaming = True
 
     def stop_live(self):
         if self.is_streaming or self.camera.is_recording:
-            # start data acquisition
             self.camera.stop()
             self.is_streaming = False
-
+            self.is_recording = False
+            
     def suspend_live(self):
         pass
         
@@ -143,14 +147,22 @@ class CameraPCO:
     def getLast(self, is_resize=True):
         # Display in the liveview
         # ensure that only fresh frames are being returned
-        while self.frame_id_last >= self.frameID and self.camera.is_recording:
-            self.frame_raw_metadata = self.camera.image(image_index=-1)
-            #time.sleep(0.001)
-            self.frame = self.frame_raw_metadata[0]
-            self.frameID = self.frame_raw_metadata[1]["recorder image number"]
-            #self.__logger.debug("Frame ID..."+str(self.frame_id_last))
-        self.frame_id_last = self.frameID
-        return self.frame
+        if self.camera.configuration['trigger'] in [self.trigger_type[3], self.trigger_type[2]]:
+            # in that case we want to return the last frame of the buffer ?
+            if self.frames is not None and len(self.frames)>0:
+                return self.frames[-1]
+            else: 
+                return None
+        else:
+            while self.frame_id_last >= self.frameID and self.camera.is_recording:
+                self.frame_raw_metadata = self.camera.image(image_index=-1)
+                #time.sleep(0.001)
+                self.frame = self.frame_raw_metadata[0]
+                self.frameID = self.frame_raw_metadata[1]["recorder image number"]
+                #self.__logger.debug("Frame ID..."+str(self.frame_id_last))
+            self.frame_id_last = self.frameID
+            return self.frame
+        
     
     def getLastFrameId(self):
         return self.frameID
@@ -159,12 +171,27 @@ class CameraPCO:
         self.frameid_buffer.clear()
         self.frame_buffer.clear()
         
-    def getLastChunk(self, timeout=-1):
+    def getLastChunk(self, timeout=2):
         # save on disk
+        self.frames = None
         if self.camera.is_recording:
-            images, metadatas = self.camera.images() 
-            self.frame = self.camera.images()[0] # FIXME: Sneaky but should at least update the viewer if it's called from the main loop
-            return images
+            # Create a thread to run the call_images function
+            def retreiveChunkInBackground():
+                # TODO: if we are in triggered mode this can be a blocking function :(
+                self.frames, metadatas = self.camera.images() 
+                self.frame = self.camera.images()[0] # FIXME: Sneaky but should at least update the viewer if it's called from the main loop
+                self.frameID = metadatas[0]["recorder image number"]
+            thread = threading.Thread(target=retreiveChunkInBackground)
+
+            # Start the thread             # Wait for the thread to complete or timeout
+            thread.start()
+            thread.join(timeout)
+
+            if thread.is_alive():
+                print("The images function call has timed out and will continue running in its thread.")
+            else:
+                print("The images function call completed successfully.")
+        return self.frames
     
     def setROI(self,hpos=None,vpos=None,hsize=None,vsize=None):
         return hpos,vpos,hsize,vsize
@@ -206,29 +233,32 @@ class CameraPCO:
         pass
 
     def setTriggerSource(self, source):
-        self.stop_live()
+        wasRunning = self.is_streaming
+        if wasRunning: self.stop_live()
         if source == 'Continous':
             self.camera.configuration = {'trigger': self.trigger_type[0]}
         elif source == 'Internal trigger':
             self.camera.configuration = {'trigger': self.trigger_type[1]}
         elif source == 'External start':
             self.camera.configuration = {'trigger': self.trigger_type[2]}
-            self.start_live(waitForFirstImage=False)
+            if wasRunning: 
+                self.start_live(waitForFirstImage=False)
             return
         elif source == 'External control':
             self.camera.configuration = {'trigger': self.trigger_type[3]}
-            self.start_live(waitForFirstImage=False)
+            if wasRunning: 
+                self.start_live(waitForFirstImage=False)
             return            
         else:
             raise ValueError(f'Invalid trigger source "{source}"')
         self.start_live()
         
     def setFrameBuffer(self, nFrameBuffer=10, waitForFirstImage=False):
-        self.stop_live()
-        self.NBuffer = nFrameBuffer
-        self.camera.record(self.NBuffer, "ring buffer")
-        if waitForFirstImage: self.camera.wait_for_first_image()        
-        
+        wasRunning = self.is_streaming
+        if wasRunning:
+            self.stop_live()
+        self.start_live(waitForFirstImage=waitForFirstImage, nFrameBuffer=nFrameBuffer)
+            
 
     
 

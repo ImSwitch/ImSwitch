@@ -66,7 +66,7 @@ isDEBUG = False
 class SIMController(ImConWidgetController):
     """Linked to SIMWidget."""
 
-    sigImageReceived = Signal()
+    sigImageReceived = Signal(np.ndarray, str)
     sigSIMProcessorImageComputed = Signal(np.ndarray, str)
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -101,6 +101,9 @@ class SIMController(ImConWidgetController):
         if self._setupInfo.sim is None:
             self._widget.replaceWithError('SIM is not configured in your setup file.')
             return
+
+        # connect live update  https://github.com/napari/napari/issues/1110
+        self.sigImageReceived.connect(self.displayImage)
 
         # initialize external dispaly (if available => id = 2?)
         if not self._setupInfo.sim.isFastAPISIM:
@@ -242,7 +245,7 @@ class SIMController(ImConWidgetController):
 
     def startSIM(self):
         if self._widget.startSIMAcquisition.text() == "Start":
-            # start live processing => every frame is captured by the update() function. It also handles the pattern addressing
+            
             self.iReconstructed = 0
             
             # reset the pattern iterator
@@ -251,12 +254,13 @@ class SIMController(ImConWidgetController):
             
             # switch back to internal trigger            
             if self.IS_FASTAPISIM:
-                #  need to be in trigger mode 
-                self._master.detectorsManager.startAcquisition(liveView=False)
-            
+                #  need to be in trigger mode
+                # therefore, we need to stop the camera first and then set the trigger mode
+                self._commChannel.sigStopLiveAcquisition.emit(True)
                 self.detector.setParameter("trigger_source","External start")
                 self.detector.setParameter("buffer_size",9)
                 self.detector.flushBuffers()
+                #self._commChannel.sigStartLiveAcquistion.emit(True)
                 
             # start the background thread
             self.active = True
@@ -278,6 +282,9 @@ class SIMController(ImConWidgetController):
             # switch back to internal trigger            
             if self.IS_FASTAPISIM:
                 self.detector.setParameter("trigger_source","Continous")
+                self.detector.setParameter("buffer_size",9)
+                self.detector.flushBuffers()
+
 
     def toggleRecording(self):
         self.isRecording = not self.isRecording
@@ -367,9 +374,10 @@ class SIMController(ImConWidgetController):
                     # self.SIMClient.start_viewer()
                     self.SIMClient.set_wavelength(iColour)
                     self.SIMClient.start_viewer_single_loop(1)
-                    # SIMStack = self.detector.get_triggered_framebuffer(9)
-                    SIMStack = self.detector.getChunk()
-                    processor.setSIMStack(SIMStack)
+                    # self.SIMStack = self.detector.get_triggered_framebuffer(9)
+                    self.SIMStack = self.detector.getChunk()
+                    self.sigImageReceived.emit(np.array(self.SIMStack),"SIMStack"+str(processor.wavelength))
+                    processor.setSIMStack(self.SIMStack)
                 else:
                     # iterate over all patterns
                     #self.detector.wait_for_first_image()
@@ -396,24 +404,24 @@ class SIMController(ImConWidgetController):
                         # processor.addFrameToStack(nip.extract(frame, (512,512)))
 
                     self.simPatternByID(patternID=0, wavelengthID=iColour)
-                    SIMStack = processor.getSIMStack()
+                    self.SIMStack = processor.getSIMStack()
                 
                 if self.isRecording:
                     date = datetime. now(). strftime("%Y_%m_%d-%I-%M-%S_%p")
                     mFilenameStack = f"{date}_SIM_Stack_{self.LaserWL}nm.tif"
-                    threading.Thread(target=self.saveImageInBackground, args=(SIMStack, mFilenameStack,), daemon=True).start()
+                    threading.Thread(target=self.saveImageInBackground, args=(self.SIMStack, mFilenameStack,), daemon=True).start()
                 # self.detector.stopAcquisition()
                 # We will collect N*M images and process them with the SIM processor
                 # process the frames and display
-                if self.isReconstructing:  # not
+                if not self.isReconstructing:  # not
                     self.isReconstructing=True
                     # load the per-colour SIM Stack for further processing
-                    SIMStack = processor.getSIMStack()
+                    self.SIMStack = processor.getSIMStack()
                     
                     # reconstruct and save the stack in background to not block the main thread
-                    self.mReconstructionThread = threading.Thread(target=self.reconstructSIMStack, args=(SIMStack, processor,), daemon=True)
+                    self.mReconstructionThread = threading.Thread(target=self.reconstructSIMStack, args=(self.SIMStack, processor,), daemon=True)
                     self.mReconstructionThread.start()
-                    SIMStack = None
+                    self.SIMStack = None
                     
                 
                 # reset the per-colour stack to add new frames in the next imaging series
@@ -801,41 +809,37 @@ class SIMClient:
         self.itime = 120
         self.laser_power = (400, 250)
 
+    def get_request(self, url):
+        try: 
+            response = requests.get(url, timeout=.3)
+            return response.json()
+        except Exception as e:
+            print(e)
+            return -1
+        
     def start_viewer(self):
         url = self.base_url + self.commands["start"]
-        response = requests.get(url)
-        try: return response.json()
-        except: return -1
+        return self.get_request(url)
 
     def start_viewer_single_loop(self, number_of_runs):
         url = f"{self.base_url}{self.commands['single_run']}{number_of_runs}"
-        response = requests.get(url)
-        try: return response.json()
-        except: return -1
+        self.get_request(url)
 
     def wait_for_viewer_completion(self):
         url = self.base_url + self.commands["pattern_compeleted"]
-        response = requests.get(url)
-        try: return response.json()
-        except: return -1
+        self.get_request(url)
 
     def set_pause(self, period):
         url = f"{self.base_url}{self.commands['pause_time']}{period}"
-        response = requests.get(url)
-        try: return response.json()
-        except: return -1
+        self.get_request(url)
 
     def stop_loop(self):
         url = self.base_url + self.commands["stop_loop"]
-        response = requests.get(url)
-        try: return response.json()
-        except: return -1
+        self.get_request(url)
 
     def set_wavelength(self, wavelength):
         url = f"{self.base_url}{self.commands['pattern_wl']}{wavelength}"
-        response = requests.get(url)
-        try: return response.json()
-        except: return -1
+        self.get_request(url)
 
 
       

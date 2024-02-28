@@ -42,8 +42,8 @@ class MockTelemetrixBoard:
         self.motorIDCount: int = 0
         self.__mockScheduler = BackgroundScheduler()
 
-    def stepper_get_current_position(self, motor_id: int, callback: Callable) -> None:
-        self.__logger.info(f'Mock board (motor {motor_id}) getting current position. Callback name: {callback.__name__}')
+    def stepper_get_current_position(self, _: int, callback: Callable) -> None:
+        callback(self.currentPosition)
     
     def set_pin_mode_stepper(self, interface=1, pin1=2, pin2=3, pin3=4, pin4=5, enable=True) -> int:
         interface = MotorInterface(interface)

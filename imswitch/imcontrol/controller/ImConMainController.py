@@ -14,7 +14,6 @@ from . import controllers
 from .CommunicationChannel import CommunicationChannel
 from .MasterController import MasterController
 from .PickSetupController import PickSetupController
-from .PickUC2BoardConfigController import PickUC2BoardConfigController
 from .basecontrollers import ImConWidgetControllerFactory
 
 

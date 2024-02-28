@@ -1054,59 +1054,6 @@ class FBPlive():
         return np.pad(sinogram, pad_width, mode='constant', constant_values=0)
 
 
-class DemoData(QObject):
-    def __init__(self, resolution=128) -> None:
-        super(QObject, self).__init__()
-        self.size = resolution  # int
-        self.radon = Get_radon(self.size)
-        self.radon.progress.connect(self.printProgress)
-
-        s = self.radon.get_sinogram()
-        self.sino(s)
-
-    def printProgress(self, value: int):
-        print(value)
-
-    def sino(self, data):
-        """Setting sinogram variable of phantom
-        data
-
-        Args:
-            data (np.ndarray):  Sinogram of 3D phantom
-        """
-        print('setting sino variable')
-        self.sinogram = np.rollaxis(data, 2)
-
-
-class Get_radon(QObject):
-    def __init__(self, size):
-        super(QObject, self).__init__()
-        self.size = size
-
-    progress = pyqtSignal(int)
-
-    def get_sinogram(self):
-        data = shepp3d(self.size)  # shepp-logan 3D phantom
-        sinogram = np.zeros(data.shape)  # preallocate sinogram array
-        angles = np.linspace(0, 360, self.size, endpoint=False)  # angles
-        # TODO make progress bar with loading data
-        for i in range(self.size):
-            self.progress.emit(int(i*100 / self.size))
-            sinogram[i, :, :] = radon(data[i, :, :], theta=angles)
-        mx = np.amax(sinogram)
-        sinogram = (sinogram/mx*255).astype('int16')
-        return sinogram
-
-    def loading_message(self):
-        msg = QtWidgets.QMessageBox()
-        msg.setIcon(QtWidgets.QMessageBox.Information)
-        msg.setText("Generating data for you")
-        # msg.setStandardButtons(QtWidgets.QMessageBox.Ok)
-        retval = msg.exec_()
-        print(retval)
-        return retval
-
-
 # These functions are adapted from tomopy package
 # https://tomopy.readthedocs.io/en/stable/
 def _totuple(size, dim):

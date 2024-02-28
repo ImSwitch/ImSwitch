@@ -303,6 +303,11 @@ class ScanControllerOpt(ImConWidgetController):
         self.updateLiveReconIdx()
 
         self._widget.scanPar['OptStepsEdit'].valueChanged.connect(self.updateOptSteps)
+        
+        # Scan loop control
+        self._widget.scanPar['StartButton'].clicked.connect(self.prepareOPTScan)
+        self._widget.scanPar['StopButton'].clicked.connect(self.requestInterruption)
+        self._widget.scanPar['PlotReportButton'].clicked.connect(self.plotReport)
 
         # OPT worker thread;
         self.optThread = Thread()
@@ -322,10 +327,8 @@ class ScanControllerOpt(ImConWidgetController):
         # Thread signals connection
         self.optThread.started.connect(self.optWorker.startOPTScan)
         
-        # Scan loop control
-        self._widget.scanPar['StartButton'].clicked.connect(self.prepareOPTScan)
-        self._widget.scanPar['StopButton'].clicked.connect(self.requestInterruption)
-        self._widget.scanPar['PlotReportButton'].clicked.connect(self.plotReport)
+        # setup UI
+        self.enableWidget(True)
 
     # JA: method to add your metadata to recordings
     # TODO: metadata still not taken care of, implement

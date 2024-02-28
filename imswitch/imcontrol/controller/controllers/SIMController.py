@@ -622,6 +622,8 @@ class SIMProcessor(object):
         #self._logger.debug("Starting to calibrate the stack")
         if self.reconstructionMethod == "napari":
             #imRaw = get_current_stack_for_calibration(mImages)
+            if type(imRaw) is list:
+                imRaw = np.array(imRaw)
             if self.use_gpu:
                 self.h.calibrate_pytorch(imRaw, self.find_carrier)
             else:
@@ -700,7 +702,7 @@ class SIMProcessor(object):
         # initialize the model
         
         self._logger.debug("Processing frames")
-        if self.getIsCalibrated():
+        if not self.getIsCalibrated():
             self.setReconstructor()
             self.calibrate(mStack)
         SIMReconstruction = self.reconstruct(mStack)

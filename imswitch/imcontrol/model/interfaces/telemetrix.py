@@ -1,5 +1,5 @@
 from imswitch.imcommon.model import initLogger
-from imswitch.imcommon.model.utils import stepsToAngle
+from imswitch.imcommon.model.mathutils import stepsToAngle
 from apscheduler.schedulers.background import BackgroundScheduler
 from enum import IntEnum
 from typing import Dict, Tuple, Callable

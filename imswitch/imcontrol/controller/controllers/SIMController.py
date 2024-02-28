@@ -686,8 +686,8 @@ class SIMProcessor(object):
         '''
         # TODO: Perhaps we should work with quees? 
         # reconstruct and save the stack in background to not block the main thread
-        mStackCopy = self.SIMStack.copy()
-        self.mReconstructionThread = threading.Thread(target=self.reconstructSIMStack, args=(mStackCopy,), daemon=True)
+        mStackCopy = self.stack.copy()
+        self.mReconstructionThread = threading.Thread(target=self.reconstructSIMStackBackground, args=(mStackCopy,), daemon=True)
         self.mReconstructionThread.start()
 
         
@@ -703,7 +703,7 @@ class SIMProcessor(object):
         if self.getIsCalibrated():
             self.setReconstructor()
             self.calibrate(mStack)
-        SIMReconstruction = self.reconstruc(mStack)
+        SIMReconstruction = self.reconstruct(mStack)
         
         # save images eventually
         if self.isRecording:

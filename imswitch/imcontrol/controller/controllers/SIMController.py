@@ -416,12 +416,7 @@ class SIMController(ImConWidgetController):
                 if not self.isReconstructing:  # not
                     self.isReconstructing=True
                     # load the per-colour SIM Stack for further processing
-                    self.SIMStack = processor.getSIMStack()
-                    
-                    # reconstruct and save the stack in background to not block the main thread
-                    self.mReconstructionThread = threading.Thread(target=self.reconstructSIMStack, args=(self.SIMStack, processor,), daemon=True)
-                    self.mReconstructionThread.start()
-                    self.SIMStack = None
+                    processor.reconstructSIMStack()
                     
                 
                 # reset the per-colour stack to add new frames in the next imaging series
@@ -432,36 +427,6 @@ class SIMController(ImConWidgetController):
         mystack.append(self.detector.getLatestFrame())
         #print(np.shape(mystack))
         
-    def reconstructSIMStack(self, SIMStack, processor):
-        '''
-        reconstruct the image stack asychronously
-        '''
-
-
-        # compute image
-        # initialize the model
-        
-        self._logger.debug("Processing frames")
-        if not processor.getIsCalibrated():
-            processor.setReconstructor()
-            #from skimage import io
-            #im = io.imread('2023_04_03-10-28-17_PM_SIM_Stack_488nm.tif')
-            processor.calibrate(SIMStack)
-        SIMReconstruction = processor.reconstruct(SIMStack)
-        
-        # save images eventually
-        if self.isRecording:
-            date = datetime. now(). strftime("%Y_%m_%d-%I-%M-%S_%p")
-            mFilenameStack = f"{date}_SIM_Stack_{self.LaserWL}nm.tif"
-            mFilenameRecon = f"{date}_SIM_Reconstruction_{self.LaserWL}nm.tif"                            
-            threading.Thread(target=self.saveImageInBackground, args=(SIMStack, mFilenameStack,), daemon=True).start()
-            threading.Thread(target=self.saveImageInBackground, args=(SIMReconstruction, mFilenameRecon,), daemon=True).start()
-            
-        self.sigSIMProcessorImageComputed.emit(np.array(SIMReconstruction), "SIM Reconstruction")
-
-        self.iReconstructed += 1
-        self.isReconstructing = False
-
     @APIExport(runOnUIThread=True)
     def saveImageInBackground(self, image, filename):
         filename = os.path.join('C:\\Users\\admin\\Desktop\\Timelapse\\',filename) #FIXME: Remove hardcoded path
@@ -713,6 +678,46 @@ class SIMProcessor(object):
             
     def getIsCalibrated(self):
         return self.isCalibrated
+
+
+    def reconstructSIMStack(self):
+        '''
+        reconstruct the image stack asychronously
+        '''
+        # TODO: Perhaps we should work with quees? 
+        # reconstruct and save the stack in background to not block the main thread
+        mStackCopy = self.SIMStack.copy()
+        self.mReconstructionThread = threading.Thread(target=self.reconstructSIMStack, args=(mStackCopy,), daemon=True)
+        self.mReconstructionThread.start()
+
+        
+    def reconstructSIMStackBackground(self, mStack):
+        '''
+        reconstruct the image stack asychronously
+        the stack is a list of 9 images (3 angles, 3 phases)
+        '''
+        # compute image
+        # initialize the model
+        
+        self._logger.debug("Processing frames")
+        if self.getIsCalibrated():
+            self.setReconstructor()
+            self.calibrate(mStack)
+        SIMReconstruction = self.reconstruc(mStack)
+        
+        # save images eventually
+        if self.isRecording:
+            date = datetime. now(). strftime("%Y_%m_%d-%I-%M-%S_%p")
+            mFilenameStack = f"{date}_SIM_Stack_{self.LaserWL}nm.tif"
+            mFilenameRecon = f"{date}_SIM_Reconstruction_{self.LaserWL}nm.tif"                            
+            threading.Thread(target=self.saveImageInBackground, args=(mStack, mFilenameStack,), daemon=True).start()
+            threading.Thread(target=self.saveImageInBackground, args=(SIMReconstruction, mFilenameRecon,), daemon=True).start()
+            
+        self.parent.sigSIMProcessorImageComputed.emit(np.array(SIMReconstruction), "SIM Reconstruction")
+
+        self.iReconstructed += 1
+        self.isReconstructing = False
+
 
     def reconstruct(self, currentImage):
         '''

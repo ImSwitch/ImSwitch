@@ -154,9 +154,9 @@ class ArduinoRotatorManager(RotatorManager):
         
 
     def __currentPositionCallback(self, data: Tuple[int, int]) -> None:
-        steps = data[2] % self.board.stepsPerTurn
+        steps = data[1] % self.board.stepsPerTurn
         self.board.currentPosition = (steps, stepsToAngle(steps, self._stepsPerTurn))
-        if steps != data[2]:
+        if steps != data[1]:
             self.board.stepper_set_current_position(self.motorID, steps)
         self.sigRotatorPositionUpdated.emit()
 

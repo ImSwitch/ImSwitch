@@ -14,7 +14,7 @@ from matplotlib.figure import Figure
 
 from functools import partial
 import numpy as np
-
+from typing import Tuple
 from ..basecontrollers import ImConWidgetController
 from imswitch.imcommon.model import initLogger, dirtools
 from imswitch.imcommon.framework import Signal, Thread, Worker
@@ -101,53 +101,61 @@ class ScanExecutionMonitor:
         self.reportOut[key] = report
 
 class OPTWorker(Worker):
-    """ OPT scan worker thread.
+    """ OPT scan worker. The worker operates on a separate thread from the main application thread;
+    it is responsible for the execution of the OPT scan (moving the rotator, acquiring an image,
+    and updating the stability plot). The worker is also responsible for the live reconstruction
+    of the acquired frames, if the option is enabled.
     
     Args:
-        detector (`DetectorManager`): reference to the detector currently used by the OPT algorithm.
-        rotator (`RotatorManager`): reference to the rotator currently used by the OPT algorithm.
+        master (`MasterController`): reference to the master controller; used to access the 
+        detectorName (`str`): name identifier of the detector used for the OPT scan.
+        rotatorName (`str`): name identifier of the rotator used for the OPT scan.
         optSteps (`np.ndarray`): array of equidistant steps for the OPT scan in absolute values.
     """
     sigNewFrameCaptured = Signal(str, np.ndarray)  # (layerLabel, frame)
+    sigNewStabilityTrace = Signal(object, object)  # (list: steps, list[list]: stabilityTraces)
 
-    def __init__(self, detector, rotator, optSteps) -> None:
+    def __init__(self, master, detectorName, rotatorName, optSteps) -> None:
         super().__init__()
-        self.detector = detector
-        self.rotator = rotator
+        self.master = master
+        self.detectorName = detectorName
+        self.rotatorName = rotatorName
         self.timeMonitor = ScanExecutionMonitor()
+        self.signalStability = Stability()
 
         # rotator configuration values
         self.optSteps = optSteps
         self.currentStep = 0
 
         # monitor flags
-        self.isOptRunning = False           # OPT scan running flag, default to False
-        self.noRAM = False                  # OPT live reconstruction not enabled, default to False
-        self.frameStack: np.ndarray = None  # OPT stack memory buffer
+        self.isOptRunning = False            # OPT scan running flag, default to False
+        self.noRAM = False                   # TODO: what does this do exactly?
+        self.isLiveRecon = False             # OPT live reconstruction flag, default to False
+        self.isInterruptionRequested = False # interruption request flag, set from the main thread; default to False
+        self.frameStack: np.ndarray = None   # OPT stack memory buffer
     
     def startOPTScan(self):
-        """ run OPT, set flags and move to step zero rotator position
+        """ Performs the first step of the OPT scan, triggering an asynchronous
+        loop with the rotator. After the first movement request, the rotator
+        will emit the signal `sigPositionUpdated` when the movement is done, which
+        will be handled by `postRotatorStep`.
         """
         # initialize memory buffer
         # TODO: make sure to get correct dtype from detector somehow...
         # this needs to be changed at the API level at some point...
         self.frameStack = np.zeros((len(self.optSteps), *self.detector.getFrameShape()), dtype=np.uint16)
 
-        self.detector.startAcquisition()        
+        self.master.detectorsManager[self.detectorName].startAcquisition()        
         self.isOptRunning = True
         
         # TODO: how to save the final report in image metadata?
         self.timeMonitor.addStart()
-        
         self.currentStep = 0
 
         # we move the rotator to the first position
         self.timeMonitor.addStamp('motor', self.currentStep, 'beg')
-        self.rotator.move_abs(self.optSteps[self.currentStep], inSteps=True)
+        self.master.rotatorsManager[self.rotatorName].move_abs(self.optSteps[self.currentStep], inSteps=True)
     
-    def requestNextStep(self):
-        pass
-
     def postRotatorStep(self):
         """ Triggered after emission of the sigPositionUpdated signal from the rotator.
             The method will perform the following steps: capture the latest frame from the detector,
@@ -157,24 +165,85 @@ class OPTWorker(Worker):
         """
         self.timeMonitor.addStamp('motor', self.currentStep, 'end')
         self.timeMonitor.addStamp('snap', self.currentStep, 'beg')
-        self.getNextFrame()
+        frame = self.getNextFrame()
         self.timeMonitor.addStamp('plots', self.currentStep, 'beg')
-        self.handlePlots()
-        self.handleSave()
-        self.nextStep()
+        self.processFrameStability(frame, self.currentStep)
+        self.saveCurrentFrame()
+        if self.isInterruptionRequested:
+            self.stopOPTScan()
+        else:
+            self.startNextStep()
     
-    def getNextFrame(self):
+    def getNextFrame(self) -> np.ndarray:
         """
         Captures the next frame from the detector. If live reconstruction
         is enabled, the frame will be stored in the local memory buffer;
         finally the frame will be displayed in the viewer.
-        """
-        if self.noRAM:  # no volume in napari, only last frame
-            self.sigNewFrameCaptured.emit(f'{self.detector.name}: latest frame', self.detector.getLatestFrame())
-        else:  # volume in RAM and displayed in napari
-            self.frameStack[self.currentStep] = self.detector.getLatestFrame()
-            self.sigNewFrameCaptured.emit(f'{self.detector.name}: OPT stack', self.frameStack)
 
+        Returns:
+            np.ndarray: the captured frame
+        """
+        frame = self.master.detectorsManager[self.detectorName].getLatestFrame()
+        if self.noRAM:  # no volume in napari, only last frame
+            self.sigNewFrameCaptured.emit(f'{self.detectorName}: latest frame', frame)
+        else:  # volume in RAM and displayed in napari
+            self.frameStack[self.currentStep] = frame
+            self.sigNewFrameCaptured.emit(f'{self.detectorName}: OPT stack', self.frameStack)
+    
+    def processFrameStability(self, frame: np.ndarray, step: int) -> None:
+        """ 
+        Processes the stability of the incoming frame; the computed traces
+        are then emitted to the main thread for display. 
+
+        Args:
+            frame (`np.ndarray`): the incoming frame
+            step (`int`): the current step of the OPT scan
+        """
+        self.timeMonitor.addStamp('stability-calculation', self.currentStep, 'beg')
+        stepsList, intensityLists = self.signalStability.processStabilityTraces(frame, step)
+        self.timeMonitor.addStamp('stability-calculation', self.currentStep, 'end')
+        self.sigNewStabilityTrace.emit(stepsList, intensityLists)
+    
+    def saveCurrentFrame(self) -> None:
+        # TODO: implement
+        pass
+    
+    def startNextStep(self):
+        """
+        Update live reconstruction, stop OPT in case of last step,
+        otherwise move motor again.
+        """
+        # self._widget.updateCurrentStep(self.__currentStep + 1)
+
+        # updating live reconstruction
+        # TODO: live reconstruction section is unclear;
+        # needs some details on the implementation to refactor
+        # if self.liveRecon:
+        #     self.timeMonitor.addStamp('live-recon', self.__currentStep, 'beg')
+        #     self.updateLiveRecon()
+
+        self.currentStep += 1
+
+        if self.currentStep > len(self.optSteps) - 1:
+            self.stopOPTScan()
+        else:
+            self.timeMonitor.addStamp('motor', self.currentStep, 'beg')
+            self.master.rotatorsManager[self.rotatorName].move_abs(self.optSteps[self.currentStep], inSteps=True)
+    
+    def stopOPTScan(self):
+        """
+        Ends the requested OPT scan. The scan can either naturally end,
+        or the user may trigger the stop via the user interface.
+        """
+        self.timeMonitor.addFinish()
+        self.master.detectorsManager[self.detectorName].stopAcquisition()
+        self.isOptRunning = False
+        self.timeMonitor.makeReport()
+    
+    def computeLiveReconstruction(self):
+        # TODO: refactor old code here;
+        pass
+            
 class ScanControllerOpt(ImConWidgetController):
     """ Optical Projection Tomography (OPT) scan controller.
     """
@@ -231,7 +300,7 @@ class ScanControllerOpt(ImConWidgetController):
         self._widget.scanPar['StartButton'].clicked.connect(self.prepareOPTScan)
         self._widget.scanPar['StopButton'].clicked.connect(self.stopOpt)
         self._widget.scanPar['PlotReportButton'].clicked.connect(self.plotReport)
-
+        
         # Communication channel signals connection
         self._commChannel.sigRotatorPositionUpdated.connect(self.post_step)
 
@@ -449,7 +518,7 @@ class ScanControllerOpt(ImConWidgetController):
                 self.__currentStep)
         except AttributeError:
             try:
-                print(f'Creating a new reconstruction object. {self.__optSteps}')
+                self.__logger.info(f'Creating a new reconstruction object. {self.__optSteps}')
                 self.currentRecon = FBPlive(
                     self.frame[self.reconIdx, :],
                     self.__optSteps)
@@ -559,6 +628,8 @@ class ScanControllerOpt(ImConWidgetController):
 
     def updateStabilityPlot(self):
         """ Update OPT stability plot from 4 corners of the stack """
+
+        self.timeMonitor.addStamp('stability-plot', self.__currentStep, 'beg')
         self._widget.intensityPlot.clear()
         self._widget.intensityPlot.addLegend()
 
@@ -571,6 +642,7 @@ class ScanControllerOpt(ImConWidgetController):
                 name=labels[i],
                 pen=pg.mkPen(colors[i], width=1.5),
             )
+        self.timeMonitor.addStamp('stability-plot', self.__currentStep, 'end')
 
     def updateLiveReconIdx(self) -> None:
         """ Get camera line index for the live reconstruction. """
@@ -905,21 +977,37 @@ class MyMplCanvas(FigureCanvas):
         self.ax3.legend()
 
 
-class Stability():
+class Stability:
+    """ Helper container class to monitor and display the stability traces of the 
+        intensity of the 4 corners of the OPT stack.
+
+        iUL -> upper left
+        iUR -> upper right
+        iLL -> lower left
+        iLR -> lower right
+    """
+
     def __init__(self, n_pixels=50):
+        # TODO: what does n_pixels mean?
         self.n_pixels = n_pixels
         self.steps = []
         self.intensity = [[], [], [], []]
+    
+    def processStabilityTraces(self, frame: np.ndarray, step: int) -> Tuple[list, list]:
+        """ Process the current frame's stability traces.
 
-    def process_img(self, img, step):
-        iUL = np.mean(img[:self.n_pixels, :self.n_pixels])
-        iUR = np.mean(img[:self.n_pixels, -self.n_pixels:])
-        iLL = np.mean(img[-self.n_pixels:, :self.n_pixels])
-        iLR = np.mean(img[-self.n_pixels:, -self.n_pixels:])
+        Args:
+            frame (`np.ndarray`): input frame
+            step (`int`): current OPT scan step index
+        
+        Returns:
+            Tuple[list, list]: list of presently executed OPT scan steps and list of intensity traces
+        """
+        iUL = np.mean(frame[:self.n_pixels, :self.n_pixels])
+        iUR = np.mean(frame[:self.n_pixels, -self.n_pixels:])
+        iLL = np.mean(frame[-self.n_pixels:, :self.n_pixels])
+        iLR = np.mean(frame[-self.n_pixels:, -self.n_pixels:])
 
-        self.updateSeries(step, iUL, iUR, iLL, iLR)
-
-    def updateSeries(self, step, iUL, iUR, iLL, iLR):
         self.steps.append(step)
         if step == 0:
             # I append ones and save values as normalization factors
@@ -931,6 +1019,8 @@ class Stability():
             self.intensity[1].append(iUR/self.norm_factors[1])
             self.intensity[2].append(iLL/self.norm_factors[2])
             self.intensity[3].append(iLR/self.norm_factors[3])
+        
+        return self.steps, self.intensity
 
 
 class FBPlive():

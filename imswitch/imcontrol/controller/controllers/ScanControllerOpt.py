@@ -1,7 +1,6 @@
 
 from PyQt5 import QtWidgets
 import pyqtgraph as pg
-from PyQt5.QtCore import QObject, pyqtSignal
 from scipy.fftpack import fft, ifft
 from scipy.interpolate import interp1d
 import tifffile as tif

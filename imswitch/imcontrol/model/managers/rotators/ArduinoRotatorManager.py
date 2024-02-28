@@ -3,7 +3,7 @@ from imswitch.imcontrol.model.interfaces import (
     MotorInterface
 )
 from imswitch.imcommon.model import initLogger
-from imswitch.imcommon.model.utils import stepsToAngle, angleToSteps
+from imswitch.imcommon.model.mathutils import stepsToAngle, angleToSteps
 from .RotatorManager import RotatorManager
 from typing import Union, Tuple, Dict
 from telemetrix import telemetrix

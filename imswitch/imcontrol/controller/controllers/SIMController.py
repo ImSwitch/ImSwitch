@@ -281,7 +281,7 @@ class SIMController(ImConWidgetController):
             
             # switch back to internal trigger            
             if self.IS_FASTAPISIM:
-                self.detector.setParameter("trigger_source","Continous")
+                self.detector.setParameter("trigger_source","Internal trigger")
                 self.detector.setParameter("buffer_size",-1)
                 self.detector.flushBuffers()
 
@@ -729,7 +729,7 @@ class SIMProcessor(object):
             self._logger.debug("reconstructing the stack with napari") 
             assert self.isCalibrated, 'SIM processor not calibrated, unable to perform SIM reconstruction'
             
-            dshape= currentImage.shape
+            dshape= np.shape(currentImage)
             phases_angles = self.phases_number*self.angles_number
             rdata = currentImage[:phases_angles, :, :].reshape(phases_angles, dshape[-2],dshape[-1])
             if self.use_gpu:

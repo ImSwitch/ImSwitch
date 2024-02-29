@@ -69,8 +69,17 @@ class CameraPCO:
 
         # get dummy frame
         self.start_live()
-       
-        frame = self.camera.image()[0]
+        t0 = time.time()
+        while 1:
+            if time.time()-t0>1:
+                raise("No Frame ")
+            try:
+                frame = self.camera.image()[0]
+            except:
+                time.sleep(0.1)
+                continue
+            break
+
         # get framesize 
         self.SensorHeight = frame.shape[0] #self.camera._Camera__roi['x1']//self.binning
         self.SensorWidth = frame.shape[0] #self.camera._Camera__roi['y1']//self.binning
@@ -130,7 +139,7 @@ class CameraPCO:
             else: 
                 return None
         else:
-            self.frame_raw_metadata = self.camera.image(image_index=-1)
+            self.frame_raw_metadata = self.camera.image()#image_index=-1)
             #time.sleep(0.001)
             self.frame = self.frame_raw_metadata[0]
             self.frameID = self.frame_raw_metadata[1]["recorder image number"]

@@ -15,6 +15,8 @@ import requests
 x = requests.get('http://localhost:8000/stopLoop')
 print(x.text)
 '''
+import os
+os.environ["DISPLAY"] = ':0'
 
 # Configure GPIO if running on Raspberry Pi
 try:
@@ -23,7 +25,7 @@ except:
     print("Not running on Pi")
     GPIO = None
 
-# Set parameters
+# Screen resolution
 mResolution = [1920, 1080]
 #mResolution = [800, 600]
 unitCellSize = 3
@@ -38,11 +40,21 @@ iter = True
 iLoop = True
 iCycle = 100
 TaskCompleted = False
-    
+
 if GPIO is not None:
-    GPIO.setmode(GPIO.BOARD)
+    # List of pins your application uses
+    pins_to_cleanup = [camTriggerPin]
+
+    # Clean up specific pins
+    GPIO.setmode(GPIO.BOARD)  # or GPIO.BOARD, depending on your pin numbering
+    for pin in pins_to_cleanup:
+        GPIO.setup(pin, GPIO.IN)  # Set pin to input to safely unexport it
+    GPIO.cleanup(pins_to_cleanup)  # Clean up only the pins you plan to use
+
+    # Now, set up your GPIO pins as usual
+    print("Setting up pin: ")
     GPIO.setup(camTriggerPin, GPIO.OUT)
-    
+
 # Images path
 try:
     mypath488 = "/home/pi/Desktop/Pattern_SIMMO/488"
@@ -85,17 +97,32 @@ class Viewer:
         self.pattern_index = 0
         pygame.init()
         pygame.mouse.set_visible(False)
-        self.display = pygame.display.set_mode(display_size,  display=0) #pygame.FULLSCREEN,
-        self.tWait = 0.05
+        self.display = pygame.display.set_mode(display_size, pygame.FULLSCREEN, display=0) #pygame.FULLSCREEN,
+        self.tWait = 0.1
         self.clock = pygame.time.Clock()
         global camTriggerPin, nImages, iLoop, iCycle
         self.camPin = camTriggerPin
         self.iNumber = nImages
+        self.iLoop = iLoop
+        self.iCycle = iCycle
+        self.viewer_completed_event = Event()
+    
+    def set_title(self, title):
+        pygame.display.set_caption(title)
     
     def set_twait(self, tWait):
         self.tWait = tWait
+    
+    def set_loop(self, iLoop):
+        self.iLoop = iLoop
+    
+    def set_cycle(self, iCycle):
+        self.iCycle = iCycle
         
-    def trigger(self, gpiopin):
+    def trigger(self):
+        self.triggerPin(self.camPin)
+        
+    def triggerPin(self, gpiopin):
         GPIO.output(gpiopin, GPIO.HIGH)
         time.sleep(0.001)
         GPIO.output(gpiopin, GPIO.LOW)
@@ -111,12 +138,11 @@ class Viewer:
                 if self.pattern_index == 8:
                     irun += 1
             self.pattern_index = (self.pattern_index + 1) % self.iNumber
-            #surf = pygame.surfarray.make_surface(Z)
             self.display.blit(surf, (0, 0))
             pygame.display.update()
-            self.clock.tick()
-            print(self.clock.get_fps())
-            #self.trigger(self.camPin)
+            #self.clock.tick()
+            #print(self.clock.get_fps())
+            self.trigger()
             time.sleep(self.tWait)
             for event in pygame.event.get():
                 if event.type == pygame.KEYDOWN:
@@ -129,6 +155,7 @@ class Viewer:
                 running = False
                 pygame.display.quit()
                 task_lock = True
+                self.viewer_completed_event.set()
 
 def update(index):
     global currentWavelength
@@ -155,16 +182,12 @@ get_ip_address()
     
 app = FastAPI()
 viewer = None
+#await start_viewer
 
 def run_viewer():
     global viewer
     viewer = Viewer(update, mResolution)
     viewer.start()
-
-
-@app.get("/getID/")
-def getID():
-    return {"ID":"RASPIPSIM"}
 
 @app.get("/start_viewer/")
 async def start_viewer(background_tasks: BackgroundTasks):
@@ -193,15 +216,28 @@ async def start_viewer_freeze(background_tasks: BackgroundTasks, i:int):
 # it only works without pygame opened
 @app.get("/start_viewer_single_loop/{i_cycle}")
 async def start_viewer_single_loop(background_tasks: BackgroundTasks, i_cycle:int):
-    global iFreeze, task_lock, viewer, iCycle, iLoop
+    global iFreeze, task_lock, viewer, iCycle, iLoop, iPattern
     if task_lock:
         background_tasks.add_task(run_viewer)
         task_lock = False    
     iFreeze = False
     iLoop = False
     iCycle = i_cycle
+    # wait until we count up until patterns are completed or timeout occurs
+    t0 = time.time()
+    mtimeout = 1
+    while(1):
+        if iPattern > 7:
+            return
+        time.sleep(0.01)
+        if time.time()-t0 > mtimeout:
+            return
     return {"message": "run certain cycle."}
 
+@app.get("/send_trigger")
+async def send_trigger():
+    viewer.trigger()
+    
 # Endpoint to set pause time
 @app.get("/set_pause/{pauseTime}")
 async def set_pause(pauseTime: float):
@@ -221,13 +257,17 @@ async def run_cycle(icycle: int):
     iter = not iter
     return {"wavelength": currentWavelength}
 
-
 @app.get("/stop_loop/")
 async def stop_loop():
     global iLoop, iCycle
     iLoop = False
     iCycle = 1
     return {"message": "Loop stopped"}
+
+@app.get("/wait_for_viewer_completion")
+async def wait_for_viewer_completion():
+    viewer.viewer_completed_event.wait()  # Wait for viewer completion
+    return {"message": "Viewer completed"}
 
 # Endpoint to toggle fullscreen mode
 @app.get("/toggle_fullscreen")

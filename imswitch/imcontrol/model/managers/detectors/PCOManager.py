@@ -19,7 +19,6 @@ class PCOManager(DetectorManager):
         cameraId = detectorInfo.managerProperties['cameraListIndex']
         self._camera = self._getPCOObj(cameraId, binning)
         
-        
         for propertyName, propertyValue in detectorInfo.managerProperties['PCOcam'].items():
             self._camera.setPropertyValue(propertyName, propertyValue)
 
@@ -133,9 +132,6 @@ class PCOManager(DetectorManager):
     def pixelSizeUm(self):
         return [1, 1, 1]
     
-    def get_triggered_framebuffer(self, nFrames: int = 9):
-        return self._camera.get_triggered_framebuffer(nFrames=nFrames)
-
     def crop(self, hpos, vpos, hsize, vsize):
 
         def cropAction():

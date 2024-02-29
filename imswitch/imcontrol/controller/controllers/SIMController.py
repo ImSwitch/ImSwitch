@@ -282,7 +282,7 @@ class SIMController(ImConWidgetController):
             # switch back to internal trigger            
             if self.IS_FASTAPISIM:
                 self.detector.setParameter("trigger_source","Continous")
-                self.detector.setParameter("buffer_size",9)
+                self.detector.setParameter("buffer_size",-1)
                 self.detector.flushBuffers()
 
 
@@ -374,7 +374,6 @@ class SIMController(ImConWidgetController):
                     # self.SIMClient.start_viewer()
                     self.SIMClient.set_wavelength(iColour)
                     self.SIMClient.start_viewer_single_loop(1)
-                    # self.SIMStack = self.detector.get_triggered_framebuffer(9)
                     self.SIMStack = self.detector.getChunk()
                     self.sigImageReceived.emit(np.array(self.SIMStack),"SIMStack"+str(processor.wavelength))
                     processor.setSIMStack(self.SIMStack)
@@ -816,9 +815,9 @@ class SIMClient:
         self.itime = 120
         self.laser_power = (400, 250)
 
-    def get_request(self, url):
+    def get_request(self, url, timeout=0.3):
         try: 
-            response = requests.get(url, timeout=.3)
+            response = requests.get(url, timeout=timeout)
             return response.json()
         except Exception as e:
             print(e)
@@ -828,9 +827,9 @@ class SIMClient:
         url = self.base_url + self.commands["start"]
         return self.get_request(url)
 
-    def start_viewer_single_loop(self, number_of_runs):
+    def start_viewer_single_loop(self, number_of_runs, timeout=2):
         url = f"{self.base_url}{self.commands['single_run']}{number_of_runs}"
-        self.get_request(url)
+        self.get_request(url, timeout=timeout)
 
     def wait_for_viewer_completion(self):
         url = self.base_url + self.commands["pattern_compeleted"]

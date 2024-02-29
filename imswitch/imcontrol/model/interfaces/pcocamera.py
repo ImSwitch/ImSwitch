@@ -29,7 +29,6 @@ class CameraPCO:
         self.shape = (0, 0)
         
         self.is_connected = False
-        self.is_streaming = False
 
         # unload CPU? 
         self.downsamplepreview = 1
@@ -38,7 +37,7 @@ class CameraPCO:
         self.exposure_time = exposure_time
         self.preview_width = 600
         self.preview_height = 600
-        
+        self.defaultBufferSize = 30
         # dict for different trigger mode
         self.trigger_type = ['software trigger', 
                              'auto sequence',
@@ -46,18 +45,8 @@ class CameraPCO:
                              'external exposure control'
                              ]
         self.current_trigger_type = self.trigger_type[0]
-
-        # reserve some space for the framebuffer
-        self.NBuffer = 30
-        self.frame_buffer = collections.deque(maxlen=self.NBuffer)
-        self.frameid_buffer = collections.deque(maxlen=self.NBuffer)
         self.frameID = -1
-        self.frame_id_last = -1
-
-        #%% starting the camera thread
         self.camera = None
-
-        # binning 
         self.binning = binning
 
         try:
@@ -86,25 +75,11 @@ class CameraPCO:
         self.SensorHeight = frame.shape[0] #self.camera._Camera__roi['x1']//self.binning
         self.SensorWidth = frame.shape[0] #self.camera._Camera__roi['y1']//self.binning
         
-    
-    def get_triggered_framebuffer(self, nFrames: int = 9):
-        '''
-        Here we want to get the exact number of frames e.g. in case of triggering events
-        '''
-        preTriggerMode = self.camera.sdk.get_trigger_mode()
-        self.camera.stop()
-        self.camera.configuration = {'trigger': 'external exposure start & software trigger'}
-        self.camera.record(nFrames,'ring buffer')
-        self.camera.wait_for_first_image(timeout=1)
-        imageStack, stackMetadata = self.camera.images(blocksize=nFrames) #meta data will also returned
-        self.camera.configuration = {'trigger': preTriggerMode}
-        return imageStack, stackMetadata
-    
-        
+
     def start_live(self, waitForFirstImage=True, nFrameBuffer=None):
-        if not self.is_streaming:
+        if not self.camera.is_recording:
             if nFrameBuffer is None:
-                nFrameBuffer = self.NBuffer
+                nFrameBuffer = self.defaultBufferSize
             # start data acquisition    
             try:
                 self.camera.record(number_of_images=nFrameBuffer,mode='ring buffer')
@@ -112,14 +87,15 @@ class CameraPCO:
                 print(e)
                 self.camera.stop()
                 self.camera.record(number_of_images=nFrameBuffer,mode='ring buffer')
-            if waitForFirstImage: self.camera.wait_for_first_image(timeout=1)
-            self.is_streaming = True
+            if  0 and waitForFirstImage: # TODO: this is not working
+                try: 
+                    self.camera.wait_for_first_image(timeout=1)
+                except Exception as e:
+                    self.__logger.error(e)
 
     def stop_live(self):
-        if self.is_streaming or self.camera.is_recording:
+        if self.camera.is_recording:
             self.camera.stop()
-            self.is_streaming = False
-            self.is_recording = False
             
     def suspend_live(self):
         pass
@@ -154,13 +130,10 @@ class CameraPCO:
             else: 
                 return None
         else:
-            while self.frame_id_last >= self.frameID and self.camera.is_recording:
-                self.frame_raw_metadata = self.camera.image(image_index=-1)
-                #time.sleep(0.001)
-                self.frame = self.frame_raw_metadata[0]
-                self.frameID = self.frame_raw_metadata[1]["recorder image number"]
-                #self.__logger.debug("Frame ID..."+str(self.frame_id_last))
-            self.frame_id_last = self.frameID
+            self.frame_raw_metadata = self.camera.image(image_index=-1)
+            #time.sleep(0.001)
+            self.frame = self.frame_raw_metadata[0]
+            self.frameID = self.frame_raw_metadata[1]["recorder image number"]
             return self.frame
         
     
@@ -168,8 +141,7 @@ class CameraPCO:
         return self.frameID
 
     def flushBuffer(self):
-        self.frameid_buffer.clear()
-        self.frame_buffer.clear()
+        pass
         
     def getLastChunk(self, timeout=2):
         # save on disk
@@ -233,7 +205,7 @@ class CameraPCO:
         pass
 
     def setTriggerSource(self, source):
-        wasRunning = self.is_streaming
+        wasRunning = self.camera.is_recording
         if wasRunning: self.stop_live()
         if source == 'Continous':
             self.camera.configuration = {'trigger': self.trigger_type[0]}
@@ -254,9 +226,11 @@ class CameraPCO:
         self.start_live()
         
     def setFrameBuffer(self, nFrameBuffer=10, waitForFirstImage=False):
-        wasRunning = self.is_streaming
+        wasRunning = self.camera.is_recording
         if wasRunning:
             self.stop_live()
+        if nFrameBuffer == -1:
+            nFrameBuffer = self.defaultBufferSize
         self.start_live(waitForFirstImage=waitForFirstImage, nFrameBuffer=nFrameBuffer)
             
 

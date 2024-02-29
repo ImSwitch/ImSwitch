@@ -1,4 +1,3 @@
-
 from PyQt5 import QtWidgets
 import pyqtgraph as pg
 from scipy.fftpack import fft, ifft
@@ -7,9 +6,6 @@ import tifffile as tif
 import os
 from datetime import datetime
 from collections import defaultdict
-import matplotlib
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.figure import Figure
 
 from functools import partial
 import numpy as np
@@ -19,12 +15,13 @@ from imswitch.imcommon.model import initLogger, dirtools
 from imswitch.imcommon.framework import Signal, Thread, Worker
 from skimage.transform import radon
 
-class ScanExecutionMonitor:
-    """ An helper class dedicated to monitor the execution of an OPT scan.
-    It can be used to generate an experiment report with timing informations relative to each
-    step of the scan execution.
-    """
 
+class ScanExecutionMonitor:
+    """ Helper class dedicated to monitor the execution time of an OPT scan.
+    It can be used to generate an experiment report with timing informations
+    relative to each step of the scan execution. It is also saved in the
+    metadata file of the experiment.
+    """
     def __init__(self):
         self.outputReport = {}
         self.report = defaultdict(lambda: [])
@@ -48,8 +45,10 @@ class ScanExecutionMonitor:
         self.report['end'] = datetime.now()
         try:
             self.totalTime = (self.report['end'] - self.report['start']).total_seconds()
-        except:
+        except KeyError:
             # TODO: ??? why should there be an exception?
+            # if the class is reused, and addStart() is not called before addFinish,
+            # try will fail.
             print('Not possible to calculate total experimental time.')
 
     def getReport(self) -> dict:
@@ -57,9 +56,8 @@ class ScanExecutionMonitor:
         return self.outputReport
 
     def makeReport(self):
-        """
-        Creates a statistical report on the time spent
-        on various tasks. This can be used to evaluate 
+        """ Creates a statistical report on the time spent
+        on various tasks. This can be used to evaluate
         the scan timing performances.
         """
         self.outputReport = {}
@@ -69,35 +67,40 @@ class ScanExecutionMonitor:
             self.__processKey(k)
 
     def __processKey(self, key):
-        """ Process a specific key of the report dictionary. Private class method. """
-        # first the integrated time spent
+        """ Process a specific key of the report dictionary.
+        Private class method. """
         idxs, tags, stamps = zip(*self.report[key])
         i = 0
         diffs, steps = [], []
         while i < len(stamps)-1:
+            # subsequent timestamps need to have same key, and not beg/end
             if (idxs[i] == idxs[i+1] and tags[i] == 'beg' and tags[i+1] == 'end'):
                 diffs.append((stamps[i+1] - stamps[i]).total_seconds())
                 steps.append(idxs[i])  # append for time evolution
             i += 1
         if len(diffs) != len(stamps) // 2:
             print('Some data were not matched')
-            
+
         report = {}
-        report['Total'] = np.sum(diffs)
-        report['Mean'] = np.mean(diffs)
-        report['STD'] = np.std(diffs)
-        report['Tseries'] = np.array([steps, diffs]).T
-        report['PercTime'] = np.sum(diffs)/self.totalTime * 100
+        report['Total'] = np.sum(diffs)                 # total time spent on the task
+        report['Mean'] = np.mean(diffs)                 # mean time per step
+        report['STD'] = np.std(diffs)                   # STD of time per step
+        report['Tseries'] = np.array([steps, diffs]).T  # timeseries of times per step
+        report['PercTime'] = np.sum(diffs)/self.totalTime * 100  # percentage of total exp. time
+
+        # put the task dictionary into the report dictionary
         self.outputReport[key] = report
 
+
 class ScanOPTWorker(Worker):
-    """ OPT scan worker. The worker operates on a separate thread from the main application thread;
-    it is responsible for the execution of the OPT scan (moving the rotator, acquiring an image,
-    and updating the stability plot). The worker is also responsible for the live reconstruction
-    of the acquired frames, if the option is enabled.
-    
+    """ OPT scan worker. The worker operates on a separate thread
+    from the main application thread. It is responsible for the execution
+    of the OPT scan (moving the rotator, acquiring an image, updating plots
+    light intensity stability). The worker is also responsible for
+    the live reconstruction of the acquired frames, if the option is enabled.
+
     Args:
-        master (`MasterController`): reference to the master controller; used to access the 
+        master (`MasterController`): reference to the master controller; used to access the
         detectorName (`str`): name identifier of the detector used for the OPT scan.
         rotatorName (`str`): name identifier of the rotator used for the OPT scan.
     """
@@ -118,31 +121,32 @@ class ScanOPTWorker(Worker):
         self.currentStep = 0
 
         # monitor flags
-        self.isOptRunning = False            # OPT scan running flag, default to False
-        self.noRAM = False                   # TODO: what does this do exactly?
-        self.isLiveRecon = False             # OPT live reconstruction flag, default to False
-        self.isInterruptionRequested = False # interruption request flag, set from the main thread; default to False
-        self.frameStack = []                 # OPT stack memory buffer
-        
-        # Demo parameters
-        self.demoEnabled = False          # Demo mode flag; if True generates synthetic to display; default to False
-        self.sinogram : np.ndarray = None # Demo sinogram; default to None
-    
+        self.isOptRunning = False             # OPT scan running flag, default to False
+        self.noRAM = False                    # Stack not saved to RAM and Viewwer to save memory
+        self.isLiveRecon = False              # OPT live reconstruction flag, default to False
+        self.isInterruptionRequested = False  # interruption request flag, set from the main thread; defaults to False
+        self.frameStack = []                  # OPT stack memory buffer
+
+        # Demo parameters, For demo, synthetic phantom data are generated to emulate OPT scan
+        self.demoEnabled = False          # Demo mode flag; if True synthetic data generated; defaults to False
+        self.sinogram: np.ndarray = None  # Demo sinogram; default to None
+
     def startOPTScan(self):
         """ Performs the first step of the OPT scan, triggering an asynchronous
-        loop with the rotator. After the first movement request, the rotator
-        will emit the signal `sigPositionUpdated` when the movement is done, which
-        will be handled by `postRotatorStep`.
+        loop with the rotator. After the first motor step is finished,
+        the rotator emits the signal `sigPositionUpdated`,
+        which is handled by `postRotatorStep`.
         """
         # initialize memory buffer
         # TODO: make sure to get correct dtype from detector somehow...
+        # DP: why important if dtypes corectly handled in the camera classes?
         # this needs to be changed at the API level at some point...
         self.frameStack.clear()
         self.counter = 0
 
-        self.master.detectorsManager[self.detectorName].startAcquisition()        
+        self.master.detectorsManager[self.detectorName].startAcquisition()
         self.isOptRunning = True
-        
+
         # TODO: how to save the final report in image metadata?
         self.timeMonitor.addStart()
         self.currentStep = 0
@@ -150,16 +154,17 @@ class ScanOPTWorker(Worker):
         # we move the rotator to the first position
         self.timeMonitor.addStamp('motor', self.currentStep, 'beg')
         self.master.rotatorsManager[self.rotatorName].move_abs(self.optSteps[self.currentStep], inSteps=True)
-    
+
     def postRotatorStep(self):
-        """ Triggered after emission of the sigPositionUpdated signal from the rotator.
-            The method will perform the following steps: capture the latest frame from the detector,
-            if the saving option is enabled, save the frame; update the stability plot
-            and finally trigger the next step. This workflow is repeated until
-            all the rotational steps are completed, or when the `isInterruptionRequested`
-            flag is raised by the main thread.
+        """ Triggered after emission of the `sigPositionUpdated` signal from
+        the rotator. The method performs the following steps: (1) capture
+        the latest frame from the detector, (2) saves the frame if saving
+        enabled, (3) updates the stability plot optionally performs live
+        reconstruction, (4) triggers the next motor step.
+        This workflow is repeated until all the rotational steps
+        are completed, or when the `isInterruptionRequested` flag is raised
+        by the main thread.
         """
-        
         self.timeMonitor.addStamp('motor', self.currentStep, 'end')
         frame = self.getNextFrame()
         self.processFrameStability(frame, self.currentStep)
@@ -168,20 +173,21 @@ class ScanOPTWorker(Worker):
             self.stopOPTScan()
         else:
             self.startNextStep()
-            
-    
+
     def getNextFrame(self) -> np.ndarray:
         """
         Captures the next frame from the detector. If live reconstruction
         is enabled, the frame will be stored in the local memory buffer;
-        finally the frame will be displayed in the viewer. If the flag
-        `demoEnabled` is set, the synthetic sinogram will be used instead
-        as data source.
+        finally the frame will be displayed in the viewer (unless `noRAM` flag
+        enabled). If the flag `demoEnabled` is set, the synthetic sinogram
+        will be used instead as data source.
 
         Returns:
             np.ndarray: the captured frame
         """
         self.timeMonitor.addStamp('snap', self.currentStep, 'beg')
+        # TODO: my original implementation tried to avoid this if/else
+        # in favour of speeding up the real experiment as a priority
         if self.demoEnabled:
             frame = self.sinogram[self.currentStep]
         else:
@@ -194,26 +200,28 @@ class ScanOPTWorker(Worker):
             self.sigNewFrameCaptured.emit(f'{self.detectorName}: OPT stack', transmittingStack , self.currentStep)
         self.timeMonitor.addStamp('snap', self.currentStep, 'end')
         return frame
-    
+
     def processFrameStability(self, frame: np.ndarray, step: int) -> None:
-        """ 
-        Processes the stability of the incoming frame; the computed traces
-        are then emitted to the main thread for display. 
+        """ Processes the light stability of the incoming frame;
+        the computed traces are then emitted to the main thread for display.
 
         Args:
             frame (`np.ndarray`): the incoming frame
             step (`int`): the current step of the OPT scan
         """
+        # DP: This seems not needed
         self.counter += 1
         self.timeMonitor.addStamp('stability', self.currentStep, 'beg')
         stepsList, intensityLists = self.signalStability.processStabilityTraces(frame, step)
         self.timeMonitor.addStamp('stability', self.currentStep, 'end')
         self.sigNewStabilityTrace.emit(stepsList, intensityLists)
-    
+
     def saveCurrentFrame(self) -> None:
         # TODO: implement
+        # DP: You mean it should be on this thread,
+        # instead of the handleSave in the ScanController, right?
         pass
-    
+
     def startNextStep(self):
         """
         Update live reconstruction, stop OPT in case of last step,
@@ -235,7 +243,7 @@ class ScanOPTWorker(Worker):
         else:
             self.timeMonitor.addStamp('motor', self.currentStep, 'beg')
             self.master.rotatorsManager[self.rotatorName].move_abs(self.optSteps[self.currentStep], inSteps=True)
-    
+
     def stopOPTScan(self):
         """
         Ends the requested OPT scan. The scan can either naturally end,
@@ -246,11 +254,12 @@ class ScanOPTWorker(Worker):
         self.isOptRunning = False
         self.timeMonitor.makeReport()
         self.sigScanDone.emit()
-    
+
     def computeLiveReconstruction(self):
         # TODO: refactor old code here;
         pass
-            
+
+
 class ScanControllerOpt(ImConWidgetController):
     """ Optical Projection Tomography (OPT) scan controller.
     """
@@ -271,14 +280,14 @@ class ScanControllerOpt(ImConWidgetController):
         allDetectorNames = self._master.detectorsManager.getAllDeviceNames()
         self.detectorName = allDetectorNames[0]
         self.detector = self._master.detectorsManager[allDetectorNames[0]]
-        
+
         self.rotatorsList = self._master.rotatorsManager.getAllDeviceNames()
         self.rotatorName = None
         self.stepsPerTurn = 0
-        
+
         self._widget.scanPar['Rotator'].currentIndexChanged.connect(self.updateRotator)
         self.updateRotator()
-        
+
         for rotator in self.rotatorsList:
             self._widget.scanPar['Rotator'].addItem(rotator)
 
@@ -302,30 +311,32 @@ class ScanControllerOpt(ImConWidgetController):
         self.updateLiveReconIdx()
 
         self._widget.scanPar['OptStepsEdit'].valueChanged.connect(self.updateOptSteps)
-        
+
         # Scan loop control
         self._widget.scanPar['StartButton'].clicked.connect(self.prepareOPTScan)
         self._widget.scanPar['StopButton'].clicked.connect(self.requestInterruption)
         self._widget.scanPar['PlotReportButton'].clicked.connect(self.plotReport)
 
-        # OPT worker thread;
+        # OPT worker thread
         self.optThread = Thread()
         self.optWorker = ScanOPTWorker(self._master, self.detectorName, self.rotatorName)
         self.optWorker.moveToThread(self.optThread)
-        
+
         # Communication channel signals connection
         # sigRotatorPositionUpdated carries the name of the current rotator
         # that updated its position; we drop it because we control it via the UI
-        self._commChannel.sigRotatorPositionUpdated.connect(lambda _: self.optWorker.postRotatorStep())
+        self._commChannel.sigRotatorPositionUpdated.connect(
+            lambda _: self.optWorker.postRotatorStep(),
+            )
 
         # Worker signals connection
         self.optWorker.sigNewFrameCaptured.connect(self.displayImage)
         self.optWorker.sigNewStabilityTrace.connect(self.updateStabilityPlot)
         self.optWorker.sigScanDone.connect(self.postScanEnd)
-        
+
         # Thread signals connection
         self.optThread.started.connect(self.optWorker.startOPTScan)
-        
+
         # setup UI
         self.enableWidget(True)
 
@@ -337,20 +348,20 @@ class ScanControllerOpt(ImConWidgetController):
     def requestInterruption(self):
         """ Request interruption of the OPT scan. """
         self.optWorker.isInterruptionRequested = True
-    
+
     def postScanEnd(self):
         """ Triggered after the end of the OPT scan. """
         self._logger.info('OPT scan finished.')
-        self.optWorker.isInterruptionRequested = False # reset interruption flag
-        self.optThread.quit() # stop the worker thread
+        self.optWorker.isInterruptionRequested = False  # reset interruption flag
+        self.optThread.quit()  # stop the worker thread
         self.enableWidget(True)
-        
+
     #################
     # Main OPT scan #
     #################
     def prepareOPTScan(self):
-        """ Initiate OPT scan.  """
-        
+        """ Initiate OPT scan. """
+
         def generateSyntheticSinogram(resolution: int = 128) -> np.ndarray:
             data = shepp3d(resolution)  # shepp-logan 3D phantom
             sinogram = np.zeros(data.shape)  # preallocate sinogram array
@@ -358,32 +369,36 @@ class ScanControllerOpt(ImConWidgetController):
             for i in range(resolution):
                 sinogram[i, :, :] = radon(data[i, :, :], theta=angles)
             mx = np.amax(sinogram)
-            return np.rollaxis((sinogram/mx*255).astype('int16'), 2)
+            return np.rollaxis((sinogram/mx*255).astype(np.uint8), 2)
 
         self.__optSteps = self.getOptSteps()
 
         if self._widget.scanPar['MockOpt'].isChecked():
-            # Checking for divisability of motor steps and OPT steps.
-            # this is necessary only for the real OPT, not Mock
-            if self.stepsPerTurn % self.__optSteps != 0:
-                # ask for confirmation
-                if not self._widget.requestMockConfirmation():
-                    return
-            self._logger.info('Demo experiment requested: preparing synthetic data.')
-            
+            if not self._widget.requestMockConfirmation():
+                return
+            self._logger.info('Demo experiment: preparing synthetic data.')
+
             # here generate stack of projections
             self.optWorker.demoEnabled = True
             self.optWorker.sinogram = generateSyntheticSinogram(self.__optSteps)
             self._logger.info('Synthetic data ready.')
-        
+        else:
+            # Checking for divisability of motor steps and OPT steps.
+            if self.stepsPerTurn % self.__optSteps != 0:
+                # ask for confirmation
+                if not self._widget.requestOptStepsConfirmation():
+                    return
+
         self.saveSubfolder = datetime.now().strftime("%Y_%m_%d-%H-%M-%S")
         self.sigImageReceived.connect(self.displayImage)
 
         # equidistant steps for the OPT scan in absolute values.
-        optScanSteps = np.linspace(0, 
-                                self.stepsPerTurn, 
-                                self.__optSteps,
-                                endpoint=False).astype(np.int_)
+        optScanSteps = np.linspace(
+                0,
+                self.stepsPerTurn,
+                self.__optSteps,
+                endpoint=False,
+            ).astype(np.int_)
         self.optWorker.optSteps = optScanSteps
 
         # live reconstruction
@@ -394,13 +409,15 @@ class ScanControllerOpt(ImConWidgetController):
         self.optThread.start()
 
     def plotReport(self):
-        self.SW = SecondWindow(self.optWorker.timeMonitor.getReport())
-        self.SW.resize(1500, 700)
-        self.SW.show()
+        self._widget.plotReport(self.optWorker.timeMonitor.getReport())
+        # self.SW = SecondWindow(self.optWorker.timeMonitor.getReport())
+        # self.SW.resize(1500, 700)
+        # self.SW.show()
 
     ##################
     # Image handling #
     ##################
+    # TODO: Call this in from
     def handleSave(self):
         if self.saveOpt:
             self.saveImage(self.frame,
@@ -480,8 +497,7 @@ class ScanControllerOpt(ImConWidgetController):
     # Helper methods #
     ##################
     def enableWidget(self, value: bool) -> None:
-        """
-        Upon starting/stopping the OPT, widget
+        """ Upon starting/stopping the OPT, widget
         editable fields get enabled from the bool value.
 
         Args:
@@ -500,8 +516,7 @@ class ScanControllerOpt(ImConWidgetController):
         self._widget.scanPar['MockOpt'].setEnabled(value)
 
     def updateRotator(self):
-        """
-        Update rotator attributes when rotator is changed.
+        """ Update rotator attributes when rotator is changed.
         setting an index of the motor, motor_steps describe
         number of steps per revolution (resolution of the motor),
         also displayed in the widget.
@@ -511,7 +526,7 @@ class ScanControllerOpt(ImConWidgetController):
         self._widget.scanPar['StepsPerRevLabel'].setText(f'{self.stepsPerTurn:d} steps/rev')
 
     def getOptSteps(self):
-        """ Get the total rotation steps for an OPT experiment. """
+        """ Get the total number of rotation steps for an OPT experiment. """
         return self._widget.getOptSteps()
 
     def updateOptSteps(self):
@@ -529,8 +544,7 @@ class ScanControllerOpt(ImConWidgetController):
         return self._widget.getAverages()
 
     def setLiveReconButton(self, value: bool):
-        """
-        Set whether live reconstruction happenning.
+        """ Set live reconstruction Checkbox.
 
         Args:
             value (bool): True means live reconstruction active
@@ -553,7 +567,7 @@ class ScanControllerOpt(ImConWidgetController):
 
     def updateStabilityPlot(self, steps: list, intensity: List[list]):
         """ Update OPT stability plot from 4 corners of the stack.
-        
+
         Args:
             steps (list): list of OPT steps
             intensity (List[list]): list of intensity values for each corner
@@ -679,8 +693,7 @@ class ScanControllerOpt(ImConWidgetController):
         return retval
 
     def acquire_correction(self, btn, corr_type, n):
-        """
-        Handles correction acquisition, connects
+        """ Handles correction acquisition, connects
         display signal and calls getNframes(n)
 
         Args:
@@ -698,7 +711,7 @@ class ScanControllerOpt(ImConWidgetController):
         self.getNframes(n)
 
     def _continue(self, corr_type):
-        """Triggered by recieving a signal nFrames that
+        """ Triggered by recieving a signal nFrames that
         correction frame stack is ready. Calls specific correction
         processing method and disconnects acquisition signals.
 
@@ -818,7 +831,7 @@ class ScanControllerOpt(ImConWidgetController):
                         filename: str,
                         extension: str,
                         ) -> os.path:
-        """Sets datetime part of the filename, combines parts of the
+        """ Sets datetime part of the filename, combines parts of the
         filename, ensures existance of the saving folder and returns
         the full savings path
 
@@ -848,60 +861,6 @@ class ScanControllerOpt(ImConWidgetController):
         return newPath
 
 
-class SecondWindow(QtWidgets.QMainWindow):
-    def __init__(self, report):
-        super(SecondWindow, self).__init__()
-        self.main_widget = QtWidgets.QWidget()
-        self.setCentralWidget(self.main_widget)
-
-        layout = QtWidgets.QVBoxLayout(self.main_widget)
-        sc = MyMplCanvas(report, self.main_widget, width=300, height=300)
-        layout.addWidget(sc)
-
-
-class MyMplCanvas(FigureCanvas):
-    def __init__(self, report, parent=None, width=300, height=300):
-        fig = Figure(figsize=(width, height))
-        # fig, ax = plt.subplots(1, 3)
-        self.ax1 = fig.add_subplot(131)
-        self.ax2 = fig.add_subplot(132)
-        self.ax3 = fig.add_subplot(133)
-
-        self.compute_figure(report)
-
-        FigureCanvas.__init__(self, fig)
-        self.setParent(parent)
-
-        FigureCanvas.setSizePolicy(self, QtWidgets.QSizePolicy.Expanding,
-                                   QtWidgets.QSizePolicy.Expanding)
-        FigureCanvas.updateGeometry(self)
-
-    def compute_figure(self, report: dict):
-        keys = report.keys()
-        mean, std, percTime, tseries = [], [], [], []
-        my_cmap = matplotlib.colormaps.get_cmap("viridis")
-        colors = my_cmap(np.linspace(0, 1, len(keys)))
-        for key, value in report.items():
-            if key == "start" or key == "end":
-                continue
-            percTime.append(value['PercTime'])
-            mean.append(value['Mean'])
-            std.append(value['STD'])
-            tseries.append(value['Tseries'])
-        self.ax1.bar(keys, percTime, color=colors)
-        self.ax1.set_ylabel('Percentage of Total exp. time [%]')
-        self.ax2.bar(keys, mean, color=colors,
-                     yerr=std, align='center',
-                     ecolor='black', capsize=10)
-        self.ax2.set_ylabel('Mean time per operation [s]')
-
-        for i, k in enumerate(keys):
-            self.ax3.plot(tseries[i][:, 0], tseries[i][:, 1], 'o', label=k)
-        self.ax3.set_yscale('log')
-        self.ax3.set_ylabel('duration [s]')
-        self.ax3.legend()
-
-
 class Stability:
     """ Helper container class to monitor and display the stability traces of the 
         intensity of the 4 corners of the OPT stack.
@@ -914,17 +873,18 @@ class Stability:
 
     def __init__(self, n_pixels=50):
         # TODO: what does n_pixels mean?
-        self.n_pixels = n_pixels
+        self.n_pixels = n_pixels  # size  in pixels of rectangle  to monitor mean intensity at 4 corners
+        # TODO: DP, redo into a dictionary.
         self.steps = []
         self.intensity = [[], [], [], []]
-    
+
     def processStabilityTraces(self, frame: np.ndarray, step: int) -> Tuple[list, List[list]]:
         """ Process the current frame's stability traces.
 
         Args:
             frame (`np.ndarray`): input frame
             step (`int`): current OPT scan step index
-        
+
         Returns:
             Tuple[list, List[list]]: list of presently executed OPT scan steps and list of intensity traces
         """
@@ -944,7 +904,7 @@ class Stability:
             self.intensity[1].append(iUR/self.norm_factors[1])
             self.intensity[2].append(iLL/self.norm_factors[2])
             self.intensity[3].append(iLR/self.norm_factors[3])
-        
+
         return self.steps, self.intensity
 
 
@@ -1031,9 +991,7 @@ class FBPlive():
             self.output += interpolant(t) * (np.pi/(2*self.n_steps))
 
     def _get_fourier_filter(self, size):
-        '''size needs to be even
-        Only ramp filter implemented
-        '''
+        """ size needs to be even. Only ramp filter implemented """
         n = np.concatenate((np.arange(1, size / 2 + 1, 2, dtype=int),
                             np.arange(size / 2 - 1, 0, -2, dtype=int)))
         f = np.zeros(size)

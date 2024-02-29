@@ -5,6 +5,9 @@ import time
 
 from imswitch.imcontrol.view import guitools as guitools
 from .basewidgets import NapariHybridWidget
+import matplotlib as mpl
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.figure import Figure
 
 
 class ScanWidgetOpt(NapariHybridWidget):
@@ -181,7 +184,6 @@ class ScanWidgetOpt(NapariHybridWidget):
         self.grid.addWidget(self.scanPar['StartButton'], currentRow, 0)
         self.grid.addWidget(self.scanPar['StopButton'], currentRow, 1)
         self.grid.addWidget(self.scanPar['PlotReportButton'], currentRow, 2)
-        
 
         currentRow += 1
         self.grid.addWidget(self.tabs, currentRow, 0, 1, -1)
@@ -271,12 +273,108 @@ class ScanWidgetOpt(NapariHybridWidget):
         self.layer.data = im
         self.layer.contrast_limits = (np.min(im), np.max(im))
         time.sleep(0.2)
-    
-    def requestMockConfirmation(self):
+
+    def plotReport(self, report):
+        self.SW = SecondWindow(self.optWorker.timeMonitor.getReport())
+        self.SW.resize(1500, 700)
+        self.SW.show()
+
+    def requestOptStepsConfirmation(self):
         text = "Steps per/rev should be divisable by number of OPT steps. \
                 You can continue by casting the steps on integers and risk \
                 imprecise measured angles. Or cancel scan."
         return guitools.askYesNoQuestion(self, "Motor steps not integer values.", " ".join(text.split()))
+
+    def requestMockConfirmation(self):
+        text = "Confirm to proceed."
+        return guitools.askYesNoQuestion(self, "Mock OPT is about to run.", " ".join(text.split()))
+
+
+class SecondWindow(QtWidgets.QMainWindow):
+    """Create a pop-up widget with the OPT time execution
+    statistical plots
+
+    Args:
+        QtWidgets (_type_): baseclass
+    """
+    def __init__(self, report: dict) -> None:
+        """Process report information into plots descirbing
+        time spent on particular tasks overall through out
+        the experiments, as well as per OPT step
+
+        Args:
+            report (dict): dictionary of the report data
+        """
+        super(SecondWindow, self).__init__()
+        self.main_widget = QtWidgets.QWidget()
+        self.setCentralWidget(self.main_widget)
+
+        layout = QtWidgets.QVBoxLayout(self.main_widget)
+        sc = ReportCanvas(report, self.main_widget, width=300, height=300)
+        layout.addWidget(sc)
+
+
+class ReportCanvas(FigureCanvas):
+    def __init__(self, report, parent=None, width=300, height=300):
+        """ Plot of the report
+
+        Args:
+            report (dict): report data dictionary
+            parent (_type_, optional): parent class. Defaults to None.
+            width (int, optional): width of the plot in pixels. Defaults to 300.
+            height (int, optional): height of the plot in pixels. Defaults to 300.
+        """
+        fig = Figure(figsize=(width, height))
+        self.ax1 = fig.add_subplot(131)
+        self.ax2 = fig.add_subplot(132)
+        self.ax3 = fig.add_subplot(133)
+
+        self.createFigure(report)
+
+        FigureCanvas.__init__(self, fig)
+        self.setParent(parent)
+
+        FigureCanvas.setSizePolicy(self,
+                                   QtWidgets.QSizePolicy.Expanding,
+                                   QtWidgets.QSizePolicy.Expanding)
+        FigureCanvas.updateGeometry(self)
+
+    def createFigure(self, report: dict) -> None:
+        """Create report plot.
+
+        Args:
+            report (dict): report dictionary.
+        """
+        keys = report.keys()
+        mean, std, percTime, tseries = [], [], [], []
+        my_cmap = mpl.colormaps.get_cmap("viridis")
+        colors = my_cmap(np.linspace(0, 1, len(keys)))
+
+        # sort timestamps by keys which belong to certain acquisition steps
+        for key, value in report.items():
+            if key == "start" or key == "end":
+                continue
+            percTime.append(value['PercTime'])
+            mean.append(value['Mean'])
+            std.append(value['STD'])
+            tseries.append(value['Tseries'])
+
+        # add plot 1
+        self.ax1.bar(keys, percTime, color=colors)
+
+        # add plot 2
+        self.ax1.set_ylabel('Percentage of Total exp. time [%]')
+        self.ax2.bar(keys, mean, color=colors,
+                     yerr=std, align='center',
+                     ecolor='black', capsize=10)
+        self.ax2.set_ylabel('Mean time per operation [s]')
+
+        # add plot 3
+        for i, k in enumerate(keys):
+            self.ax3.plot(tseries[i][:, 0], tseries[i][:, 1], 'o', label=k)
+        self.ax3.set_yscale('log')
+        self.ax3.set_ylabel('duration [s]')
+        self.ax3.legend()
 
 
 # Copyright (C) 2020-2022 ImSwitch developers

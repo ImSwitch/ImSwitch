@@ -204,9 +204,10 @@ class SIMWidget(NapariHybridWidget):
             return self.img.image
         
     def setImage(self, im, name="SIM Reconstruction"):
-        if self.layer is None or self.layer.name not in self.viewer.layers:
+        if self.layer is None or name not in self.viewer.layers:
             self.layer = self.viewer.add_image(im, rgb=False, name=name, blending='additive')
-        self.layer.data = im
+        else:
+            self.viewer.layers[name].data = im
     
     def getFrameSyncVal(self):
         return abs(int(self.simFrameSyncVal.text()))

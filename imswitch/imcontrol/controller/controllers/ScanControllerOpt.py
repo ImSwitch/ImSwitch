@@ -140,10 +140,10 @@ class ScanOPTWorker(Worker):
         # initialize memory buffer
         # TODO: make sure to get correct dtype from detector somehow...
         # DP: why important if dtypes corectly handled in the camera classes?
+        # JA: it's important for numpy to correctly allocate memory if frames are stored in RAM;
+        # JA: and also for correctly saving the frames to disk.
         # this needs to be changed at the API level at some point...
         self.frameStack.clear()
-        self.counter = 0
-
         self.master.detectorsManager[self.detectorName].startAcquisition()
         self.isOptRunning = True
 
@@ -188,6 +188,7 @@ class ScanOPTWorker(Worker):
         self.timeMonitor.addStamp('snap', self.currentStep, 'beg')
         # TODO: my original implementation tried to avoid this if/else
         # in favour of speeding up the real experiment as a priority
+        # JA: noted, I will make proper adjustments
         if self.demoEnabled:
             frame = self.sinogram[self.currentStep]
         else:
@@ -209,8 +210,6 @@ class ScanOPTWorker(Worker):
             frame (`np.ndarray`): the incoming frame
             step (`int`): the current step of the OPT scan
         """
-        # DP: This seems not needed
-        self.counter += 1
         self.timeMonitor.addStamp('stability', self.currentStep, 'beg')
         stepsList, intensityLists = self.signalStability.processStabilityTraces(frame, step)
         self.timeMonitor.addStamp('stability', self.currentStep, 'end')
@@ -220,6 +219,9 @@ class ScanOPTWorker(Worker):
         # TODO: implement
         # DP: You mean it should be on this thread,
         # instead of the handleSave in the ScanController, right?
+        # JA: since it's part of the experiment workflow it makes sense;
+        # JA: alternatively I can think of another solution with another thread...
+        # JA: have to think about it a little
         pass
 
     def startNextStep(self):

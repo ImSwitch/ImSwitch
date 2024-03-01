@@ -208,6 +208,9 @@ class ScanOPTWorker(Worker):
         If live reconstruction is enabled, the frame will be stored 
         in the local memory buffer; finally the frame will be displayed 
         in the viewer (unless the `noRAM` flag enabled).
+
+        Returns:
+            np.ndarray: the synthetic sinogram frame at the current step
         """
         self.timeMonitor.addStamp('snap', self.currentStep, 'beg')
         frame = self.sinogram[self.currentStep]

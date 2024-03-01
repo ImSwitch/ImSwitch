@@ -9,7 +9,7 @@ from collections import defaultdict
 
 from functools import partial
 import numpy as np
-from typing import Tuple, List
+from typing import Tuple, List, Callable
 from ..basecontrollers import ImConWidgetController
 from imswitch.imcommon.model import initLogger, dirtools
 from imswitch.imcommon.framework import Signal, Thread, Worker
@@ -130,6 +130,7 @@ class ScanOPTWorker(Worker):
         # Demo parameters, For demo, synthetic phantom data are generated to emulate OPT scan
         self.demoEnabled = False          # Demo mode flag; if True synthetic data generated; defaults to False
         self.sinogram: np.ndarray = None  # Demo sinogram; default to None
+        self.getFrameFun: Callable = self.getNextSinogram
 
     def startOPTScan(self):
         """ Performs the first step of the OPT scan, triggering an asynchronous
@@ -151,22 +152,29 @@ class ScanOPTWorker(Worker):
         self.timeMonitor.addStart()
         self.currentStep = 0
 
+        # we select the frame retrieval method based off the demo flag
+        self.getFrameFun: Callable = self.getNextSinogram if self.demoEnabled else self.getNextFrame
+
         # we move the rotator to the first position
         self.timeMonitor.addStamp('motor', self.currentStep, 'beg')
         self.master.rotatorsManager[self.rotatorName].move_abs(self.optSteps[self.currentStep], inSteps=True)
 
     def postRotatorStep(self):
         """ Triggered after emission of the `sigPositionUpdated` signal from
-        the rotator. The method performs the following steps: (1) capture
-        the latest frame from the detector, (2) saves the frame if saving
-        enabled, (3) updates the stability plot optionally performs live
-        reconstruction, (4) triggers the next motor step.
+        the rotator. The method performs the following steps: 
+
+        - captures the latest frame from the detector;
+        - (optional) saves the frame if option is enabled;
+        - updates the stability plot;
+        - (optional) performs live reconstruction; 
+        - triggers the next motor step.
+
         This workflow is repeated until all the rotational steps
         are completed, or when the `isInterruptionRequested` flag is raised
         by the main thread.
         """
         self.timeMonitor.addStamp('motor', self.currentStep, 'end')
-        frame = self.getNextFrame()
+        frame = self.getFrameFun()
         self.processFrameStability(frame, self.currentStep)
         self.saveCurrentFrame()
         if self.isInterruptionRequested:
@@ -179,23 +187,33 @@ class ScanOPTWorker(Worker):
         Captures the next frame from the detector. If live reconstruction
         is enabled, the frame will be stored in the local memory buffer;
         finally the frame will be displayed in the viewer (unless `noRAM` flag
-        enabled). If the flag `demoEnabled` is set, the synthetic sinogram
-        will be used instead as data source.
+        enabled).
 
         Returns:
             np.ndarray: the captured frame
         """
         self.timeMonitor.addStamp('snap', self.currentStep, 'beg')
-        # TODO: my original implementation tried to avoid this if/else
-        # in favour of speeding up the real experiment as a priority
-        # JA: noted, I will make proper adjustments
-        if self.demoEnabled:
-            frame = self.sinogram[self.currentStep]
-        else:
-            frame = self.master.detectorsManager[self.detectorName].getLatestFrame()
+        frame = self.master.detectorsManager[self.detectorName].getLatestFrame()
         if self.noRAM:  # no volume in napari, only last frame
             self.sigNewFrameCaptured.emit(f'{self.detectorName}: latest frame', frame, self.currentStep)
         else:  # volume in RAM and displayed in napari
+            self.frameStack.append(frame)
+            transmittingStack = np.array(self.frameStack).reshape((len(self.frameStack), *frame.shape))
+            self.sigNewFrameCaptured.emit(f'{self.detectorName}: OPT stack', transmittingStack , self.currentStep)
+        self.timeMonitor.addStamp('snap', self.currentStep, 'end')
+        return frame
+
+    def getNextSinogram(self) -> np.ndarray:
+        """ Retrieves the next synthetic sinogram from the demo data. 
+        If live reconstruction is enabled, the frame will be stored 
+        in the local memory buffer; finally the frame will be displayed 
+        in the viewer (unless the `noRAM` flag enabled).
+        """
+        self.timeMonitor.addStamp('snap', self.currentStep, 'beg')
+        frame = self.sinogram[self.currentStep]
+        if self.noRAM:
+            self.sigNewFrameCaptured.emit(f'{self.detectorName}: latest frame', frame, self.currentStep)
+        else:
             self.frameStack.append(frame)
             transmittingStack = np.array(self.frameStack).reshape((len(self.frameStack), *frame.shape))
             self.sigNewFrameCaptured.emit(f'{self.detectorName}: OPT stack', transmittingStack , self.currentStep)

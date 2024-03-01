@@ -164,8 +164,7 @@ class PycroManagerAcqWorker(Worker):
         self.recordingArgs["Acquisition"]["notification_callback_fn"] = self.__parse_live_notification
 
         # if no image processing function is provided, we store the image locally;
-        # the latest saved image is emitted to the GUI every time the local timer
-        # expires
+        # the latest saved image is emitted to the GUI every time the local timer expires
         if self.recordingArgs["Acquisition"]["image_process_fn"] is None:
             self.recordingArgs["Acquisition"]["image_process_fn"] = self.__store_live_local
 

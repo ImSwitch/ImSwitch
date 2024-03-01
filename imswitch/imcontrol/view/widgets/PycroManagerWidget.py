@@ -62,7 +62,7 @@ class PycroManagerWidget(Widget):
         
         self.folderEdit = QtWidgets.QLineEdit(self.initialDir)
         self.openFolderButton = guitools.BetterPushButton('Open')
-        self.specifyfile = QtWidgets.QCheckBox('Specify file name')
+        self.specifyFile = QtWidgets.QCheckBox('Specify file name')
         self.filenameEdit = QtWidgets.QLineEdit('Current time')
         
         # Snap and recording buttons
@@ -245,7 +245,7 @@ class PycroManagerWidget(Widget):
         gridRow += 1
 
         storageGrid.addWidget(self.filenameEdit, gridRow, 1, 1, 5)
-        storageGrid.addWidget(self.specifyfile, gridRow, 0)
+        storageGrid.addWidget(self.specifyFile, gridRow, 0)
         gridRow += 1
         
         (progressBar.hide() for _, progressBar in self.progressBarsWidgets.items())
@@ -267,7 +267,7 @@ class PycroManagerWidget(Widget):
 
         # Connect signals
         self.openFolderButton.clicked.connect(self.sigOpenRecFolderClicked)
-        self.specifyfile.toggled.connect(self.sigSpecFileToggled)
+        self.specifyFile.toggled.connect(self.sigSpecFileToggled)
         
         def __evaluateTimeState(checked: bool, mode):
             mode = mode if checked else PycroManagerAcquisitionMode.Absent
@@ -315,7 +315,6 @@ class PycroManagerWidget(Widget):
         self._dataCache[coordinates] = data
     
     def loadTableData(self, coordinates: str):
-        # TODO: implement CSV reading
         fileFilter = "JSON (*.json)"
         filePath = askForFilePath(self, 
                                 caption=f"Load {coordinates} coordinates table", 
@@ -348,7 +347,7 @@ class PycroManagerWidget(Widget):
         return self.folderEdit.text()
 
     def getCustomFilename(self):
-        return self.filenameEdit.text() if self.specifyfile.isChecked() else None
+        return self.filenameEdit.text() if self.specifyFile.isChecked() else None
 
     def isRecButtonChecked(self):
         return self.recButton.isChecked()

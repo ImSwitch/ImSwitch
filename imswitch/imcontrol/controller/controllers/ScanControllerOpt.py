@@ -67,8 +67,7 @@ class ScanExecutionMonitor:
             self.__processKey(k)
 
     def __processKey(self, key):
-        """ Process a specific key of the report dictionary.
-        Private class method. """
+        """ :meta private: """
         idxs, tags, stamps = zip(*self.report[key])
         i = 0
         diffs, steps = [], []
@@ -433,7 +432,7 @@ class ScanControllerOpt(ImConWidgetController):
 
     def plotReport(self):
         self._widget.plotReport(self.optWorker.timeMonitor.getReport())
-        
+
     ##################
     # Image handling #
     ##################

@@ -85,22 +85,28 @@ class PycroManagerXYZScan:
     def getIndex(self, idx: Union[str, int]) -> int:
         return idx if type(idx) == int else self.__labelsIdx[idx]
 
+@dataclass
 class PycroManagerHookContainer:
+    image_process_fn : Callable = field(default_factory=lambda: None)
+    event_generation_hook_fn : Callable = field(default_factory=lambda: None)
+    pre_hardware_hook_fn : Callable = field(default_factory=lambda: None)
+    post_hardware_hook_fn : Callable = field(default_factory=lambda: None)
+    post_camera_hook_fn : Callable = field(default_factory=lambda: None)
+    notification_callback_fn : Callable = field(default_factory=lambda: None)
+    image_saved_fn : Callable = field(default_factory=lambda: None)
 
-    __slots__ = [
-        "image_process_fn",
-        "event_generation_hook_fn",
-        "pre_hardware_hook_fn",
-        "post_hardware_hook_fn",
-        "post_camera_hook_fn",
-        "notification_callback_fn",
-        "image_saved_fn"
-    ]
+_hookContainer = PycroManagerHookContainer()
 
-    image_process_fn : Callable 
-    event_generation_hook_fn : Callable
-    pre_hardware_hook_fn : Callable
-    post_hardware_hook_fn : Callable
-    post_camera_hook_fn : Callable
-    notification_callback_fn : Callable
-    image_saved_fn : Callable
+def set_as_hook(hook_type: str) -> Callable:
+    """ Decorator to register an hook function
+    to the PycroManager acquisition engine.
+
+    Args:
+        hook_type (`str`): type of hook to register. 
+                        See [here](https://pycro-manager.readthedocs.io/en/latest/acq_hooks.html)
+                        for a list of available hook types.
+    """
+    def wrapper(f: Callable) -> Callable:
+        if hasattr(_hookContainer, hook_type):
+            setattr(_hookContainer, hook_type, f)
+    return wrapper

@@ -16,8 +16,10 @@ class TelemetrixInterface(telemetrix.Telemetrix):
     currentPosition : Tuple[int, int] = (0, 0) # (steps, degrees)
     stepsPerTurn : int = 0
 
-class ArduinoRotatorManager(RotatorManager):
-    """ Wrapper of a Telemetrix interface to an Arduino-controlled stepper motor.
+class TelemetrixRotatorManager(RotatorManager):
+    """ Wrapper of a Telemetrix interface to a stepper motor.
+    Telemetrix supports a variety of stepper motor drivers, including the Arduino.
+    Reference documentation of the interface can be found at this [link](https://mryslab.github.io/telemetrix/)
     
     Manager properties:
         - stepsPerTurn (`int`): conversion factor for calculating the rotation angle from the number of steps.
@@ -146,9 +148,7 @@ class ArduinoRotatorManager(RotatorManager):
     # Callbacks #
     #############
     def __moveFinishedCallback(self, data: Tuple[int, int]) -> None:
-        self.__logger.info(f'Move done (step: {data[0]}, angle: {data[1]}°)')
         self.turning = False
-
         # we make a second callback to be sure of the final position
         self.board.stepper_get_current_position(self.motorID, self.__currentPositionCallback)
         

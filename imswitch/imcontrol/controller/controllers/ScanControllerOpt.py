@@ -433,10 +433,7 @@ class ScanControllerOpt(ImConWidgetController):
 
     def plotReport(self):
         self._widget.plotReport(self.optWorker.timeMonitor.getReport())
-        # self.SW = SecondWindow(self.optWorker.timeMonitor.getReport())
-        # self.SW.resize(1500, 700)
-        # self.SW.show()
-
+        
     ##################
     # Image handling #
     ##################

@@ -45,6 +45,12 @@ def askForFilePath(widget, caption=None, defaultFolder=None, nameFilter=None, is
 
 def showInformationMessage(widget, title: str, type: str, message: str):
     """ Shows a warning message to the user in the form of a dialog pop-up.
+
+    Args:
+        widget: parent widget ot the pop-up;
+        title (`str`): title of the pop-up;
+        type (`str`): type of the message ("information", "warning", "error");
+        message (`str`): message to be displayed.
     """
     _ = __msgBoxMap[type](widget, title, message)
 

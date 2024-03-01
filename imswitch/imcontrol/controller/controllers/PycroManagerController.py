@@ -8,7 +8,8 @@ from imswitch.imcommon.framework.pycromanager import (
     PycroManagerXYScan,
     PycroManagerXYZScan,
     PycroManagerXYPoint,
-    PycroManagerXYZPoint
+    PycroManagerXYZPoint,
+    getHooksDictionary
 )
 
 from imswitch.imcommon.model import (
@@ -204,19 +205,11 @@ class PycroManagerController(ImConWidgetController):
         # packing arguments
         # if folder and savename are None,
         # no file will be saved
-        recordingArgs = {
+        recordingArgs : Dict[str, dict] = {
             "Acquisition" : {
                 "directory" : folder,
                 "name" : savename,
                 "image_process_fn": None,
-                "event_generation_hook_fn": None,
-                "pre_hardware_hook_fn":  None,
-                "post_hardware_hook_fn":  None,
-                "post_camera_hook_fn": None,
-                "notification_callback_fn": None,
-                "image_saved_fn":  None,
-                "napari_viewer" : None,
-                "show_display": False,
                 "debug" : False,
             },
             "multi_d_acquisition_events" : {
@@ -238,6 +231,10 @@ class PycroManagerController(ImConWidgetController):
                 self._master.pycroManagerAcquisition.core.get_camera_device(): self._commChannel.sharedAttrs.getHDF5Attributes()
             }
         }
+
+        # add hook functions
+        recordingArgs["Acquisition"].update(getHooksDictionary())
+
         return recordingArgs
 
     def __calculateNumTimePoints(self) -> list:

@@ -5,5 +5,6 @@ from .pycromanager import (
     PycroManagerXYZScan,
     PycroManagerXYPoint,
     PycroManagerXYZPoint,
-    set_as_hook
+    set_as_hook,
+    getHooksDictionary
 )

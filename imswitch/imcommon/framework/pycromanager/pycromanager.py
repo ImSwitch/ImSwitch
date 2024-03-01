@@ -99,9 +99,9 @@ _hookContainer = PycroManagerHookContainer()
 
 def set_as_hook(hook_type: str) -> Callable:
     """ Decorator to register an hook function
-    to the PycroManager acquisition engine.
-    See [here](https://pycro-manager.readthedocs.io/en/latest/acq_hooks.html)
-    for supported hook types.
+    to the PycroManager acquisition engine. See [here](https://pycro-manager.readthedocs.io/en/latest/acq_hooks.html)
+    for supported hook types. Only unsupported hook type is
+    `notification_callback_fn`, which is used internally by ImSwitch.
 
     Args:
         hook_type (`str`): type of hook to register.

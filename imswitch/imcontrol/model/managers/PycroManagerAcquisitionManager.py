@@ -6,6 +6,7 @@ from typing import Dict
 import os, json
 import numpy as np
 
+_PYCROMANAGER_LIVE_REFRESH_MS = 100 # live view refresh time
 
 class PycroManagerAcquisitionManager(SignalInterface):
 
@@ -30,7 +31,7 @@ class PycroManagerAcquisitionManager(SignalInterface):
         self.__acquisitionWorker.moveToThread(self.__acquisitionThread)
         self.__liveTimer = Timer()
         self.__liveTimer.timeout.connect(lambda : self.sigLiveImageUpdated.emit(self.__acquisitionWorker.localBuffer))
-        self.__liveTimer.setInterval(100)
+        self.__liveTimer.setInterval(_PYCROMANAGER_LIVE_REFRESH_MS)
 
     def snap(self, folder: str, savename: str, saveMode: SaveMode, attrs: dict) -> None:
         """ Snaps an image calling an instance of the Pycro-Manager backend Core. 
@@ -42,8 +43,12 @@ class PycroManagerAcquisitionManager(SignalInterface):
 
         self.core.snap_image()
         tagged_image = self.core.get_tagged_image()
-        pixels = np.reshape(tagged_image.pix, newshape=(
-            1, tagged_image.tags['Height'], tagged_image.tags['Width']))
+        pixels = np.reshape(tagged_image.pix, 
+                            newshape=(
+                                1, 
+                                tagged_image.tags['Height'], 
+                                tagged_image.tags['Width'])
+                            )
 
         # TODO: add missing metadata fields
         metadata = {
@@ -86,10 +91,16 @@ class PycroManagerAcquisitionManager(SignalInterface):
         self.__acquisitionThread.started.connect(self.__acquisitionWorker.liveView)
         self.__acquisitionThread.finished.connect(self.__postInterruptionHandle)
         self.__acquisitionThread.start()
-        self.__liveTimer.start()
+
+        # enable live view timer if
+        # no other image process function
+        # is currently enabled
+        if recordingArgs["Acquisition"]["image_process_fn"] is None:
+            self.__liveTimer.start()
 
     def stopLiveView(self) -> None:
-        self.__liveTimer.stop()
+        if self.__liveTimer.isActive():
+            self.__liveTimer.stop()
         self.__acquisitionWorker.live = False
     
     def __postInterruptionHandle(self) -> None:
@@ -98,6 +109,7 @@ class PycroManagerAcquisitionManager(SignalInterface):
             self.__acquisitionThread.started.disconnect()
             self.__acquisitionThread.finished.disconnect()
         except TypeError:
+            # fallback in case signals were not connected
             pass
 
 class PycroManagerAcqWorker(Worker):
@@ -150,7 +162,12 @@ class PycroManagerAcqWorker(Worker):
         self.live = True
         events = multi_d_acquisition_events(**self.recordingArgs["multi_d_acquisition_events"])
         self.recordingArgs["Acquisition"]["notification_callback_fn"] = self.__parse_live_notification
-        self.recordingArgs["Acquisition"]["image_process_fn"] = self.__store_live_local
+
+        # if no image processing function is provided, we store the image locally;
+        # the latest saved image is emitted to the GUI every time the local timer
+        # expires
+        if self.recordingArgs["Acquisition"]["image_process_fn"] is None:
+            self.recordingArgs["Acquisition"]["image_process_fn"] = self.__store_live_local
 
         # for live view we only redirect incoming images to the local buffer
         # deliting the directory and name keys from the dictionary

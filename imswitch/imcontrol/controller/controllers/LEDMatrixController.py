@@ -109,6 +109,15 @@ class LEDMatrixController(ImConWidgetController):
             if isinstance(btn, guitools.BetterPushButton):
                 btn.clicked.connect(partial(self.setLED, coords))
 
+    def setEnabled(self, enabled) -> None:
+        """ Sets the value of the LEDMatrix. """
+        self.setAllLED(state=enabled, intensity=None)
+    
+    def setValue(self, value) -> None:
+        """ Sets the value of the LEDMatrix. """
+        self.setIntensity(intensity=value)
+        self.setAllLED(state=(1,1,1), intensity=value)
+    
 
 # Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.

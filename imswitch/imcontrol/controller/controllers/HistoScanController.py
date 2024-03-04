@@ -445,7 +445,20 @@ class HistoScanController(LiveUpdatedController):
         initPosX = initialPosition["X"]
         initPosY = initialPosition["Y"]
         self.startHistoScanTileBasedByParameters(numberTilesX, numberTilesY, stepSizeX, stepSizeY, nTimes, tPeriod, illuSource, initPosX, initPosY)
+
         
+    @APIExport(runOnUIThread=True)
+    def stopHistoScan(self):
+        self.ishistoscanRunning = False
+        if imswitch.IS_HEADLESS:
+            self._widget.startButton.setEnabled(True)
+            self._widget.stopButton.setEnabled(False)
+            self._widget.startButton.setText("Start")
+            self._widget.stopButton.setText("Stopped")
+            self._widget.stopButton.setStyleSheet("background-color: green")
+            self._widget.startButton.setStyleSheet("background-color: red")
+            self._logger.debug("histoscan scanning stopped.")
+
     @APIExport(runOnUIThread=True)
     def startHistoScanTileBasedByParameters(self, numberTilesX:int=2, numberTilesY:int=2, stepSizeX:int=100, stepSizeY:int=100, nTimes:int=1, tPeriod:int=1, illuSource:str=None, initPosX:int=0, initPosY:int=0):
         def computePositionList(numberTilesX, numberTilesY, stepSizeX, stepSizeY, initPosX, initPosY):

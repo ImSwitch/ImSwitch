@@ -28,7 +28,7 @@ class HoloWidget(NapariHybridWidget):
         self.naEdit = QtWidgets.QLineEdit('0.3')
 
         valueDecimals = 1
-        valueRange = (0,100)
+        valueRange = (0,500)
         tickInterval = 5
         singleStep = 1
         self.slider = guitools.FloatSlider(QtCore.Qt.Horizontal, self, allowScrollChanges=False,
@@ -61,7 +61,7 @@ class HoloWidget(NapariHybridWidget):
         # Connect signals
         self.showCheck.toggled.connect(self.sigShowToggled)
         self.slider.valueChanged.connect(
-            lambda value: self.sigSliderValueChanged.emit(value)
+            lambda alue: self.sigSliderValueChanged.emit(value)
         )
         self.lineRate.textChanged.connect(
             lambda: self.sigUpdateRateChanged.emit(self.getUpdateRate())

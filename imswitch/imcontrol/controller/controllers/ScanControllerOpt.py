@@ -23,6 +23,8 @@ class ScanExecutionMonitor:
     metadata file of the experiment.
     """
     def __init__(self):
+        # TODO: move this class to the utilities folder and extend its usage
+        # to the rest of the application
         self.outputReport = {}
         self.report = defaultdict(lambda: [])
 

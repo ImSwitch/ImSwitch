@@ -18,13 +18,12 @@ class MCTWidget(NapariHybridWidget):
 
 
     sigShowToggled = QtCore.Signal(bool)  # (enabled)
-    sigPIDToggled = QtCore.Signal(bool)  # (enabled)
     sigUpdateRateChanged = QtCore.Signal(float)  # (rate)
     
     
-    sigSliderLaser2ValueChanged = QtCore.Signal(float)  # (value)
-    sigSliderLaser1ValueChanged = QtCore.Signal(float)  # (value)
-    sigSliderLEDValueChanged = QtCore.Signal(float)  # (value)
+    sigSliderIllu1ValueChanged = QtCore.Signal(float)  # (value)
+    sigSliderIllu2ValueChanged = QtCore.Signal(float)  # (value)
+    sigSliderIllu3ValueChanged = QtCore.Signal(float)  # (value)
 
     def __post_init__(self):
         #super().__init__(*args, **kwargs)
@@ -83,14 +82,14 @@ class MCTWidget(NapariHybridWidget):
         tickIntervalLaser = 1
         singleStepLaser = 1
         
-        self.sliderLaser1, self.mctLabelLaser1 = self.setupSliderGui('Intensity (Laser 1):', valueDecimalsLaser, valueRangeLaser, tickIntervalLaser, singleStepLaser)
-        self.sliderLaser1.valueChanged.connect(
-            lambda value: self.sigSliderLaser1ValueChanged.emit(value)
+        self.sliderIllu1, self.mctLabelLaser1 = self.setupSliderGui('Intensity (Laser 1):', valueDecimalsLaser, valueRangeLaser, tickIntervalLaser, singleStepLaser)
+        self.sliderIllu1.valueChanged.connect(
+            lambda value: self.sigSliderIllu1ValueChanged.emit(value)
         )
         
-        self.sliderLaser2, self.mctLabelLaser2 = self.setupSliderGui('Intensity (Laser 2):', valueDecimalsLaser, valueRangeLaser, tickIntervalLaser, singleStepLaser)
-        self.sliderLaser2.valueChanged.connect(
-            lambda value: self.sigSliderLaser2ValueChanged.emit(value)
+        self.sliderIllu2, self.mctLabelLaser2 = self.setupSliderGui('Intensity (Laser 2):', valueDecimalsLaser, valueRangeLaser, tickIntervalLaser, singleStepLaser)
+        self.sliderIllu2.valueChanged.connect(
+            lambda value: self.sigSliderIllu2ValueChanged.emit(value)
         )
                         
         # LED
@@ -99,9 +98,9 @@ class MCTWidget(NapariHybridWidget):
         tickIntervalLED = 1
         singleStepLED = 1
         
-        self.sliderLED, self.mctLabelLED = self.setupSliderGui('Intensity (LED):', valueDecimalsLED, valueRangeLED, tickIntervalLED, singleStepLED)
-        self.sliderLED.valueChanged.connect(
-            lambda value: self.sigSliderLEDValueChanged.emit(value)
+        self.sliderIllu3, self.mctLabelLED = self.setupSliderGui('Intensity (LED):', valueDecimalsLED, valueRangeLED, tickIntervalLED, singleStepLED)
+        self.sliderIllu3.valueChanged.connect(
+            lambda value: self.sigSliderIllu3ValueChanged.emit(value)
         )
         
         self.mctLabelFileName  = QtWidgets.QLabel('FileName:')
@@ -164,11 +163,11 @@ class MCTWidget(NapariHybridWidget):
         self.grid.addWidget(self.mctValueYsteps, 3, 3, 1, 1)
 
         self.grid.addWidget(self.mctLabelLaser1, 4, 0, 1, 1)
-        self.grid.addWidget(self.sliderLaser1, 4, 1, 1, 3)
+        self.grid.addWidget(self.sliderIllu1, 4, 1, 1, 3)
         self.grid.addWidget(self.mctLabelLaser2, 5, 0, 1, 1)
-        self.grid.addWidget(self.sliderLaser2, 5, 1, 1, 3)        
+        self.grid.addWidget(self.sliderIllu2, 5, 1, 1, 3)        
         self.grid.addWidget(self.mctLabelLED, 6, 0, 1, 1)
-        self.grid.addWidget(self.sliderLED, 6, 1, 1, 3)
+        self.grid.addWidget(self.sliderIllu3, 6, 1, 1, 3)
 
         # filesettings
         self.grid.addWidget(self.mctLabelFileName, 7, 0, 1, 1)

@@ -4,6 +4,10 @@
 
 ``ImSwitch`` is a software solution in Python that aims at generalizing microscope control by using an architecture based on the model-view-presenter (MVP) to provide a solution for flexible control of multiple microscope modalities.
 
+## News 
+
+🎥 Watch this intro video from Jacopo about ImSwitch on [YouTube](https://www.youtube.com/watch?v=B54QCt5OQPI&ab_channel=Euro-BioImagingCommunication
+
 ## Statement of need
 
 The constant development of novel microscopy methods with an increased number of dedicated

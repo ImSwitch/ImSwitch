@@ -126,10 +126,10 @@ class ScanOPTWorker(Worker):
         self.isInterruptionRequested = False  # interruption request flag, set from the main thread; defaults to False
         self.frameStack = []                  # OPT stack memory buffer
 
-        # Demo parameters, For demo, synthetic phantom data are generated to emulate OPT scan
-        self.demoEnabled = False          # Demo mode flag; if True synthetic data generated; defaults to False
-        self.sinogram: np.ndarray = None  # Demo sinogram; default to None
-        self.getFrameFun: Callable = self.getNextSinogram
+        # Demo parameters, synthetic phantom data are generated to emulate OPT scan
+        self.demoEnabled = False                        # Demo mode flag; if True synthetic data generated; defaults to False
+        self.sinogram: np.ndarray = None                # Demo sinogram; default to None
+        self.getFrameFun: Callable = self.getNextFrame  # frame retrieval method
 
     def startOPTScan(self):
         """ Performs the first step of the OPT scan, triggering an asynchronous

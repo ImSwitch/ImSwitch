@@ -4,17 +4,9 @@ import Pyro5.server
 from imswitch.imcommon.framework import Worker
 from imswitch.imcommon.model import initLogger
 from ._serialize import register_serializers
-from fastapi.middleware.cors import CORSMiddleware
-from io import BytesIO
-import numpy as np
-from PIL import Image
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import StreamingResponse
-import asyncio
-from multiprocessing import Queue
+from fastapi import FastAPI
 import uvicorn
 from functools import wraps
-import cv2
 import os
 
 from http.server import HTTPServer, BaseHTTPRequestHandler

@@ -77,6 +77,11 @@ class ESP32LEDMatrixManager(LEDMatrixManager):
     def setLEDIntensity(self, intensity=(0,0,0)):
         self.mLEDmatrix.setIntensity(intensity)
 
+    def setValue(self, intensity, getReturn=False):
+        """Handles output power.
+        Sends a RS232 command to the LEDMatrix specifying the new intensity.
+        """
+        self.mLEDmatrix.setAll(1, (intensity, intensity, intensity))
 
 
 # Copyright (C) 2020-2023 ImSwitch developers

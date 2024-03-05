@@ -20,8 +20,8 @@ class ESP32LEDMatrixManager(LEDMatrixManager):
         self.__logger = initLogger(self, instanceName=name)
         self.power = 0
         self.I_max = 255
-        self.setEnabled = False
         self.intensity=0
+        self.enabled = False
 
         try:
             self.Nx = LEDMatrixInfo.managerProperties['Nx']
@@ -66,7 +66,7 @@ class ESP32LEDMatrixManager(LEDMatrixManager):
 
     def setEnabled(self, enabled):
         """Turn on (N) or off (F) LEDMatrix emission"""
-        self.setEnabled = enabled
+        self.enabled = enabled
         
     def setLEDSingle(self, indexled=0, state=(0,0,0)):
         """Handles output power.
@@ -76,6 +76,13 @@ class ESP32LEDMatrixManager(LEDMatrixManager):
 
     def setLEDIntensity(self, intensity=(0,0,0)):
         self.mLEDmatrix.setIntensity(intensity)
+
+    def setValue(self, intensity, getReturn=False):
+        """Handles output power.
+        Sends a RS232 command to the LEDMatrix specifying the new intensity.
+        """
+        self.mLEDmatrix.setAll(1, (intensity, intensity, intensity))
+
 
 
 

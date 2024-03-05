@@ -82,12 +82,12 @@ class MCTWidget(NapariHybridWidget):
         tickIntervalLaser = 1
         singleStepLaser = 1
         
-        self.sliderIllu1, self.mctLabelLaser1 = self.setupSliderGui('Intensity (Laser 1):', valueDecimalsLaser, valueRangeLaser, tickIntervalLaser, singleStepLaser)
+        self.sliderIllu1, self.mctLabelIllu1 = self.setupSliderGui('Intensity (Laser 1):', valueDecimalsLaser, valueRangeLaser, tickIntervalLaser, singleStepLaser)
         self.sliderIllu1.valueChanged.connect(
             lambda value: self.sigSliderIllu1ValueChanged.emit(value)
         )
         
-        self.sliderIllu2, self.mctLabelLaser2 = self.setupSliderGui('Intensity (Laser 2):', valueDecimalsLaser, valueRangeLaser, tickIntervalLaser, singleStepLaser)
+        self.sliderIllu2, self.mctLabelIllu2 = self.setupSliderGui('Intensity (Laser 2):', valueDecimalsLaser, valueRangeLaser, tickIntervalLaser, singleStepLaser)
         self.sliderIllu2.valueChanged.connect(
             lambda value: self.sigSliderIllu2ValueChanged.emit(value)
         )
@@ -98,7 +98,7 @@ class MCTWidget(NapariHybridWidget):
         tickIntervalLED = 1
         singleStepLED = 1
         
-        self.sliderIllu3, self.mctLabelLED = self.setupSliderGui('Intensity (LED):', valueDecimalsLED, valueRangeLED, tickIntervalLED, singleStepLED)
+        self.sliderIllu3, self.mctLabelIllu3 = self.setupSliderGui('Intensity (LED):', valueDecimalsLED, valueRangeLED, tickIntervalLED, singleStepLED)
         self.sliderIllu3.valueChanged.connect(
             lambda value: self.sigSliderIllu3ValueChanged.emit(value)
         )
@@ -162,11 +162,11 @@ class MCTWidget(NapariHybridWidget):
         self.grid.addWidget(self.mctValueYmax, 3, 2, 1, 1)
         self.grid.addWidget(self.mctValueYsteps, 3, 3, 1, 1)
 
-        self.grid.addWidget(self.mctLabelLaser1, 4, 0, 1, 1)
+        self.grid.addWidget(self.mctLabelIllu1, 4, 0, 1, 1)
         self.grid.addWidget(self.sliderIllu1, 4, 1, 1, 3)
-        self.grid.addWidget(self.mctLabelLaser2, 5, 0, 1, 1)
+        self.grid.addWidget(self.mctLabelIllu2, 5, 0, 1, 1)
         self.grid.addWidget(self.sliderIllu2, 5, 1, 1, 3)        
-        self.grid.addWidget(self.mctLabelLED, 6, 0, 1, 1)
+        self.grid.addWidget(self.mctLabelIllu3, 6, 0, 1, 1)
         self.grid.addWidget(self.sliderIllu3, 6, 1, 1, 3)
 
         # filesettings
@@ -278,9 +278,12 @@ class MCTWidget(NapariHybridWidget):
         mctEditFileName = self.mctEditFileName.text()
         return mctEditFileName
     
-    def setnImagesTaken(self, nImages):
+    def setMessageGUI(self, message):
         nImages2Do = self.getTimelapseValues()[-1]
-        self.mctNImages.setText('Number of images: '+str(nImages) + " / " + str(nImages2Do))
+        if type(message) == str:
+            self.mctNImages.setText(message)
+        else:
+            self.mctNImages.setText('Number of images: '+str(message+1) + " / " + str(nImages2Do))
     
     
     

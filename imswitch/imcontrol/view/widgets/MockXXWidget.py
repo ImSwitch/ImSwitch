@@ -279,7 +279,7 @@ class MockXXWidget(NapariHybridWidget):
         MockXXEditFileName = self.MockXXEditFileName.text()
         return MockXXEditFileName
     
-    def setnImagesTaken(self, nImages):
+    def setMessageGUI(self, nImages):
         nImages2Do = self.getTimelapseValues()[-1]
         self.MockXXNImages.setText('Number of images: '+str(nImages) + " / " + str(nImages2Do))
     

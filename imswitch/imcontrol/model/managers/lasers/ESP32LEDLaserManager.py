@@ -53,7 +53,8 @@ class ESP32LEDLaserManager(LaserManager):
         self.enabled = enabled
         if self.channel_index == "LED":
             #self._led.send_LEDMatrix_full(intensity = (self.power*self.enabled,self.power*self.enabled,self.power*self.enabled), getReturn=getReturn)
-            self._led.setIntensity(intensity=(self.power*self.enabled,self.power*self.enabled,self.power*self.enabled), getReturn=getReturn)
+            #self._led.setIntensity(intensity=(self.power*self.enabled,self.power*self.enabled,self.power*self.enabled), getReturn=getReturn)
+            self._led.setAll(state=self.enabled, intensity=(self.power, self.power, self.power), getReturn=getReturn)
         else:
             self._laser.set_laser(self.channel_index,
                                                 int(self.power*self.enabled),
@@ -67,11 +68,13 @@ class ESP32LEDLaserManager(LaserManager):
         """
         self.power = power
         if self.enabled:
+            
             if self.channel_index == "LED":
                 # ensure that in case it's not initialized yet, we display an all-on pattern
                 if self._led.ledpattern[0,0]==-1:
                     self._led.ledpattern[:]=1
-                self._led.setIntensity(intensity=(self.power*self.enabled,self.power*self.enabled,self.power*self.enabled), getReturn=getReturn)
+                self._led.setAll(state=1, intensity=(self.power, self.power, self.power), getReturn=getReturn)
+                #self._led.setAll(intensity=(self.power*self.enabled,self.power*self.enabled,self.power*self.enabled), getReturn=getReturn)
                 self.ledIntesity=self.power
                 #self._led.send_LEDMatrix_full(intensity = (self.power*self.enabled,self.power*self.enabled,self.power*self.enabled), getReturn=getReturn)
             else:

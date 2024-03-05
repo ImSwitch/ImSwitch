@@ -105,14 +105,14 @@ class MCTController(ImConWidgetController):
 
             # setup gui limits for sliders
             if len(self.availableIlliminations) >= 0:
-                self._widget.sliderIllu1.setMaximum(self.availableIlliminations[0]._LaserManager__valueRangeMax)
-                self._widget.sliderIllu1.setMinimum(self.availableIlliminations[0]._LaserManager__valueRangeMin)           
+                self._widget.sliderIllu1.setMaximum(self.availableIlliminations[0].valueRangeMax)
+                self._widget.sliderIllu1.setMinimum(self.availableIlliminations[0].valueRangeMin)           
             if len(self.availableIlliminations) >= 1:
-                self._widget.sliderIllu2.setMaximum(self.availableIlliminations[1]._LaserManager__valueRangeMax)
-                self._widget.sliderIllu2.setMinimum(self.availableIlliminations[1]._LaserManager__valueRangeMin)
+                self._widget.sliderIllu2.setMaximum(self.availableIlliminations[1].valueRangeMax)
+                self._widget.sliderIllu2.setMinimum(self.availableIlliminations[1].valueRangeMin)
             if len(self.availableIlliminations) >= 2:
-                self._widget.sliderIllu3.setMaximum(self.availableIlliminations[2]._LaserManager__valueRangeMax)
-                self._widget.sliderIllu3.setMinimum(self.availableIlliminations[2]._LaserManager__valueRangeMin)
+                self._widget.sliderIllu3.setMaximum(self.availableIlliminations[2].valueRangeMax)
+                self._widget.sliderIllu3.setMinimum(self.availableIlliminations[2].valueRangeMin)
 
 
     def startMCT(self):
@@ -121,6 +121,7 @@ class MCTController(ImConWidgetController):
         # this is called from the GUI
 
         # get active illuminations 
+        self.activeIlluminations = []
         if self.Illu1Value>0: self.activeIlluminations.append(self.availableIlliminations[0])
         if self.Illu2Value>0: self.activeIlluminations.append(self.availableIlliminations[1])
         if self.Illu3Value>0: self.activeIlluminations.append(self.availableIlliminations[2])
@@ -133,7 +134,7 @@ class MCTController(ImConWidgetController):
             # GUI updates
             if not imswitch.IS_HEADLESS:
                 self._widget.mctStartButton.setEnabled(False)
-                self._widget.setnImagesTaken("Starting timelapse...")
+                self._widget.setMessageGUI("Starting timelapse...")
             
 
                 # get parameters from GUI
@@ -160,7 +161,7 @@ class MCTController(ImConWidgetController):
     def stopMCT(self):
         self.isMCTrunning = False
 
-        self._widget.setnImagesTaken("Stopping timelapse...")
+        self._widget.setMessageGUI("Stopping timelapse...")
 
         self._widget.mctStartButton.setEnabled(True)
 
@@ -183,7 +184,7 @@ class MCTController(ImConWidgetController):
         except:
             pass
 
-        self._widget.setnImagesTaken("Done wit timelapse...")
+        self._widget.setMessageGUI("Done wit timelapse...")
 
     def showLast(self, isCleanStack=False):
         #  isCleanStack=False => subtract backgroudn or not
@@ -249,7 +250,7 @@ class MCTController(ImConWidgetController):
 
     def doAutofocus(self, params, timeout=10):
         self._logger.info("Autofocusing...")
-        self._widget.setnImagesTaken("Autofocusing...")
+        self._widget.setMessageGUI("Autofocusing...")
         self._commChannel.sigAutoFocus.emit(int(params["valueRange"]), int(params["valueSteps"]))
         self.isAutofocusRunning = True
 
@@ -268,7 +269,7 @@ class MCTController(ImConWidgetController):
                                     yScanMin, yScanMax, yScanStep):
         # this wil run in the background
         self.timeLast = 0
-
+        nZStack = int(np.ceil((zStackMax-zStackMin)/zStackStep))
         # get current position
         if self.positioner is not None:
             currentPositions = self.positioner.getPosition()
@@ -281,11 +282,10 @@ class MCTController(ImConWidgetController):
         # HDF5 file setup: prepare data storage 
         fileExtension = "h5"
         fileName = self.getSaveFilePath(date=MCTDate,
-                                timestamp=1,
                                 filename=MCTFilename,
                                 extension=fileExtension)
-        init_dims = (1, 3, 1, self.detectorWidth, self.detectorHeight) # time, channels, z, y, x
-        max_dims = (None, 3, None, None, None)  # Allow unlimited time points and z slices
+        init_dims = (1, len(self.activeIlluminations), nZStack, self.detectorWidth, self.detectorHeight) # time, channels, z, y, x
+        max_dims = (None, 3, nZStack, None, None)  # Allow unlimited time points and z slices
         self.h5File = HDF5File(filename=fileName, init_dims=init_dims, max_dims=max_dims)
 
         # run as long as the MCT is active
@@ -337,7 +337,7 @@ class MCTController(ImConWidgetController):
 
     def updateGUI(self):
         # update the text in the GUI
-        self._widget.setnImagesTaken(self.nImagesTaken)
+        self._widget.setMessageGUI(self.nImagesTaken)
 
         # sneak images into arrays for displaying stack
         if self.zStackEnabled and not self.xyScanEnabled:
@@ -348,8 +348,8 @@ class MCTController(ImConWidgetController):
 
     def performAutofocus(self):
         autofocusParams = self._widget.getAutofocusValues()
-        if self._widget.isAutofocus() and np.mod(self.nImagesTaken, int(autofocusParams['valuePeriod'])) == 0:
-            self._widget.setnImagesTaken("Autofocusing...")
+        if self.positioner is not None and self._widget.isAutofocus() and np.mod(self.nImagesTaken, int(autofocusParams['valuePeriod'])) == 0:
+            self._widget.setMessageGUI("Autofocusing...")
             # turn on illuimination
             if autofocusParams['illuMethod']=="Illu1":
                 self.lasers[0].setValue(self.Illu1Value)
@@ -425,8 +425,7 @@ class MCTController(ImConWidgetController):
             self.positioner.move(value=(self.xScanMin+self.initialPosition[0],self.yScanMin+self.initialPosition[1]), axis="XY", is_absolute=True, is_blocking=True)
 
         # initialize iterator
-        imageIndex = 0
-        self._widget.gridLayer = None
+        
         # iterate over all xy coordinates iteratively
 
         ''' 
@@ -442,17 +441,18 @@ class MCTController(ImConWidgetController):
             ''' 
             Z-stack 
             '''
+            allZStackFrames = []
             for iZ in zStepsAbsolute:
                 # move to each position
                 if self.zStackEnabled and self.positioner is not None:
                     self.positioner.move(value=iZ, axis="Z", is_absolute=True, is_blocking=True)
-                    time.sleep(self.tUnshake) # unshake
+                    time.sleep(self.tWait) # unshake
 
                 '''
                 Illumination
                 '''
                 # capture image for every illumination
-                allFrames = []
+                allChannelFrames = []
                 allPositions = []
                 for illuIndex, mIllumination in enumerate(self.activeIlluminations):
                     if illuIndex == 0:
@@ -465,7 +465,7 @@ class MCTController(ImConWidgetController):
                     mIllumination.setValue(illuValue)
                     mIllumination.setEnabled(True)
                     time.sleep(self.tWait)
-                    allFrames.append(self.detector.getLatestFrame().copy())
+                    allChannelFrames.append(self.detector.getLatestFrame().copy())
                     
                     # store positions
                     mPositions = self.positioner.getPosition()
@@ -477,11 +477,13 @@ class MCTController(ImConWidgetController):
                         lastFrame = self.detector.getLatestFrame()
                         self.LastStackLED.append(lastFrame.copy())
                     '''
+                allZStackFrames.append(allChannelFrames)
             
-                # save to HDF5
-                self.h5File.append_data(self.nImagesTaken, np.array(allFrames), np.array(allPositions))
-
-                imageIndex += 1
+            # save to HDF5
+            framesToSave = np.transpose(np.array(allZStackFrames), (1,0,2,3))
+            self.h5File.append_data(self.nImagesTaken, framesToSave, np.array(allPositions))
+            del framesToSave
+                
 
             # reduce backlash => increase chance to endup at the same position
             if self.zStackEnabled and self.positioner is not None:
@@ -521,10 +523,6 @@ class MCTController(ImConWidgetController):
             self._logger.debug("Setting enable to: "+str(self.positioner.is_enabled))
             self.positioner.enalbeMotors(enable=self.positioner.is_enabled)
 
-
-
-
-
     def switchOffIllumination(self):
         # switch off all illu sources
         for mIllu in self.activeIlluminations:
@@ -532,32 +530,36 @@ class MCTController(ImConWidgetController):
             mIllu.setValue(0)
             time.sleep(0.1)
             
-    def valueIllu1Changed(self, value):
-        self.Illu1Value= value
-        self._widget.mctLabelIllu1.setText('Intensity (Laser 1):'+str(value))
-        if not self.lasers[0].enabled: self.lasers[0].setEnabled(1)
-        if len(self.lasers)>0:self.lasers[0].setValue(self.Illu1Value)
-        if self.lasers[1].power: self.lasers[1].setValue(0)
-        if len(self.leds)>0 and self.leds[0].power: self.leds[0].setValue(0)
-        if self.illu: self.illu.setAll((0,0,0))
+    def changeValueIlluSlider(self, currIllu, value):
+        allIllus = np.arange(len(self.availableIlliminations))
+        # turn on current illumination
+        if not self.availableIlliminations[currIllu].enabled: self.availableIlliminations[currIllu].setEnabled(1)
+        self.availableIlliminations[currIllu].setValue(value)
 
+        # switch off other illus
+        for illuIndex in allIllus:
+            if illuIndex != currIllu and self.availableIlliminations[illuIndex].power>0:
+                self.availableIlliminations[illuIndex].setValue(0)
+                self.availableIlliminations[illuIndex].setEnabled(0)
+            
+    def valueIllu1Changed(self, value):
+        # turn on current illumination based on slider value
+        currIllu = 0
+        self.Illu1Value = value
+        self._widget.mctLabelIllu1.setText('Intensity (Laser 1):'+str(value))
+        self.changeValueIlluSlider(currIllu, value)        
+        
     def valueIllu2Changed(self, value):
-        self.Illu2Value = value
+        currIllu = 1
+        self.Illu1Value = value
         self._widget.mctLabelIllu2.setText('Intensity (Laser 2):'+str(value))
-        if not self.lasers[1].enabled: self.lasers[1].setEnabled(1)
-        if len(self.lasers)>1: self.lasers[1].setValue(self.Illu2Value)
-        if self.lasers[0].power: self.lasers[0].setValue(0)
-        if len(self.leds)>0 and self.leds[0].power: self.leds[0].setValue(0)
-        if self.illu: self.illu.setAll((0,0,0))
+        self.changeValueIlluSlider(currIllu, value)
 
     def valueIllu3Changed(self, value):
-        self.Illu3Value= value
-        self._widget.mctLabelLED.setText('Intensity (LED):'+str(value))
-        if len(self.leds) and not self.leds[0].enabled: self.leds[0].setEnabled(1)
-        if len(self.leds): self.leds[0].setValue(self.Illu3Value, getReturn=False)
-        if self.illu: self.illu.setAll(1, (self.Illu3Value,self.Illu3Value,self.Illu3Value))
-        if len(self.lasers)>0 and self.lasers[0].power: self.lasers[0].setValue(0)
-        if len(self.lasers)>1 and self.lasers[1].power: self.lasers[1].setValue(0)
+        currIllu = 2
+        self.Illu1Value = value
+        self._widget.mctLabelIllu3.setText('Intensity (Laser 3):'+str(value))
+        self.changeValueIlluSlider(currIllu, value)
 
     def __del__(self):
         pass
@@ -608,8 +610,8 @@ class MCTController(ImConWidgetController):
 class HDF5File(object):
     def __init__(self, filename, init_dims, max_dims=None):
         self.filename = filename
-        self.init_dims = init_dims
-        self.max_dims = max_dims
+        self.init_dims = init_dims # time, channels, z, y, x
+        self.max_dims = max_dims # time, channels, z, y, x
         self.create_dataset()
 
     def create_dataset(self):
@@ -637,28 +639,6 @@ class HDF5File(object):
                 meta_group.create_dataset(f'Time_{timepoint}_Channel_{channel}', data=xyz)
 
 
-class mTimer(object):
-    def __init__(self, waittime, mFunc) -> None:
-        self.waittime = waittime
-        self.starttime = time.time()
-        self.running = False
-        self.isStop = False
-        self.mFunc = mFunc
-
-    def start(self):
-        self.starttime = time.time()
-        self.running = True
-
-        ticker = threading.Event( daemon=True)
-        self.waittimeLoop=0 # make sure first run runs immediately
-        while not ticker.wait(self.waittimeLoop) and self.isStop==False:
-            self.waittimeLoop = self.waittime
-            self.mFunc()
-        self.running = False
-
-    def stop(self):
-        self.running = False
-        self.isStop = True
 
 '''
 Crosscolleration based drift correction

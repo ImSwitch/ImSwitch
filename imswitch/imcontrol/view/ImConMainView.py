@@ -1,3 +1,4 @@
+import imswitch
 from dataclasses import dataclass
 
 from pyqtgraph.dockarea import Dock, DockArea
@@ -7,8 +8,8 @@ from imswitch.imcommon.model import initLogger
 from imswitch.imcommon.view import PickDatasetsDialog
 from . import widgets
 from .PickSetupDialog import PickSetupDialog
-from .PickUC2BoardConfigDialog import PickUC2BoardConfigDialog
-
+import pkg_resources
+import importlib
 
 class ImConMainView(QtWidgets.QMainWindow):
     sigLoadParamsFromHDF5 = QtCore.Signal()
@@ -22,45 +23,45 @@ class ImConMainView(QtWidgets.QMainWindow):
 
         super().__init__(*args, **kwargs)
 
-        self.pickSetupDialog = PickSetupDialog(self)
-        self.PickUC2BoardConfigDialog = PickUC2BoardConfigDialog(self)
-        self.pickDatasetsDialog = PickDatasetsDialog(self, allowMultiSelect=False)
-
-        self.viewSetupInfo = viewSetupInfo
-
-        # Widget factory
-        self.factory = widgets.WidgetFactory(options)
+        self.factory = self.factory = widgets.WidgetFactory(options)
         self.docks = {}
         self.widgets = {}
         self.shortcuts = {}
 
-        # Menu Bar
-        menuBar = self.menuBar()
-        file = menuBar.addMenu('&File')
-        tools = menuBar.addMenu('&Tools')
-        self.shortcuts = menuBar.addMenu('&Shortcuts')
+        self.viewSetupInfo = viewSetupInfo
+        if not imswitch.IS_HEADLESS:
+            self.pickSetupDialog = PickSetupDialog(self)
+            self.pickDatasetsDialog = PickDatasetsDialog(self, allowMultiSelect=False)
 
-        self.loadParamsAction = QtWidgets.QAction('Load parameters from saved HDF5 file…', self)
-        self.loadParamsAction.setShortcut('Ctrl+P')
-        self.loadParamsAction.triggered.connect(self.sigLoadParamsFromHDF5)
-        file.addAction(self.loadParamsAction)
 
-        self.pickSetupAction = QtWidgets.QAction('Pick hardware setup…', self)
-        self.pickSetupAction.triggered.connect(self.sigPickSetup)
-        tools.addAction(self.pickSetupAction)
 
-        self.pickConfigAction = QtWidgets.QAction('Pick hardware config', self)
-        self.pickConfigAction.triggered.connect(self.sigPickConfig)
-        tools.addAction(self.pickConfigAction)
+            # Menu Bar
+            menuBar = self.menuBar()
+            file = menuBar.addMenu('&File')
+            tools = menuBar.addMenu('&Tools')
+            self.shortcuts = menuBar.addMenu('&Shortcuts')
 
-        # Window
-        self.setWindowTitle('ImSwitch')
+            self.loadParamsAction = QtWidgets.QAction('Load parameters from saved HDF5 file…', self)
+            self.loadParamsAction.setShortcut('Ctrl+P')
+            self.loadParamsAction.triggered.connect(self.sigLoadParamsFromHDF5)
+            file.addAction(self.loadParamsAction)
 
-        self.cwidget = QtWidgets.QWidget()
-        layout = QtWidgets.QHBoxLayout()
-        self.cwidget.setLayout(layout)
-        self.setCentralWidget(self.cwidget)
+            self.pickSetupAction = QtWidgets.QAction('Pick hardware setup…', self)
+            self.pickSetupAction.triggered.connect(self.sigPickSetup)
+            tools.addAction(self.pickSetupAction)
 
+            self.pickConfigAction = QtWidgets.QAction('Pick hardware config', self)
+            self.pickConfigAction.triggered.connect(self.sigPickConfig)
+            tools.addAction(self.pickConfigAction)
+
+            # Window
+            self.setWindowTitle('ImSwitch')
+
+            self.cwidget = QtWidgets.QWidget()
+            layout = QtWidgets.QHBoxLayout()
+            self.cwidget.setLayout(layout)
+            self.setCentralWidget(self.cwidget)
+    
         # Dock area
         rightDockInfos = {
             'Autofocus': _DockInfo(name='Autofocus', yPosition=1),
@@ -103,6 +104,10 @@ class ImConMainView(QtWidgets.QMainWindow):
             'Histogramm': _DockInfo(name='Histogramm Tool', yPosition=3),
             'STORMRecon': _DockInfo(name='STORM Recon Tool', yPosition=2),
             'HoliSheet': _DockInfo(name='HoliSheet Tool', yPosition=3),
+            'FlowStop': _DockInfo(name='FlowStop Tool', yPosition=3),
+            'FLIMLabs': _DockInfo(name='FLIMLabs Tool', yPosition=3),
+            'ObjectiveRevolver': _DockInfo(name='Objective Revolver', yPosition=3),
+            'Temperature': _DockInfo(name='Temperature Controller', yPosition=3),
             'SquidStageScan': _DockInfo(name='SquidStageScan Tool', yPosition=3),
             'WellPlate': _DockInfo(name='Wellplate Tool', yPosition=1),
             'Deck': _DockInfo(name="Deck Tool", yPosition=1),
@@ -112,7 +117,7 @@ class ImConMainView(QtWidgets.QMainWindow):
             'LEDMatrix': _DockInfo(name='LEDMatrix Tool', yPosition=0),
             'Watcher': _DockInfo(name='File Watcher', yPosition=3),
             'Tiling': _DockInfo(name='Tiling', yPosition=3)
-        }
+            }
         leftDockInfos = {
             'Settings': _DockInfo(name='Detector Settings', yPosition=0),
             'View': _DockInfo(name='Image Controls', yPosition=1),
@@ -129,51 +134,66 @@ class ImConMainView(QtWidgets.QMainWindow):
         elif enabledDockKeys is True:
             enabledDockKeys = allDockKeys
 
-        if 'Image' in enabledDockKeys:
+        if 'Image' in enabledDockKeys and not imswitch.IS_HEADLESS:
             self.docks['Image'] = Dock('Image Display', size=(1, 1))
             self.widgets['Image'] = self.factory.createWidget(widgets.ImageWidget)
             self.docks['Image'].addWidget(self.widgets['Image'])
             self.factory.setArgument('napariViewer', self.widgets['Image'].napariViewer)
+            dockArea.addDock(self.docks['Image'], 'left')
+        # if we load the widget as a plugin we have to set a default position
+        # filter those enabeldDockKeys that are not in rightDockInfos
+        pluginDockKeys = [key for key in enabledDockKeys if (key not in rightDockInfos and key not in leftDockInfos and key!="Image")]
+        # add the pluginDockKeys to the rightDockInfos with default position
+        for widgetKey in pluginDockKeys:
+            rightDockInfos[widgetKey] = _DockInfo(name=widgetKey, yPosition=0)
 
         rightDocks = self._addDocks(
             {k: v for k, v in rightDockInfos.items() if k in enabledDockKeys},
             dockArea, 'right'
         )
 
-        if 'Image' in enabledDockKeys:
-            dockArea.addDock(self.docks['Image'], 'left')
 
-        self._addDocks(
+        lefDocks = self._addDocks(
             {k: v for k, v in leftDockInfos.items() if k in enabledDockKeys},
             dockArea, 'left'
         )
 
-        # Add dock area to layout
-        layout.addWidget(dockArea)
+    # Add dock area to layout
+        if not imswitch.IS_HEADLESS:
+            layout.addWidget(dockArea)
 
+        '''
+        # TODO: THIS HAS NO EFFECT! WHY?
         # Maximize window
         self.hide()  # Minimize time the window is displayed while loading multi module window
 
         # Adjust dock sizes (the window has to be maximized first for this to work properly)
         if 'Settings' in self.docks:
-            self.docks['Settings'].setStretch(1, 5)
-            self.docks['Settings'].container().setStretch(3, 1)
+            self.docks['Settings'].setStretch(1, 1)
+            self.docks['Settings'].container().setStretch(1, 1)
         if len(rightDocks) > 0:
-            rightDocks[-1].setStretch(1, 5)
+            rightDocks[-1].setStretch(1, 1)
         if 'Image' in self.docks:
-            self.docks['Image'].setStretch(10, 1)
+            self.docks['Image'].setStretch(1, 1)
 
-        # self.showMaximized()
+        self.showMaximized()
 
-        # self.setMaximumSize(1720,900)
-
-
+        # Adjust dock sizes (the window has to be maximized first for this to work properly)
+        if 'Settings' in self.docks:
+            self.docks['Settings'].setStretch(1, 1)
+            self.docks['Settings'].container().setStretch(1, 1)
+        if len(rightDocks) > 0:
+            rightDocks[-1].setStretch(1, 1)
+        if 'Image' in self.docks:
+            self.docks['Image'].setStretch(1, 1)
+        '''
     def addShortcuts(self, shortcuts):
-        for s in shortcuts.values():
-            action = QtWidgets.QAction(s["name"], self)
-            action.setShortcut(s["key"])
-            action.triggered.connect(s["callback"])
-            self.shortcuts.addAction(action)
+        if not imswitch.IS_HEADLESS:
+            for s in shortcuts.values():
+                action = QtWidgets.QAction(s["name"], self)
+                action.setShortcut(s["key"])
+                action.triggered.connect(s["callback"])
+                self.shortcuts.addAction(action)
 
     def showPickSetupDialogBlocking(self):
         result = self.pickSetupDialog.exec_()
@@ -181,10 +201,6 @@ class ImConMainView(QtWidgets.QMainWindow):
 
     def showPickDatasetsDialogBlocking(self):
         result = self.pickDatasetsDialog.exec_()
-        return result == QtWidgets.QDialog.Accepted
-
-    def showConfigSetupDialogBlocking(self):
-        result = self.PickUC2BoardConfigDialog.exec_()
         return result == QtWidgets.QDialog.Accepted
 
     def closeEvent(self, event):
@@ -197,13 +213,24 @@ class ImConMainView(QtWidgets.QMainWindow):
         prevDock = None
         prevDockYPosition = -1
         for widgetKey, dockInfo in dockInfoDict.items():
-            self.widgets[widgetKey] = self.factory.createWidget(
-                getattr(widgets, f'{widgetKey}Widget')
-                if widgetKey != 'Scan' else
-                getattr(widgets, f'{widgetKey}Widget{self.viewSetupInfo.scan.scanWidgetType}')
-            )
+            try:
+                self.widgets[widgetKey] = self.factory.createWidget(
+                    getattr(widgets, f'{widgetKey}Widget')
+                    if widgetKey != 'Scan' else
+                    getattr(widgets, f'{widgetKey}Widget{self.viewSetupInfo.scan.scanWidgetType}')
+                )
+            except:
+                # try to get it from the plugins
+                for entry_point in pkg_resources.iter_entry_points(f'imswitch.implugins'):
+                    if entry_point.name == f'{widgetKey}_widget':
+                        packageWidget = entry_point.load()
+                        self.widgets[widgetKey] = self.factory.createWidget(packageWidget)
+                        break
             self.docks[widgetKey] = Dock(dockInfo.name, size=(1, 1))
-            self.docks[widgetKey].addWidget(self.widgets[widgetKey])
+            try:self.docks[widgetKey].addWidget(self.widgets[widgetKey])
+            except:
+                self.__logger.error(f"Could not add widget {widgetKey} to dock {dockInfo.name}")
+                continue
             if prevDock is None:
                 dockArea.addDock(self.docks[widgetKey], position)
             elif dockInfo.yPosition > prevDockYPosition:

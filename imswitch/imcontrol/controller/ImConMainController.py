@@ -1,7 +1,7 @@
 import dataclasses
-
+import pkg_resources
 import h5py
-
+import imswitch
 from imswitch.imcommon.controller import MainController, PickDatasetsController
 from imswitch.imcommon.model import (
     ostools, initLogger, generateAPI, generateShortcuts, SharedAttributes
@@ -10,12 +10,12 @@ from imswitch.imcommon.framework import Thread
 from .server import ImSwitchServer
 from imswitch.imcontrol.model import configfiletools
 from imswitch.imcontrol.view import guitools
-from . import controllers
+from ...imcommon.controller import controllers
 from .CommunicationChannel import CommunicationChannel
 from .MasterController import MasterController
 from .PickSetupController import PickSetupController
 from .PickUC2BoardConfigController import PickUC2BoardConfigController
-from .basecontrollers import ImConWidgetControllerFactory
+from ...imcommon.controller.basecontrollers import ImConWidgetControllerFactory
 
 
 class ImConMainController(MainController):
@@ -43,22 +43,33 @@ class ImConMainController(MainController):
         self.__factory = ImConWidgetControllerFactory(
             self.__setupInfo, self.__masterController, self.__commChannel, self._moduleCommChannel
         )
-        self.pickSetupController = self.__factory.createController(
-            PickSetupController, self.__mainView.pickSetupDialog
-        )
-        self.pickDatasetsController = self.__factory.createController(
-            PickDatasetsController, self.__mainView.pickDatasetsDialog
-        )
+        
+        if not imswitch.IS_HEADLESS:
+            self.pickSetupController = self.__factory.createController(
+                PickSetupController, self.__mainView.pickSetupDialog
+            )
+            self.pickDatasetsController = self.__factory.createController(
+                PickDatasetsController, self.__mainView.pickDatasetsDialog
+            )
 
         self.controllers = {}
 
         for widgetKey, widget in self.__mainView.widgets.items():
-            self.controllers[widgetKey] = self.__factory.createController(
-                (getattr(controllers, f'{widgetKey}Controller')
-                if widgetKey != 'Scan' else
-                getattr(controllers, f'{widgetKey}Controller{self.__setupInfo.scan.scanWidgetType}')), widget
-            )
-
+            try:
+                self.controllers[widgetKey] = self.__factory.createController(
+                    (getattr(controllers, f'{widgetKey}Controller')
+                    if widgetKey != 'Scan' else
+                    getattr(controllers, f'{widgetKey}Controller{self.__setupInfo.scan.scanWidgetType}')), widget
+                )
+            except Exception as e:
+                #try to get it from the plugins
+                for entry_point in pkg_resources.iter_entry_points(f'imswitch.implugins'):
+                    if entry_point.name == f'{widgetKey}_controller':
+                        packageController = entry_point.load()
+                        self.controllers[widgetKey] = self.__factory.createController(packageController, widget)
+                        break
+                self.__logger.debug(e)
+                raise ValueError(f'No controller found for widget {widgetKey}')
         # Generate API
         self.__api = None
         apiObjs = list(self.controllers.values()) + [self.__commChannel]

@@ -148,12 +148,14 @@ class TelemetrixRotatorManager(RotatorManager):
     # Callbacks #
     #############
     def __moveFinishedCallback(self, data: Tuple[int, int]) -> None:
+        # TODO: the callback data is described in documentation; check it and refactor
         self.turning = False
         # we make a second callback to be sure of the final position
         self.board.stepper_get_current_position(self.motorID, self.__currentPositionCallback)
         
 
     def __currentPositionCallback(self, data: Tuple[int, int]) -> None:
+        # TODO: the callback data is described in documentation; check it and refactor
         steps = data[1] % self.board.stepsPerTurn
         self.board.currentPosition = (steps, stepsToAngle(steps, self._stepsPerTurn))
         if steps != data[1]:

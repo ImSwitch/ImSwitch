@@ -292,6 +292,9 @@ class DetectorManager(SignalInterface):
     def recordFlatfieldImage(self, image: np.ndarray) -> np.ndarray:
         """ Performs flatfield correction on the specified image. """
         return image
+    
+    def getIsRGB(self):
+        return self.isRGB
 
 # Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.

@@ -72,6 +72,7 @@ class MCTController(ImConWidgetController):
         allDetectorNames = self._master.detectorsManager.getAllDeviceNames()
         self.detector = self._master.detectorsManager[allDetectorNames[0]]
         self.detectorWidth, self.detectorHeight = self.detector._camera.SensorWidth, self.detector._camera.SensorHeight
+        self.isRGB = self.detector._camera.isRGB
         self.detectorPixelSize = self.detector.pixelSizeUm
         
         # select lasers
@@ -104,13 +105,13 @@ class MCTController(ImConWidgetController):
             self._widget.mctShowLastButton.setEnabled(False)
 
             # setup gui limits for sliders
-            if len(self.availableIlliminations) >= 0:
+            if len(self.availableIlliminations) == 1:
                 self._widget.sliderIllu1.setMaximum(self.availableIlliminations[0].valueRangeMax)
                 self._widget.sliderIllu1.setMinimum(self.availableIlliminations[0].valueRangeMin)           
-            if len(self.availableIlliminations) >= 1:
+            if len(self.availableIlliminations) > 1:
                 self._widget.sliderIllu2.setMaximum(self.availableIlliminations[1].valueRangeMax)
                 self._widget.sliderIllu2.setMinimum(self.availableIlliminations[1].valueRangeMin)
-            if len(self.availableIlliminations) >= 2:
+            if len(self.availableIlliminations) > 2:
                 self._widget.sliderIllu3.setMaximum(self.availableIlliminations[2].valueRangeMax)
                 self._widget.sliderIllu3.setMinimum(self.availableIlliminations[2].valueRangeMin)
 
@@ -269,7 +270,10 @@ class MCTController(ImConWidgetController):
                                     yScanMin, yScanMax, yScanStep):
         # this wil run in the background
         self.timeLast = 0
-        nZStack = int(np.ceil((zStackMax-zStackMin)/zStackStep))
+        if zStackEnabled:
+            nZStack = int(np.ceil((zStackMax-zStackMin)/zStackStep))
+        else:
+            nZStack = 1
         # get current position
         if self.positioner is not None:
             currentPositions = self.positioner.getPosition()
@@ -284,9 +288,14 @@ class MCTController(ImConWidgetController):
         fileName = self.getSaveFilePath(date=MCTDate,
                                 filename=MCTFilename,
                                 extension=fileExtension)
-        init_dims = (1, len(self.activeIlluminations), nZStack, self.detectorWidth, self.detectorHeight) # time, channels, z, y, x
-        max_dims = (None, 3, nZStack, None, None)  # Allow unlimited time points and z slices
-        self.h5File = HDF5File(filename=fileName, init_dims=init_dims, max_dims=max_dims)
+        if self.isRGB:
+            init_dims = (1, len(self.activeIlluminations), nZStack, self.detectorWidth, self.detectorHeight, 3) # time, channels, z, y, x, RGB
+            max_dims = (None, 3, nZStack, None, None, 3)  # Allow unlimited time points and z slices
+        else:
+            init_dims = (1, len(self.activeIlluminations), nZStack, self.detectorWidth, self.detectorHeight) # time, channels, z, y, x
+            max_dims = (None, 3, nZStack, None, None)  # Allow unlimited time points and z slices
+        
+        self.h5File = HDF5File(filename=fileName, init_dims=init_dims, max_dims=max_dims, isRGB=self.isRGB)
 
         # run as long as the MCT is active
         while(self.isMCTrunning):
@@ -479,8 +488,15 @@ class MCTController(ImConWidgetController):
                     '''
                 allZStackFrames.append(allChannelFrames)
             
+            
+            # ensure all illus are off
+            self.switchOffIllumination()
+            
             # save to HDF5
-            framesToSave = np.transpose(np.array(allZStackFrames), (1,0,2,3))
+            if self.isRGB:
+                framesToSave = np.transpose(np.array(allZStackFrames), (1,0,3,2,4)) # time, # todo check order!!
+            else:
+                framesToSave = np.transpose(np.array(allZStackFrames), (1,0,2,3)) # time, 
             self.h5File.append_data(self.nImagesTaken, framesToSave, np.array(allPositions))
             del framesToSave
                 
@@ -515,12 +531,9 @@ class MCTController(ImConWidgetController):
         if self.zStackEnabled and self.positioner is not None:
             self.positioner.move(value=(self.initialPositionZ), axis="Z", is_absolute=True, is_blocking=True)
 
-        # ensure all illus are off
-        #self.switchOffIllumination()
 
         # disable motors to prevent overheating
         if self.positioner is not None:
-            self._logger.debug("Setting enable to: "+str(self.positioner.is_enabled))
             self.positioner.enalbeMotors(enable=self.positioner.is_enabled)
 
     def switchOffIllumination(self):
@@ -608,16 +621,17 @@ class MCTController(ImConWidgetController):
 
 
 class HDF5File(object):
-    def __init__(self, filename, init_dims, max_dims=None):
+    def __init__(self, filename, init_dims, max_dims=None, isRGB=False):
         self.filename = filename
         self.init_dims = init_dims # time, channels, z, y, x
         self.max_dims = max_dims # time, channels, z, y, x
+        self.isRGB=isRGB
         self.create_dataset()
 
     def create_dataset(self):
         with h5py.File(self.filename, 'w') as file:
             # Create a resizable dataset for the image data
-            dset = file.create_dataset('ImageData', shape=self.init_dims, maxshape=self.max_dims, dtype='float32', compression="gzip")
+            dset = file.create_dataset('ImageData', shape=self.init_dims, maxshape=self.max_dims, dtype='uint16', compression="gzip")
             
             # Initialize a group for storing metadata
             meta_group = file.create_group('Metadata')
@@ -632,11 +646,14 @@ class HDF5File(object):
             dset.resize(current_size + 1, axis=0)
             
             # Add the new frame data
-            dset[current_size, :, :, :, :] = frame_data
+            if self.isRGB:
+                dset[current_size, :, :, :, :, :] = np.uint16(frame_data)
+            else:
+                dset[current_size, :, :, :, :] = np.uint16(frame_data)
             
             # Add metadata for the new frame
             for channel, xyz in enumerate(xyz_coordinates):
-                meta_group.create_dataset(f'Time_{timepoint}_Channel_{channel}', data=xyz)
+                meta_group.create_dataset(f'Time_{timepoint}_Channel_{channel}', data=np.float32(xyz))
 
 
 

@@ -1,18 +1,21 @@
 import numpy as np
 
+
 def angleToSteps(angle: int, stepsPerTurn: int) -> np.ndarray:
     """ Converts an angle value (0-360) to number of steps. 
-    
+
     Args:
         angle (int): angle in degrees.
         stepsPerTurn (int): number of steps per turn.
     """
     steps = angle/360 * stepsPerTurn
-    return (np.floor(steps) if steps >= 0 else np.ceil(steps)).astype(int)
+    # solves numpy.int32' object has no attribute 'to_bytes error from telemetrix
+    return int(np.floor(steps) if steps >= 0 else np.ceil(steps))
+
 
 def stepsToAngle(position: int, stepsPerTurn: int) -> float:
     """ Converts a position value (defined in steps) to degrees (0-360)
-    
+
     Args:
         position (int): position in steps.
         stepsPerTurn (int): number of steps per turn.

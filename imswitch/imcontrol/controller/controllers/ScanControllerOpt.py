@@ -1,5 +1,4 @@
 from PyQt5 import QtWidgets
-import pyqtgraph as pg
 from scipy.fftpack import fft, ifft
 from scipy.interpolate import interp1d
 import tifffile as tif
@@ -125,7 +124,7 @@ class ScanOPTWorker(Worker):
         self.noRAM = False                    # Stack not saved to RAM and Viewwer to save memory
         self.isLiveRecon = False              # OPT live reconstruction flag, default to False
         self.isInterruptionRequested = False  # interruption request flag, set from the main thread; defaults to False
-        self.frameStack = []                  # OPT stack memory buffer
+        self.frameStack = None                  # OPT stack memory buffer
 
         # Demo parameters, For demo, synthetic phantom data are generated to emulate OPT scan
         self.demoEnabled = False          # Demo mode flag; if True synthetic data generated; defaults to False
@@ -141,7 +140,9 @@ class ScanOPTWorker(Worker):
         # TODO: make sure to get correct dtype from detector somehow...
         # DP: why important if dtypes corectly handled in the camera classes?
         # this needs to be changed at the API level at some point...
-        self.frameStack.clear()
+        # self.frameStack.clear()
+        self.frameStack = None
+        self.signalStability.clear()  # clear lists inbetween experiments
         self.counter = 0
 
         self.master.detectorsManager[self.detectorName].startAcquisition()
@@ -166,6 +167,9 @@ class ScanOPTWorker(Worker):
         by the main thread.
         """
         self.timeMonitor.addStamp('motor', self.currentStep, 'end')
+        # DP: manual stepping also leads to here, continue only for OPT experiment
+        if not self.isOptRunning:
+            return
         frame = self.getNextFrame()
         self.processFrameStability(frame, self.currentStep)
         self.saveCurrentFrame()
@@ -192,12 +196,34 @@ class ScanOPTWorker(Worker):
             frame = self.sinogram[self.currentStep]
         else:
             frame = self.master.detectorsManager[self.detectorName].getLatestFrame()
+
         if self.noRAM:  # no volume in napari, only last frame
             self.sigNewFrameCaptured.emit(f'{self.detectorName}: latest frame', frame, self.currentStep)
         else:  # volume in RAM and displayed in napari
-            self.frameStack.append(frame)
-            transmittingStack = np.array(self.frameStack).reshape((len(self.frameStack), *frame.shape))
-            self.sigNewFrameCaptured.emit(f'{self.detectorName}: OPT stack', transmittingStack , self.currentStep)
+            # this is faster, because new array is not created in every step from the
+            # list of frames
+            if self.frameStack is None:
+                self.frameStack = np.array(frame)
+            else:
+                print(self.frameStack.shape, frame.shape)
+                try:
+                    print(self.frameStack, frame.shape)
+                    self.frameStack = np.concatenate((self.frameStack,
+                                                      frame[np.newaxis, :]),
+                                                     )
+                except ValueError:  # to add to a stack of only one image
+                    print('Value error:', self.frameStack.shape, frame.shape)
+                    self.frameStack = np.stack((self.frameStack, frame))
+
+            self.sigNewFrameCaptured.emit(
+                f'{self.detectorName}: OPT stack',
+                self.frameStack,
+                self.currentStep,
+                )
+            # why did you make a copy, is it important because it adds memory
+            # self.frameStack.append(frame)
+            # transmittingStack = np.array(self.frameStack).reshape((len(self.frameStack), *frame.shape))
+            # self.sigNewFrameCaptured.emit(f'{self.detectorName}: OPT stack', transmittingStack , self.currentStep)
         self.timeMonitor.addStamp('snap', self.currentStep, 'end')
         return frame
 
@@ -273,7 +299,6 @@ class ScanControllerOpt(ImConWidgetController):
         # Local flags
         self.liveRecon = False
         self.saveOpt = True
-        self.isOptRunning = False
 
         # get detectors, select first one, connect update
         # Should it be synchronized with recording selector?
@@ -352,6 +377,8 @@ class ScanControllerOpt(ImConWidgetController):
     def postScanEnd(self):
         """ Triggered after the end of the OPT scan. """
         self._logger.info('OPT scan finished.')
+        # # Get the report before optThread destroyed
+        # self.timeReport = self.optWorker.timeMonitor.getReport()
         self.optWorker.isInterruptionRequested = False  # reset interruption flag
         self.optThread.quit()  # stop the worker thread
         self.enableWidget(True)
@@ -410,9 +437,6 @@ class ScanControllerOpt(ImConWidgetController):
 
     def plotReport(self):
         self._widget.plotReport(self.optWorker.timeMonitor.getReport())
-        # self.SW = SecondWindow(self.optWorker.timeMonitor.getReport())
-        # self.SW.resize(1500, 700)
-        # self.SW.show()
 
     ##################
     # Image handling #
@@ -424,7 +448,7 @@ class ScanControllerOpt(ImConWidgetController):
                            self.saveSubfolder,
                            f'{self.__currentStep:04}')
 
-    def displayImage(self, name: str, frame: np.ndarray, step: int) -> None:
+    def displayImage(self, name: str, frame: np.ndarray) -> None:
         """
         Display stack or image in the napari viewer.
 
@@ -434,13 +458,14 @@ class ScanControllerOpt(ImConWidgetController):
             step (`int`): current OPT scan step
         """
         # subsample stack
-        if self.isOptRunning and not self.noRAM:
+        if self.optWorker.isOptRunning and not self.noRAM:
             self._widget.setImage(np.uint16(frame),
                                   colormap="gray",
                                   name=name,
                                   pixelsize=(1, 1),
                                   translation=(0, 0),
-                                  step=step)
+                                  # change because I do not want to put to the signal
+                                  step=self.optWorker.currentStep)
         else:
             self._widget.setImage(np.uint16(frame),
                                   colormap="gray",
@@ -448,6 +473,13 @@ class ScanControllerOpt(ImConWidgetController):
                                   pixelsize=(1, 1),
                                   translation=(0, 0),
                                   )
+            
+        # DP: not idea placement, but separate it means having new signal
+        # emitted from the worker (because worker does not have access to the
+        # widget), or should I emit signal, or overload the existing one?
+        if self.optWorker.isOptRunning:
+            # update labels step labels in the widget
+            self._widget.updateCurrentStep(self.optWorker.currentStep + 1)
 
     def updateLiveRecon(self):
         """
@@ -566,24 +598,14 @@ class ScanControllerOpt(ImConWidgetController):
         self.noRAM = self._widget.scanPar['noRamButton'].isChecked()
 
     def updateStabilityPlot(self, steps: list, intensity: List[list]):
-        """ Update OPT stability plot from 4 corners of the stack.
+        """ Update OPT stability plot from 4 corners of the stack via
+        widget function.
 
         Args:
             steps (list): list of OPT steps
             intensity (List[list]): list of intensity values for each corner
         """
-        self._widget.intensityPlot.clear()
-        self._widget.intensityPlot.addLegend()
-
-        colors = ['w', 'r', 'g', 'b']
-        labels = ['UL', 'UR', 'LL', 'LR']
-        for i in range(4):
-            self._widget.intensityPlot.plot(
-                steps,
-                intensity[i],
-                name=labels[i],
-                pen=pg.mkPen(colors[i], width=1.5),
-            )
+        self._widget.updateStabilityPlot(steps, intensity)
 
     def updateLiveReconIdx(self) -> None:
         """ Get camera line index for the live reconstruction. """
@@ -876,6 +898,11 @@ class Stability:
         self.n_pixels = n_pixels  # size  in pixels of rectangle  to monitor mean intensity at 4 corners
         # TODO: DP, redo into a dictionary.
         self.steps = []
+        self.intensity = [[], [], [], []]
+
+    def clear(self):
+        """Clear the lists between experiments. """
+        self.steps.clear()
         self.intensity = [[], [], [], []]
 
     def processStabilityTraces(self, frame: np.ndarray, step: int) -> Tuple[list, List[list]]:

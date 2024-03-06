@@ -34,7 +34,7 @@ class RotatorController(ImConWidgetController):
         self._commChannel.sigRotatorPositionUpdated.connect(
                                     lambda name: self.updatePosition(name)
         )
-        
+
         # Update current position in GUI
         self.updatePosition(name)
 
@@ -75,6 +75,7 @@ class RotatorController(ImConWidgetController):
 
     def updatePosition(self, name):
         pos = self._master.rotatorsManager[name].get_position()
+        # DP, this probably breaks for other rotators!
         self._widget.updatePosition(name, pos[1])
 
     def setSyncInMovement(self, name, pos):

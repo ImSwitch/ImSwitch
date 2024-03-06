@@ -4,6 +4,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from enum import IntEnum
 from typing import Dict, Tuple, Callable
 
+
 class MotorInterface(IntEnum):
     StepperDriver = 1
     FULL2WIRE     = 2
@@ -16,6 +17,7 @@ class MotorInterface(IntEnum):
         # TODO: check keys string formatting
         return len(pinConfig) == PIN_CONFIGS_NUM[self]
 
+
 PIN_CONFIGS_NUM = {
     MotorInterface.StepperDriver: 2,
     MotorInterface.FULL2WIRE    : 2,
@@ -24,6 +26,7 @@ PIN_CONFIGS_NUM = {
     MotorInterface.HALF3WIRE    : 3,
     MotorInterface.HALF4WIRE    : 4
 }
+
 
 class MockTelemetrixBoard:
     """ Mock class implementing placeholder methods for the a Telemetrix-supported board.
@@ -58,7 +61,6 @@ class MockTelemetrixBoard:
         self.__logger.info(f"Pins: {pins}")
         self.motorIDCount += 1
         return self.motorIDCount
-        
 
     def stepper_set_speed(self, motor_id: int, speed: int) -> None:
         if speed > self.__maxSpeed:

@@ -5,6 +5,7 @@ import time
 
 from imswitch.imcontrol.view import guitools as guitools
 from .basewidgets import NapariHybridWidget
+from typing import List
 import matplotlib as mpl
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
@@ -255,6 +256,7 @@ class ScanWidgetOpt(NapariHybridWidget):
 
     def setImage(self, im, colormap="gray", name="",
                  pixelsize=(1, 20, 20), translation=(0, 0, 0), step=0):
+        print('step', step)
         if len(im.shape) == 2:
             print('2D image supposedly', im.shape)
             translation = (translation[0], translation[1])
@@ -266,16 +268,33 @@ class ScanWidgetOpt(NapariHybridWidget):
                                                translate=translation,
                                                name=name,
                                                blending='translucent')
+        self.layer.data = im
+        self.layer.contrast_limits = (np.min(im), np.max(im))
+        time.sleep(0.2)
         try:
             self.viewer.dims.current_step = (step, im.shape[1], im.shape[2])
         except Exception as e:
             print('Except from dims', e)
-        self.layer.data = im
-        self.layer.contrast_limits = (np.min(im), np.max(im))
-        time.sleep(0.2)
+
+    def clearStabilityPlot(self) -> None:
+        self.intensityPlot.clear()
+
+    def updateStabilityPlot(self, steps: list, intensity: List[list]):
+        self.intensityPlot.clear()
+        self.intensityPlot.addLegend()
+
+        colors = ['w', 'r', 'g', 'b']
+        labels = ['UL', 'UR', 'LL', 'LR']
+        for i in range(4):
+            self.intensityPlot.plot(
+                steps,
+                intensity[i],
+                name=labels[i],
+                pen=pg.mkPen(colors[i], width=1.5),
+            )
 
     def plotReport(self, report):
-        self.SW = SecondWindow(self.optWorker.timeMonitor.getReport())
+        self.SW = SecondWindow(report)
         self.SW.resize(1500, 700)
         self.SW.show()
 

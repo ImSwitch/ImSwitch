@@ -124,7 +124,7 @@ class TelemetrixRotatorManager(RotatorManager):
             steps = angleToSteps(value, self._stepsPerTurn)
         
         self.turning = True
-        self.board.stepper_move(self.motorID, steps - self.board.currentPosition[0])
+        self.board.stepper_move(int(self.motorID, steps - self.board.currentPosition[0]))
         self.board.stepper_run(self.motorID, self.__moveFinishedCallback)
     
     def get_position(self) -> Tuple[int, int]:
@@ -154,7 +154,6 @@ class TelemetrixRotatorManager(RotatorManager):
         self.turning = False
         # we make a second callback to be sure of the final position
         self.board.stepper_get_current_position(self.motorID, self.__currentPositionCallback)
-        
 
     def __currentPositionCallback(self, data: Tuple[int, int]) -> None:
         # TODO: the callback data is described in documentation; check it and refactor

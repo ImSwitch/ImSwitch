@@ -1,0 +1,44 @@
+[33mda9d097[m[33m ([m[1;36mHEAD -> [m[1;32madd-camera-mock[m[33m)[m HEAD@{0}: commit: fixed real experiment, not yet moct
+[33m4035533[m HEAD@{1}: checkout: moving from add-camera to add-camera-mock
+[33m66de2f7[m[33m ([m[1;31morigin/add-camera[m[33m, [m[1;32madd-camera[m[33m)[m HEAD@{2}: checkout: moving from add-camera-mock to add-camera
+[33m4035533[m HEAD@{3}: reset: moving to HEAD
+[33m4035533[m HEAD@{4}: checkout: moving from add-camera to add-camera-mock
+[33m66de2f7[m[33m ([m[1;31morigin/add-camera[m[33m, [m[1;32madd-camera[m[33m)[m HEAD@{5}: checkout: moving from add-camera-mock to add-camera
+[33m4035533[m HEAD@{6}: reset: moving to HEAD
+[33m4035533[m HEAD@{7}: commit: further refactoring, comments, replies
+[33mb29ec83[m HEAD@{8}: reset: moving to HEAD
+[33mb29ec83[m HEAD@{9}: checkout: moving from add-camera to add-camera-mock
+[33m66de2f7[m[33m ([m[1;31morigin/add-camera[m[33m, [m[1;32madd-camera[m[33m)[m HEAD@{10}: commit: cleanup
+[33mfd488b0[m HEAD@{11}: reset: moving to HEAD
+[33mfd488b0[m HEAD@{12}: commit: time reporting class
+[33m298bcca[m HEAD@{13}: commit: mock viewer still not updating
+[33m2f3e37d[m HEAD@{14}: commit: if/else to current position callback, but does not fix the update
+[33m276bbcf[m HEAD@{15}: commit: fix mock rotator, update stack still not working however
+[33m558162b[m HEAD@{16}: commit: fix sigOpt bug
+[33m712023c[m HEAD@{17}: commit: moving arduino stepper, mock not working yet
+[33mea2eb65[m HEAD@{18}: pull --all: Fast-forward
+[33m562ab2a[m HEAD@{19}: commit: correction
+[33m3b19b34[m HEAD@{20}: commit: bug fixing, step_opt_done not resolved
+[33m9a7154f[m HEAD@{21}: commit: clean, camera buffer fix, convert widgets to spinboxes
+[33mb8a13e8[m HEAD@{22}: commit: delete logs and prints, change save fname for corrections
+[33meadac32[m HEAD@{23}: commit: cleane refactored, local acquisition loop, some docs
+[33mae87802[m HEAD@{24}: commit: improved snapping, still crashing sometimes on pixel_format change.
+[33mcafc0e9[m HEAD@{25}: commit: debugging, cleaning widget features, removing debug codes.
+[33m14aff01[m HEAD@{26}: commit: remove prints, fixed corrections, better alignOpt
+[33me4f6083[m HEAD@{27}: commit: working ic4 v0
+[33m0bbca9a[m HEAD@{28}: commit: switching depth by reconnecting camera does not work
+[33maa2ad4c[m HEAD@{29}: commit: ic4 tis manager, works minus the switching between pixel depths.
+[33m2863fce[m HEAD@{30}: commit: align opt and camera depth unsuccessful fixes
+[33m2193630[m HEAD@{31}: pull origin add-camera: Fast-forward
+[33mb9567d0[m HEAD@{32}: commit: cannot fix mockstepper not updating image stack
+[33mbce99db[m HEAD@{33}: commit: OPT step divisibility check
+[33mffcb299[m HEAD@{34}: commit: add rotator selector to OPT scanController, widget reorganized
+[33m60633f8[m HEAD@{35}: commit: disconnect MemorySnapAvailable before OPT, only workaround
+[33m7f0c2c6[m HEAD@{36}: commit: opt controller, fixed signals and snapping
+[33m08bcf64[m HEAD@{37}: commit: stashed changes
+[33mb4b9ad0[m HEAD@{38}: pull origin add-camera: Fast-forward
+[33m140a963[m HEAD@{39}: reset: moving to HEAD
+[33m140a963[m HEAD@{40}: commit: Corrections and Align COR widget
+[33m3b472c2[m HEAD@{41}: commit: init opt experiment with arduino stepper
+[33mb05a431[m[33m ([m[1;31morigin/napari-widgets[m[33m, [m[1;31morigin/master[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmaster[m[33m)[m HEAD@{42}: checkout: moving from master to add-camera
+[33mb05a431[m[33m ([m[1;31morigin/napari-widgets[m[33m, [m[1;31morigin/master[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmaster[m[33m)[m HEAD@{43}: clone: from https://github.com/palec87/ImSwitchOpt.git

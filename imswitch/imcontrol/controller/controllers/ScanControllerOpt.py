@@ -8,7 +8,7 @@ from collections import defaultdict
 
 from functools import partial
 import numpy as np
-from typing import Tuple, List
+from typing import Tuple, List, Callable
 from ..basecontrollers import ImConWidgetController
 from imswitch.imcommon.model import initLogger, dirtools
 from imswitch.imcommon.framework import Signal, Thread, Worker
@@ -22,6 +22,8 @@ class ScanExecutionMonitor:
     metadata file of the experiment.
     """
     def __init__(self):
+        # TODO: move this class to the utilities folder and extend its usage
+        # to the rest of the application
         self.outputReport = {}
         self.report = defaultdict(lambda: [])
 
@@ -66,8 +68,7 @@ class ScanExecutionMonitor:
             self.__processKey(k)
 
     def __processKey(self, key):
-        """ Process a specific key of the report dictionary.
-        Private class method. """
+        """ :meta private: """
         idxs, tags, stamps = zip(*self.report[key])
         i = 0
         diffs, steps = [], []
@@ -126,9 +127,10 @@ class ScanOPTWorker(Worker):
         self.isInterruptionRequested = False  # interruption request flag, set from the main thread; defaults to False
         self.frameStack = None                  # OPT stack memory buffer
 
-        # Demo parameters, For demo, synthetic phantom data are generated to emulate OPT scan
-        self.demoEnabled = False          # Demo mode flag; if True synthetic data generated; defaults to False
-        self.sinogram: np.ndarray = None  # Demo sinogram; default to None
+        # Demo parameters, synthetic phantom data are generated to emulate OPT scan
+        self.demoEnabled = False                        # Demo mode flag; if True synthetic data generated; defaults to False
+        self.sinogram: np.ndarray = None                # Demo sinogram; default to None
+        self.getFrameFun: Callable = self.getNextFrame  # frame retrieval method
 
     def startOPTScan(self):
         """ Performs the first step of the OPT scan, triggering an asynchronous
@@ -139,12 +141,12 @@ class ScanOPTWorker(Worker):
         # initialize memory buffer
         # TODO: make sure to get correct dtype from detector somehow...
         # DP: why important if dtypes corectly handled in the camera classes?
+        # JA: it's important for numpy to correctly allocate memory if frames are stored in RAM;
+        # JA: and also for correctly saving the frames to disk.
         # this needs to be changed at the API level at some point...
         # self.frameStack.clear()
         self.frameStack = None
         self.signalStability.clear()  # clear lists inbetween experiments
-        self.counter = 0
-
         self.master.detectorsManager[self.detectorName].startAcquisition()
         self.isOptRunning = True
 
@@ -152,16 +154,23 @@ class ScanOPTWorker(Worker):
         self.timeMonitor.addStart()
         self.currentStep = 0
 
+        # we select the frame retrieval method based off the demo flag
+        self.getFrameFun: Callable = self.getNextSinogram if self.demoEnabled else self.getNextFrame
+
         # we move the rotator to the first position
         self.timeMonitor.addStamp('motor', self.currentStep, 'beg')
         self.master.rotatorsManager[self.rotatorName].move_abs(self.optSteps[self.currentStep], inSteps=True)
 
     def postRotatorStep(self):
         """ Triggered after emission of the `sigPositionUpdated` signal from
-        the rotator. The method performs the following steps: (1) capture
-        the latest frame from the detector, (2) saves the frame if saving
-        enabled, (3) updates the stability plot optionally performs live
-        reconstruction, (4) triggers the next motor step.
+        the rotator. The method performs the following steps: 
+
+        - captures the latest frame from the detector;
+        - (optional) saves the frame if option is enabled;
+        - updates the stability plot;
+        - (optional) performs live reconstruction; 
+        - triggers the next motor step.
+
         This workflow is repeated until all the rotational steps
         are completed, or when the `isInterruptionRequested` flag is raised
         by the main thread.
@@ -183,8 +192,7 @@ class ScanOPTWorker(Worker):
         Captures the next frame from the detector. If live reconstruction
         is enabled, the frame will be stored in the local memory buffer;
         finally the frame will be displayed in the viewer (unless `noRAM` flag
-        enabled). If the flag `demoEnabled` is set, the synthetic sinogram
-        will be used instead as data source.
+        enabled).
 
         Returns:
             np.ndarray: the captured frame
@@ -227,6 +235,46 @@ class ScanOPTWorker(Worker):
         self.timeMonitor.addStamp('snap', self.currentStep, 'end')
         return frame
 
+    def getNextSinogram(self) -> np.ndarray:
+        """ Retrieves the next synthetic sinogram from the demo data. 
+        If live reconstruction is enabled, the frame will be stored 
+        in the local memory buffer; finally the frame will be displayed 
+        in the viewer (unless the `noRAM` flag enabled).
+
+        Returns:
+            np.ndarray: the synthetic sinogram frame at the current step
+        """
+        self.timeMonitor.addStamp('snap', self.currentStep, 'beg')
+        frame = self.sinogram[self.currentStep]
+        if self.noRAM:
+            self.sigNewFrameCaptured.emit(f'{self.detectorName}: latest frame', frame, self.currentStep)
+        else:
+            self.frameStack.append(frame)
+            transmittingStack = np.array(self.frameStack).reshape((len(self.frameStack), *frame.shape))
+            self.sigNewFrameCaptured.emit(f'{self.detectorName}: OPT stack', transmittingStack , self.currentStep)
+        self.timeMonitor.addStamp('snap', self.currentStep, 'end')
+        return frame
+
+    def getNextSinogram(self) -> np.ndarray:
+        """ Retrieves the next synthetic sinogram from the demo data. 
+        If live reconstruction is enabled, the frame will be stored 
+        in the local memory buffer; finally the frame will be displayed 
+        in the viewer (unless the `noRAM` flag enabled).
+
+        Returns:
+            np.ndarray: the synthetic sinogram frame at the current step
+        """
+        self.timeMonitor.addStamp('snap', self.currentStep, 'beg')
+        frame = self.sinogram[self.currentStep]
+        if self.noRAM:
+            self.sigNewFrameCaptured.emit(f'{self.detectorName}: latest frame', frame, self.currentStep)
+        else:
+            self.frameStack.append(frame)
+            transmittingStack = np.array(self.frameStack).reshape((len(self.frameStack), *frame.shape))
+            self.sigNewFrameCaptured.emit(f'{self.detectorName}: OPT stack', transmittingStack , self.currentStep)
+        self.timeMonitor.addStamp('snap', self.currentStep, 'end')
+        return frame
+
     def processFrameStability(self, frame: np.ndarray, step: int) -> None:
         """ Processes the light stability of the incoming frame;
         the computed traces are then emitted to the main thread for display.
@@ -235,8 +283,6 @@ class ScanOPTWorker(Worker):
             frame (`np.ndarray`): the incoming frame
             step (`int`): the current step of the OPT scan
         """
-        # DP: This seems not needed
-        self.counter += 1
         self.timeMonitor.addStamp('stability', self.currentStep, 'beg')
         stepsList, intensityLists = self.signalStability.processStabilityTraces(frame, step)
         self.timeMonitor.addStamp('stability', self.currentStep, 'end')
@@ -246,6 +292,9 @@ class ScanOPTWorker(Worker):
         # TODO: implement
         # DP: You mean it should be on this thread,
         # instead of the handleSave in the ScanController, right?
+        # JA: since it's part of the experiment workflow it makes sense;
+        # JA: alternatively I can think of another solution with another thread...
+        # JA: have to think about it a little
         pass
 
     def startNextStep(self):
@@ -1227,7 +1276,7 @@ def _array_to_params(array):
         out.append(tmp)
     return out
 
-# Copyright (C) 2020-2021 ImSwitch developers
+# Copyright (C) 2020-2024 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

@@ -20,7 +20,7 @@
     },
     "rotators": {
         "ArduinoStepper": {
-            "managerName": "ArduinoRotatorManager",
+            "managerName": "TelemetrixRotatorManager",
             "managerProperties": {
                 "startSpeed": 100,
                 "stepsPerTurn": 3200,

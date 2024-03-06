@@ -293,10 +293,16 @@ class ScanWidgetOpt(NapariHybridWidget):
                 pen=pg.mkPen(colors[i], width=1.5),
             )
 
-    def plotReport(self, report):
-        self.SW = SecondWindow(report)
-        self.SW.resize(1500, 700)
-        self.SW.show()
+    def plotReport(self, report: dict) -> None:
+        """ Opens a secondary dialog displaying the experiment timing
+        statistics.
+
+        Args:
+            report (dict): report collected from controller.
+        """
+        self.plotDialog = PlotDialog(self, report)
+        self.plotDialog.resize(1500, 700)
+        self.plotDialog.show()
 
     def requestOptStepsConfirmation(self):
         text = "Steps per/rev should be divisable by number of OPT steps. \
@@ -305,32 +311,24 @@ class ScanWidgetOpt(NapariHybridWidget):
         return guitools.askYesNoQuestion(self, "Motor steps not integer values.", " ".join(text.split()))
 
     def requestMockConfirmation(self):
-        text = "Confirm to proceed."
+        text = "A mock experiment with synthetic generated data has been requested. Confirm?"
         return guitools.askYesNoQuestion(self, "Mock OPT is about to run.", " ".join(text.split()))
 
 
-class SecondWindow(QtWidgets.QMainWindow):
+class PlotDialog(QtWidgets.QDialog):
     """Create a pop-up widget with the OPT time execution
-    statistical plots
-
-    Args:
-        QtWidgets (_type_): baseclass
+    statistical plots. Timings are collected during the last run
+    OPT scan. The plots show the relevant statistics spent 
+    on particular tasks during the overall experiment,
+    as well as per OPT step.
     """
-    def __init__(self, report: dict) -> None:
-        """Process report information into plots descirbing
-        time spent on particular tasks overall through out
-        the experiments, as well as per OPT step
-
-        Args:
-            report (dict): dictionary of the report data
-        """
-        super(SecondWindow, self).__init__()
-        self.main_widget = QtWidgets.QWidget()
-        self.setCentralWidget(self.main_widget)
-
-        layout = QtWidgets.QVBoxLayout(self.main_widget)
-        sc = ReportCanvas(report, self.main_widget, width=300, height=300)
-        layout.addWidget(sc)
+    def __init__(self, parent, report: dict) -> None:
+        super(PlotDialog, self).__init__(parent)
+        self.mainWidget = QtWidgets.QWidget()
+        layout = QtWidgets.QVBoxLayout(self.mainWidget)
+        canvas = ReportCanvas(report, self.mainWidget, width=300, height=300)
+        layout.addWidget(canvas)
+        self.setLayout(layout)
 
 
 class ReportCanvas(FigureCanvas):

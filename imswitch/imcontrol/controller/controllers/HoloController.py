@@ -34,6 +34,8 @@ class HoloController(LiveUpdatedController):
         self.NA=.3
         self.k0 = 2*np.pi/(self.mWavelength)
 
+        if not isNIP:
+            return
         self.PSFpara = nip.PSF_PARAMS()
         self.PSFpara.wavelength = self.mWavelength
         self.PSFpara.NA=self.NA
@@ -86,7 +88,7 @@ class HoloController(LiveUpdatedController):
 
     def update(self, detectorName, im, init, isCurrentDetector):
         """ Update with new detector frame. """
-        if not isCurrentDetector or not self.active:
+        if not isCurrentDetector or not self.active and not isNIP:
             return
 
         if self.it == self.updateRate:

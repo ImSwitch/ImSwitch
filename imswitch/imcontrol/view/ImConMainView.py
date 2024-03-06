@@ -219,8 +219,9 @@ class ImConMainView(QtWidgets.QMainWindow):
                     if widgetKey != 'Scan' else
                     getattr(widgets, f'{widgetKey}Widget{self.viewSetupInfo.scan.scanWidgetType}')
                 )
-            except:
+            except Exception as e:
                 # try to get it from the plugins
+                self.__logger.error(f"Could not load widget {widgetKey} from imswitch.imcontrol.view.widgets", e)
                 for entry_point in pkg_resources.iter_entry_points(f'imswitch.implugins'):
                     if entry_point.name == f'{widgetKey}_widget':
                         packageWidget = entry_point.load()

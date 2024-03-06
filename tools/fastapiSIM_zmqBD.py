@@ -17,11 +17,18 @@ ZMQPORT = 5555
 class ViewerController:
     def __init__(self):
         self.context = zmq.Context()
+        # Use REQ socket for request-reply pattern
         self.socket = self.context.socket(zmq.PAIR)
         self.socket.bind("tcp://*:"+str(ZMQPORT))
     
     def send_command(self, command):
+        self.socket.send_string(command, zmq.DONTWAIT)
+        
+    def send_command_and_receive(self, command):
         self.socket.send_string(command)
+        # Block until a reply is received
+        message = self.socket.recv_string()
+        return message
     
     def display_pattern(self, pattern_id):
         self.send_command(f"display:{pattern_id}")
@@ -61,7 +68,8 @@ class PygameViewer:
         self.socket = self.context.socket(zmq.PAIR)
         self.socket.connect("tcp://localhost:"+str(ZMQPORT))
         self.current_images = self.loader.images_488  # Default to 488nm images
-
+        self.tWait = 0  # Default time to wait between patterns
+    
     def run(self):
         pygame.init()
         self.display = pygame.display.set_mode(self.display_size)#, pygame.FULLSCREEN)
@@ -75,18 +83,20 @@ class PygameViewer:
 
                 # Non-blocking check for a message from ZMQ
                 try:
-                    message = self.socket.recv(zmq.NOBLOCK).decode('utf-8')
-                    self.handle_message(message)
+                    # Wait for next request from client
+                    message = self.socket.recv_string()
+                    reply = self.handle_message(message)
+                    # Send reply back to client
+                    self.socket.send_string(reply)
+
                 except zmq.Again:
                     pass  # No message received
 
-                # Add any continuous updates or rendering here if necessary
-                # For example, if you have animations or dynamic content, update it here
-                
                 pygame.display.flip()  # Update the full display surface to the screen
                 pygame.time.wait(10)  # Small delay to prevent high CPU usage
     
     def handle_message(self, message):
+        response = ""
         if message.startswith("display:"):
             pattern_id = int(message.split(":")[1])
             self.display_pattern(pattern_id)
@@ -95,6 +105,14 @@ class PygameViewer:
             self.change_wavelength(wavelength)
         elif message == "stop":
             self.running = False
+        elif message == "start_single_loop":
+            self.start_single_loop()
+            response = "Current pattern info or any other data"
+        return response
+    
+    def trigger(self):
+        # Perform trigger action
+        pass
     
     def display_pattern(self, pattern_id):
         if pattern_id < len(self.current_images):
@@ -112,6 +130,13 @@ class PygameViewer:
         else:
             print("Unsupported wavelength")
 
+    def start_single_loop(self):
+        # display each pattern once and perform a trigger action
+        for i in range(len(self.current_images)):
+            self.display_pattern(i)
+            self.trigger()
+            time.sleep(self.tWait)
+        
 @app.get("/display_pattern/{pattern_id}")
 async def display_pattern(pattern_id: int):
     viewer_controller.display_pattern(pattern_id)
@@ -133,6 +158,12 @@ async def stop_viewer():
 async def change_wavelength(wavelength: int):
     viewer_controller.change_wavelength(wavelength)
     return {"message": f"Wavelength changed to {wavelength}nm."}
+
+@app.get("/start_viewer_single_loop/{i_cycle}")
+async def start_viewer_single_loop(wavelength: int):
+    viewer_controller.change_wavelength(wavelength)
+    response = viewer_controller.send_command_and_receive("start_single_loop")
+    return {"message": "Viewer started in single loop mode."}
 
 
 # Implement other endpoints similarly, using viewer_controller to send appropriate commands

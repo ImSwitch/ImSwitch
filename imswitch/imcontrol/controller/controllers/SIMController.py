@@ -186,15 +186,7 @@ class SIMController(ImConWidgetController):
         self.SIMClient = SIMClient(URL=host, PORT=port)
         self.SIMClient.set_pause(tWaitSequence)
                 
-        '''
-        if self.IS_FASTAPISIM:
-            self.SIMClient.start_viewer()
-            self.SIMClient.start_viewer_single_loop(5)
-            self.SIMClient.wait_for_viewer_completion()
-            self.SIMClient.set_pause(1.5)
-            self.SIMClient.stop_loop()
-            self.SIMClient.set_wavelength(1)
-        '''
+
     def initHamamatsuSLM(self):
         self.hamamatsuslm = nip.HAMAMATSU_SLM() # FIXME: Add parameters
         #def __init__(self, dll_path = None, OVERDRIVE = None, use_corr_pattern = None, wavelength = None, corr_pattern_path = None):
@@ -248,15 +240,13 @@ class SIMController(ImConWidgetController):
             # reset the pattern iterator
             self.nSyncCameraSLM = self._widget.getFrameSyncVal()
 
-            # switch back to internal trigger            
-            if self.IS_FASTAPISIM:
-                #  need to be in trigger mode
-                # therefore, we need to stop the camera first and then set the trigger mode
-                self._commChannel.sigStopLiveAcquisition.emit(True)
-                self.detector.setParameter("trigger_source","External start")
-                self.detector.setParameter("buffer_size",9)
-                self.detector.flushBuffers()
-                #self._commChannel.sigStartLiveAcquistion.emit(True)
+            #  need to be in trigger mode
+            # therefore, we need to stop the camera first and then set the trigger mode
+            self._commChannel.sigStopLiveAcquisition.emit(True)
+            self.detector.setParameter("trigger_source","External start")
+            self.detector.setParameter("buffer_size",9)
+            self.detector.flushBuffers()
+            #self._commChannel.sigStartLiveAcquistion.emit(True)
                 
             # start the background thread
             self.active = True
@@ -359,35 +349,25 @@ class SIMController(ImConWidgetController):
                 else:
                     continue
 
-                if self.IS_FASTAPISIM:
-                    # 1. we start displaying 9 images in a row 
-                    # self.SIMClient.start_viewer()
-                    self.SIMClient.set_wavelength(iColour)
-                    self.SIMClient.start_viewer_single_loop(1)
-                    self.SIMStack = self.detector.getChunk()
-                    self.sigImageReceived.emit(np.array(self.SIMStack),"SIMStack"+str(processor.wavelength))
-                    processor.setSIMStack(self.SIMStack)
-                else:
-                    # iterate over all patterns
-                    #self.detector.wait_for_first_image()
-                    for iPattern in range(self.nRotations*self.nPhases):
-                        if not self.active:
-                            break
-                        
-                        # 1 display the pattern
-                        #tick = datetime.now()
-                        self.simPatternByID(patternID=iPattern, wavelengthID=iColour)
-                        time.sleep(0.2) #FIXME: ??? it works with 100ms exp
-                                                
-                        # grab frame after updated SIM display
-                        frame = self.detector.getLatestFrame()
-
-                        # add frame to stack for processing 
-                        processor.addFrameToStack(frame)
-
-                    self.simPatternByID(patternID=0, wavelengthID=iColour)
-                    self.SIMStack = processor.getSIMStack()
                 
+                # select the pattern for the current colour
+                self.SIMClient.set_wavelength(iColour)
+                
+                # display one round of SIM patterns for the right colour
+                self.SIMClient.start_viewer_single_loop(1)
+                
+                # ensure lasers are off to avoid photo damage
+                self.lasers[0].setEnabled(False)
+                self.lasers[1].setEnabled(False)
+                
+                # download images from the camera    
+                self.SIMStack = self.detector.getChunk(); self.detector.flushBuffers()
+                if self.SIMStack is None:
+                    self._logger.error("No image received")
+                    continue
+                self.sigImageReceived.emit(np.array(self.SIMStack),"SIMStack"+str(processor.wavelength))
+                processor.setSIMStack(self.SIMStack)
+
                 # activate recording in processor 
                 processor.setRecordingMode(self.isRecording)
 
@@ -803,9 +783,9 @@ class SIMClient:
         url = self.base_url + self.commands["start"]
         return self.get_request(url)
 
-    def start_viewer_single_loop(self, number_of_runs, timeout=2):
+    def start_viewer_single_loop(self, number_of_runs, timeout=5):
         url = f"{self.base_url}{self.commands['single_run']}{number_of_runs}"
-        self.get_request(url, timeout=timeout)
+        return self.get_request(url, timeout=timeout)
 
     def wait_for_viewer_completion(self):
         url = self.base_url + self.commands["pattern_compeleted"]

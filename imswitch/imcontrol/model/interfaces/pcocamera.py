@@ -37,7 +37,7 @@ class CameraPCO:
         self.exposure_time = exposure_time
         self.preview_width = 600
         self.preview_height = 600
-        self.defaultBufferSize = 30
+        self.defaultBufferSize = 5
         # dict for different trigger mode
         self.trigger_type = ['software trigger', 
                              'auto sequence',
@@ -139,7 +139,7 @@ class CameraPCO:
             else: 
                 return None
         else:
-            self.frame_raw_metadata = self.camera.image()#image_index=-1)
+            self.frame_raw_metadata = self.camera.image(image_index=-1)
             #time.sleep(0.001)
             self.frame = self.frame_raw_metadata[0]
             self.frameID = self.frame_raw_metadata[1]["recorder image number"]

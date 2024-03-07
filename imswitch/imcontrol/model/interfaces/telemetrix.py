@@ -35,7 +35,8 @@ class MockTelemetrixBoard:
     """ Mock class implementing placeholder methods for the a Telemetrix-supported board.
     It's instantiated when the actual board is not found, or when the user wants 
     to run the software in a non-hardware environment. Uses `APScheduler` to simulate
-    a continously rotating stepper motor when requested.
+    a continously rotating stepper motor when requested. Single-step movements
+    are handled by a background thread.
     """
 
     def __init__(self) -> None:

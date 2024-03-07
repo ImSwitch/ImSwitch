@@ -60,7 +60,7 @@ class TelemetrixRotatorManager(RotatorManager):
     def __setupBoardConnection(self):
         """ Initializes the handle to the hardware interface. If no hardware is found, a mock object is used instead.
         """
-        self.__logger.info(f'Trying to initialize Arduino stepper motor (interface: {self.interface})')
+        self.__logger.info(f'Trying to initialize Arduino stepper motor (interface: {self.interface.name})')
         self.board = self.__initializeBoard()        
         self.board.stepsPerTurn = self._stepsPerTurn
         self.board.currentPosition = (0, 0)

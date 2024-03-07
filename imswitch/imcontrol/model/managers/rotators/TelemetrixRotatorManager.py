@@ -168,7 +168,8 @@ class TelemetrixRotatorManager(RotatorManager):
     #############
     def __moveFinishedCallback(self, data: Tuple[int, int, float]) -> None:
         """Receives data from stepper_run telemetrix callback.
-        Calls current position method.
+        The received data is not used, but kept for compatibility with the telemetrix interface.
+        Retrieves the current position of the motor and emits a signal to update the position in the Rotator widget.
 
         Args:
             data (`Tuple[int, int, float]`): callback data, packed as follows:

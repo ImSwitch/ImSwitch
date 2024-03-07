@@ -130,7 +130,7 @@ class ScanOPTWorker(Worker):
         # Demo parameters, synthetic phantom data are generated to emulate OPT scan
         self.demoEnabled = False                        # Demo mode flag; if True synthetic data generated; defaults to False
         self.sinogram: np.ndarray = None                # Demo sinogram; default to None
-        self.getFrameFun: Callable = self.getNextFrame  # frame retrieval method
+        # self.getFrame: Callable = self.getNextFrame  # frame retrieval method
 
     def startOPTScan(self):
         """ Performs the first step of the OPT scan, triggering an asynchronous
@@ -155,7 +155,8 @@ class ScanOPTWorker(Worker):
         self.currentStep = 0
 
         # we select the frame retrieval method based off the demo flag
-        self.getFrameFun: Callable = self.getNextSinogram if self.demoEnabled else self.getNextFrame
+        # DP: refactor the methods, removed from __init__
+        self.getFrame: Callable = self.getFrameFromSino if self.demoEnabled else self.snapCamera
 
         # we move the rotator to the first position
         self.timeMonitor.addStamp('motor', self.currentStep, 'beg')
@@ -187,6 +188,23 @@ class ScanOPTWorker(Worker):
         else:
             self.startNextStep()
 
+    def snapCamera(self) -> np.ndarray:
+        """Snap frame from the current camera.
+
+        Returns:
+            np.ndarray: frame array
+        """
+        return self.master.detectorsManager[self.detectorName].getLatestFrame()
+
+    def getFrameFromSino(self) -> np.ndarray:
+        """In case of demo experiment, frame is retrived
+        from the synthetic synogram.
+
+        Returns:
+            np.ndarray: frame of synthetic sinogram.
+        """
+        return self.sinogram[self.currentStep]
+
     def getNextFrame(self) -> np.ndarray:
         """
         Captures the next frame from the detector. If live reconstruction
@@ -198,29 +216,39 @@ class ScanOPTWorker(Worker):
             np.ndarray: the captured frame
         """
         self.timeMonitor.addStamp('snap', self.currentStep, 'beg')
-        # TODO: my original implementation tried to avoid this if/else
-        # in favour of speeding up the real experiment as a priority
-        if self.demoEnabled:
-            frame = self.sinogram[self.currentStep]
-        else:
-            frame = self.master.detectorsManager[self.detectorName].getLatestFrame()
+        # DP: I hope this is fine with you
+        frame = self.getFrame()
 
+        # add to optStack and display, this avoids repetition
+        self.processFrame(frame)
+        return frame
+
+    def processFrame(self, frame: np.ndarray) -> None:
+        """Appends frame to the stack (unless noRAM option), displays
+        the last frame, or the full stack
+
+        Args:
+            frame (np.ndarray): last frame, from camera, or synthetic.
+        """
+        print('current step in Worker', self.currentStep)
         if self.noRAM:  # no volume in napari, only last frame
-            self.sigNewFrameCaptured.emit(f'{self.detectorName}: latest frame', frame, self.currentStep)
+            self.sigNewFrameCaptured.emit(
+                f'{self.detectorName}: latest frame',
+                frame,
+                self.currentStep,
+                )
+
         else:  # volume in RAM and displayed in napari
-            # this is faster, because new array is not created in every step from the
-            # list of frames
+            # this is faster, because new array is not created in every
+            # step from the list of frames
             if self.frameStack is None:
                 self.frameStack = np.array(frame)
             else:
-                print(self.frameStack.shape, frame.shape)
-                try:
-                    print(self.frameStack, frame.shape)
+                try:  # add 2D frame
                     self.frameStack = np.concatenate((self.frameStack,
                                                       frame[np.newaxis, :]),
                                                      )
                 except ValueError:  # to add to a stack of only one image
-                    print('Value error:', self.frameStack.shape, frame.shape)
                     self.frameStack = np.stack((self.frameStack, frame))
 
             self.sigNewFrameCaptured.emit(
@@ -232,48 +260,8 @@ class ScanOPTWorker(Worker):
             # self.frameStack.append(frame)
             # transmittingStack = np.array(self.frameStack).reshape((len(self.frameStack), *frame.shape))
             # self.sigNewFrameCaptured.emit(f'{self.detectorName}: OPT stack', transmittingStack , self.currentStep)
+        # if you want, this can be moved to getNextFrame
         self.timeMonitor.addStamp('snap', self.currentStep, 'end')
-        return frame
-
-    def getNextSinogram(self) -> np.ndarray:
-        """ Retrieves the next synthetic sinogram from the demo data. 
-        If live reconstruction is enabled, the frame will be stored 
-        in the local memory buffer; finally the frame will be displayed 
-        in the viewer (unless the `noRAM` flag enabled).
-
-        Returns:
-            np.ndarray: the synthetic sinogram frame at the current step
-        """
-        self.timeMonitor.addStamp('snap', self.currentStep, 'beg')
-        frame = self.sinogram[self.currentStep]
-        if self.noRAM:
-            self.sigNewFrameCaptured.emit(f'{self.detectorName}: latest frame', frame, self.currentStep)
-        else:
-            self.frameStack.append(frame)
-            transmittingStack = np.array(self.frameStack).reshape((len(self.frameStack), *frame.shape))
-            self.sigNewFrameCaptured.emit(f'{self.detectorName}: OPT stack', transmittingStack , self.currentStep)
-        self.timeMonitor.addStamp('snap', self.currentStep, 'end')
-        return frame
-
-    def getNextSinogram(self) -> np.ndarray:
-        """ Retrieves the next synthetic sinogram from the demo data. 
-        If live reconstruction is enabled, the frame will be stored 
-        in the local memory buffer; finally the frame will be displayed 
-        in the viewer (unless the `noRAM` flag enabled).
-
-        Returns:
-            np.ndarray: the synthetic sinogram frame at the current step
-        """
-        self.timeMonitor.addStamp('snap', self.currentStep, 'beg')
-        frame = self.sinogram[self.currentStep]
-        if self.noRAM:
-            self.sigNewFrameCaptured.emit(f'{self.detectorName}: latest frame', frame, self.currentStep)
-        else:
-            self.frameStack.append(frame)
-            transmittingStack = np.array(self.frameStack).reshape((len(self.frameStack), *frame.shape))
-            self.sigNewFrameCaptured.emit(f'{self.detectorName}: OPT stack', transmittingStack , self.currentStep)
-        self.timeMonitor.addStamp('snap', self.currentStep, 'end')
-        return frame
 
     def processFrameStability(self, frame: np.ndarray, step: int) -> None:
         """ Processes the light stability of the incoming frame;
@@ -285,6 +273,7 @@ class ScanOPTWorker(Worker):
         """
         self.timeMonitor.addStamp('stability', self.currentStep, 'beg')
         stepsList, intensityLists = self.signalStability.processStabilityTraces(frame, step)
+        # TODO: sometimes not added to the dict
         self.timeMonitor.addStamp('stability', self.currentStep, 'end')
         self.sigNewStabilityTrace.emit(stepsList, intensityLists)
 
@@ -376,10 +365,6 @@ class ScanControllerOpt(ImConWidgetController):
         self._widget.scanPar['SaveButton'].clicked.connect(self.updateSaveFlag)
         self.updateSaveFlag()
 
-        # noRAM flag
-        self._widget.scanPar['noRamButton'].clicked.connect(self.updateRamFlag)
-        self.updateRamFlag()
-
         # live recon
         self._widget.scanPar['LiveReconIdxEdit'].valueChanged.connect(self.updateLiveReconIdx)
         self.updateLiveReconIdx()
@@ -393,8 +378,15 @@ class ScanControllerOpt(ImConWidgetController):
 
         # OPT worker thread
         self.optThread = Thread()
-        self.optWorker = ScanOPTWorker(self._master, self.detectorName, self.rotatorName)
+        self.optWorker = ScanOPTWorker(self._master,
+                                       self.detectorName,
+                                       self.rotatorName,
+                                       )
         self.optWorker.moveToThread(self.optThread)
+
+        # noRAM flag
+        self._widget.scanPar['noRamButton'].clicked.connect(self.updateRamFlag)
+        self.updateRamFlag()
 
         # Communication channel signals connection
         # sigRotatorPositionUpdated carries the name of the current rotator
@@ -426,8 +418,6 @@ class ScanControllerOpt(ImConWidgetController):
     def postScanEnd(self):
         """ Triggered after the end of the OPT scan. """
         self._logger.info('OPT scan finished.')
-        # # Get the report before optThread destroyed
-        # self.timeReport = self.optWorker.timeMonitor.getReport()
         self.optWorker.isInterruptionRequested = False  # reset interruption flag
         self.optThread.quit()  # stop the worker thread
         self.enableWidget(True)
@@ -470,11 +460,11 @@ class ScanControllerOpt(ImConWidgetController):
 
         # equidistant steps for the OPT scan in absolute values.
         optScanSteps = np.linspace(
-                0,
-                self.stepsPerTurn,
-                self.__optSteps,
-                endpoint=False,
-            ).astype(np.int_)
+                            0,
+                            self.stepsPerTurn,
+                            self.__optSteps,
+                            endpoint=False,
+                        ).astype(np.int_)
         self.optWorker.optSteps = optScanSteps
 
         # live reconstruction
@@ -506,8 +496,9 @@ class ScanControllerOpt(ImConWidgetController):
             frame (`np.ndarray`): image or stack
             step (`int`): current OPT scan step
         """
+        self.__logger.info(f'in displayImage(), {self.optWorker.noRAM}')
         # subsample stack
-        if self.optWorker.isOptRunning and not self.noRAM:
+        if self.optWorker.isOptRunning and not self.optWorker.noRAM:
             self._widget.setImage(np.uint16(frame),
                                   colormap="gray",
                                   name=name,
@@ -522,8 +513,8 @@ class ScanControllerOpt(ImConWidgetController):
                                   pixelsize=(1, 1),
                                   translation=(0, 0),
                                   )
-            
-        # DP: not idea placement, but separate it means having new signal
+
+        # DP: not ideal placement, but separate method would imply having new signal
         # emitted from the worker (because worker does not have access to the
         # widget), or should I emit signal, or overload the existing one?
         if self.optWorker.isOptRunning:
@@ -644,7 +635,7 @@ class ScanControllerOpt(ImConWidgetController):
 
     def updateRamFlag(self):
         """ Update noRAM flag from the widget value """
-        self.noRAM = self._widget.scanPar['noRamButton'].isChecked()
+        self.optWorker.noRAM = self._widget.scanPar['noRamButton'].isChecked()
 
     def updateStabilityPlot(self, steps: list, intensity: List[list]):
         """ Update OPT stability plot from 4 corners of the stack via

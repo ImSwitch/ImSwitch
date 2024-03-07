@@ -22,7 +22,7 @@ class TelemetrixRotatorManager(RotatorManager):
     """ Wrapper of a Telemetrix interface to a stepper motor.
     Telemetrix supports a variety of stepper motor drivers, including the Arduino.
     Reference documentation of the interface can be found at this [link](https://mryslab.github.io/telemetrix/)
-    
+
     Manager properties:
         - stepsPerTurn (`int`): conversion factor for calculating the rotation angle from the number of steps.
         - startSpeed (`int`): initial speed of the motor.
@@ -55,7 +55,8 @@ class TelemetrixRotatorManager(RotatorManager):
             raise ValueError('Invalid interface value in the configuration file. Check the configuration file.')
         self.board = None
         self.motorID = None
-        self.turning = False
+        # DP: removed self.turning flag
+        # self.turning = False
         self.__setupBoardConnection()
 
     def __setupBoardConnection(self):
@@ -72,8 +73,10 @@ class TelemetrixRotatorManager(RotatorManager):
         Shutdown board. If the motor is currently moving, it will stop it.
         """
         self.__logger.info('Motor shutting down.')
-        if self.turning:
+        try:
             self.board.stepper_stop(self.motorID)
+        except:
+            pass
         self.board.shutdown()
 
     def __initializeBoard(self) -> Union[TelemetrixInterface, MockTelemetrixBoard]:
@@ -89,29 +92,47 @@ class TelemetrixRotatorManager(RotatorManager):
             board = MockTelemetrixBoard()
         return board
 
-    def __initializeMotor(self):
+    def __initializeMotor(self) -> None:
         """ Initializes the board motor pin configuration.
         If the board handle is a mock object, it will call placeholder methods.
         """
         self.motorID = self.board.set_pin_mode_stepper(interface=self.interface.value, **self.pinConfig)
         self.board.stepper_set_max_speed(self.motorID, self.maximumspeed)
         self.board.stepper_set_current_position(self.motorID, 0)
-        
-        self.board.stepper_set_speed(self.motorID, self.speed)
+
+        # Rotator controller
+        self.set_rot_speed(self.speed)
         self.board.stepper_set_acceleration(self.motorID, self.acceleration)
 
+    def set_rot_speed(self, speed: int) -> None:
+        """Change the speed of the motor, can be called
+        from the RotatorController
+
+        Args:
+            speed (int): speed value
+        """
+        self.board.stepper_set_speed(self.motorID, speed)
+        self.speed = speed
+
+    def set_zero_pos(self) -> None:
+        """ Set zero position on the rotator and update value
+        in the widget.
+        """
+        self.board.currentPosition = (0, 0)
+        self.board.stepper_set_current_position(self.motorID, 0)
+        self.sigRotatorPositionUpdated.emit()
+
     def move_rel(self, angle):
-        """Method implemented from base class.
+        """ Method implemented from base class.
         Performs a movement relative to the current position.
         """
         steps = angleToSteps(angle, self._stepsPerTurn)
-        self.turning = True
         self.board.stepper_move(self.motorID, steps)
         self.board.stepper_run(self.motorID, self.__moveFinishedCallback)
 
     def move_abs(self, value, inSteps=False):
         """Method implemented from base class.
-        Moves the stepper to an absolute position, based on the current 
+        Moves the stepper to an absolute position, based on the current
         stored position (in steps).
 
         Args:
@@ -122,11 +143,10 @@ class TelemetrixRotatorManager(RotatorManager):
             steps = value
         else:
             steps = angleToSteps(value, self._stepsPerTurn)
-        
-        self.turning = True
-        self.board.stepper_move(int(self.motorID, steps - self.board.currentPosition[0]))
+
+        self.board.stepper_move(self.motorID, int(steps - self.board.currentPosition[0]))
         self.board.stepper_run(self.motorID, self.__moveFinishedCallback)
-    
+
     def get_position(self) -> Tuple[int, int]:
         return self.board.currentPosition
 
@@ -139,33 +159,40 @@ class TelemetrixRotatorManager(RotatorManager):
         for the running is over in the while loop.
         """
         self.board.stepper_set_speed(self.motorID, self.speed)
-        self.turning = True
         self.board.stepper_run_speed(self.motorID)
 
     def stop_cont_rot(self):
-        self.turning = False
         self.board.stepper_stop(self.motorID)
+        self.set_zero_pos()  # becuase position is not tracked over cont move
 
     #############
     # Callbacks #
     #############
-    def __moveFinishedCallback(self, data: Tuple[int, int]) -> None:
-        # TODO: the callback data is described in documentation; check it and refactor
-        self.turning = False
+    def __moveFinishedCallback(self, data: Tuple[int, int, float]) -> None:
+        """Receives data from stepper_run telemetrix callback.
+        Calls current position method.
+
+        Args:
+            data (Tuple[int, int, float]): callback data, report_type=19,
+                motor_id, timestamp
+        """
         # we make a second callback to be sure of the final position
         self.board.stepper_get_current_position(self.motorID, self.__currentPositionCallback)
 
-    def __currentPositionCallback(self, data: Tuple[int, int]) -> None:
-        # TODO: the callback data is described in documentation; check it and refactor
-        steps = data[1] % self.board.stepsPerTurn
+    def __currentPositionCallback(self, data: Tuple[int, int, int, float]) -> None:
+        """Receives data from stepper_get_current_position telemetrix callback.
+        From the HW position calculates angle position in degrees, stores both
+        and emits signal to update the position in the Rotator widget
+
+        Args:
+            data (Tuple[int, int, int, float]): callback data, Report_type=17,
+                motor_id, position in steps, timestamp.
+        """
+        steps = data[2] % self.board.stepsPerTurn
         self.board.currentPosition = (steps, stepsToAngle(steps, self._stepsPerTurn))
-        if steps != data[1]:
+        if steps != data[2]:
             self.board.stepper_set_current_position(self.motorID, steps)
         self.sigRotatorPositionUpdated.emit()
-
-    def set_zero_pos(self) -> None:
-        self.board.stepper_set_current_position(self.motorID, 0)
-        self.currentPosition = (0, 0)
 
 
 # Copyright (C) 2020-2023 ImSwitch developers

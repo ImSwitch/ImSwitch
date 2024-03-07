@@ -256,7 +256,6 @@ class ScanWidgetOpt(NapariHybridWidget):
 
     def setImage(self, im, colormap="gray", name="",
                  pixelsize=(1, 20, 20), translation=(0, 0, 0), step=0):
-        print('step', step)
         if len(im.shape) == 2:
             print('2D image supposedly', im.shape)
             translation = (translation[0], translation[1])

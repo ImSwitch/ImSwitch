@@ -55,8 +55,6 @@ class TelemetrixRotatorManager(RotatorManager):
             raise ValueError('Invalid interface value in the configuration file. Check the configuration file.')
         self.board = None
         self.motorID = None
-        # DP: removed self.turning flag
-        # self.turning = False
         self.__setupBoardConnection()
 
     def __setupBoardConnection(self):

@@ -104,6 +104,8 @@ class MockTelemetrixBoard:
             # to the callback retrieving the current position.
             self.callbackResponse = (17, 0, self.currentPosition[0] + self.__stepsToTurn, 0.1)
             self.__logger.debug(f"New position requested: {stepsToAngle(self.currentPosition[0], self.stepsPerTurn)}")
+            
+            # the sleep simulates the communication delay with the board
             time.sleep(.3)
             self.callback(self.callbackResponse)
             self.__mockEvent.clear()

@@ -257,7 +257,6 @@ class ScanWidgetOpt(NapariHybridWidget):
     def setImage(self, im, colormap="gray", name="",
                  pixelsize=(1, 20, 20), translation=(0, 0, 0), step=0):
         if len(im.shape) == 2:
-            print('2D image supposedly', im.shape)
             translation = (translation[0], translation[1])
 
         if self.layer is None or name not in self.viewer.layers:
@@ -269,7 +268,6 @@ class ScanWidgetOpt(NapariHybridWidget):
                                                blending='translucent')
         self.layer.data = im
         self.layer.contrast_limits = (np.min(im), np.max(im))
-        time.sleep(0.2)
         try:
             self.viewer.dims.current_step = (step, im.shape[1], im.shape[2])
         except Exception as e:

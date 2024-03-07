@@ -20,7 +20,7 @@ class TelemetrixInterface(telemetrix.Telemetrix):
 
 class TelemetrixRotatorManager(RotatorManager):
     """ Wrapper of a Telemetrix interface to a stepper motor.
-    Telemetrix supports a variety of stepper motor drivers, including the Arduino.
+    Telemetrix supports a variety of stepper motor drivers, including Arduino.
     Reference documentation of the interface can be found at this [link](https://mryslab.github.io/telemetrix/)
 
     Manager properties:

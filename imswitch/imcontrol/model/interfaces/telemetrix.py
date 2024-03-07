@@ -41,7 +41,7 @@ class MockTelemetrixBoard:
         self.__speed: int = 0
         self.__maxSpeed: int = 0
         self.__stepsToTurn: int = 0
-        self.callbackResponse: Tuple[int, int, int, float] = (0, 0)
+        self.callbackResponse: Tuple[int, int, int, float] = (0, 0, 0, 0.0)
         self.currentPosition = (0, 0)   # (steps, degrees)
         self.stepsPerTurn: int = 0
         self.motorIDCount: int = 0
@@ -96,6 +96,7 @@ class MockTelemetrixBoard:
         # does not actually use this response, but instead is immediatly passed
         # to the callback retrieving the current position.
         self.callbackResponse = (17, 0, self.currentPosition[0] + self.__stepsToTurn, 0.1)
+        self.__logger.debug(f"New position requested: {stepsToAngle(self.currentPosition[0], self.stepsPerTurn)}")
         time.sleep(.3)
         callback(self.callbackResponse)
 

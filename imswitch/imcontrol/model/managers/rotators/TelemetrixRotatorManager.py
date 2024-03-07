@@ -173,8 +173,9 @@ class TelemetrixRotatorManager(RotatorManager):
         Calls current position method.
 
         Args:
-            data (Tuple[int, int, float]): callback data, report_type=19,
-                motor_id, timestamp
+            data (`Tuple[int, int, float]`): callback data, packed as follows:
+            
+                REPORT_TYPE=19, motor_id, timestamp
         """
         # we make a second callback to be sure of the final position
         self.board.stepper_get_current_position(self.motorID, self.__currentPositionCallback)
@@ -185,8 +186,9 @@ class TelemetrixRotatorManager(RotatorManager):
         and emits signal to update the position in the Rotator widget
 
         Args:
-            data (Tuple[int, int, int, float]): callback data, Report_type=17,
-                motor_id, position in steps, timestamp.
+            data (Tuple[int, int, int, float]): callback data, packed as follows:
+            
+                REPORT_TYPE=17, motor_id, position in steps, timestamp.
         """
         steps = data[2] % self.board.stepsPerTurn
         self.board.currentPosition = (steps, stepsToAngle(steps, self._stepsPerTurn))

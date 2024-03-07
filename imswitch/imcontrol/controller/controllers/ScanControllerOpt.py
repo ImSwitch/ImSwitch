@@ -415,6 +415,9 @@ class ScanControllerOpt(ImConWidgetController):
     #################
     def prepareOPTScan(self):
         """ Initiate OPT scan. """
+        
+        # resetting step count on UI
+        self._widget.updateCurrentStep(0)
 
         def generateSyntheticSinogram(resolution: int = 128) -> np.ndarray:
             data = shepp3d(resolution)  # shepp-logan 3D phantom

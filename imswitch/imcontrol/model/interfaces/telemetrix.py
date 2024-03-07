@@ -1,6 +1,7 @@
 from imswitch.imcommon.model import initLogger
 from imswitch.imcommon.model.mathutils import stepsToAngle
 from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.executors.pool import ThreadPoolExecutor
 from enum import IntEnum
 from typing import Dict, Tuple, Callable
 from threading import Thread, Event
@@ -47,7 +48,7 @@ class MockTelemetrixBoard:
         self.currentPosition = (0, 0)   # (steps, degrees)
         self.stepsPerTurn: int = 0
         self.motorIDCount: int = 0
-        self.__mockScheduler = BackgroundScheduler()
+        self.__mockScheduler = BackgroundScheduler(executors={'default': ThreadPoolExecutor(1)}, job_defaults={'coalesce': False, 'max_instances': 1})
         self.__mockJob = self.__mockScheduler.add_job(self.__mock_continous_movement, 'interval', seconds=1)
         
         # daemon thread
@@ -120,11 +121,14 @@ class MockTelemetrixBoard:
 
     def stepper_run_speed(self, motor_id: int) -> None:
         self.__logger.info(f"Mock board running motor {motor_id} continously at speed {self.__speed}")
-        self.__mockScheduler.start()
+        if not self.__mockScheduler.running:
+            self.__mockScheduler.start()
+        else:
+            self.__mockScheduler.resume_job(self.__mockJob.id)
 
     def stepper_stop(self, motor_id: int) -> None:
         self.__logger.info(f"Mock board stopping motor {motor_id} continous movement.")
-        self.__mockScheduler.pause_job(self.__mockJob)
+        self.__mockScheduler.pause_job(self.__mockJob.id)
 
     def stepper_set_current_position(self, _: int, position: int) -> None:
         self.currentPosition = (position, stepsToAngle(position, self.stepsPerTurn))
@@ -141,6 +145,8 @@ class MockTelemetrixBoard:
         self.__logger.info(f"Mock board continous movement. New angle: {self.currentPosition[1]}")
     
     def __del__(self) -> None:
+        if self.__mockScheduler.running:
+            self.__mockScheduler.pause_job(self.__mockJob.id)
         self.__mockScheduler.remove_all_jobs()
         self.__mockScheduler.shutdown()
     

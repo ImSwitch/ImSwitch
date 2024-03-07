@@ -41,14 +41,14 @@ class MockTelemetrixBoard:
         self.__speed: int = 0
         self.__maxSpeed: int = 0
         self.__stepsToTurn: int = 0
-        self.currentPositionCallback: Tuple[int, int, int, float] = (0, 0)
+        self.callbackResponse: Tuple[int, int, int, float] = (0, 0)
         self.currentPosition = (0, 0)   # (steps, degrees)
         self.stepsPerTurn: int = 0
         self.motorIDCount: int = 0
         self.__mockScheduler = BackgroundScheduler()
 
     def stepper_get_current_position(self, _: int, callback: Callable) -> None:
-        callback(self.currentPositionCallback)
+        callback(self.callbackResponse)
 
     def set_pin_mode_stepper(self, interface=1, pin1=2, pin2=3, pin3=4, pin4=5,
                              enable=True) -> int:
@@ -91,9 +91,13 @@ class MockTelemetrixBoard:
         """
         newPosition = (self.currentPosition[0] + self.__stepsToTurn) % self.stepsPerTurn
         self.currentPosition = (newPosition, stepsToAngle(newPosition, self.stepsPerTurn))
-        self.currentPositionCallback = (17, 0, self.currentPosition[0] + self.__stepsToTurn, 0.1)
+        
+        # this is a hack due to the fact that in the manager, the callback
+        # does not actually use this response, but instead is immediatly passed
+        # to the callback retrieving the current position.
+        self.callbackResponse = (17, 0, self.currentPosition[0] + self.__stepsToTurn, 0.1)
         time.sleep(.3)
-        callback(self.currentPositionCallback)
+        callback(self.callbackResponse)
 
     def stepper_run_speed(self, motor_id: int) -> None:
         self.__logger.info(f"Mock board running motor {motor_id} continously at speed {self.__speed}")

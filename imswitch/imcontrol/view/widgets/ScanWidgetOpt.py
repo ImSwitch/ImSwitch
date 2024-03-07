@@ -179,12 +179,24 @@ class ScanWidgetOpt(NapariHybridWidget):
         # self.grid.addWidget(self.scanPar['CurrentReconStepLabel'], currentRow, 1)
         self.grid.addWidget(self.scanPar['SaveButton'], currentRow, 1)
         self.grid.addWidget(self.scanPar['noRamButton'], currentRow, 2)
+        
         currentRow += 1
 
         # Start and Stop buttons
         self.grid.addWidget(self.scanPar['StartButton'], currentRow, 0)
         self.grid.addWidget(self.scanPar['StopButton'], currentRow, 1)
         self.grid.addWidget(self.scanPar['PlotReportButton'], currentRow, 2)
+        
+        # Progress bar for synthetic data generation;
+        # not visible by default, shown only when mock experiment is requested
+        self.sinogramProgressBar = QtWidgets.QProgressBar(self)
+        self.sinogramProgressBar.setValue(0)
+        self.sinogramProgressBar.setFormat('Sinogram point: %v')
+        self.sinogramProgressBar.setAlignment(QtCore.Qt.AlignCenter)
+        self.sinogramProgressBar.setTextVisible(True)
+        self.sinogramProgressBar.setVisible(False)
+        
+        self.grid.addWidget(self.sinogramProgressBar, currentRow, 0, 1, -1)
 
         currentRow += 1
         self.grid.addWidget(self.tabs, currentRow, 0, 1, -1)
@@ -253,6 +265,15 @@ class ScanWidgetOpt(NapariHybridWidget):
         """ For inactivating during scanning when ActivateButton pressed
         and waiting for a scan. When scan finishes, enable again. """
         self.scanPar['OptStepsEdit'].setEnabled(enabled)
+    
+    def setProgressBarValue(self, value: int) -> None:
+        self.sinogramProgressBar.setValue(value)
+    
+    def setProgressBarVisible(self, visible: bool) -> None:
+        self.sinogramProgressBar.setVisible(visible)
+    
+    def setProgressBarMaximum(self, value: int) -> None:
+        self.sinogramProgressBar.setMaximum(value)
 
     def setImage(self, im, colormap="gray", name="",
                  pixelsize=(1, 20, 20), translation=(0, 0, 0), step=0):

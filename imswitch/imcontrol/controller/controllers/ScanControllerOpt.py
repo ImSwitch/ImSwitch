@@ -106,10 +106,12 @@ class ScanOPTWorker(Worker):
     """
     sigNewFrameCaptured = Signal(str, np.ndarray, int)  # (layerLabel, frame, optCurrentStep)
     sigNewStabilityTrace = Signal(object, object)  # (list: steps, list[list]: stabilityTraces)
+    sigNewSinogramDataPoint = Signal(int) # (int: sinogramGenerationStep)
     sigScanDone = Signal()
 
     def __init__(self, master, detectorName, rotatorName) -> None:
         super().__init__()
+        self.__logger = initLogger(self)
         self.master = master
         self.detectorName = detectorName
         self.rotatorName = rotatorName
@@ -130,6 +132,31 @@ class ScanOPTWorker(Worker):
         # Demo parameters, synthetic phantom data are generated to emulate OPT scan
         self.demoEnabled = False         # Demo mode flag; if True synthetic data generated; defaults to False
         self.sinogram: np.ndarray = None # Demo sinogram; default to None
+    
+    def preStart(self, resolution: int = 128) -> None:
+        """ Utility method to be called before the start of the OPT scan.
+        Generates the the sinogram for the demo experiment, if the demo mode is enabled,
+        and updates the UI progress bar.
+        
+        Args:
+            resolution (`int`): resolution of the synthetic sinogram, equivalent to the number of steps in the OPT scan.
+        """
+        def generateSyntheticSinogram(resolution: int) -> np.ndarray:
+            self.__logger.info('Demo experiment: preparing synthetic data.')
+            data = shepp3d(resolution)  # shepp-logan 3D phantom
+            sinogram = np.zeros(data.shape)  # preallocate sinogram array
+            angles = np.linspace(0, 360, resolution, endpoint=False)  # angles
+            for i in range(resolution):
+                self.sigNewSinogramDataPoint.emit(i)
+                sinogram[i, :, :] = radon(data[i, :, :], theta=angles)
+            mx = np.amax(sinogram)
+            self.__logger.info('Synthetic data ready.')
+            return np.rollaxis((sinogram/mx*255).astype(np.uint8), 2)
+        
+        if self.demoEnabled:
+            self.sinogram = generateSyntheticSinogram(resolution)
+        
+        self.startOPTScan()
 
     def startOPTScan(self):
         """ Performs the first step of the OPT scan, triggering an asynchronous
@@ -161,7 +188,8 @@ class ScanOPTWorker(Worker):
 
     def postRotatorStep(self):
         """ Triggered after emission of the `sigPositionUpdated` signal from
-        the rotator. The method performs the following steps: 
+        the rotator. If only a rotational step was requested, returns.
+        Otherwise, the method performs the following steps: 
 
         - captures the latest frame from the detector;
         - (optional) saves the frame if option is enabled;
@@ -174,7 +202,7 @@ class ScanOPTWorker(Worker):
         by the main thread.
         """
         self.timeMonitor.addStamp('motor', self.currentStep, 'end')
-        # DP: manual stepping also leads to here, continue only for OPT experiment
+        # manual stepping also leads to here, continue only for OPT scan
         if not self.isOPTScanRunning:
             return
         frame = self.getNextFrame()
@@ -387,11 +415,13 @@ class ScanControllerOpt(ImConWidgetController):
         self.optWorker.sigNewFrameCaptured.connect(self.displayImage)
         self.optWorker.sigNewStabilityTrace.connect(self.updateStabilityPlot)
         self.optWorker.sigScanDone.connect(self.postScanEnd)
+        self.optWorker.sigNewSinogramDataPoint.connect(self.checkSinogramProgress)
 
         # Thread signals connection
-        self.optThread.started.connect(self.optWorker.startOPTScan)
+        self.optThread.started.connect(lambda: self.optWorker.preStart(self.optSteps))
 
         # setup UI
+        self._widget.updateCurrentStep(0)
         self.enableWidget(True)
 
     # JA: method to add your metadata to recordings
@@ -408,40 +438,30 @@ class ScanControllerOpt(ImConWidgetController):
         self._logger.info('OPT scan finished.')
         self.optWorker.isInterruptionRequested = False  # reset interruption flag
         self.optThread.quit()  # stop the worker thread
+        self._widget.updateCurrentStep(0)
         self.enableWidget(True)
 
     #################
     # Main OPT scan #
     #################
     def prepareOPTScan(self):
-        """ Initiate OPT scan. """
+        """ Makes preliminary checks for the OPT scan.
+        """
         
         # resetting step count on UI
         self._widget.updateCurrentStep(0)
 
-        def generateSyntheticSinogram(resolution: int = 128) -> np.ndarray:
-            data = shepp3d(resolution)  # shepp-logan 3D phantom
-            sinogram = np.zeros(data.shape)  # preallocate sinogram array
-            angles = np.linspace(0, 360, resolution, endpoint=False)  # angles
-            for i in range(resolution):
-                sinogram[i, :, :] = radon(data[i, :, :], theta=angles)
-            mx = np.amax(sinogram)
-            return np.rollaxis((sinogram/mx*255).astype(np.uint8), 2)
-
-        self.__optSteps = self.getOptSteps()
+        self.optSteps = self.getOptSteps()
 
         if self._widget.scanPar['MockOpt'].isChecked():
             if not self._widget.requestMockConfirmation():
                 return
-            self._logger.info('Demo experiment: preparing synthetic data.')
-
-            # here generate stack of projections
+            self._widget.setProgressBarVisible(True)
+            self._widget.setProgressBarMaximum(self.optSteps)
             self.optWorker.demoEnabled = True
-            self.optWorker.sinogram = generateSyntheticSinogram(self.__optSteps)
-            self._logger.info('Synthetic data ready.')
         else:
             # Checking for divisability of motor steps and OPT steps.
-            if self.stepsPerTurn % self.__optSteps != 0:
+            if self.stepsPerTurn % self.optSteps != 0:
                 # ask for confirmation
                 if not self._widget.requestOptStepsConfirmation():
                     return
@@ -453,7 +473,7 @@ class ScanControllerOpt(ImConWidgetController):
         optScanSteps = np.linspace(
                             0,
                             self.stepsPerTurn,
-                            self.__optSteps,
+                            self.optSteps,
                             endpoint=False,
                         ).astype(np.int_)
         self.optWorker.optSteps = optScanSteps
@@ -464,6 +484,14 @@ class ScanControllerOpt(ImConWidgetController):
         #     self.currentRecon = None  # avoid update_recon in the first step
         self.enableWidget(False)
         self.optThread.start()
+    
+    def checkSinogramProgress(self, step: int) -> None:
+        """ Update the progress bar of the sinogram generation. """
+        if step == self.optSteps - 1:
+            self._widget.setProgressBarValue(0)
+            self._widget.setProgressBarVisible(False)
+        else:
+            self._widget.setProgressBarValue(step)
 
     def plotReport(self):
         self._widget.plotReport(self.optWorker.timeMonitor.getReport())
@@ -520,10 +548,10 @@ class ScanControllerOpt(ImConWidgetController):
                 self.__currentStep)
         except AttributeError:
             try:
-                self.__logger.info(f'Creating a new reconstruction object. {self.__optSteps}')
+                self.__logger.info(f'Creating a new reconstruction object. {self.optSteps}')
                 self.currentRecon = FBPlive(
                     self.frame[self.reconIdx, :],
-                    self.__optSteps)
+                    self.optSteps)
             except (ValueError, IndexError):
                 self._logger.warning(
                     'Index error, reconstructions changed to central line')
@@ -534,7 +562,7 @@ class ScanControllerOpt(ImConWidgetController):
                       )
                 self.currentRecon = FBPlive(
                     self.frame[self.reconIdx, :],
-                    self.__optSteps)
+                    self.optSteps)
         try:
             self.updateLiveReconPlot(self.currentRecon.output)
         except TypeError:
@@ -590,7 +618,7 @@ class ScanControllerOpt(ImConWidgetController):
 
     def updateOptSteps(self):
         """ Get current number of OPT steps and update label """
-        self.__optSteps = self.getOptSteps()
+        self.optSteps = self.getOptSteps()
         self._widget.updateCurrentStep()
         self._widget.updateCurrentReconStep()
 

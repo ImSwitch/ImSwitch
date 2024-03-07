@@ -121,16 +121,15 @@ class ScanOPTWorker(Worker):
         self.currentStep = 0
 
         # monitor flags
-        self.isOptRunning = False             # OPT scan running flag, default to False
+        self.isOPTScanRunning = False             # OPT scan running flag, default to False
         self.noRAM = False                    # Stack not saved to RAM and Viewwer to save memory
         self.isLiveRecon = False              # OPT live reconstruction flag, default to False
         self.isInterruptionRequested = False  # interruption request flag, set from the main thread; defaults to False
-        self.frameStack = None                  # OPT stack memory buffer
+        self.frameStack = None                # OPT stack memory buffer
 
         # Demo parameters, synthetic phantom data are generated to emulate OPT scan
-        self.demoEnabled = False                        # Demo mode flag; if True synthetic data generated; defaults to False
-        self.sinogram: np.ndarray = None                # Demo sinogram; default to None
-        # self.getFrame: Callable = self.getNextFrame  # frame retrieval method
+        self.demoEnabled = False         # Demo mode flag; if True synthetic data generated; defaults to False
+        self.sinogram: np.ndarray = None # Demo sinogram; default to None
 
     def startOPTScan(self):
         """ Performs the first step of the OPT scan, triggering an asynchronous
@@ -144,18 +143,16 @@ class ScanOPTWorker(Worker):
         # JA: it's important for numpy to correctly allocate memory if frames are stored in RAM;
         # JA: and also for correctly saving the frames to disk.
         # this needs to be changed at the API level at some point...
-        # self.frameStack.clear()
         self.frameStack = None
         self.signalStability.clear()  # clear lists inbetween experiments
         self.master.detectorsManager[self.detectorName].startAcquisition()
-        self.isOptRunning = True
+        self.isOPTScanRunning = True
 
         # TODO: how to save the final report in image metadata?
         self.timeMonitor.addStart()
         self.currentStep = 0
 
         # we select the frame retrieval method based off the demo flag
-        # DP: refactor the methods, removed from __init__
         self.getFrame: Callable = self.getFrameFromSino if self.demoEnabled else self.snapCamera
 
         # we move the rotator to the first position
@@ -178,7 +175,7 @@ class ScanOPTWorker(Worker):
         """
         self.timeMonitor.addStamp('motor', self.currentStep, 'end')
         # DP: manual stepping also leads to here, continue only for OPT experiment
-        if not self.isOptRunning:
+        if not self.isOPTScanRunning:
             return
         frame = self.getNextFrame()
         self.processFrameStability(frame, self.currentStep)
@@ -216,7 +213,6 @@ class ScanOPTWorker(Worker):
             np.ndarray: the captured frame
         """
         self.timeMonitor.addStamp('snap', self.currentStep, 'beg')
-        # DP: I hope this is fine with you
         frame = self.getFrame()
 
         # add to optStack and display, this avoids repetition
@@ -230,7 +226,6 @@ class ScanOPTWorker(Worker):
         Args:
             frame (np.ndarray): last frame, from camera, or synthetic.
         """
-        print('current step in Worker', self.currentStep)
         if self.noRAM:  # no volume in napari, only last frame
             self.sigNewFrameCaptured.emit(
                 f'{self.detectorName}: latest frame',
@@ -239,8 +234,6 @@ class ScanOPTWorker(Worker):
                 )
 
         else:  # volume in RAM and displayed in napari
-            # this is faster, because new array is not created in every
-            # step from the list of frames
             if self.frameStack is None:
                 self.frameStack = np.array(frame)
             else:
@@ -256,11 +249,6 @@ class ScanOPTWorker(Worker):
                 self.frameStack,
                 self.currentStep,
                 )
-            # why did you make a copy, is it important because it adds memory
-            # self.frameStack.append(frame)
-            # transmittingStack = np.array(self.frameStack).reshape((len(self.frameStack), *frame.shape))
-            # self.sigNewFrameCaptured.emit(f'{self.detectorName}: OPT stack', transmittingStack , self.currentStep)
-        # if you want, this can be moved to getNextFrame
         self.timeMonitor.addStamp('snap', self.currentStep, 'end')
 
     def processFrameStability(self, frame: np.ndarray, step: int) -> None:
@@ -315,7 +303,7 @@ class ScanOPTWorker(Worker):
         """
         self.timeMonitor.addFinish()
         self.master.detectorsManager[self.detectorName].stopAcquisition()
-        self.isOptRunning = False
+        self.isOPTScanRunning = False
         self.timeMonitor.makeReport()
         self.sigScanDone.emit()
 
@@ -496,9 +484,8 @@ class ScanControllerOpt(ImConWidgetController):
             frame (`np.ndarray`): image or stack
             step (`int`): current OPT scan step
         """
-        self.__logger.info(f'in displayImage(), {self.optWorker.noRAM}')
         # subsample stack
-        if self.optWorker.isOptRunning and not self.optWorker.noRAM:
+        if self.optWorker.isOPTScanRunning and not self.optWorker.noRAM:
             self._widget.setImage(np.uint16(frame),
                                   colormap="gray",
                                   name=name,
@@ -514,10 +501,7 @@ class ScanControllerOpt(ImConWidgetController):
                                   translation=(0, 0),
                                   )
 
-        # DP: not ideal placement, but separate method would imply having new signal
-        # emitted from the worker (because worker does not have access to the
-        # widget), or should I emit signal, or overload the existing one?
-        if self.optWorker.isOptRunning:
+        if self.optWorker.isOPTScanRunning:
             # update labels step labels in the widget
             self._widget.updateCurrentStep(self.optWorker.currentStep + 1)
 

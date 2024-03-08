@@ -47,9 +47,15 @@ class GXPIPYManager(DetectorManager):
         except:
             self.flipY = False
 
+
+        try: 
+            self._isRGB = detectorInfo.managerProperties['gxipycam']['isRGB']
+        except:
+            self._isRGB = False
+
         self.flipImage = (self.flipX, self.flipY)
 
-        self._camera = self._getGXObj(self.cameraId, self.binningValue, self.flipImage)
+        self._camera = self._getGXObj(self.cameraId, self.binningValue, self.flipImage, self._isRGB)
 
         fullShape = (self._camera.SensorWidth,
                 self._camera.SensorHeight)
@@ -305,7 +311,7 @@ class GXPIPYManager(DetectorManager):
     def openPropertiesDialog(self):
         self._camera.openPropertiesGUI()
 
-    def _getGXObj(self, cameraId, binning=1, flipImage=(False, False)):
+    def _getGXObj(self, cameraId, binning=1, flipImage=(False, False), isRGB=False):
         try:
             import os
             if os.name == 'darwin':
@@ -314,7 +320,7 @@ class GXPIPYManager(DetectorManager):
             else:
                 from imswitch.imcontrol.model.interfaces.gxipycamera import CameraGXIPY
                 self.__logger.debug(f'Trying to initialize Daheng Imaging camera {cameraId}')
-                camera = CameraGXIPY(cameraNo=cameraId, binning=binning, flipImage=flipImage)
+                camera = CameraGXIPY(cameraNo=cameraId, binning=binning, flipImage=flipImage, isRGB=isRGB)
         except Exception as e:
             self.__logger.debug(e)
             self.__logger.warning(f'Failed to initialize CameraGXIPY {cameraId}, loading TIS mocker')

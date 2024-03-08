@@ -14,14 +14,14 @@ class TriggerMode:
     CONTINUOUS = 'Continuous Acqusition'
 
 class CameraGXIPY:
-    def __init__(self,cameraNo=None, exposure_time = 10000, gain = 0, frame_rate=-1, blacklevel=100, binning=1, flipImage=(False, False)):
+    def __init__(self,cameraNo=None, exposure_time = 10000, gain = 0, frame_rate=-1, blacklevel=100, binning=1, flipImage=(False, False), isRGB=False):
         super().__init__()
         self.__logger = initLogger(self, tryInheritParent=True)
 
         # many to be purged
         self.model = "CameraGXIPY"
         self.shape = (0, 0)
-
+        self.isRGB = isRGB
         self.is_connected = False
         self.is_streaming = False
 

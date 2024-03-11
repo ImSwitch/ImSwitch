@@ -35,10 +35,12 @@ class TemperatureController(ImConWidgetController):
         self.Ki = 0.1
         self.Kd = .5
         self.PIDenabled = False
+        self.pollingPeriod = 5
 
         # get hold on the Temperature Controller
         try:
             self.temperatureController = self._master.rs232sManager["ESP32"]._esp32.temperature
+            self.temperatureController.start_temperature_polling(period=self.pollingPeriod)
         except:
             return
         # Connect TemperatureWidget signals
@@ -130,7 +132,7 @@ class TemperatureController(ImConWidgetController):
     def updateMeasurements(self):
         while self.is_measure:
             self.temperatureValue  = self.temperatureController.get_temperature()
-            if self.temperatureValue > -200: # if not, we have faulty values 
+            if self.temperatureValue and self.temperatureValue > -200: # if not, we have faulty values 
                     
                 self._widget.updateTemperature(self.temperatureValue)
                 

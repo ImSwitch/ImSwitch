@@ -15,7 +15,7 @@ class HoloWidget(NapariHybridWidget):
     sigOffAxisSliderValueChanged = QtCore.Signal(float)  # (value)
     sigShowInLineToggled = QtCore.Signal(bool)  # (enabled)
     sigShowOffAxisToggled = QtCore.Signal(bool)  # (enabled)
-    
+
     def __post_init__(self):
 
         # Graphical elements
@@ -57,7 +57,7 @@ class HoloWidget(NapariHybridWidget):
         self.textEditCCCenterX = QtWidgets.QLineEdit('0')
         self.textEditCCCenterY = QtWidgets.QLineEdit('0')
         self.labelCCRadius = QtWidgets.QLabel('CC Radius: ')
-        self.textEditCCRadius = QtWidgets.QLineEdit('256')
+        self.textEditCCRadius = QtWidgets.QLineEdit('100')
         
         self.labelOffAxisFocus = QtWidgets.QLabel('OffAxis Focus')
         self.sliderOffAxisFocus = guitools.FloatSlider(QtCore.Qt.Horizontal, self, allowScrollChanges=False,
@@ -88,7 +88,7 @@ class HoloWidget(NapariHybridWidget):
         self.sliderOffAxisFocus.valueChanged.connect(
             lambda value: self.sigOffAxisSliderValueChanged.emit(value)
         )
-
+        
         # grid.setRowMinimumHeight(0, 300)
         self.tab_offaxisholo.setLayout(grid)
     
@@ -126,6 +126,11 @@ class HoloWidget(NapariHybridWidget):
         
         self.tab_inlineholo.setLayout(grid)
 
+    def silenceLayer(self, name, enabled):
+        """Change visibility of layer without emitting signal."""
+        if name in self.viewer.layers:
+            self.viewer.layers[name].visible = enabled
+                
     def init_generalsettings_tab(self):
         self.lineRate = QtWidgets.QLineEdit('2')
         self.labelRate = QtWidgets.QLabel('Update rate')

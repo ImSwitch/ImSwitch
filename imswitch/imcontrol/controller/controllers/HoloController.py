@@ -12,6 +12,7 @@ from imswitch.imcommon.model import initLogger
 from ..basecontrollers import LiveUpdatedController
 import threading
 import time 
+import imswitch
 class HoloController(LiveUpdatedController):
     """ Linked to HoloWidget."""
 
@@ -43,7 +44,7 @@ class HoloController(LiveUpdatedController):
         self.PSFpara.pixelsize = self.pixelsize
         self.availableReconstructionModes = ["off", "inline", "offaxis"]
         self.reconstructionMode = self.availableReconstructionModes[0]
-        self.dz = 40*1e-3
+        self.dz = 0
         # Prepare image computation worker
         self.imageComputationWorker = self.HoloImageComputationWorker()
         self.imageComputationWorker.set_pixelsize(self.pixelsize)
@@ -59,6 +60,8 @@ class HoloController(LiveUpdatedController):
         # Connect CommunicationChannel signals
         self._commChannel.sigUpdateImage.connect(self.update)
 
+        if imswitch.IS_HEADLESS:
+            return
         # Connect HoloWidget signals 
         self._widget.sigShowInLineToggled.connect(self.setShowInLineHolo)
         self._widget.sigShowOffAxisToggled.connect(self.setShowOffAxisHolo)
@@ -69,7 +72,20 @@ class HoloController(LiveUpdatedController):
         self.changeRate(self._widget.getUpdateRate())
         self.setShowInLineHolo(self._widget.getShowInLineHoloChecked())
         self.setShowOffAxisHolo(self._widget.getShowOffAxisHoloChecked())
+        self._widget.textEditCCCenterX.textChanged.connect(self.updateCCCenter)
+        self._widget.textEditCCCenterY.textChanged.connect(self.updateCCCenter)
+        self._widget.textEditCCRadius.textChanged.connect(self.updateCCRadius)
 
+    def updateCCCenter(self):
+        centerX = int(self._widget.textEditCCCenterX.text())
+        centerY = int(self._widget.textEditCCCenterY.text())
+        self.CCCenter = (centerX, centerY)
+        self.imageComputationWorker.set_CCCenter(self.CCCenter)
+        
+    def updateCCRadius(self):
+        self.CCRadius = int(self._widget.textEditCCRadius.text())
+        self.imageComputationWorker.set_CCRadius(self.CCRadius)
+        
     def selectCCCenter(self):
         # get the center of the cross correlation
         self.CCCenter = self._widget.getCCCenterFromNapari()
@@ -106,6 +122,11 @@ class HoloController(LiveUpdatedController):
         self.imageComputationWorker.setReconstructionMode(self.reconstructionMode)
         self.imageComputationWorker.setActive(enabled)
         
+        # change visibility of detector layer
+        allDetectorNames = self._master.detectorsManager.getAllDeviceNames()
+        for detectorName in allDetectorNames:
+            self._widget.silenceLayer(detectorName, not enabled)
+        
     def setShowOffAxisHolo(self, enabled):
         """ Show or hide Holo. """
         self.pixelsize = self._widget.getPixelSize()
@@ -118,8 +139,10 @@ class HoloController(LiveUpdatedController):
         self.imageComputationWorker.setReconstructionMode(self.reconstructionMode)
         self.imageComputationWorker.setActive(enabled)
         self._widget.createPointsLayer()
-        #detectorName, image, init, scale, detectorName==self._currentDetectorName
-   
+        allDetectorNames = self._master.detectorsManager.getAllDeviceNames()
+        for detectorName in allDetectorNames:
+            self._widget.silenceLayer("Live: "+detectorName, not enabled)
+        
     def update(self, detectorName, im, init, scale, isCurrentDetector):
         """ Update with new detector frame. """
         
@@ -181,26 +204,39 @@ class HoloController(LiveUpdatedController):
         def setReconstructionMode(self, mode):
             self.reconstructionMode = mode
 
-        def reconholo(self, image, PSFpara, N_subroi=1024, pixelsize=1e-3, dz=50e-3):
-            if self.reconstructionMode == "inline":
-                mimage = nip.image(np.sqrt(image.copy()))
-                mimage = nip.extract(mimage, [N_subroi,N_subroi])
-                mimage.pixelsize=(pixelsize, pixelsize)
-                mpupil = nip.ft(mimage)         
-                #nip.__make_propagator__(mpupil, PSFpara, doDampPupil=True, shape=mpupil.shape, distZ=dz)
-                cos_alpha, sin_alpha = nip.cosSinAlpha(mimage, PSFpara)
-                defocus = self.dz #  defocus factor
-                PhaseMap = nip.defocusPhase(cos_alpha, defocus, PSFpara)
-                propagated = nip.ft2d((np.exp(1j * PhaseMap))*mpupil)
-                return np.squeeze(propagated)
-            elif self.reconstructionMode == "offaxis" and self.CCCenter is not None:
-                mimage = np.sqrt(nip.image(image.copy()))  # get e-field
-                mpupil = nip.ft(mimage)             # bring to FT space
-                mpupil = nip.extract(mpupil, (int(self.CCCenter[0]), int(self.CCCenter[1])), (int(self.CCRadius),int(self.CCRadius)), checkComplex=False) # cut out CC-term
-                mimage = nip.ift(mpupil)            # bring back to image space
-                return np.squeeze(mimage)           # this is still complex
+        def reconholo(self, mimage, PSFpara, N_subroi=1024, pixelsize=1e-3, dz=50e-3):
+            if self.reconstructionMode == "offaxis" and self.CCCenter is not None:
+                mimage = np.sqrt(nip.image(mimage.copy()))  # get e-field
+                mpupil = nip.ft(mimage.copy())             # bring to FT space
+                mpupil = nip.extract(mpupil, ROIsize=(int(self.CCRadius),int(self.CCRadius)), centerpos=(int(self.CCCenter[0]), int(self.CCCenter[1])), checkComplex=False) # cut out CC-term
+                
+                mimage = np.squeeze(mpupil)           # this is still complex
+                if self.dz != 0:
+                    mimage.pixelsize=(pixelsize, pixelsize)
+                    cos_alpha, sin_alpha = nip.cosSinAlpha(mimage, PSFpara)
+                    defocus = self.dz #  defocus factor
+                    PhaseMap = nip.defocusPhase(cos_alpha, defocus, PSFpara)
+                    propagated = nip.ft2d((np.exp(1j * PhaseMap))*mpupil)
+                    return propagated
+                else:
+                    return np.squeeze(nip.ift(mpupil))
+            elif self.reconstructionMode == "inline":
+                if self.dz != 0:
+                    mimage = nip.image(np.sqrt(mimage.copy()))
+                    mimage = nip.extract(mimage, [N_subroi,N_subroi], checkComplex=False)
+                    mimage.pixelsize=(pixelsize, pixelsize)
+                    mpupil = nip.ft(mimage)         
+                    #nip.__make_propagator__(mpupil, PSFpara, doDampPupil=True, shape=mpupil.shape, distZ=dz)
+                    cos_alpha, sin_alpha = nip.cosSinAlpha(mimage, PSFpara)
+                    defocus = self.dz #  defocus factor
+                    PhaseMap = nip.defocusPhase(cos_alpha, defocus, PSFpara)
+                    propagated = nip.ft2d((np.exp(1j * PhaseMap))*mpupil)
+                    return np.squeeze(propagated)
+                else:
+                    return np.squeeze(mimage)
             else:
-                return np.zeros_like(image)
+                return np.squeeze(np.zeros_like(mimage))
+            
                 
         def computeHoloImage(self, mHologram):
             """ Compute Holo of an image. """
@@ -211,7 +247,7 @@ class HoloController(LiveUpdatedController):
                 self.sigHoloImageComputed.emit(np.array(holorecon), "Hologram")
                 if self.reconstructionMode == "offaxis":
                     mFT = nip.ft2d(mHologram)
-                    self.sigHoloImageComputed.emit(np.array(np.log(1+mFT)), "FFT")
+                    self.sigHoloImageComputed.emit(np.abs(np.array(np.log(1+mFT))), "FFT")
             except Exception as e:
                 self._logger.error(f"Error in computeHoloImage: {e}")
             self.isBusy = False

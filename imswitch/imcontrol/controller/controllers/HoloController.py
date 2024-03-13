@@ -10,8 +10,8 @@ from imswitch.imcommon.framework import Signal, Thread, Worker, Mutex
 from imswitch.imcontrol.view import guitools
 from imswitch.imcommon.model import initLogger
 from ..basecontrollers import LiveUpdatedController
-
-
+import threading
+import time 
 class HoloController(LiveUpdatedController):
     """ Linked to HoloWidget."""
 
@@ -33,6 +33,7 @@ class HoloController(LiveUpdatedController):
         self.mWavelength = 488*1e-9
         self.NA=.3
         self.k0 = 2*np.pi/(self.mWavelength)
+        self.lastProcessedTime = time.time()
 
         if not isNIP:
             return
@@ -40,9 +41,9 @@ class HoloController(LiveUpdatedController):
         self.PSFpara.wavelength = self.mWavelength
         self.PSFpara.NA=self.NA
         self.PSFpara.pixelsize = self.pixelsize
-
+        self.availableReconstructionModes = ["off", "inline", "offaxis"]
+        self.reconstructionMode = self.availableReconstructionModes[0]
         self.dz = 40*1e-3
-
         # Prepare image computation worker
         self.imageComputationWorker = self.HoloImageComputationWorker()
         self.imageComputationWorker.set_pixelsize(self.pixelsize)
@@ -52,21 +53,37 @@ class HoloController(LiveUpdatedController):
    
         self.imageComputationThread = Thread()
         self.imageComputationWorker.moveToThread(self.imageComputationThread)
-        self.sigImageReceived.connect(self.imageComputationWorker.computeHoloImage)
+        #self.sigImageReceived.connect(self.imageComputationWorker.computeHoloImage)
         self.imageComputationThread.start()
 
         # Connect CommunicationChannel signals
         self._commChannel.sigUpdateImage.connect(self.update)
 
-        # Connect HoloWidget signals
-        self._widget.sigShowToggled.connect(self.setShowHolo)
+        # Connect HoloWidget signals 
+        self._widget.sigShowInLineToggled.connect(self.setShowInLineHolo)
+        self._widget.sigShowOffAxisToggled.connect(self.setShowOffAxisHolo)
         self._widget.sigUpdateRateChanged.connect(self.changeRate)
-        self._widget.sigSliderValueChanged.connect(self.valueChanged)
-
+        self._widget.sigInLineSliderValueChanged.connect(self.inLineValueChanged)
+        self._widget.sigOffAxisSliderValueChanged.connect(self.offAxisValueChanged)
+        self._widget.btnSelectCCCenter.clicked.connect(self.selectCCCenter)
         self.changeRate(self._widget.getUpdateRate())
-        self.setShowHolo(self._widget.getShowHoloChecked())
+        self.setShowInLineHolo(self._widget.getShowInLineHoloChecked())
+        self.setShowOffAxisHolo(self._widget.getShowOffAxisHoloChecked())
 
-    def valueChanged(self, magnitude):
+    def selectCCCenter(self):
+        # get the center of the cross correlation
+        self.CCCenter = self._widget.getCCCenterFromNapari()
+        self.CCRadius = self._widget.getCCRadius()
+        if self.CCRadius is None or self.CCRadius<50:
+            self.CCRadius = 100
+        self.imageComputationWorker.set_CCCenter(self.CCCenter)
+        self.imageComputationWorker.set_CCRadius(self.CCRadius)
+
+    def offAxisValueChanged(self, magnitude):
+        self.dz = magnitude*1e-3
+        self.imageComputationWorker.set_dz(self.dz)
+    
+    def inLineValueChanged(self, magnitude):
         """ Change magnitude. """
         self.dz = magnitude*1e-3
         self.imageComputationWorker.set_dz(self.dz)
@@ -77,7 +94,7 @@ class HoloController(LiveUpdatedController):
         if hasattr(super(), '__del__'):
             super().__del__()
 
-    def setShowHolo(self, enabled):
+    def setShowInLineHolo(self, enabled):
         """ Show or hide Holo. """
         self.pixelsize = self._widget.getPixelSize()
         self.mWavelength = self._widget.getWvl()
@@ -85,73 +102,128 @@ class HoloController(LiveUpdatedController):
         self.k0 = 2 * np.pi / (self.mWavelength)
         self.active = enabled
         self.init = False
-
-    def update(self, detectorName, im, init, isCurrentDetector):
+        self.reconstructionMode = self.availableReconstructionModes[1]
+        self.imageComputationWorker.setReconstructionMode(self.reconstructionMode)
+        self.imageComputationWorker.setActive(enabled)
+        
+    def setShowOffAxisHolo(self, enabled):
+        """ Show or hide Holo. """
+        self.pixelsize = self._widget.getPixelSize()
+        self.mWavelength = self._widget.getWvl()
+        self.NA = self._widget.getNA()
+        self.k0 = 2 * np.pi / (self.mWavelength)
+        self.active = enabled
+        self.init = False
+        self.reconstructionMode = self.availableReconstructionModes[2]
+        self.imageComputationWorker.setReconstructionMode(self.reconstructionMode)
+        self.imageComputationWorker.setActive(enabled)
+        self._widget.createPointsLayer()
+        #detectorName, image, init, scale, detectorName==self._currentDetectorName
+   
+    def update(self, detectorName, im, init, scale, isCurrentDetector):
         """ Update with new detector frame. """
-        if not isCurrentDetector or not self.active and not isNIP:
+        
+        if  not self.active or not isNIP:# or not isCurrentDetector:
             return
 
+        if time.time()-self.lastProcessedTime<1/self.updateRate:
+            return
         if self.it == self.updateRate:
             self.it = 0
             self.imageComputationWorker.prepareForNewImage(im)
             self.sigImageReceived.emit()
+            self.lastProcessedTime = time.time()
         else:
             self.it += 1
 
-    def displayImage(self, im):
+    def displayImage(self, im, name):
         """ Displays the image in the view. """
-        self._widget.setImage(im)
+        if im.dtype=="complex":
+            self._widget.setImage(np.abs(im), name+"_abs")
+            self._widget.setImage(np.angle(im), name+"_angle")
+        else:
+            self._widget.setImage(np.abs(im), name)
 
     def changeRate(self, updateRate):
         """ Change update rate. """
+        if updateRate == "":
+            return
+        if updateRate <= 0:
+            updateRate = 1
         self.updateRate = updateRate
         self.it = 0
 
     class HoloImageComputationWorker(Worker):
-        sigHoloImageComputed = Signal(np.ndarray)
+        sigHoloImageComputed = Signal(np.ndarray, str)
 
         def __init__(self):
             super().__init__()
             
             self._logger = initLogger(self, tryInheritParent=False)
-            self._numQueuedImages = 0
-            self._numQueuedImagesMutex = Mutex()
             self.PSFpara = None
             self.pixelsize = 1
             self.dz = 1
-
+            self.reconstructionMode = "off"
+            self.active = False
+            self.CCCenter = None
+            self.CCRadius = 100
+            self.isBusy = False
+            
+        def set_CCCenter(self, CCCenter):
+            self.CCCenter = CCCenter
+            
+        def set_CCRadius(self, CCRadius):
+            self.CCRadius = CCRadius
+            
+        def setActive(self, active):
+            self.active = active
+            
+        def setReconstructionMode(self, mode):
+            self.reconstructionMode = mode
 
         def reconholo(self, image, PSFpara, N_subroi=1024, pixelsize=1e-3, dz=50e-3):
-            mimage = nip.image(np.sqrt(image))
-            mimage = nip.extract(mimage, [N_subroi,N_subroi])
-            mimage.pixelsize=(pixelsize, pixelsize)
-            mpupil = nip.ft(mimage)         
-            #nip.__make_propagator__(mpupil, PSFpara, doDampPupil=True, shape=mpupil.shape, distZ=dz)
-            cos_alpha, sin_alpha = nip.cosSinAlpha(mimage, PSFpara)
-            defocus = self.dz #  defocus factor
-            PhaseMap = nip.defocusPhase(cos_alpha, defocus, PSFpara)
-            propagated = nip.ft2d((np.exp(1j * PhaseMap))*mpupil)
-            return np.squeeze(propagated)
-
-        def computeHoloImage(self):
-            """ Compute Holo of an image. """
-            try:
-                if self._numQueuedImages > 1:
-                    return  # Skip this frame in order to catch up
-                holorecon = np.flip(np.abs(self.reconholo(self._image, PSFpara=self.PSFpara, N_subroi=1024, pixelsize=self.pixelsize, dz=self.dz)),1)
+            if self.reconstructionMode == "inline":
+                mimage = nip.image(np.sqrt(image.copy()))
+                mimage = nip.extract(mimage, [N_subroi,N_subroi])
+                mimage.pixelsize=(pixelsize, pixelsize)
+                mpupil = nip.ft(mimage)         
+                #nip.__make_propagator__(mpupil, PSFpara, doDampPupil=True, shape=mpupil.shape, distZ=dz)
+                cos_alpha, sin_alpha = nip.cosSinAlpha(mimage, PSFpara)
+                defocus = self.dz #  defocus factor
+                PhaseMap = nip.defocusPhase(cos_alpha, defocus, PSFpara)
+                propagated = nip.ft2d((np.exp(1j * PhaseMap))*mpupil)
+                return np.squeeze(propagated)
+            elif self.reconstructionMode == "offaxis" and self.CCCenter is not None:
+                mimage = np.sqrt(nip.image(image.copy()))  # get e-field
+                mpupil = nip.ft(mimage)             # bring to FT space
+                mpupil = nip.extract(mpupil, (int(self.CCCenter[0]), int(self.CCCenter[1])), (int(self.CCRadius),int(self.CCRadius)), checkComplex=False) # cut out CC-term
+                mimage = nip.ift(mpupil)            # bring back to image space
+                return np.squeeze(mimage)           # this is still complex
+            else:
+                return np.zeros_like(image)
                 
-                self.sigHoloImageComputed.emit(np.array(holorecon))
-            finally:
-                self._numQueuedImagesMutex.lock()
-                self._numQueuedImages -= 1
-                self._numQueuedImagesMutex.unlock()
-
+        def computeHoloImage(self, mHologram):
+            """ Compute Holo of an image. """
+            self.isBusy = True
+            try:
+                holorecon = np.flip(self.reconholo(mHologram, PSFpara=self.PSFpara, N_subroi=1024, pixelsize=self.pixelsize, dz=self.dz),1)
+                
+                self.sigHoloImageComputed.emit(np.array(holorecon), "Hologram")
+                if self.reconstructionMode == "offaxis":
+                    mFT = nip.ft2d(mHologram)
+                    self.sigHoloImageComputed.emit(np.array(np.log(1+mFT)), "FFT")
+            except Exception as e:
+                self._logger.error(f"Error in computeHoloImage: {e}")
+            self.isBusy = False
+                
         def prepareForNewImage(self, image):
             """ Must always be called before the worker receives a new image. """
             self._image = image
-            self._numQueuedImagesMutex.lock()
-            self._numQueuedImages += 1
-            self._numQueuedImagesMutex.unlock()
+            if self.active and not self.isBusy:
+                self.isBusy = True
+                mThread = threading.Thread(target=self.computeHoloImage, args=(self._image,))
+                mThread.start()
+                
 
         def set_dz(self, dz):
             self.dz = dz

@@ -360,22 +360,9 @@ class MCTController(ImConWidgetController):
         if self.positioner is not None and self._widget.isAutofocus() and np.mod(self.nImagesTaken, int(autofocusParams['valuePeriod'])) == 0:
             self._widget.setMessageGUI("Autofocusing...")
             # turn on illuimination
-            if autofocusParams['illuMethod']=="Illu1":
-                self.lasers[0].setValue(self.Illu1Value)
-                self.lasers[0].setEnabled(True)
-                time.sleep(.05)
-            elif autofocusParams['illuMethod']=="Illu2":
-                self.lasers[1].setValue(self.Illu2Value)
-                self.lasers[1].setEnabled(True)
-                time.sleep(.05)
-            elif autofocusParams['illuMethod']=="LED":
-                if len(self.leds)>0:
-                    self.leds[0].setValue(self.Illu3Value)
-                    self.leds[0].setEnabled(True)
-                    time.sleep(.05)
-                else:
-                    self.illu.setAll(1, (self.Illu3Value,self.Illu3Value,self.Illu3Value))
-
+            self.activeIlluminations[0].setValue(autofocusParams["valueRange"])
+            self.activeIlluminations[0].setEnabled(True)
+            time.sleep(self.tWait)
             self.doAutofocus(autofocusParams)
             self.switchOffIllumination()
 

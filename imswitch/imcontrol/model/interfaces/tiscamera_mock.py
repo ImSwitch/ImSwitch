@@ -49,6 +49,55 @@ class MockCameraTIS:
             self.SensorWidth = dummyFrame.shape[0]
             self.properties['SensorHeight'] = self.SensorHeight
             self.properties['SensorWidth'] = self.SensorWidth
+            
+        if self.mocktype == "OffAxisHolo":
+            # Parameters
+            width, height = self.SensorWidth, self.SensorHeight  # Size of the simulation
+            wavelength = 0.6328e-6  # Wavelength of the light (in meters, example: 632.8nm for He-Ne laser)
+            k = 2 * np.pi / wavelength  # Wave number
+            angle = np.pi / 10  # Tilt angle of the plane wave
+
+            # Create a phase sample (this is where you define your phase object)
+            # For demonstration, a simple circular phase object
+            x = np.linspace(-np.pi, np.pi, width)
+            y = np.linspace(-np.pi, np.pi, height)
+            X, Y = np.meshgrid(x, y)
+            mPupil = (X**2 + Y**2)<np.pi
+            try:
+                import NanoImagingPack as nip
+                mSample = nip.readim()
+                mSample = nip.extract(mSample, (width, height))/255
+            except:
+                mSample = (X**2 + Y**2)<50 # sphere with radius 50
+            phase_sample = np.exp(1j * mSample)
+            
+            # Simulate the tilted plane wave
+            tilt_x =  k * np.sin(angle)
+            tilt_y = k * np.sin(angle)  # Change this if you want tilt in another direction
+            X, Y = np.meshgrid(np.arange(width), np.arange(height))
+            plane_wave = np.exp(1j * ((tilt_x * X) + (tilt_y * Y)))
+
+            
+            # Superpose the phase sample and the tilted plane wave
+            filtered_phase_sample = np.fft.ifft2(np.fft.fftshift(mPupil) * np.fft.fft2(phase_sample))
+            #filtered_phase_sample = nip.ift(mPupil * nip.ft(phase_sample))
+            hologram = filtered_phase_sample + plane_wave
+            if 0:
+                import matplotlib.pyplot as plt
+                plt.imshow(np.angle(hologram))
+                plt.show()
+                #plt.imshow(np.angle(np.conjugate(hologram)))
+                #plt.show()
+                plt.imshow(np.real(hologram*np.conjugate(hologram)))
+                plt.show()
+                plt.imshow(np.log(1+np.abs(nip.ft(hologram))))
+                plt.show()
+
+            #%%
+            # Calculate the intensity image (interference pattern)
+            self.holo_intensity_image = np.squeeze(np.real(hologram*np.conjugate(hologram)))
+
+
 
 
     def start_live(self):
@@ -95,6 +144,9 @@ class MockCameraTIS:
         elif self.mocktype=="STORM":
             # Iterate over the pages in the TIFF file
             img = self.tifr.pages[self.iFrame%len(self.tifr.pages)].asarray()
+            self.iFrame+=1
+        elif self.mocktype=="OffAxisHolo":
+            img = self.holo_intensity_image
             self.iFrame+=1
         elif self.mocktype=="default":
             img = np.random.randint(0, 255, (self.SensorHeight, self.SensorWidth)).astype('uint8')

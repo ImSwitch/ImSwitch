@@ -530,7 +530,9 @@ class RecordingController(ImConWidgetController):
         im = Image.fromarray(image)
         
         # save image to an in-memory bytes buffer
+        # save image to an in-memory bytes buffer
         with io.BytesIO() as buf:
+            im = im.convert('L')  # convert image to 'L' mode
             im.save(buf, format='PNG')
             im_bytes = buf.getvalue()
             

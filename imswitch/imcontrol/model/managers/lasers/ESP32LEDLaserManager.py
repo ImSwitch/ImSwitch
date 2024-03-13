@@ -48,7 +48,7 @@ class ESP32LEDLaserManager(LaserManager):
         self.enabled = False
         self.setEnabled(self.enabled)
 
-    def setEnabled(self, enabled,  getReturn=True):
+    def setEnabled(self, enabled,  getReturn=False):
         """Turn on (N) or off (F) laser emission"""
         self.enabled = enabled
         if self.channel_index == "LED":
@@ -60,7 +60,7 @@ class ESP32LEDLaserManager(LaserManager):
                                                 int(self.power*self.enabled),
                                                 despeckleAmplitude = self.laser_despeckle_amplitude,
                                                 despecklePeriod = self.laser_despeckle_period,
-                                                is_blocking=True)
+                                                is_blocking=getReturn)
 
     def setValue(self, power, getReturn=False):
         """Handles output power.
@@ -82,7 +82,7 @@ class ESP32LEDLaserManager(LaserManager):
                                     int(self.power),
                                     despeckleAmplitude = self.laser_despeckle_amplitude,
                                     despecklePeriod = self.laser_despeckle_period,
-                                    is_blocking=True)
+                                    is_blocking=getReturn)
 
     def sendTrigger(self, triggerId):
         self._esp32.digital.sendTrigger(triggerId)

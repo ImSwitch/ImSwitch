@@ -3,7 +3,7 @@ import weakref
 from abc import ABCMeta, abstractmethod
 
 from qtpy import QtCore, QtWidgets
-
+from PyQt5.QtWidgets import QApplication, QMainWindow, QTabWidget
 from imswitch.imcommon.view.guitools import naparitools
 
 

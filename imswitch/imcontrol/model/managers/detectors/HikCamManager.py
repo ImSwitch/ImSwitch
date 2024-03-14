@@ -27,10 +27,21 @@ class HikCamManager(DetectorManager):
         except:
             pixelSize = 1
             
+        try:
+            self._mockstackpath = detectorInfo.managerProperties['mockstackpath']
+        except:
+            self._mockstackpath = None
+            
         try: # FIXME: get that form the real camera
             isRGB = detectorInfo.managerProperties['isRGB']  
         except:
             isRGB = False
+            
+        try:
+            self._mocktype = detectorInfo.managerProperties['mocktype']
+        except:
+            self._mocktype = "normal"
+            
 
         self._camera = self._getHikObj(cameraId, isRGB, binning)
 
@@ -43,6 +54,8 @@ class HikCamManager(DetectorManager):
         model = self._camera.model
         self._running = False
         self._adjustingParameters = False
+        
+
 
         # TODO: Not implemented yet
         self.crop(hpos=0, vpos=0, hsize=fullShape[0], vsize=fullShape[1])
@@ -188,7 +201,8 @@ class HikCamManager(DetectorManager):
             self.__logger.error(e)
             self.__logger.warning(f'Failed to initialize CameraHik {cameraId}, loading TIS mocker')
             from imswitch.imcontrol.model.interfaces.tiscamera_mock import MockCameraTIS
-            camera = MockCameraTIS(isRGB=isRGB)
+            camera = MockCameraTIS(mocktype=self._mocktype, mockstackpath=self._mockstackpath,  isRGB=isRGB)
+            
 
         self.__logger.info(f'Initialized camera, model: {camera.model}')
         return camera

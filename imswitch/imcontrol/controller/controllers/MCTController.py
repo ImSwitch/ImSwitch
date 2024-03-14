@@ -338,6 +338,9 @@ class MCTController(ImConWidgetController):
 
                 except Exception as e:
                     self._logger.error("Thread closes with Error: "+str(e))
+                    self.isMCTrunning = False
+                    self._logger.debug("Done with timelapse")
+                    self._widget.mctStartButton.setEnabled(True)
                     return 
 
             # pause to not overwhelm the CPU
@@ -360,26 +363,12 @@ class MCTController(ImConWidgetController):
         if self.positioner is not None and self._widget.isAutofocus() and np.mod(self.nImagesTaken, int(autofocusParams['valuePeriod'])) == 0:
             self._widget.setMessageGUI("Autofocusing...")
             # turn on illuimination
-            if autofocusParams['illuMethod']=="Illu1":
-                self.lasers[0].setValue(self.Illu1Value)
-                self.lasers[0].setEnabled(True)
-                time.sleep(.05)
-            elif autofocusParams['illuMethod']=="Illu2":
-                self.lasers[1].setValue(self.Illu2Value)
-                self.lasers[1].setEnabled(True)
-                time.sleep(.05)
-            elif autofocusParams['illuMethod']=="LED":
-                if len(self.leds)>0:
-                    self.leds[0].setValue(self.Illu3Value)
-                    self.leds[0].setEnabled(True)
-                    time.sleep(.05)
-                else:
-                    self.illu.setAll(1, (self.Illu3Value,self.Illu3Value,self.Illu3Value))
-
+            self.activeIlluminations[0].setValue(autofocusParams["valueRange"])
+            self.activeIlluminations[0].setEnabled(True)
+            time.sleep(self.tWait)
             self.doAutofocus(autofocusParams)
             self.switchOffIllumination()
-
-
+            
     def acquireCZXYScan(self):
         # precompute steps for xy scan
         # snake scan
@@ -646,11 +635,18 @@ class HDF5File(object):
             dset.resize(current_size + 1, axis=0)
             
             # Add the new frame data
-            if self.isRGB:
-                dset[current_size, :, :, :, :, :] = np.uint16(frame_data)
-            else:
-                dset[current_size, :, :, :, :] = np.uint16(frame_data)
-            
+            try:
+                if self.isRGB:
+                    dset[current_size, :, :, :, :, :] = np.uint16(frame_data)
+                else:
+                    dset[current_size, :, :, :, :] = np.uint16(frame_data)
+            except:
+                # in case X/Y are swapped 
+                if self.isRGB:
+                    dset[current_size, :, :, :, :, :] = np.transpose(np.uint16(frame_data), (0,1,2,4,3))
+                else:
+                    dset[current_size, :, :, :, :] = np.transpose(np.uint16(frame_data), (0,1,3,2))
+                            
             # Add metadata for the new frame
             for channel, xyz in enumerate(xyz_coordinates):
                 meta_group.create_dataset(f'Time_{timepoint}_Channel_{channel}', data=np.float32(xyz))

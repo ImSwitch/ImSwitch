@@ -464,7 +464,11 @@ class HistoScanController(LiveUpdatedController):
         def computePositionList(numberTilesX, numberTilesY, stepSizeX, stepSizeY, initPosX, initPosY):
             positionList = []
             for i in range(numberTilesX):
-                for j in range(numberTilesY):
+                if i % 2 == 0:  # X-Position ist gerade
+                    rangeY = range(numberTilesY)
+                else:  # X-Position ist ungerade
+                    rangeY = range(numberTilesY - 1, -1, -1)
+                for j in rangeY:
                     positionList.append((i*stepSizeX+initPosX-numberTilesX//2*stepSizeX, j*stepSizeY+initPosY-numberTilesY//2*stepSizeY))
             return positionList
         if illuSource is None:
@@ -634,7 +638,7 @@ class HistoScanController(LiveUpdatedController):
                     return
                 time.sleep(1)
         # return to initial position
-        self.stages.move(value=(initPosX,initPosY), axis="XY", is_absolute=True, is_blocking=True, acceleration=(self.acceleration,self.acceleration))
+        self.stages.move(value=(initPosX,initPosY), axis="XY", is_absolute=True, is_blocking=False, acceleration=(self.acceleration,self.acceleration))
         self._commChannel.sigUpdateMotorPosition.emit()
         
         # move back to initial position

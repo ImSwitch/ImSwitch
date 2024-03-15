@@ -13,6 +13,15 @@ from ..basecontrollers import LiveUpdatedController
 import threading
 import time 
 import imswitch
+
+import julia
+from julia.api import Julia
+jl = Julia(compiled_modules=False)
+
+julia.install()
+from julia import Base
+from julia import Main
+
 class HoloController(LiveUpdatedController):
     """ Linked to HoloWidget."""
 
@@ -205,6 +214,10 @@ class HoloController(LiveUpdatedController):
             self.reconstructionMode = mode
 
         def reconholo(self, mimage, PSFpara, N_subroi=1024, pixelsize=1e-3, dz=50e-3):
+            Main.xs = [1, 2, 3]
+            Main.mimage = mimage
+            print(Main.eval("sin.(xs)"))
+            print(Main.eval("sin.(mimage)"))
             if self.reconstructionMode == "offaxis" and self.CCCenter is not None:
                 mimage = np.sqrt(nip.image(mimage.copy()))  # get e-field
                 mpupil = nip.ft(mimage.copy())             # bring to FT space
@@ -237,12 +250,20 @@ class HoloController(LiveUpdatedController):
             else:
                 return np.squeeze(np.zeros_like(mimage))
             
+        def reconHoloAaron(self, mimage, PSFpara, N_subroi=1024, pixelsize=1e-3, dz=50e-3):
+            # do some calculation based on the mimage and return something
+            # adlsfkjadsölfkjadsölfkja
+            return np.squeeze(np.zeros_like(mimage))
                 
         def computeHoloImage(self, mHologram):
             """ Compute Holo of an image. """
             self.isBusy = True
             try:
-                holorecon = np.flip(self.reconholo(mHologram, PSFpara=self.PSFpara, N_subroi=1024, pixelsize=self.pixelsize, dz=self.dz),1)
+                if 0:
+                    holorecon = np.flip(self.reconholo(mHologram, PSFpara=self.PSFpara, N_subroi=1024, pixelsize=self.pixelsize, dz=self.dz),1)
+                else: 
+                    # here comes Aarons code
+                    holorecon = self.reconHoloAaron(mHologram, PSFpara=self.PSFpara, N_subroi=1024, pixelsize=self.pixelsize, dz=self.dz)
                 
                 self.sigHoloImageComputed.emit(np.array(holorecon), "Hologram")
                 if self.reconstructionMode == "offaxis":

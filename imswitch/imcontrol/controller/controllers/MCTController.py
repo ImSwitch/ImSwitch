@@ -461,7 +461,7 @@ class MCTController(ImConWidgetController):
                         illuValue = self.Illu3Value
                     
                     mIllumination.setValue(illuValue)
-                    mIllumination.setEnabled(True)
+                    mIllumination.setEnabled(True, getReturn=True)
                     time.sleep(self.tWait)
                     allChannelFrames.append(self.detector.getLatestFrame().copy())
                     
@@ -553,13 +553,13 @@ class MCTController(ImConWidgetController):
         
     def valueIllu2Changed(self, value):
         currIllu = 1
-        self.Illu1Value = value
+        self.Illu2Value = value
         self._widget.mctLabelIllu2.setText('Intensity (Laser 2):'+str(value))
         self.changeValueIlluSlider(currIllu, value)
 
     def valueIllu3Changed(self, value):
         currIllu = 2
-        self.Illu1Value = value
+        self.Illu3Value = value
         self._widget.mctLabelIllu3.setText('Intensity (Laser 3):'+str(value))
         self.changeValueIlluSlider(currIllu, value)
 

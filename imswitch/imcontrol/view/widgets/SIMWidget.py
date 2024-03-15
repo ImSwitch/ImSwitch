@@ -5,200 +5,46 @@ from pyqtgraph.parametertree import ParameterTree
 from imswitch.imcontrol.view import guitools
 from .basewidgets import NapariHybridWidget
 
+from PyQt5.QtWidgets import (QApplication, QMainWindow, QTabWidget, QWidget,
+                             QVBoxLayout, QHBoxLayout, QComboBox, QPushButton,
+                             QCheckBox, QLabel, QLineEdit)
+
 
 class SIMWidget(NapariHybridWidget):
     """ Widget containing sim interface. """
 
-    sigSIMDisplayToggled = QtCore.Signal(bool)  # (enabled)
     sigSIMMonitorChanged = QtCore.Signal(int)  # (monitor)
     sigPatternID = QtCore.Signal(int)  # (display pattern id)
 
     def __post_init__(self):
         #super().__init__(*args, **kwargs)
 
-        self.simDisplay = None
 
-        self.simFrame = pg.GraphicsLayoutWidget()
-        self.vb = self.simFrame.addViewBox(row=1, col=1)
-        self.img = pg.ImageItem()
-        self.img.setImage(np.zeros((792, 600)), autoLevels=True, autoDownsample=True,
-                          autoRange=True)
-        self.vb.addItem(self.img)
-        self.vb.setAspectLocked(True)
+        # Main GUI 
+        self.layout = QtWidgets.QHBoxLayout()
+        self.setLayout(self.layout)
 
-        # Button for showing SIM display and spinbox for monitor selection
-        self.simDisplayLayout = QtWidgets.QHBoxLayout()
-
-        self.simDisplayButton = guitools.BetterPushButton('Show SIM display (fullscreen)')
-        self.simDisplayButton.setCheckable(True)
-        self.simDisplayButton.toggled.connect(self.sigSIMDisplayToggled)
-        #self.simDisplayLayout.addWidget(self.simDisplayButton, 1)
-
-        self.simMonitorLabel = QtWidgets.QLabel('Screen:')
-        #self.simDisplayLayout.addWidget(self.simMonitorLabel)
-
-        self.simMonitorBox = QtWidgets.QSpinBox()
-        #self.simMonitorBox.valueChanged.connect(self.sigSIMMonitorChanged)
-        #self.simDisplayLayout.addWidget(self.simMonitorBox)
-
-        # Button to apply changes
-        #self.applyChangesButton = guitools.BetterPushButton('Apply changes')
-        
-        self.startSIMAcquisition = guitools.BetterPushButton('Start')
-        self.isRecordingButton = guitools.BetterPushButton("Start Recording")
-        self.is488LaserButton = guitools.BetterPushButton("488 on")
-        self.is635LaserButton = guitools.BetterPushButton("635 on")
+        # Side TabView
+        self.tabView = QTabWidget()
+        self.layout.addWidget(self.tabView, 0)
         
 
-        #Enter the frames to wait for frame-sync
-        self.simFrameSyncLabel  = QtWidgets.QLabel('N-Framesync (e.g. 1):')        
-        self.simFrameSyncVal = QtWidgets.QLineEdit('5')
+        # Add tabs
+        self.manual_control_tab = self.create_manual_control_tab()
+        self.experiment_tab = self.create_experiment_tab()
+        self.reconstruction_parameters_tab = self.create_reconstruction_parameters_tab()
+        self.timelapse_settings_tab = self.create_timelapse_settings_tab()
+        self.zstack_settings_tab = self.create_zstack_settings_tab()
         
-        # Display patterns
-        self.patternIDLabel = QtWidgets.QLabel('Pattern ID:')
-        #self.simDisplayLayout.addWidget(self.patternIDLabel)
-
-        self.patternIDBox = QtWidgets.QSpinBox()
-        self.patternIDBox.valueChanged.connect(self.sigPatternID)
-        self.patternWavelengthList = QtWidgets.QComboBox()
-        self.patternWavelengthList.addItems(['488nm', '635nm'])
-        #self.simDisplayLayout.addWidget(self.patternIDBox)
-
-        # parameter tree for SIM reconstruction paramters
-        self.SIMParameterTree = ParameterTree()
-        self.generalparams = [{'name': 'general', 'type': 'group', 'children': [
-            {
-                'name': 'wavelength (p1)',
-                'type': 'int',
-                'value': 488,
-                'limits': (400, 700),
-                'step': 1,
-                'suffix': 'nm',
-                },
-            {
-                'name': 'wavelength (p2)',
-                'type': 'int',
-                'value': 635,
-                'limits': (400, 700),
-                'step': 1,
-                'suffix': 'nm',
-                },
-            {
-                'name': 'NA',
-                'type': 'float',
-                'value': 0.85,
-                'limits': (0, 1.6),
-                'step': 0.05,
-                'suffix': 'A.U.',
-                },
-            {
-                'name': 'n',
-                'type': 'float',
-                'value': 1.0,
-                'limits': (1.0, 1.6),
-                'step': 0.1,
-                'suffix': 'A.U.',
-                },
-            {
-                'name': 'pixelsize',
-                'type': 'float',
-                'value': 2.3,
-                'limits': (0.1, 20),
-                'step': 0.1,
-                'suffix': '\xc2\xb5m',
-                },
-            {
-                'name': 'magnefication',
-                'type': 'float',
-                'value': 15,
-                'limits': (0.1, 2000),
-                'step': 0.1,
-                'suffix': 'A.U.',
-                },
-            {
-                'name': 'eta',
-                'type': 'float',
-                'value': 0.6,
-                'limits': (0.0, 1),
-                'step': 0.1,
-                'suffix': 'A.U.',
-                },
-            ]}]
-
-        self.SIMParameterTree.setStyleSheet("""
-        QTreeView::item, QAbstractSpinBox, QComboBox {
-            padding-top: 0;
-            padding-bottom: 0;
-            border: none;
-        }
-
-        QComboBox QAbstractItemView {
-            min-width: 128px;
-        }
-        """)
-        self.SIMParameterTree.p = pg.parametertree.Parameter.create(name='params', type='group',
-                                                                    children=self.generalparams)
-        self.SIMParameterTree.setParameters(self.SIMParameterTree.p, showTop=False)
-        self.SIMParameterTree._writable = True
-
-        self.paramtreeDockArea = pg.dockarea.DockArea()
-        pmtreeDock = pg.dockarea.Dock('SIM Recon Parameters', size=(1, 1))
-        pmtreeDock.addWidget(self.SIMParameterTree)
-        self.paramtreeDockArea.addDock(pmtreeDock)
         
-        # Select reconstructor
-        self.SIMReconstructorLabel = QtWidgets.QLabel('<strong>SIM Processor:</strong>')
-        self.SIMReconstructorList = QtWidgets.QComboBox()
-        self.SIMReconstructorList.addItems(['napari', 'mcsim'])
+        self.tabView.addTab(self.manual_control_tab, "Manual Control")
+        self.tabView.addTab(self.experiment_tab, "Experiment")
+        self.tabView.addTab(self.reconstruction_parameters_tab, "Reconstruction Parameters")
+        self.tabView.addTab(self.timelapse_settings_tab, "TimeLapse Settings")
+        self.tabView.addTab(self.zstack_settings_tab, "Z-stack Settings")
         
-        self.useGPUCheckbox = QtWidgets.QCheckBox('Use GPU?')
-        self.useGPUCheckbox.setCheckable(True)
-
-        # Assign locations for gui elements
-        self.grid = QtWidgets.QGridLayout()
-        self.setLayout(self.grid)
-
-        self.grid.addWidget(self.simFrame, 0, 0, 1, 2)
-        self.grid.addWidget(self.startSIMAcquisition, 1, 0, 1, 1)
-        self.grid.addWidget(self.isRecordingButton, 1, 1, 1, 1)
         
-        # Laser control
-        self.grid.addWidget(self.is488LaserButton, 2, 0, 1, 1)
-        self.grid.addWidget(self.is635LaserButton, 2, 1, 1, 1)
-        self.grid.addWidget(self.useGPUCheckbox, 2,2,1,1)
         
-        self.grid.addWidget(self.simFrameSyncLabel, 3,0,1,1)
-        self.grid.addWidget(self.simFrameSyncVal, 3,1,1,1)
-
-        self.grid.addWidget(self.patternIDLabel, 4,0,1,1)
-        self.grid.addWidget(self.patternIDBox, 4,1,1,1)
-        self.grid.addWidget(self.patternWavelengthList, 4, 2, 1, 1)
-
-        # Reconstructor
-        self.grid.addWidget(self.SIMReconstructorLabel, 5, 0, 1, 1)
-        self.grid.addWidget(self.SIMReconstructorList, 5, 1, 1, 1)
-            
-        # SIM parameters 
-        self.grid.addWidget(self.paramtreeDockArea, 6, 0, 3, 2)
-        
-        self.layer = None
-
-    def initSIMDisplay(self, monitor):
-        from imswitch.imcontrol.view import SIMDisplay
-        self.simDisplay = SIMDisplay(self, monitor)
-        self.simDisplay.sigClosed.connect(lambda: self.sigSIMDisplayToggled.emit(False))
-        self.simMonitorBox.setValue(monitor)
-
-    def updateSIMDisplay(self, imgArr):
-        self.simDisplay.updateImage(imgArr)
-
-    def setSIMDisplayVisible(self, visible):
-        self.simDisplay.setVisible(visible)
-        self.simDisplayButton.setChecked(visible)
-
-    def setSIMDisplayMonitor(self, monitor):
-        self.simDisplay.setMonitor(monitor, updateImage=True)
-
     def getImage(self):
         if self.layer is not None:
             return self.img.image
@@ -208,10 +54,197 @@ class SIMWidget(NapariHybridWidget):
             self.layer = self.viewer.add_image(im, rgb=False, name=name, blending='additive')
         else:
             self.viewer.layers[name].data = im
-    
-    def getFrameSyncVal(self):
-        return abs(int(self.simFrameSyncVal.text()))
+
+    def create_manual_control_tab(self):
+        tab = QWidget()
+        layout = QVBoxLayout()
+
+        # Laser dropdown
+        laser_dropdown = QComboBox()
+        laser_dropdown.addItems(["Laser 488", "Laser 635"])
+        layout.addWidget(laser_dropdown)
+
+        # Number dropdown
+        number_dropdown = QComboBox()
+        number_dropdown.addItems([str(i) for i in range(9)])
+        layout.addWidget(number_dropdown)
+
+        tab.setLayout(layout)
+        return tab
+
+    def create_experiment_tab(self):
+        tab = QWidget()
+        layout = QVBoxLayout()
+
+        # Buttons
+        self.start_button = QPushButton("Start")
+        self.stop_button = QPushButton("Stop")
+        button_layout = QHBoxLayout()
+        button_layout.addWidget(self.start_button)
+        button_layout.addWidget(self.stop_button)
+        layout.addLayout(button_layout)
+
+        # Select reconstructor
+        '''
+        ProcessorLabel = QtWidgets.QLabel('<strong>SIM Processor:</strong>')
+        self.SIMReconstructorList = QtWidgets.QComboBox()
+        self.SIMReconstructorList.addItems(['napari', 'mcsim'])
+        '''
         
+        # Checkboxes
+        checkboxes = [
+            "Enable Reconstruction", "Enable Record Reconstruction",
+            "Enable Record RAW", "Enable Laser 488", "Enable Laser 635",
+            "Enable TimeLapse", "Enable Z-stack", "Use GPU?",
+            
+        ]
+        self.checkbox_reconstruction = QCheckBox(checkboxes[0])
+        self.checkbox_record_reconstruction = QCheckBox(checkboxes[1])
+        self.checkbox_record_raw = QCheckBox(checkboxes[2])
+        layout.addWidget(self.checkbox_reconstruction)
+        layout.addWidget(self.checkbox_record_reconstruction)
+        layout.addWidget(self.checkbox_record_raw)
+        
+        tab.setLayout(layout)
+        return tab
+
+    def create_reconstruction_parameters_tab(self):
+        tab = QWidget()
+        layout = QVBoxLayout()
+
+        # Label/textedit pairs
+        params = [
+            ("Wavelength 1", "488"), ("Wavelength 2", "635"), ("NA", "1.4"),
+            ("n", "1."),
+            ("Pixelsize (eff)", "1"), ("Alpha", "0.5"), ("Beta", "0.5"),
+            ("w", "1"), ("eta", "2")
+        ]
+        
+        # create widget per label
+        self.wavelength1_label = QLabel(params[0][0])
+        self.wavelength1_textedit = QLineEdit(params[0][1])
+        self.wavelength2_label = QLabel(params[1][0])
+        self.wavelength2_textedit = QLineEdit(params[1][1])
+        self.NA_label = QLabel(params[2][0])
+        self.NA_textedit = QLineEdit(params[2][1])
+        self.pixelsize_label = QLabel(params[3][0])
+        self.pixelsize_textedit = QLineEdit(params[3][1])
+        self.alpha_label = QLabel(params[4][0])
+        self.alpha_textedit = QLineEdit(params[4][1])
+        self.beta_label = QLabel(params[5][0])
+        self.beta_textedit = QLineEdit(params[5][1])
+        self.w_label = QLabel(params[6][0])
+        self.w_textedit = QLineEdit(params[6][1])
+        self.eta_label = QLabel(params[7][0])
+        self.eta_textedit = QLineEdit(params[7][1])
+        self.n_label = QLabel(params[8][0])
+        self.n_textedit = QLineEdit(params[8][1])
+        row_layout_1 = QHBoxLayout()
+        row_layout_1.addWidget(self.wavelength1_label)
+        row_layout_1.addWidget(self.wavelength1_textedit)
+        row_layout_2 = QHBoxLayout()
+        row_layout_2.addWidget(self.wavelength2_label)
+        row_layout_2.addWidget(self.wavelength2_textedit)
+        row_layout_3 = QHBoxLayout()
+        row_layout_3.addWidget(self.NA_label)
+        row_layout_3.addWidget(self.NA_textedit)
+        row_layout_4 = QHBoxLayout()
+        row_layout_4.addWidget(self.pixelsize_label)
+        row_layout_4.addWidget(self.pixelsize_textedit)
+        row_layout_5 = QHBoxLayout()
+        row_layout_5.addWidget(self.alpha_label)
+        row_layout_5.addWidget(self.alpha_textedit)
+        row_layout_6 = QHBoxLayout()
+        row_layout_6.addWidget(self.beta_label)
+        row_layout_6.addWidget(self.beta_textedit)
+        row_layout_7 = QHBoxLayout()
+        row_layout_7.addWidget(self.w_label)
+        row_layout_7.addWidget(self.w_textedit)
+        row_layout_8 = QHBoxLayout()
+        row_layout_8.addWidget(self.eta_label)
+        row_layout_8.addWidget(self.eta_textedit)
+        row_layout_9 = QHBoxLayout()
+        row_layout_9.addWidget(self.n_label)
+        row_layout_9.addWidget(self.n_textedit)
+        
+        layout.addLayout(row_layout_1)
+        layout.addLayout(row_layout_2)
+        layout.addLayout(row_layout_3)
+        layout.addLayout(row_layout_4)
+        layout.addLayout(row_layout_5)
+        layout.addLayout(row_layout_6)
+        layout.addLayout(row_layout_7)
+        layout.addLayout(row_layout_8)
+        layout.addLayout(row_layout_9)
+        
+
+        tab.setLayout(layout)
+        return tab
+
+    def create_timelapse_settings_tab(self):
+        tab = QWidget()
+        layout = QVBoxLayout()
+
+        # Label/textedit pairs
+        settings = [
+            ("Period", "60s"), ("Number of frames", "10")
+        ]
+        
+        # create widget per label
+        self.period_label = QLabel(settings[0][0])
+        self.period_textedit = QLineEdit(settings[0][1])
+        self.frames_label = QLabel(settings[1][0])
+        self.frames_textedit = QLineEdit(settings[1][1])
+        row_layout_1 = QHBoxLayout()
+        row_layout_1.addWidget(self.period_label)
+        row_layout_1.addWidget(self.period_textedit)
+        row_layout_2 = QHBoxLayout()
+        row_layout_2.addWidget(self.frames_label)
+        row_layout_2.addWidget(self.frames_textedit)
+        layout.addLayout(row_layout_1)
+        layout.addLayout(row_layout_2)
+
+        tab.setLayout(layout)
+        return tab
+        
+
+    def create_zstack_settings_tab(self):
+        tab = QWidget()
+        layout = QVBoxLayout()
+
+        # Label/textedit pairs
+        settings = [
+            ("Z-min", "-100µm"), ("Z-max", "100µm"), ("NSteps", "10")
+        ]
+        # create widget per label
+        self.zmin_label = QLabel(settings[0][0])
+        self.zmin_textedit = QLineEdit(settings[0][1])
+        self.zmax_label = QLabel(settings[1][0])
+        self.zmax_textedit = QLineEdit(settings[1][1])
+        self.nsteps_label = QLabel(settings[2][0])
+        self.nsteps_textedit = QLineEdit(settings[2][1])
+        row_layout_1 = QHBoxLayout()
+        row_layout_1.addWidget(self.zmin_label)
+        row_layout_1.addWidget(self.zmin_textedit)
+        row_layout_2 = QHBoxLayout()
+        row_layout_2.addWidget(self.zmax_label)
+        row_layout_2.addWidget(self.zmax_textedit)
+        row_layout_3 = QHBoxLayout()
+        row_layout_3.addWidget(self.nsteps_label)
+        row_layout_3.addWidget(self.nsteps_textedit)
+        layout.addLayout(row_layout_1)
+        layout.addLayout(row_layout_2)
+        layout.addLayout(row_layout_3)
+
+        tab.setLayout(layout)
+        
+        
+    def getZStackParameters(self):
+        return (np.float32(self.zmin_textedit.text()), np.float323(self.zmax_textedit.text()), np.float32(self.nsteps_textedit.text()))
+    
+    def getTimeLaspeParameters(self):
+        return (np.float32(self.period_textedit.text()), np.float32(self.frames_textedit.text()))
+    
 
 # Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.

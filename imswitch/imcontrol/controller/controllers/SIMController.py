@@ -319,7 +319,8 @@ class SIMController(ImConWidgetController):
         """     
         self.patternID = 0
         self.isReconstructing = False
-        nColour = 2
+        nColour = 2 #[488, 635]
+        dic_wl = [488, 635]
 
         while self.active:
             
@@ -351,7 +352,7 @@ class SIMController(ImConWidgetController):
 
                 
                 # select the pattern for the current colour
-                self.SIMClient.set_wavelength(iColour)
+                self.SIMClient.set_wavelength(dic_wl[iColour])
                 
                 # display one round of SIM patterns for the right colour
                 self.SIMClient.start_viewer_single_loop(1)
@@ -763,9 +764,9 @@ class SIMClient:
             "start": "/start_viewer/",
             "single_run": "/start_viewer_single_loop/",
             "pattern_compeleted": "/wait_for_viewer_completion/",
-            "pause_time": "/set_pause/",
-            "stop_loop": "/stop_loop/",
-            "pattern_wl": "/set_wavelength/",
+            "pause_time": "/set_wait_time/",
+            "stop_loop": "/stop_viewer/",
+            "pattern_wl": "/change_wavelength/",
         }
         self.iseq = 60
         self.itime = 120
@@ -780,7 +781,7 @@ class SIMClient:
             return -1
         
     def start_viewer(self):
-        url = self.base_url + self.commands["start"]
+        url = self.base_url + self.commands["start_viewer"]
         return self.get_request(url)
 
     def start_viewer_single_loop(self, number_of_runs, timeout=5):

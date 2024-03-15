@@ -204,7 +204,7 @@ class CameraGXIPY:
             time.sleep(.01) # wait for fresh frame
         if self.isFlatfielding and self.flatfieldImage is not None:
             self.frame = self.frame/self.flatfieldImage
-
+        #print(self.lastFrameId)
         self.lastFrameId = self.frameNumber
         return self.frame
 

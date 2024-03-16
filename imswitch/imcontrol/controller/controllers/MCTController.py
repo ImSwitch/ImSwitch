@@ -453,11 +453,11 @@ class MCTController(ImConWidgetController):
                 allChannelFrames = []
                 allPositions = []
                 for illuIndex, mIllumination in enumerate(self.activeIlluminations):
-                    if illuIndex == 0:
+                    if mIllumination.name==self.availableIlliminations[0].name:
                         illuValue = self.Illu1Value
-                    elif illuIndex == 1:
+                    elif mIllumination.name==self.availableIlliminations[1].name:
                         illuValue = self.Illu2Value
-                    elif illuIndex == 2:
+                    elif mIllumination.name==self.availableIlliminations[2].name:
                         illuValue = self.Illu3Value
                     
                     mIllumination.setValue(illuValue)

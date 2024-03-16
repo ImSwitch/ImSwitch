@@ -4,6 +4,7 @@ try:
     import NanoImagingPack as nip
     isNIP = True
 except:
+    print("HoloController needs NIP to work!")
     isNIP = False
     
 from imswitch.imcommon.framework import Signal, Thread, Worker, Mutex
@@ -105,7 +106,7 @@ class HoloController(LiveUpdatedController):
         self.imageComputationWorker.set_CCRadius(self.CCRadius)
 
     def offAxisValueChanged(self, magnitude):
-        self.dz = magnitude*1e-3
+        self.dz = magnitude*1e-4
         self.imageComputationWorker.set_dz(self.dz)
     
     def inLineValueChanged(self, magnitude):
@@ -223,16 +224,16 @@ class HoloController(LiveUpdatedController):
                 mpupil = nip.ft(mimage.copy())             # bring to FT space
                 mpupil = nip.extract(mpupil, ROIsize=(int(self.CCRadius),int(self.CCRadius)), centerpos=(int(self.CCCenter[0]), int(self.CCCenter[1])), checkComplex=False) # cut out CC-term
                 
-                mimage = np.squeeze(mpupil)           # this is still complex
+                mimage = np.squeeze(nip.ift(mpupil))        # this is still complex
                 if self.dz != 0:
                     mimage.pixelsize=(pixelsize, pixelsize)
                     cos_alpha, sin_alpha = nip.cosSinAlpha(mimage, PSFpara)
-                    defocus = self.dz #  defocus factor
+                    defocus = self.dz * 0.1 #  defocus factor
                     PhaseMap = nip.defocusPhase(cos_alpha, defocus, PSFpara)
-                    propagated = nip.ft2d((np.exp(1j * PhaseMap))*mpupil)
+                    propagated = np.exp(1j * PhaseMap)*mimage
                     return propagated
                 else:
-                    return np.squeeze(nip.ift(mpupil))
+                    return mimage
             elif self.reconstructionMode == "inline":
                 if self.dz != 0:
                     mimage = nip.image(np.sqrt(mimage.copy()))

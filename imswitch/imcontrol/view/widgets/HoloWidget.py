@@ -48,7 +48,7 @@ class HoloWidget(NapariHybridWidget):
 
         # Slider for OffAxis focus
         valueDecimals = 1
-        valueRange = (0,500)
+        valueRange = (250,250)
         tickInterval = 5
         singleStep = 1
 
@@ -120,8 +120,8 @@ class HoloWidget(NapariHybridWidget):
             lambda value: self.sigOffAxisSliderValueChanged.emit(value)
         )
         self.layer = None
-        grid.addWidget(self.showCheckInLine, 0, 0, 1, 1)
-        grid.addWidget(self.sliderInLineFocus, 1, 1, 1, 1)
+        grid.addWidget(self.showCheckInLine, 1, 0, 1, 1)
+        grid.addWidget(self.sliderInLineFocus, 2, 0, 1, 1)
         
         
         self.tab_inlineholo.setLayout(grid)

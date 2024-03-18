@@ -38,26 +38,40 @@ class TemperatureController(ImConWidgetController):
         self.pollingPeriod = 5
 
         # get hold on the Temperature Controller
-        try:
-            self.temperatureController = self._master.rs232sManager["ESP32"]._esp32.temperature
-            self.temperatureController.start_temperature_polling(period=self.pollingPeriod)
-        except:
-            return
+        self.temperatureController = self._master.rs232sManager["ESP32"]._esp32.temperature
+        
         # Connect TemperatureWidget signals
         if not imswitch.IS_HEADLESS:
             self._widget.sigPIDToggled.connect(self.setPID)
             self._widget.sigsliderTemperatureValueChanged.connect(self.valueTemperatureValueChanged)
+            self._widget.sigShowTemperatureToggled.connect(self.switchTemperatureMonitor)
             self.setPID(self._widget.getPIDChecked())
 
-            # Start the temperature display thread
-            self.measurementThread = threading.Thread(target=self.updateMeasurements)
-            self.measurementThread.start()
             
         # create logging directory 
         self.temperatureDir = os.path.join(dirtools.UserFileDirs.Root, 'temperatureController')
         if not os.path.exists(self.temperatureDir):
             os.makedirs(self.temperatureDir)
         
+
+    def switchTemperatureMonitor(self, active):
+        """ Switch the temperature monitoring on or off. """
+        self.is_measure = active
+        if active:
+            self.startTemperatureMeasurements()
+        else:
+            self.stopTemperatureMeasurements()
+
+    def startTemperatureMeasurements(self):
+        # Start the temperature display thread
+        self.temperatureController.start_temperature_polling(period=self.pollingPeriod)
+
+        self.measurementThread = threading.Thread(target=self.updateMeasurements)
+        self.measurementThread.start()
+
+    def stopTemperatureMeasurements(self):
+        self.is_measure=False
+        self.measurementThread.join()
 
     def valueTemperatureValueChanged(self, value):
         """ Change setpoint for the temperature. """
@@ -130,6 +144,8 @@ class TemperatureController(ImConWidgetController):
         self.currPoint += 1
 
     def updateMeasurements(self):
+        self.temperatureController.start_temperature_polling(period=self.pollingPeriod)
+
         while self.is_measure:
             self.temperatureValue  = self.temperatureController.get_temperature()
             if self.temperatureValue and self.temperatureValue > -200: # if not, we have faulty values 
@@ -160,6 +176,7 @@ class TemperatureController(ImConWidgetController):
                 else:
                     self._widget.temperaturePlotCurve.setData(self.timeData, self.setPointData[:,0])
             time.sleep(self.tMeasure)
+        self.temperatureController.stop_temperature_polling()
 
 
 

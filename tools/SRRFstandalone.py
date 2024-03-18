@@ -34,6 +34,7 @@ import ipywidgets as widgets
 from PIL import Image
 from IPython.display import display, clear_output
 from matplotlib import pyplot as plt
+import tifffile as tif
 
 from nanopyx.methods import SRRF
 from nanopyx.core.transform.sr_temporal_correlations import calculate_SRRF_temporal_correlations
@@ -73,6 +74,8 @@ for i in range(dataset_original.shape[0] // frames_per_timepoint):
     output.append(calculate_SRRF_temporal_correlations(result[0], srrf_order))
 
 dataset_srrf = np.array(output)
+path = "./"
+name = 'dataset_srrf'
 tiff.imwrite(path + os.sep + name + "_srrf.tif", dataset_srrf)
 """## Calculate error map for the SRRF image
 
@@ -101,6 +104,8 @@ def run_error(b):
     print("RSP: ", error_map.getRSP())
     errormap = np.array(error_map.imRSE)
     if gui_error["save"].value:
+        gui_data = gui_data["upload"].selected_path
+        own_data = False
         if own_data:
             path = gui_data["upload"].selected_path
             name = gui_data["upload"].selected_filename.split(".")[0]
@@ -164,6 +169,8 @@ def run_frc(b):
     gui_frc_df["run"].description = "Calculate"
     plot = frc_calculator_raw.plot_frc_curve()
     if gui_frc_df["save"].value:
+        own_data = False
+        gui_data = gui_data["upload"].selected_path
         if own_data:
             path = gui_data["upload"].selected_path
             name = gui_data["upload"].selected_filename.split(".")[0]
@@ -224,7 +231,9 @@ def run_frc(b):
     gui_frc_srrf["run"].description = "Calculate"
     plot = frc_calculator_raw.plot_frc_curve()
     if gui_frc_srrf["save"].value:
+        own_data = False
         if own_data:
+            gui_data = gui_data["upload"].selected_path
             path = gui_data["upload"].selected_path
             name = gui_data["upload"].selected_filename.split(".")[0]
             tiff.imwrite(path + os.sep + name + "_original_FRC.tif", plot)
@@ -285,7 +294,9 @@ def run_decorr(b):
     gui_decorr_df["run"].description = "Calculate"
     plot = decorr_calculator.plot_results()
     if gui_decorr_df["save"].value:
+        own_data = False
         if own_data:
+            gui_data = gui_data["upload"].selected_path
             path = gui_data["upload"].selected_path
             name = gui_data["upload"].selected_filename.split(".")[0]
             tiff.imwrite(path + os.sep + name + "_eSRRF_decorr_analysis.tif", plot)
@@ -347,7 +358,9 @@ def run_decorr(b):
     gui_decorr["run"].description = "Calculate"
     plot = decorr_calculator.plot_results()
     if gui_decorr["save"].value:
+        own_data = False
         if own_data:
+            gui_data = gui_data["upload"].selected_path
             path = gui_data["upload"].selected_path
             name = gui_data["upload"].selected_filename.split(".")[0]
             tiff.imwrite(path + os.sep + name + "_eSRRF_decorr_analysis.tif", plot)

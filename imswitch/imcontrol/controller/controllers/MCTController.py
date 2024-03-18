@@ -338,6 +338,9 @@ class MCTController(ImConWidgetController):
 
                 except Exception as e:
                     self._logger.error("Thread closes with Error: "+str(e))
+                    self.isMCTrunning = False
+                    self._logger.debug("Done with timelapse")
+                    self._widget.mctStartButton.setEnabled(True)
                     return 
 
             # pause to not overwhelm the CPU
@@ -365,8 +368,7 @@ class MCTController(ImConWidgetController):
             time.sleep(self.tWait)
             self.doAutofocus(autofocusParams)
             self.switchOffIllumination()
-
-
+            
     def acquireCZXYScan(self):
         # precompute steps for xy scan
         # snake scan
@@ -451,15 +453,15 @@ class MCTController(ImConWidgetController):
                 allChannelFrames = []
                 allPositions = []
                 for illuIndex, mIllumination in enumerate(self.activeIlluminations):
-                    if illuIndex == 0:
+                    if mIllumination.name==self.availableIlliminations[0].name:
                         illuValue = self.Illu1Value
-                    elif illuIndex == 1:
+                    elif mIllumination.name==self.availableIlliminations[1].name:
                         illuValue = self.Illu2Value
-                    elif illuIndex == 2:
+                    elif mIllumination.name==self.availableIlliminations[2].name:
                         illuValue = self.Illu3Value
                     
                     mIllumination.setValue(illuValue)
-                    mIllumination.setEnabled(True)
+                    mIllumination.setEnabled(True, getReturn=True)
                     time.sleep(self.tWait)
                     allChannelFrames.append(self.detector.getLatestFrame().copy())
                     
@@ -499,6 +501,7 @@ class MCTController(ImConWidgetController):
                 iX = int(np.floor((iXYPos[0]-self.xScanMin) // self.xScanStep))
                 iY = int(np.floor((iXYPos[1]-self.yScanMin) // self.yScanStep))
                 # handle rgb => turn to mono for now
+                ''' FIXME: This is currently not working
                 if len(lastFrame.shape)>2:
                     lastFrame = np.uint16(np.mean(lastFrame, 0))
                 # add tile to large canvas
@@ -509,6 +512,7 @@ class MCTController(ImConWidgetController):
                 except Exception as e:
                     self._logger.error(e)
                     self._logger.error("Failed to parse a frame into the tiledImage array")
+                '''
                 self.sigImageReceived.emit() # => displays image
 
 
@@ -551,13 +555,13 @@ class MCTController(ImConWidgetController):
         
     def valueIllu2Changed(self, value):
         currIllu = 1
-        self.Illu1Value = value
+        self.Illu2Value = value
         self._widget.mctLabelIllu2.setText('Intensity (Laser 2):'+str(value))
         self.changeValueIlluSlider(currIllu, value)
 
     def valueIllu3Changed(self, value):
         currIllu = 2
-        self.Illu1Value = value
+        self.Illu3Value = value
         self._widget.mctLabelIllu3.setText('Intensity (Laser 3):'+str(value))
         self.changeValueIlluSlider(currIllu, value)
 
@@ -633,11 +637,18 @@ class HDF5File(object):
             dset.resize(current_size + 1, axis=0)
             
             # Add the new frame data
-            if self.isRGB:
-                dset[current_size, :, :, :, :, :] = np.uint16(frame_data)
-            else:
-                dset[current_size, :, :, :, :] = np.uint16(frame_data)
-            
+            try:
+                if self.isRGB:
+                    dset[current_size, :, :, :, :, :] = np.uint16(frame_data)
+                else:
+                    dset[current_size, :, :, :, :] = np.uint16(frame_data)
+            except:
+                # in case X/Y are swapped 
+                if self.isRGB:
+                    dset[current_size, :, :, :, :, :] = np.transpose(np.uint16(frame_data), (0,1,2,4,3))
+                else:
+                    dset[current_size, :, :, :, :] = np.transpose(np.uint16(frame_data), (0,1,3,2))
+                            
             # Add metadata for the new frame
             for channel, xyz in enumerate(xyz_coordinates):
                 meta_group.create_dataset(f'Time_{timepoint}_Channel_{channel}', data=np.float32(xyz))

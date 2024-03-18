@@ -53,6 +53,7 @@ for key in sorted(all_images.keys()):
 
 # Creating timelapse videos
 for channel in timelapses:
+    height, width, _ = timelapses[channel][0].shape
     out = cv2.VideoWriter(f'timelapse_{channel}.avi', cv2.VideoWriter_fourcc(*'DIVX'), 10, (width, height))
     for img in timelapses[channel]:
         out.write(img)

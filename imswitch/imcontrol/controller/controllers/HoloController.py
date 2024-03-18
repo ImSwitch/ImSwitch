@@ -6,7 +6,7 @@ try:
 except:
     print("HoloController needs NIP to work!")
     isNIP = False
-    
+from imswitch.imcommon.model import dirtools, initLogger, APIExport
 from imswitch.imcommon.framework import Signal, Thread, Worker, Mutex
 from imswitch.imcontrol.view import guitools
 from imswitch.imcommon.model import initLogger
@@ -159,6 +159,10 @@ class HoloController(LiveUpdatedController):
             self.lastProcessedTime = time.time()
         else:
             self.it += 1
+
+    @APIExport(runOnUIThread=True)
+    def displayImageNapari(self, im, name):
+        self.displayImage(np.array(im), name)
 
     def displayImage(self, im, name):
         """ Displays the image in the view. """

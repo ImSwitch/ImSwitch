@@ -35,9 +35,12 @@ class FLIMLabsController(LiveUpdatedController):
         if not isFLIMLABS:
             return
         # connect camera and stage
-        self.positionerName = self._master.positionersManager.getAllDeviceNames()[0]
-        self.positioner = self._master.positionersManager[self.positionerName]
-
+        try:
+            self.positionerName = self._master.positionersManager.getAllDeviceNames()[0]
+            self.positioner = self._master.positionersManager[self.positionerName]
+        except:
+            self.positioner = None
+            self._logger.error('Positioner not found')
 
         self.FLIMLabsC = FLIMLabsREST(
             #firmware_selected="your_firmware",
@@ -101,7 +104,8 @@ class FLIMLabsController(LiveUpdatedController):
     def stop_scouting(self):
         self.FLIMLabsC.stop_scouting()
         try:
-            self.positioner.stopStageScanning()
+            if self.positioner:
+                self.positioner.stopStageScanning()
         except:
             pass
         
@@ -128,14 +132,16 @@ class FLIMLabsController(LiveUpdatedController):
             nTriggerPixel = mParametersStageScanning["nTriggerPixel"]
             delayTimeStep = mParametersStageScanning["delayTimeStep"]
             nFrames = mParametersStageScanning["nFrames"]
-            self.positioner.startStageScanning(nStepsLine, dStepsLine, nTriggerLine, nStepsPixel, dStepsPixel, nTriggerPixel, delayTimeStep, nFrames)
+            if self.positioner:
+                self.positioner.startStageScanning(nStepsLine, dStepsLine, nTriggerLine, nStepsPixel, dStepsPixel, nTriggerPixel, delayTimeStep, nFrames)
         except:
             pass
         
     def stop_reference(self):
         self.FLIMLabsC.stop_reference()
         try:
-            self.positioner.stopStageScanning()
+            if self.positioner:
+                self.positioner.stopStageScanning()
         except:
             pass
         
@@ -152,7 +158,8 @@ class FLIMLabsController(LiveUpdatedController):
     def stop_imaging(self):
         self.FLIMLabsC.stop_imaging()
         try:
-            self.positioner.stopStageScanning()
+            if self.positioner:
+                self.positioner.stopStageScanning()
         except:
             pass
         

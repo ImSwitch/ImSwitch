@@ -48,7 +48,7 @@ class HoloWidget(NapariHybridWidget):
 
         # Slider for OffAxis focus
         valueDecimals = 1
-        valueRange = (250,250)
+        valueRange = (-250,250)
         tickInterval = 5
         singleStep = 1
 

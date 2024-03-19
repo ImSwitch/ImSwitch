@@ -243,7 +243,7 @@ class CameraHIK:
         # self.camera.BinningVertical.set(binning)
         self.binning = binning
 
-    def getLast(self, is_resize=True, timeout=1):
+    def getLast(self, is_resize=True, timeout=10):
         # get frame and save
         # only return fresh frames
         t0 = time.time()

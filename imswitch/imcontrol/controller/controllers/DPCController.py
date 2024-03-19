@@ -48,11 +48,16 @@ class DPCController(ImConWidgetController):
         self.nPattern = 4
         self.brightfieldPattern = {"0": [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23]}
         self.allDPCPatternNames = ("left", "right", "top", "bottom")
-        self.allDPCPatterns = {self.allDPCPatternNames[0]: [0,1,2,7,8,9,10,11,12,21,22,23,24], 
-                                self.allDPCPatternNames[1]: [3,4,5,6,13,14,15,16,17,18,19,20,21,22], 
-                                self.allDPCPatternNames[2]: [0,5,6,7,8,18,19,20,21,22,23,24], 
-                                self.allDPCPatternNames[3]: [1,2,3,4,9,10,11,12,14,15,16]}
-        
+        if False:
+            self.allDPCPatterns = {self.allDPCPatternNames[0]: [0,1,2,7,8,9,10,11,12,21,22,23,24], 
+                                    self.allDPCPatternNames[1]: [3,4,5,6,13,14,15,16,17,18,19,20,21,22], 
+                                    self.allDPCPatternNames[2]: [0,5,6,7,8,18,19,20,21,22,23,24], 
+                                    self.allDPCPatternNames[3]: [1,2,3,4,9,10,11,12,14,15,16]}
+        else:        
+            self.allDPCPatterns = {self.allDPCPatternNames[0]: [0,1,2,3,4,5,6,7], 
+                        self.allDPCPatternNames[1]: [8,9,10,11,12,13,14,15], 
+                        self.allDPCPatternNames[2]: [0,7,8,19,14,9,6,1], 
+                        self.allDPCPatternNames[3]: [3,4,11,12,2,9,10,13]}
         #self._widget.applyChangesButton.clicked.connect(self.applyParams)
         self._widget.startDPCAcquisition.clicked.connect(self.startDPC)
         self._widget.isRecordingButton.clicked.connect(self.toggleRecording)
@@ -67,13 +72,12 @@ class DPCController(ImConWidgetController):
 
         # select LEDArray
         allLEDMatrixNames = self._master.LEDMatrixsManager.getAllDeviceNames()
-        
         self.ledMatrix = self._master.LEDMatrixsManager[allLEDMatrixNames[0]]
         
         # select detectors
         allDetectorNames = self._master.detectorsManager.getAllDeviceNames()
         self.detector = self._master.detectorsManager[allDetectorNames[0]]
-
+        self.detector.startAcquisition()
         self.frameShape = self.detector.getLatestFrame().shape
         # initialize DPC processor
         ''' write parameters from file '''

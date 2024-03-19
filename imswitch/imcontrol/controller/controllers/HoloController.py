@@ -15,14 +15,16 @@ import threading
 import time 
 import imswitch
 
-import julia
-from julia.api import Julia
-jl = Julia(compiled_modules=False)
+try:
+    import julia
+    from julia.api import Julia
+    jl = Julia(compiled_modules=False)
 
-julia.install()
-from julia import Base
-from julia import Main
-
+    julia.install()
+    from julia import Base
+    from julia import Main
+except:
+    pass
 class HoloController(LiveUpdatedController):
     """ Linked to HoloWidget."""
 
@@ -223,6 +225,7 @@ class HoloController(LiveUpdatedController):
             Main.mimage = mimage
             print(Main.eval("sin.(xs)"))
             print(Main.eval("sin.(mimage)"))
+            # FIXME: @Aaron, you can change this code to have yours instead
             if self.reconstructionMode == "offaxis" and self.CCCenter is not None:
                 mimage = np.sqrt(nip.image(mimage.copy()))  # get e-field
                 mpupil = nip.ft(mimage.copy())             # bring to FT space

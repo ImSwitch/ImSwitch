@@ -243,11 +243,14 @@ class CameraHIK:
         # self.camera.BinningVertical.set(binning)
         self.binning = binning
 
-    def getLast(self, is_resize=True):
+    def getLast(self, is_resize=True, timeout=1):
         # get frame and save
         # only return fresh frames
+        t0 = time.time()
         while(self.lastFrameId == self.frameNumber or self.frame is None):
             time.sleep(.01) # wait for fresh frame
+            if time.time()-t0>timeout:
+                return
         self.lastFrameId = self.frameNumber
         
         if self.isFlatfielding and self.flatfieldImage is not None:

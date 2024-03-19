@@ -12,7 +12,7 @@ class MultiManager(ABC):
 
     @abstractmethod
     def __init__(self, managedDeviceInfos, subManagersPackage, **lowLevelManagers):
-        #self.__logger = initLogger(self, instanceName='MultiManager')
+        self.__logger = initLogger(self, instanceName='MultiManager')
         self._subManagers = {}
         currentPackage = '.'.join(__name__.split('.')[:-1])
         if managedDeviceInfos:
@@ -29,8 +29,9 @@ class MultiManager(ABC):
                     self._subManagers[managedDeviceName] = manager(
                         managedDeviceInfo, managedDeviceName, **lowLevelManagers)
 
-                except:
+                except Exception as e:
                     # try to import from the implugins
+                    self.__logger.error(e)
                     for entry_point in pkg_resources.iter_entry_points(f'imswitch.implugins.{subManagersPackage}'):
                         manager = entry_point.load()
                         self._subManagers[managedDeviceName] = manager(

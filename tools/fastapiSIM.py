@@ -1,5 +1,4 @@
-import uvicorn
-from fastapi import FastAPI, BackgroundTasks
+import zmq
 import numpy as np
 import pygame
 import time
@@ -7,16 +6,14 @@ import os
 import socket
 from os import listdir
 from os.path import isfile, join
-from threading import Event
+from threading import Thread, Event
+from fastapi import FastAPI, BackgroundTasks
+import uvicorn
 
-
-'''
-import requests
-x = requests.get('http://localhost:8000/stopLoop')
-print(x.text)
-'''
-import os
-os.environ["DISPLAY"] = ':0'
+ZMQPORT = 5555
+IS_FULLSCREEN = False
+nImages = 9
+CAM_TRIGGER_PIN = 37
 
 # Configure GPIO if running on Raspberry Pi
 try:
@@ -24,26 +21,10 @@ try:
 except:
     print("Not running on Pi")
     GPIO = None
-
-# Screen resolution
-mResolution = [1920, 1080]
-#mResolution = [800, 600]
-unitCellSize = 3
-camTriggerPin = 26
-currentWavelength = 0  # 488=0, 635=1
-nImages = 9
-camTriggerPin = 37
-iFreeze = False
-iPattern = 0
-task_lock = True
-iter = True
-iLoop = True
-iCycle = 100
-TaskCompleted = False
-
+    
 if GPIO is not None:
     # List of pins your application uses
-    pins_to_cleanup = [camTriggerPin]
+    pins_to_cleanup = [CAM_TRIGGER_PIN]
 
     # Clean up specific pins
     GPIO.setmode(GPIO.BOARD)  # or GPIO.BOARD, depending on your pin numbering
@@ -53,232 +34,259 @@ if GPIO is not None:
 
     # Now, set up your GPIO pins as usual
     print("Setting up pin: ")
-    GPIO.setup(camTriggerPin, GPIO.OUT)
+    GPIO.setup(CAM_TRIGGER_PIN, GPIO.OUT)
 
-# Images path
-try:
-    mypath488 = "/home/pi/Desktop/Pattern_SIMMO/488"
-    mypath635 = "/home/pi/Desktop/Pattern_SIMMO/635"
-    # for windows debug
-    #mypath488 = "C:\\Users\\admin\\Documents\\ImSwitchConfig\\imcontrol_sim\\488"
-    #mypath635 = mypath488 # for windows debugging
-    myimg488 = [f for f in listdir(mypath488) if isfile(join(mypath488, f))]
-    myimg635 = [f for f in listdir(mypath635) if isfile(join(mypath635, f))]
-    myimg488.sort()
-    myimg635.sort()
-except:
-    pass
-
-def load_images(wl: int):
-    images = []
-    global isGenerateImage, iNumber
-    try:
-        if wl == 488:    
-            for i in range(nImages):
-                images.append(pygame.image.load(join(mypath488, myimg488[i])))
-        elif wl == 635:
-            for i in range(nImages):
-                images.append(pygame.image.load(join(mypath635, myimg635[i])))
-        print("Found patterns")
-    except:
-        R_img = list(np.random.rand(nImages, mResolution[0], mResolution[1])*255)
-        for i in range(nImages):
-                images.append(pygame.surfarray.make_surface(np.int8(R_img[i])))
-        isGenerateImage = True
-        print("Not found the patterns, using random patterns")
-    return images
-
-mImages488 = load_images(488)
-mImages635 = load_images(635)
-
-class Viewer:
-    def __init__(self, update_func, display_size):
-        self.update_func = update_func
-        self.pattern_index = 0
-        pygame.init()
-        pygame.mouse.set_visible(False)
-        self.display = pygame.display.set_mode(display_size, pygame.FULLSCREEN, display=0) #pygame.FULLSCREEN,
+class ViewerController:
+    def __init__(self):
+        self.context = zmq.Context()
+        # Use REQ socket for request-reply pattern
+        self.socket = self.context.socket(zmq.PAIR)
+        self.socket.bind("tcp://*:"+str(ZMQPORT))
         self.tWait = 0.1
-        self.clock = pygame.time.Clock()
-        global camTriggerPin, nImages, iLoop, iCycle
-        self.camPin = camTriggerPin
-        self.iNumber = nImages
-        self.iLoop = iLoop
-        self.iCycle = iCycle
-        self.viewer_completed_event = Event()
+        
+    def send_stop_continous(self):
+        self.isRunningContinous = False
+        try:
+            self.mThread.join(timeout=1)
+        except Exception as e:
+            print(e)
+        
+    def send_stop_viewer(self):
+        self.send_command("stop")
+        
+    def send_command(self, command):
+        return self.send_command_and_receive(command)
+        
+    def send_command_and_receive(self, command):
+        # clear messages in the socket
+        while self.socket.poll(0):
+            print(self.socket.recv_string(zmq.NOBLOCK))
+        
+        self.socket.send_string(command)
+        # Block until a reply is received
+        message = self.socket.recv_string()
+        return message
     
-    def set_title(self, title):
-        pygame.display.set_caption(title)
-    
-    def set_twait(self, tWait):
+    def display_continous(self):
+        self.isRunningContinous = True
+        def runPatternDisplayThreadFunction():
+            while(self.isRunningContinous):
+                for pattern_id in range(nImages): #len(self.current_images)):
+                    if not self.isRunningContinous:
+                        return
+                    self.display_pattern(pattern_id)
+                    self.send_trigger()
+                    print(str(pattern_id))
+                    time.sleep(self.tWait)
+        self.mThread = threading.Thread(target=runPatternDisplayThreadFunction).start()
+                    
+    def display_pattern(self, pattern_id):
+        self.send_command(f"display:{pattern_id}")
+
+    def change_wavelength(self, wavelength):
+        self.send_command(f"change_wavelength:{wavelength}")
+        
+    def set_wait_time(self, tWait):
         self.tWait = tWait
     
-    def set_loop(self, iLoop):
-        self.iLoop = iLoop
+    def start_single_loop(self, i_cycle):
+        self.send_command(f"start_single_loop:{i_cycle}")
+
+    def send_trigger(self):
+        self.send_command(f"trigger")
+        
+class ImageLoader:
+    def __init__(self, path_488, path_635, n_images=9):
+        self.path_488 = path_488
+        self.path_635 = path_635
+        self.n_images = n_images
+        self.images_488 = self.load_images(self.path_488)
+        self.images_635 = self.load_images(self.path_635)
+
+    def load_images(self, path):
+        images = []
+        try:
+            image_files = sorted([f for f in listdir(path) if isfile(join(path, f))])
+            for i in range(self.n_images):
+                images.append(pygame.image.load(join(path, image_files[i])))
+            print("Images loaded successfully.")
+        except Exception as e:
+            print(f"Failed to load images: {e}")
+            # Handle error or generate random patterns
+        return images
+
+app = FastAPI()
+viewer_controller = ViewerController()
+
+class PygameViewer:
+    def __init__(self, display_size, path_488, path_635):
+        self.display_size = display_size
+        self.loader = ImageLoader(path_488, path_635)
+        # Initialization of pygame and zmq as before
+        self.context = zmq.Context()
+        self.socket = self.context.socket(zmq.PAIR)
+        self.socket.connect("tcp://localhost:"+str(ZMQPORT))
+        self.current_images = self.loader.images_488  # Default to 488nm images
+        self.tWait = 0.1  # Default time to wait between patterns
+        self.isRunningContinous = False
+        self.mLock = threading.Lock()
+        
+    def run(self):
+        os.environ["DISPLAY"] = ":0"
+        pygame.display.init()
+        pygame.init()
+        if IS_FULLSCREEN:
+            self.display = pygame.display.set_mode(self.display_size, pygame.FULLSCREEN)
+        else:
+            self.display = pygame.display.set_mode(self.display_size)
+        pygame.mouse.set_visible(False)
+        self.running = True
+        while self.running:
+                # Check for Pygame events
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT:  # Allows quitting by closing the window
+                        self.running = False
+
+                # Non-blocking check for a message from ZMQ
+                try:
+                    # Wait for next request from client
+                    message = self.socket.recv_string(zmq.NOBLOCK)
+                    reply = self.handle_message(message)
+                    # Send reply back to client
+                    self.socket.send_string(reply)
+
+                except zmq.Again:
+                    pass  # No message received
+
+                pygame.display.flip()  # Update the full display surface to the screen
+                pygame.time.wait(10)  # Small delay to prevent high CPU usage
     
-    def set_cycle(self, iCycle):
-        self.iCycle = iCycle
-        
-    def trigger(self):
-        self.triggerPin(self.camPin)
-        
-    def triggerPin(self, gpiopin):
+    def handle_message(self, message):
+        response = ""
+        if message.startswith("display:"):
+            pattern_id = int(message.split(":")[1])
+            self.display_pattern(pattern_id)
+        elif message.startswith("change_wavelength:"):
+            wavelength = int(message.split(":")[1])
+            self.change_wavelength(wavelength)
+        elif message == "start":
+            self.start()
+            # hreading.Thread(target=self.start).start()
+        elif message == "stop":
+            self.running = False
+        elif message == "trigger":
+            self.trigger()
+        elif message.startswith("start_single_loop"):
+            self.start_single_loop(int(message.split(":")[1]))
+            response = "Current pattern info or any other data"
+        return response
+    
+    def trigger(self, gpiopin=CAM_TRIGGER_PIN):
+        # Perform trigger action
         GPIO.output(gpiopin, GPIO.HIGH)
         time.sleep(0.001)
         GPIO.output(gpiopin, GPIO.LOW)
         time.sleep(0.001)
         
-    def start(self):
-        running = True
-        irun = 0
-        global iCycle, iLoop, TaskCompleted
-        while running:
-            surf = self.update_func(self.pattern_index)
-            if not iLoop:
-                if self.pattern_index == 8:
-                    irun += 1
-            self.pattern_index = (self.pattern_index + 1) % self.iNumber
-            self.display.blit(surf, (0, 0))
-            pygame.display.update()
-            #self.clock.tick()
-            #print(self.clock.get_fps())
-            self.trigger()
-            time.sleep(self.tWait)
-            for event in pygame.event.get():
-                if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_q:  # Press 'q' to quit
-                        pygame.display.quit()
-                        running = False
-                        global task_lock
-                        task_lock = True
-            if irun >= iCycle:
-                running = False
-                pygame.display.quit()
-                task_lock = True
-                self.viewer_completed_event.set()
-
-def update(index):
-    global currentWavelength
-    global iPattern
-    if iFreeze == False:
-        images = mImages488 if currentWavelength == 0 else mImages635
-        #pattern = np.uint8(images[index])
-        pattern = images[index]
-    else:
-        images = mImages488[iPattern] if currentWavelength == 0 else mImages635[iPattern]
-        pattern = images
-    return pattern
-
-def get_ip_address():
-    hostname = socket.gethostname()
-    ip_address = socket.gethostbyname(hostname)
-    print(f"Hostname: {hostname}")
-    print(f"IP Address: {ip_address}")
-    print(f"Port: 80")
-    return ip_address
-
-# Call the function to print the IP address
-get_ip_address()
     
-app = FastAPI()
-viewer = None
-#await start_viewer
+    def display_pattern(self, pattern_id):
+        with self.mLock:
+            if pattern_id < len(self.current_images):
+                image = self.current_images[pattern_id]
+                self.display.blit(image, (0, 0))  # Draw the image to the display
+                #pygame.display.flip()  # Refresh the display seems not work
+                pygame.display.update()
+            else:
+                print("Pattern ID out of range")
+    
+    def change_wavelength(self, wavelength):
+        if wavelength == 488:
+            self.current_images = self.loader.images_488
+            print("wl is 488")
+        elif wavelength == 635:
+            self.current_images = self.loader.images_635
+            print("wl is 635")
+        else:
+            print("Unsupported wavelength")
+            
+    def start(self): # how to deal with it
+        self.isRunningContinous = True
+        def runPatternDisplayThreadFunction():
+            while(self.isRunningContinous):
+                for i in range(len(self.current_images)):
+                    if not self.isRunningContinous: break
+                    self.display_pattern(i)
+                    self.trigger()
+                    print(str(i))
+                    time.sleep(self.tWait)
+        #threading.Thread(target=runPatternDisplayThreadFunction).start()
+        #runPatternDisplayThreadFunction()
+        
+    def start_single_loop(self, cycle):
+        # display each pattern once and perform a trigger action
+        print("Start Single Loop: "+str(cycle))
+        for cyc in range(cycle):
+            for i in range(len(self.current_images)):
+                self.display_pattern(i)
+                self.trigger()
+                print(str(i))
+                time.sleep(self.tWait)
+            self.display_pattern(0) #go back to default pattern
 
-def run_viewer():
-    global viewer
-    viewer = Viewer(update, mResolution)
-    viewer.start()
+        
+@app.get("/display_pattern/{pattern_id}")
+async def display_pattern(pattern_id: int):
+    viewer_controller.display_pattern(pattern_id)
+    return {"message": f"Displaying pattern {pattern_id}."}
 
 @app.get("/start_viewer/")
-async def start_viewer(background_tasks: BackgroundTasks):
-    global iFreeze, task_lock, iLoop, viewer
-    if task_lock:
-        background_tasks.add_task(run_viewer)
-        task_lock = False
-        
-    iFreeze = False
-    iLoop = True
-
+async def start_viewer():
+    #def startContinousFct():
+    #    viewer_controller.send_command("start")
+    #threading.Thread(target=startContinousFct).start()
+    #startContinousFct()
+    viewer_controller.display_continous()
     return {"message": "Viewer started."}
 
-@app.get("/start_viewer_freeze/{i}")
-async def start_viewer_freeze(background_tasks: BackgroundTasks, i:int):
-    global iFreeze, iPattern, task_lock, iLoop, viewer
-    if task_lock:
-        background_tasks.add_task(run_viewer)
-        task_lock = False
-    
-    iFreeze = True 
-    iLoop = True
-    iPattern = i
-    return {"message": "show certain pattern."}
+@app.get("/stop_viewer/")
+async def stop_viewer():
+    viewer_controller.send_stop_continous()
+    return {"message": "Viewer stopped."}
 
-# it only works without pygame opened
+# Corresponding FastAPI endpoint
+@app.get("/change_wavelength/{wavelength}")
+async def change_wavelength(wavelength: int):
+    viewer_controller.change_wavelength(wavelength)
+    return {"message": f"Wavelength changed to {wavelength}nm."}
+
 @app.get("/start_viewer_single_loop/{i_cycle}")
-async def start_viewer_single_loop(background_tasks: BackgroundTasks, i_cycle:int):
-    global iFreeze, task_lock, viewer, iCycle, iLoop, iPattern
-    if task_lock:
-        background_tasks.add_task(run_viewer)
-        task_lock = False    
-    iFreeze = False
-    iLoop = False
-    iCycle = i_cycle
-    # wait until we count up until patterns are completed or timeout occurs
-    t0 = time.time()
-    mtimeout = 1
-    while(1):
-        if iPattern > 7:
-            return
-        time.sleep(0.01)
-        if time.time()-t0 > mtimeout:
-            return
-    return {"message": "run certain cycle."}
+async def start_viewer_single_loop(i_cycle: int):
+    viewer_controller.start_single_loop(i_cycle)
+    #response = viewer_controller.send_command_and_receive("start_single_loop")
+    return {"message": "Viewer started in single loop mode."}
 
-@app.get("/send_trigger")
-async def send_trigger():
-    viewer.trigger()
+@app.get("/set_wait_time/{tWait}") # fix it
+async def set_wait_time(tWait: float):
+    viewer_controller.set_wait_time(tWait)
+    return {"message": f"Wait time set to {tWait}."}
+
+# Implement other endpoints similarly, using viewer_controller to send appropriate commands
+
+PATH_488 = "/home/pi/Desktop/Pattern_SIMMO/488"
+PATH_635 = "/home/pi/Desktop/Pattern_SIMMO/635"
+DISPLAY_SIZE = (1920, 1080)  
+
+import threading
+if __name__ == "__main__":
+    def startServer():
+        uvicorn.run(app, host="0.0.0.0", port=8000)
     
-# Endpoint to set pause time
-@app.get("/set_pause/{pauseTime}")
-async def set_pause(pauseTime: float):
-    viewer.set_twait(pauseTime)
-
-# Endpoint to set wavelength
-@app.get("/set_wavelength/{wavelength}")
-async def set_wavelength(wavelength: int):
-    global currentWavelength
-    print("Set wavelength to " + str(wavelength))
-    currentWavelength = wavelength
-    return {"wavelength": currentWavelength}
-
-@app.get("/run_cycle/{icycle}")
-async def run_cycle(icycle: int):
-    global iter
-    iter = not iter
-    return {"wavelength": currentWavelength}
-
-@app.get("/stop_loop/")
-async def stop_loop():
-    global iLoop, iCycle
-    iLoop = False
-    iCycle = 1
-    return {"message": "Loop stopped"}
-
-@app.get("/wait_for_viewer_completion")
-async def wait_for_viewer_completion():
-    viewer.viewer_completed_event.wait()  # Wait for viewer completion
-    return {"message": "Viewer completed"}
-
-# Endpoint to toggle fullscreen mode
-@app.get("/toggle_fullscreen")
-async def toggle_fullscreen():
-    global fullscreen
-    fullscreen = not fullscreen
-    if fullscreen:
-        pygame.display.set_mode(mResolution, pygame.FULLSCREEN)
-    else:
-        pygame.display.set_mode(mResolution)
-    return {"fullscreen": fullscreen}
-
-if __name__ == '__main__':
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    def startViewer():
+        viewer = PygameViewer(DISPLAY_SIZE, PATH_488, PATH_635)
+        viewer.run()        
+    threading.Thread(target=startServer).start()
+    startViewer()
+    
+    
+    
+    

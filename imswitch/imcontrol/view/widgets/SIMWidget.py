@@ -188,22 +188,31 @@ class SIMWidget(NapariHybridWidget):
 
         # Label/textedit pairs
         settings = [
-            ("Period", "60s"), ("Number of frames", "10")
+            ("Period", "60"), ("Number of frames", "10")
         ]
         
         # create widget per label
         self.period_label = QLabel(settings[0][0])
         self.period_textedit = QLineEdit(settings[0][1])
+        self.period_unit = QLabel("s")
         self.frames_label = QLabel(settings[1][0])
         self.frames_textedit = QLineEdit(settings[1][1])
         row_layout_1 = QHBoxLayout()
         row_layout_1.addWidget(self.period_label)
         row_layout_1.addWidget(self.period_textedit)
+        row_layout_1.addWidget(self.period_unit)
         row_layout_2 = QHBoxLayout()
         row_layout_2.addWidget(self.frames_label)
         row_layout_2.addWidget(self.frames_textedit)
         layout.addLayout(row_layout_1)
         layout.addLayout(row_layout_2)
+        
+        self.start_timelapse_button = QPushButton("Start TimeLapse")
+        self.stop_timelapse_button = QPushButton("Stop TimeLapse")
+        button_layout = QHBoxLayout()
+        button_layout.addWidget(self.start_timelapse_button)
+        button_layout.addWidget(self.stop_timelapse_button)
+        layout.addLayout(button_layout)
 
         tab.setLayout(layout)
         return tab

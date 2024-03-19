@@ -140,7 +140,7 @@ class PositionerController(ImConWidgetController):
     @APIExport(runOnUIThread=True)
     def homeAxis(self, positionerName, axis, isBlocking=False):
         self.__logger.debug(f"Homing axis {axis}")
-        self._master.positionersManager[positionerName].doHome(axis)
+        self._master.positionersManager[positionerName].doHome(axis, isBlocking=isBlocking)
         self.updatePosition(positionerName, axis)
 
 

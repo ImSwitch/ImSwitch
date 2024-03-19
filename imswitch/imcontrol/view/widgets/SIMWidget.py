@@ -43,6 +43,7 @@ class SIMWidget(NapariHybridWidget):
         self.tabView.addTab(self.timelapse_settings_tab, "TimeLapse Settings")
         self.tabView.addTab(self.zstack_settings_tab, "Z-stack Settings")
         
+        self.layer = None
         
         
     def getImage(self):
@@ -60,14 +61,14 @@ class SIMWidget(NapariHybridWidget):
         layout = QVBoxLayout()
 
         # Laser dropdown
-        laser_dropdown = QComboBox()
-        laser_dropdown.addItems(["Laser 488", "Laser 635"])
-        layout.addWidget(laser_dropdown)
+        self.laser_dropdown = QComboBox()
+        self.laser_dropdown.addItems(["Laser 488nm", "Laser 635nm"])
+        layout.addWidget(self.laser_dropdown)
 
         # Number dropdown
-        number_dropdown = QComboBox()
-        number_dropdown.addItems([str(i) for i in range(9)])
-        layout.addWidget(number_dropdown)
+        self.number_dropdown = QComboBox()
+        self.number_dropdown.addItems([str(i) for i in range(9)])
+        layout.addWidget(self.number_dropdown)
 
         tab.setLayout(layout)
         return tab

@@ -80,6 +80,7 @@ class SIMController(ImConWidgetController):
         self.IS_HAMAMATSU=False
         # switch to detect if a recording is in progress
         self.isRecording = False
+        self.isRecordReconstruction = False
 
         # Laser flag
         self.LaserWL = 0
@@ -135,14 +136,23 @@ class SIMController(ImConWidgetController):
         
         #self._widget.is488LaserButton.clicked.connect(self.toggle488Laser)
         #self._widget.is635LaserButton.clicked.connect(self.toggle635Laser)
-        self._widget.checkbox_reconstruction.stateChanged.connect(self.toggleRecording)
+        self._widget.checkbox_record_raw.stateChanged.connect(self.toggleRecording)
+        self._widget.checkbox_record_reconstruction.stateChanged.connect(self.toggleRecordReconstruction)
         #self._widget.sigPatternID.connect(self.patternIDChanged)
-        
+        self._widget.number_dropdown.currentIndexChanged.connect(self.patternIDChanged)
+        #self._widget.checkbox_reconstruction.stateChanged.connect(self.toggleRecording)
         # read parameters from the widget
         
 
     def toggleRecording(self):
         self.isRecording = not self.isRecording
+        if not self.isRecording:
+            self.isActive = False
+            
+    def toggleRecordReconstruction(self):
+        self.isRecordReconstruction = not self.isRecordReconstruction
+        if not self.isRecordReconstruction:
+            self.isActive = False
         
     
         
@@ -186,9 +196,9 @@ class SIMController(ImConWidgetController):
 
     def patternIDChanged(self, patternID):
         wl = self.getpatternWavelength()
-        if wl == '488nm':
+        if wl == 'Laser 488nm':
             laserTag = 0
-        elif wl == '635nm':
+        elif wl == 'Laser 635nm':
             laserTag = 1
         else:
             laserTag = 0
@@ -196,7 +206,7 @@ class SIMController(ImConWidgetController):
         self.simPatternByID(patternID,laserTag)
 
     def getpatternWavelength(self):
-        return self._widget.patternWavelengthList.currentText()
+        return self._widget.laser_dropdown.currentText()
 
     def displayMask(self, image):
         self._widget.updateSIMDisplay(image)
@@ -219,7 +229,6 @@ class SIMController(ImConWidgetController):
         self.simThread.join()
         self.lasers[0].setEnabled(False)
         self.lasers[1].setEnabled(False)
-        self._widget.startSIMAcquisition.setText("Start")
         self.detector.setParameter("trigger_source","Internal trigger")
         self.detector.setParameter("buffer_size",-1)
         self.detector.flushBuffers()
@@ -242,14 +251,6 @@ class SIMController(ImConWidgetController):
         self.simThread = threading.Thread(target=self.performSIMExperimentThread, args=(sim_parameters,), daemon=True)
         self.simThread.start()
         
-
-    def toggleRecording(self):
-        self.isRecording = not self.isRecording
-        if self.isRecording:
-            self._widget.isRecordingButton.setText("Stop Recording")
-        else:
-            self._widget.isRecordingButton.setText("Start Recording")
-            self.active = False
     
     def toggle488Laser(self):
         self.is488 = not self.is488
@@ -276,10 +277,9 @@ class SIMController(ImConWidgetController):
         try:
             patternID = int(patternID)
             wavelengthID = int(wavelengthID)
-            currentPattern = self._master.simManager.allPatterns[wavelengthID][patternID]
-            #print(str(wavelengthID) + str(patternID))
-            self.updateDisplayImage(currentPattern)
-            return currentPattern
+            self.SIMClient.set_wavelength(wavelengthID)
+            self.SIMClient.display_pattern(patternID)
+            return wavelengthID
         except Exception as e:
             self._logger.error(e)
 
@@ -300,7 +300,7 @@ class SIMController(ImConWidgetController):
                 if not self.active:
                     break
 
-                if iColour == 0 and self.is488 and self.lasers[0].power>0.0:
+                if iColour == 0 and self.is488 and self.lasers[iColour].power>0.0:
                     # enable laser 1
                     self.lasers[0].setEnabled(True)
                     self.lasers[1].setEnabled(False)
@@ -309,7 +309,7 @@ class SIMController(ImConWidgetController):
                     processor.setParameters(sim_parameters)
                     self.LaserWL = processor.wavelength
                     # set the pattern-path for laser wl 1
-                elif iColour == 1 and self.is635 and self.lasers[1].power>0.0:
+                elif iColour == 1 and self.is635 and self.lasers[iColour].power>0.0:
                     # enable laser 2
                     self.lasers[0].setEnabled(False)
                     self.lasers[1].setEnabled(True)
@@ -342,10 +342,13 @@ class SIMController(ImConWidgetController):
 
                 # activate recording in processor 
                 processor.setRecordingMode(self.isRecording)
-
+                processor.setReconstructionMode(self.isRecordReconstruction)
+                processor.setWavelength(self.LaserWL)
+                
                 # store the raw SIM stack
-                if self.isRecording:
+                if self.isRecording and self.lasers[iColour].power>0.0:
                     date = datetime. now(). strftime("%Y_%m_%d-%I-%M-%S_%p")
+                    processor.setDate(date)
                     mFilenameStack = f"{date}_SIM_Stack_{self.LaserWL}nm.tif"
                     threading.Thread(target=self.saveImageInBackground, args=(self.SIMStack, mFilenameStack,), daemon=True).start()
                 # self.detector.stopAcquisition()
@@ -638,6 +641,15 @@ class SIMProcessor(object):
     def setRecordingMode(self, isRecording):
         self.isRecording = isRecording
         
+    def setReconstructionMode(self, isRecordReconstruction):
+        self.isRecordReconstruction = isRecordReconstruction
+        
+    def setDate(self, date):
+        self.date = date
+        
+    def setWavelength(self, wavelength):
+        self.LaserWL = wavelength
+        
     def reconstructSIMStackBackground(self, mStack):
         '''
         reconstruct the image stack asychronously
@@ -651,13 +663,11 @@ class SIMProcessor(object):
             self.setReconstructor()
             self.calibrate(mStack)
         SIMReconstruction = self.reconstruct(mStack)
-        
+
         # save images eventually
-        if self.isRecording:
-            date = datetime. now(). strftime("%Y_%m_%d-%I-%M-%S_%p")
-            mFilenameStack = f"{date}_SIM_Stack_{self.LaserWL}nm.tif"
-            mFilenameRecon = f"{date}_SIM_Reconstruction_{self.LaserWL}nm.tif"                            
-            threading.Thread(target=self.saveImageInBackground, args=(mStack, mFilenameStack,), daemon=True).start()
+         
+        if self.isRecordReconstruction:
+            mFilenameRecon = f"{self.date}_SIM_Reconstruction_{self.LaserWL}nm.tif"                            
             threading.Thread(target=self.saveImageInBackground, args=(SIMReconstruction, mFilenameRecon,), daemon=True).start()
             
         self.parent.sigSIMProcessorImageComputed.emit(np.array(SIMReconstruction), "SIM Reconstruction")
@@ -753,6 +763,7 @@ class SIMClient:
             "pause_time": "/set_wait_time/",
             "stop_loop": "/stop_viewer/",
             "pattern_wl": "/change_wavelength/",
+            "display_pattern": "/display_pattern/",
         }
         self.iseq = 60
         self.itime = 120
@@ -788,6 +799,10 @@ class SIMClient:
 
     def set_wavelength(self, wavelength):
         url = f"{self.base_url}{self.commands['pattern_wl']}{wavelength}"
+        self.get_request(url)
+        
+    def display_pattern(self, iPattern):
+        url = f"{self.base_url}{self.commands['display_pattern']}{iPattern}"
         self.get_request(url)
 
 

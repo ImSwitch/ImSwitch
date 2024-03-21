@@ -71,6 +71,8 @@ class DPCController(ImConWidgetController):
         self.NA = self._master.dpcManager.NA
         self.NAi =  self._master.dpcManager.NAi
         self.n =  self._master.dpcManager.n
+        
+        self.tWait = .1 # time to wait between turning on LED Matrix and frame acquisition
 
         # select LEDArray
         allLEDMatrixNames = self._master.LEDMatrixsManager.getAllDeviceNames()
@@ -140,11 +142,7 @@ class DPCController(ImConWidgetController):
         self.sigDPCProcessorImageComputed.connect(self.displayImage)
         
     def __del__(self):
-        self.imageComputationThread.quit()
-        self.imageComputationThread.wait()
-
-    def toggleDPCDisplay(self, enabled=True):
-        self._widget.setDPCDisplayVisible(enabled)
+        pass
 
     def displayImage(self, im, name="DPC Reconstruction"):
         """ Displays the image in the view. """
@@ -215,7 +213,7 @@ class DPCController(ImConWidgetController):
                         ledPattern.append((0,0,0))
                 self.ledMatrix.mLEDmatrix.send_LEDMatrix_array(np.array(ledPattern), getReturn = True)
                 # wait a moment
-                time.sleep(0.5)
+                time.sleep(self.tWait)
                 
                 # 2 grab a frame 
                 frame = self.detector.getLatestFrame()

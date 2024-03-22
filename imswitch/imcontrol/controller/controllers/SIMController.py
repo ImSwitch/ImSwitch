@@ -114,11 +114,14 @@ class SIMController(ImConWidgetController):
         for iDevice in allLaserNames:
             if iDevice.lower().find("laser")>=0 or iDevice.lower().find("led"):
                 self.lasers.append(self._master.lasersManager[iDevice])
-
+        
         # select detectors
         allDetectorNames = self._master.detectorsManager.getAllDeviceNames()
         self.detector = self._master.detectorsManager[allDetectorNames[0]]
 
+        # select positioner
+        self.positioner = self._master.positionersManager['ESP32Stage']
+        
         # setup the SIM processors
         sim_parameters = SIMParameters()
         self.SimProcessorLaser1 = SIMProcessor(self, sim_parameters, wavelength=sim_parameters.wavelength_1)
@@ -143,6 +146,7 @@ class SIMController(ImConWidgetController):
         #self._widget.checkbox_reconstruction.stateChanged.connect(self.toggleRecording)
         # read parameters from the widget
         self._widget.start_timelapse_button.clicked.connect(self.startTimelapse)
+        self._widget.start_zstack_button.clicked.connect(self.startZstack)
 
     def toggleRecording(self):
         self.isRecording = not self.isRecording
@@ -251,6 +255,8 @@ class SIMController(ImConWidgetController):
         self.simThread = threading.Thread(target=self.performSIMExperimentThread, args=(sim_parameters,), daemon=True)
         self.simThread.start()
     
+    # for timelapse and zstack, check running is still needed also stop
+    
     def startTimelapse(self):
         self._commChannel.sigStopLiveAcquisition.emit(True)
         self.detector.setParameter("trigger_source","External start")
@@ -278,8 +284,24 @@ class SIMController(ImConWidgetController):
         self.detector.setParameter("trigger_source","Internal trigger")
         self.detector.setParameter("buffer_size",-1)
         self.detector.flushBuffers()
- 
+
+    def startZstack(self):
+        self._commChannel.sigStopLiveAcquisition.emit(True)
+        self.detector.setParameter("trigger_source","External start")
+        self.detector.setParameter("buffer_size",9)
+        self.detector.flushBuffers()
         
+        self.active = True
+        sim_parameters = self.getSIMParametersFromGUI()
+        zMin = float(self._widget.zmin_textedit.text())
+        zMax = float(self._widget.zmax_textedit.text())
+        zStep = int(self._widget.nsteps_textedit.text())
+        zDis = int((zMax - zMin) / zStep)
+        self._master.detectorsManager
+        #do Zstack in background
+        self.simThread = threading.Thread(target=self.performSIMZstackThread, args=(sim_parameters,zDis,zStep), daemon=True)
+        self.simThread.start()
+
     
     def toggle488Laser(self):
         self.is488 = not self.is488
@@ -463,7 +485,22 @@ class SIMController(ImConWidgetController):
             # reset the per-colour stack to add new frames in the next imaging series
             processor.clearStack()
             
-        
+    def performSIMZstackThread(self,sim_parameters,zDis,zStep):
+        mStep = 0
+        acc = 0    #hardcoded acceleration
+        mspeed = 1000   #hardcoded speed
+        while mStep < zStep:
+            self.positioner.move(zDis,acceleration = acc, speed=mspeed)
+            mStep += 1
+            self.performSIMTimelapseThread(sim_parameters)
+            time.sleep(0.1)
+        self.active = False
+        self.lasers[0].setEnabled(False)
+        self.lasers[1].setEnabled(False)
+        self.detector.setParameter("trigger_source","Internal trigger")
+        self.detector.setParameter("buffer_size",-1)
+        self.detector.flushBuffers()
+        self._logger.debug("Zstack finished")        
         
         
     @APIExport(runOnUIThread=True)

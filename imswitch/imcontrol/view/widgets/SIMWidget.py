@@ -207,6 +207,8 @@ class SIMWidget(NapariHybridWidget):
         layout.addLayout(row_layout_1)
         layout.addLayout(row_layout_2)
         
+        layout.addSpacing(20)
+        
         self.start_timelapse_button = QPushButton("Start TimeLapse")
         self.stop_timelapse_button = QPushButton("Stop TimeLapse")
         button_layout = QHBoxLayout()
@@ -224,29 +226,42 @@ class SIMWidget(NapariHybridWidget):
 
         # Label/textedit pairs
         settings = [
-            ("Z-min", "-100µm"), ("Z-max", "100µm"), ("NSteps", "10")
+            ("Z-min", "-100"), ("Z-max", "100"), ("NSteps", "10")
         ]
         # create widget per label
         self.zmin_label = QLabel(settings[0][0])
         self.zmin_textedit = QLineEdit(settings[0][1])
         self.zmax_label = QLabel(settings[1][0])
         self.zmax_textedit = QLineEdit(settings[1][1])
+        self.z_unit = QLabel("µm")
         self.nsteps_label = QLabel(settings[2][0])
         self.nsteps_textedit = QLineEdit(settings[2][1])
         row_layout_1 = QHBoxLayout()
         row_layout_1.addWidget(self.zmin_label)
         row_layout_1.addWidget(self.zmin_textedit)
+        row_layout_1.addWidget(self.z_unit)
         row_layout_2 = QHBoxLayout()
         row_layout_2.addWidget(self.zmax_label)
         row_layout_2.addWidget(self.zmax_textedit)
+        row_layout_2.addWidget(self.z_unit)
         row_layout_3 = QHBoxLayout()
         row_layout_3.addWidget(self.nsteps_label)
         row_layout_3.addWidget(self.nsteps_textedit)
         layout.addLayout(row_layout_1)
         layout.addLayout(row_layout_2)
         layout.addLayout(row_layout_3)
+        
+        layout.addSpacing(20)
+        
+        self.start_zstack_button = QPushButton("Start Z-Stack")
+        self.stop_zstack_button = QPushButton("Stop Z-Stack")
+        button_layout = QHBoxLayout()
+        button_layout.addWidget(self.start_zstack_button)
+        button_layout.addWidget(self.stop_zstack_button)
+        layout.addLayout(button_layout)
 
         tab.setLayout(layout)
+        return tab
         
         
     def getZStackParameters(self):

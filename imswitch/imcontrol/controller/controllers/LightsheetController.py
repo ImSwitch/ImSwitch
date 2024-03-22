@@ -108,6 +108,13 @@ class LightsheetController(ImConWidgetController):
         allFrames = []
         while self.isLightsheetRunning:
             frame = self.detector.getLatestFrame()
+            from juliacall import Main as jl 
+            # jl.seval("Pkg.add(\"FourierTools\")") 
+            jl.seval("using FourierTools") 
+            jl.tofft = jl.copy(frame) 
+            fftImage = np.array(jl.seval("abs.(log10.(abs.(ft(tofft))))")) 
+            print(fftImage) 
+            jl.println("hello from Julia")
             if frame.shape[0] != 0:
                 allFrames.append(frame)
             if controller.is_target_reached():

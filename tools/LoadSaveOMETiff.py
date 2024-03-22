@@ -136,6 +136,6 @@ with tifffile.TiffFile(ome_tiff_path) as tiff_file:
         image_data = series.asarray()  # Load the image data as a numpy array
 
         # Parse the metadata string to extract coordinates (implement parsing based on your format)
-        x_coordinate, y_coordinate = parse_metadata_for_coordinates(metadata_str)
+        #x_coordinate, y_coordinate = parse_metadata_for_coordinates(metadata_str)
         # Now, x_coordinate and y_coordinate contain the location info
 

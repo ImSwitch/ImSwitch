@@ -136,6 +136,12 @@ class ESP32StageManager(PositionerManager):
 
         # get bootup position and write to GUI
         self._position = self.getPosition()
+        
+        # set speed for all axes
+        self._speed = {"X": positionerInfo.managerProperties.get('speedX', 10000),
+                        "Y": positionerInfo.managerProperties.get('speedY', 10000),
+                        "Z": positionerInfo.managerProperties.get('speedZ', 10000),
+                        "A": positionerInfo.managerProperties.get('speedA', 10000)}
 
 
     def setHomeParametersAxis(self, axis, speed, direction, endstoppolarity, endposrelease, timeout=None):

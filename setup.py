@@ -72,9 +72,8 @@ setup(
         "opencv-python", 
         "imjoy_rpc",
         "imjoy",
-        "aiortc >= 1.3.0"
-        
-        
+        "aiortc >= 1.3.0",
+        "juliacall >= 0.17.0"
     ],
     entry_points={
         "console_scripts": [

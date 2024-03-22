@@ -28,7 +28,11 @@ class PositionerController(ImConWidgetController):
             for axis in pManager.axes:
                 self.setSharedAttr(pName, axis, _positionAttr, pManager.position[axis])
                 if hasSpeed:
-                    self.setSharedAttr(pName, axis, _speedAttr, pManager.speed[axis])
+                    if pManager.speed[axis]== 0:
+                        mSpeed = 10000
+                    else:
+                        mSpeed = pManager.speed[axis]
+                    self.setSharedAttr(pName, axis, _speedAttr, mSpeed)
                 if hasHome:
                     self.setSharedAttr(pName, axis, _homeAttr, pManager.home[axis])
                 if hasStop:

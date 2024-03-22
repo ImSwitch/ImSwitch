@@ -438,26 +438,6 @@ class NidaqInfo:
         else:
             return self.timerCounterChannel
         
-class OpentronsDeckInfo:
-    translate_units: Optional[str]
-    """ Translates units of deck to units used by positioner:
-        'mm2um': translates deck units in milimeters to micrometers.
-        'um2mm': translates deck units in micrometers to milimeters.
-        """
-
-    deck_file: Optional[str]
-    """ File of the deck to use. """
-
-    deck_name: Optional[str]
-    """ Name of the deck file to use if using a default OT deck. """
-
-    labwares: Optional[Dict[str, Any]]
-    """ Params to be read by the labware loader. Corresponds to standard and custom
-    labware definition dictionaries, containing the slot number and labware name."""
-
-    default_positions: Optional[Dict[str, Any]]
-    """ Default positions to be adopted when selecting amount of positions to observe in well."""
-
 
 @dataclass(frozen=True)
 class PyroServerInfo:
@@ -472,11 +452,6 @@ class PyroServerInfo:
 @dataclass
 class SetupInfo:
     # default_factory seems to be required for the field to show up in autodocs for deriving classes
-
-    deck: Dict[str, OpentronsDeckInfo] = field(default_factory=dict)
-    """ Deck in this setup. This is a map from unique deck names to
-    DeckInfo objects. """
-
     detectors: Dict[str, DetectorInfo] = field(default_factory=dict)
     """ Detectors in this setup. This is a map from unique detector names to
     DetectorInfo objects. """

@@ -1,5 +1,5 @@
 import dataclasses
-
+import pkg_resources
 import h5py
 import imswitch
 from imswitch.imcommon.controller import MainController, PickDatasetsController
@@ -54,12 +54,21 @@ class ImConMainController(MainController):
         self.controllers = {}
 
         for widgetKey, widget in self.__mainView.widgets.items():
-            self.controllers[widgetKey] = self.__factory.createController(
-                (getattr(controllers, f'{widgetKey}Controller')
-                if widgetKey != 'Scan' else
-                getattr(controllers, f'{widgetKey}Controller{self.__setupInfo.scan.scanWidgetType}')), widget
-            )
-
+            try:
+                self.controllers[widgetKey] = self.__factory.createController(
+                    (getattr(controllers, f'{widgetKey}Controller')
+                    if widgetKey != 'Scan' else
+                    getattr(controllers, f'{widgetKey}Controller{self.__setupInfo.scan.scanWidgetType}')), widget
+                )
+            except Exception as e:
+                #try to get it from the plugins
+                for entry_point in pkg_resources.iter_entry_points(f'imswitch.implugins'):
+                    if entry_point.name == f'{widgetKey}_controller':
+                        packageController = entry_point.load()
+                        self.controllers[widgetKey] = self.__factory.createController(packageController, widget)
+                        break
+                self.__logger.debug(e)
+                raise ValueError(f'No controller found for widget {widgetKey}')
         # Generate API
         self.__api = None
         apiObjs = list(self.controllers.values()) + [self.__commChannel]

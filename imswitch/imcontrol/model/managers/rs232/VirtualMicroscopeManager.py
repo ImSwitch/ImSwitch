@@ -1,6 +1,10 @@
 from imswitch.imcommon.model import initLogger
 from imswitch.imcommon.model import APIExport
-import NanoImagingPack as nip
+try:
+    import NanoImagingPack as nip
+    IS_NIP = True
+except:
+    IS_NIP = False
 import numpy as np
 import matplotlib.pyplot as plt 
 import threading
@@ -66,7 +70,7 @@ class Camera:
         with self.lock:
             # add moise
             image = self.image.copy()
-            if defocusPSF is not None and not defocusPSF.shape == ():
+            if IS_NIP and defocusPSF is not None and not defocusPSF.shape == ():
                 image = np.array(np.real(nip.convolve(image, defocusPSF)))
             image = image/np.mean(image)
             image = np.random.randn(image.shape[0],image.shape[1])*.2+image
@@ -91,7 +95,10 @@ class Positioner:
         self._parent = parent
         self.position = {'X': 0, 'Y': 0, 'Z': 0, 'A': 0}
         self.lock = threading.Lock()
-        self.psf = self.compute_psf(dz=0)
+        if IS_NIP:
+            self.psf = self.compute_psf(dz=0)
+        else: 
+            self.psf = np.ones(self._parent.camera.image.shape)
 
     def move(self, x=None, y=None, z=None, a=None, is_absolute=False):
         with self.lock:
@@ -121,15 +128,17 @@ class Positioner:
             return self.position.copy()
 
     def compute_psf(self, dz):
-        
-        obj = nip.image(self._parent.camera.image)
-        obj.pixelsize = (10., 10.)
-        paraAbber = nip.PSF_PARAMS()
-        aber_map = nip.xx(obj.shape[-2:]).normalize(1)
-        paraAbber.aberration_types = [paraAbber.aberration_zernikes.spheric]
-        paraAbber.aberration_strength = [dz/100]
-        psf = nip.psf(obj, paraAbber)
-        self.psf = psf
+        if IS_NIP:
+            obj = nip.image(self._parent.camera.image)
+            obj.pixelsize = (10., 10.)
+            paraAbber = nip.PSF_PARAMS()
+            aber_map = nip.xx(obj.shape[-2:]).normalize(1)
+            paraAbber.aberration_types = [paraAbber.aberration_zernikes.spheric]
+            paraAbber.aberration_strength = [dz/100]
+            psf = nip.psf(obj, paraAbber)
+            self.psf = psf
+        else:
+            self.psf = np.ones(self._parent.camera.image.shape)
 
         
     def get_psf(self):

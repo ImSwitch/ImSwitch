@@ -48,30 +48,33 @@ class ESP32LEDLaserManager(LaserManager):
         self.enabled = False
         self.setEnabled(self.enabled)
 
-    def setEnabled(self, enabled,  getReturn=True):
+    def setEnabled(self, enabled,  getReturn=False):
         """Turn on (N) or off (F) laser emission"""
         self.enabled = enabled
         if self.channel_index == "LED":
             #self._led.send_LEDMatrix_full(intensity = (self.power*self.enabled,self.power*self.enabled,self.power*self.enabled), getReturn=getReturn)
-            self._led.setIntensity(intensity=(self.power*self.enabled,self.power*self.enabled,self.power*self.enabled), getReturn=getReturn)
+            #self._led.setIntensity(intensity=(self.power*self.enabled,self.power*self.enabled,self.power*self.enabled), getReturn=getReturn)
+            self._led.setAll(state=self.enabled, intensity=(self.power, self.power, self.power), getReturn=getReturn)
         else:
             self._laser.set_laser(self.channel_index,
                                                 int(self.power*self.enabled),
                                                 despeckleAmplitude = self.laser_despeckle_amplitude,
                                                 despecklePeriod = self.laser_despeckle_period,
-                                                is_blocking=True)
+                                                is_blocking=getReturn)
 
-    def setValue(self, power, getReturn=True):
+    def setValue(self, power, getReturn=False):
         """Handles output power.
         Sends a RS232 command to the laser specifying the new intensity.
         """
         self.power = power
         if self.enabled:
+            
             if self.channel_index == "LED":
                 # ensure that in case it's not initialized yet, we display an all-on pattern
                 if self._led.ledpattern[0,0]==-1:
                     self._led.ledpattern[:]=1
-                self._led.setIntensity(intensity=(self.power*self.enabled,self.power*self.enabled,self.power*self.enabled), getReturn=getReturn)
+                self._led.setAll(state=1, intensity=(self.power, self.power, self.power), getReturn=getReturn)
+                #self._led.setAll(intensity=(self.power*self.enabled,self.power*self.enabled,self.power*self.enabled), getReturn=getReturn)
                 self.ledIntesity=self.power
                 #self._led.send_LEDMatrix_full(intensity = (self.power*self.enabled,self.power*self.enabled,self.power*self.enabled), getReturn=getReturn)
             else:
@@ -79,7 +82,7 @@ class ESP32LEDLaserManager(LaserManager):
                                     int(self.power),
                                     despeckleAmplitude = self.laser_despeckle_amplitude,
                                     despecklePeriod = self.laser_despeckle_period,
-                                    is_blocking=True)
+                                    is_blocking=getReturn)
 
     def sendTrigger(self, triggerId):
         self._esp32.digital.sendTrigger(triggerId)

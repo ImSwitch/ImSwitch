@@ -9,7 +9,7 @@ from threading import Thread
 import collections
 
 class CameraOpenCV:
-    def __init__(self, cameraindex=0, isRGB=False):
+    def __init__(self, cameraindex=0, isRGB=False, isAutoParameters=True):
         super().__init__()
         # we are aiming to interface with webcams or arducams
         self.__logger = initLogger(self, tryInheritParent=False)
@@ -39,6 +39,7 @@ class CameraOpenCV:
         self.cameraindex = cameraindex
         self.camera = None
         self.isRGB = isRGB
+        self.isAutoParameters = isAutoParameters
         self.openCamera(self.cameraindex, self.SensorWidth, self.SensorHeight, self.isRGB)
 
 
@@ -49,12 +50,14 @@ class CameraOpenCV:
             self.openCamera(self.cameraindex, self.SensorWidth, self.SensorHeight, self.isRGB)
 
     def stop_live(self):
-        self.camera.release()
-        self.camera_is_open = False
+        pass
+        #self.camera.release()
+        #self.camera_is_open = False
 
     def suspend_live(self):
-        self.camera.release()
-        self.camera_is_open = False
+        pass
+        #self.camera.release()
+        #self.camera_is_open = False
 
     def prepare_live(self):
         pass
@@ -64,6 +67,8 @@ class CameraOpenCV:
         self.camera_is_open = False
 
     def set_exposure_time(self,exposure_time):
+        if self.isAutoParameters:
+            return
         self.exposure_time = exposure_time
         try:
             self.camera.set(cv2.CAP_PROP_EXPOSURE, self.exposure_time)
@@ -72,6 +77,8 @@ class CameraOpenCV:
             self.__logger.debug("Error setting Exposure time in opencv camera")
 
     def set_analog_gain(self,analog_gain):
+        if self.isAutoParameters:
+            return        
         self.analog_gain = analog_gain
         try:
             self.camera.set(cv2.CAP_PROP_EXPOSURE, self.analog_gain)
@@ -179,6 +186,7 @@ class CameraOpenCV:
                 self.frame = self.camera.read()[1]
                 if not isRGB and len(self.frame.shape)>2:
                     self.frame = np.uint8(np.mean(self.frame, -1))
+                self.frame = np.flip(self.frame)
                 self.frame_buffer.append(self.frame)
             except Exception as e:
                 self.camera_is_open = False

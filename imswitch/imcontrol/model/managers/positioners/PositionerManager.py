@@ -109,6 +109,12 @@ class PositionerManager(ABC):
         position. Derived classes will update the position field manually. If
         the positioner controls multiple axes, the axis must be specified. """
         pass
+    
+    @abstractmethod 
+    def moveForever(self, speed=(0, 0, 0, 0), is_stop=False):
+        ''' Moves the positioner infinitely at a given speed'''
+        pass
+
 
     # @abstractmethod
     # def _set_position(self, pos, axis):

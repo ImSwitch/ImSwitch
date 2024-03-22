@@ -10,13 +10,16 @@ import numpy as np
 from PIL import Image
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
-import asyncio
-from multiprocessing import Queue
+from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
+import imswitch
 import uvicorn
 from functools import wraps
-import cv2
 import os
-
+import socket 
+import time
+import zeroconf
+from zeroconf import ServiceInfo, Zeroconf
+import socket
 from fastapi.middleware.cors import CORSMiddleware
 
 from http.server import HTTPServer, BaseHTTPRequestHandler
@@ -24,13 +27,14 @@ import os
 import threading
 
 app = FastAPI()
-
+app.add_middleware(HTTPSRedirectMiddleware)
 
 origins = [
     "http://localhost:8001",
     "http://localhost:8000",
     "http://localhost",
     "http://localhost:8080",
+    "*"
 ]
 
 app.add_middleware(
@@ -54,7 +58,9 @@ class ImSwitchServer(Worker):
         self._canceled = False
 
         self.__logger =  initLogger(self)
-
+        
+        # start broadcasting server IP
+        self.startmdns()
 
     def run(self):
 
@@ -63,7 +69,12 @@ class ImSwitchServer(Worker):
 
         # serve the fastapi
         self.createAPI()
-        uvicorn.run(app, host="0.0.0.0", port=8001)
+        # To operate remotely we need to provide https
+        # openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365
+        # uvicorn your_fastapi_app:app --host 0.0.0.0 --port 8001 --ssl-keyfile=./key.pem --ssl-certfile=./cert.pem
+        _baseDataFilesDir = os.path.join(os.path.dirname(os.path.realpath(imswitch.__file__)), '_data')
+        print(os.path.join(_baseDataFilesDir,"ssl", "key.cert"))
+        uvicorn.run(app, host="0.0.0.0", port=8001, ssl_keyfile=os.path.join(_baseDataFilesDir,"ssl", "key.pem"), ssl_certfile=os.path.join(_baseDataFilesDir,"ssl", "cert.pem"))
         self.__logger.debug("Started server with URI -> PYRO:" + self._name + "@" + self._host + ":" + str(self._port))
         try:
             Pyro5.config.SERIALIZER = "msgpack"
@@ -84,6 +95,9 @@ class ImSwitchServer(Worker):
     def stop(self):
         self.__logger.debug("Stopping ImSwitchServer")
         self._daemon.shutdown()
+        print("Unregistering...")
+        zeroconf.unregister_service(self.info)
+        zeroconf.close()
 
 
     # SRC: https://code-maven.com/static-server-in-python
@@ -134,6 +148,38 @@ class ImSwitchServer(Worker):
             print(e)
             return
 
+
+
+    def get_ip(self):
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            s.connect(('10.255.255.255', 1))
+            IP = s.getsockname()[0]
+        except Exception:
+            IP = '127.0.0.1'
+        finally:
+            s.close()
+        return IP
+
+    def startmdns(self):
+        service_type = "_https._tcp.local."  # Changed to HTTPS
+        service_name = "imswitch._https._tcp.local."
+        server_ip = self.get_ip()
+        server_port = 8001  # Change to your server's port
+
+        self.info = ServiceInfo(
+            service_type,
+            service_name,
+            addresses=[socket.inet_aton(server_ip)],
+            port=server_port,
+            properties={},
+        )
+
+        zeroconf = Zeroconf()
+        print(f"Registering service {service_name}, type {service_type}, at {server_ip}:{server_port}")
+        zeroconf.register_service(self.info)
+
+        
 
 
     @app.get("/")
@@ -220,6 +266,7 @@ class ImSwitchServer(Worker):
                 pass
 
         '''
+
 
 
         def includePyro(func):

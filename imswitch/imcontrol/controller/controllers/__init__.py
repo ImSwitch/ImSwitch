@@ -11,6 +11,9 @@ from .JoystickController import JoystickController
 from .HistogrammController import HistogrammController
 from .STORMReconController import STORMReconController
 from .HoliSheetController import HoliSheetController
+from .FlowStopController import FlowStopController
+from .FLIMLabsController import FLIMLabsController
+from .ObjectiveRevolverController import ObjectiveRevolverController
 from .TemperatureController import TemperatureController
 from .SquidStageScanController import SquidStageScanController
 from .FocusLockController import FocusLockController
@@ -24,10 +27,6 @@ from .StandaPositionerController import StandaPositionerController
 from .StandaStageController import StandaStageController
 from .RecordingController import RecordingController
 from .WellPlateController import WellPlateController
-from .DeckController import DeckController
-from .DeckScanController import DeckScanController
-from .OpentronsDeckController import OpentronsDeckController
-from .OpentronsDeckScanController import OpentronsDeckScanController
 from .LEDMatrixController import LEDMatrixController
 from .SLMController import SLMController
 from .ScanControllerBase import ScanControllerBase

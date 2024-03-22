@@ -35,27 +35,43 @@ class TemperatureController(ImConWidgetController):
         self.Ki = 0.1
         self.Kd = .5
         self.PIDenabled = False
+        self.pollingPeriod = 5
 
         # get hold on the Temperature Controller
-        try:
-            self.temperatureController = self._master.rs232sManager["ESP32"]._esp32.temperature
-        except:
-            return
+        self.temperatureController = self._master.rs232sManager["ESP32"]._esp32.temperature
+        
         # Connect TemperatureWidget signals
         if not imswitch.IS_HEADLESS:
             self._widget.sigPIDToggled.connect(self.setPID)
             self._widget.sigsliderTemperatureValueChanged.connect(self.valueTemperatureValueChanged)
+            self._widget.sigShowTemperatureToggled.connect(self.switchTemperatureMonitor)
             self.setPID(self._widget.getPIDChecked())
 
-            # Start the temperature display thread
-            self.measurementThread = threading.Thread(target=self.updateMeasurements)
-            self.measurementThread.start()
             
         # create logging directory 
         self.temperatureDir = os.path.join(dirtools.UserFileDirs.Root, 'temperatureController')
         if not os.path.exists(self.temperatureDir):
             os.makedirs(self.temperatureDir)
         
+
+    def switchTemperatureMonitor(self, active):
+        """ Switch the temperature monitoring on or off. """
+        self.is_measure = active
+        if active:
+            self.startTemperatureMeasurements()
+        else:
+            self.stopTemperatureMeasurements()
+
+    def startTemperatureMeasurements(self):
+        # Start the temperature display thread
+        self.temperatureController.start_temperature_polling(period=self.pollingPeriod)
+
+        self.measurementThread = threading.Thread(target=self.updateMeasurements)
+        self.measurementThread.start()
+
+    def stopTemperatureMeasurements(self):
+        self.is_measure=False
+        self.measurementThread.join()
 
     def valueTemperatureValueChanged(self, value):
         """ Change setpoint for the temperature. """
@@ -128,34 +144,39 @@ class TemperatureController(ImConWidgetController):
         self.currPoint += 1
 
     def updateMeasurements(self):
+        self.temperatureController.start_temperature_polling(period=self.pollingPeriod)
+
         while self.is_measure:
             self.temperatureValue  = self.temperatureController.get_temperature()
-            self._widget.updateTemperature(self.temperatureValue)
+            if self.temperatureValue and self.temperatureValue > -200: # if not, we have faulty values 
+                    
+                self._widget.updateTemperature(self.temperatureValue)
+                
+                # logging temperature to file
+                mFileName = os.path.join(self.temperatureDir, 'temperature.csv')
+                
+                # Create directory if it does not exist
+                os.makedirs(os.path.dirname(mFileName), exist_ok=True)
+                try:
+                    # in case somebody accesses the file
+                    with open(mFileName, 'a', newline='') as file:
+                        writer = csv.writer(file)
+                        now = datetime.now()
+                        # dd/mm/YY H:M:S
+                        dt_string = now.strftime("%d/%m/%Y %H:%M:%S")
+                        writer.writerow([dt_string, self.temperatureValue])
+                except:
+                    pass
             
-            # logging temperature to file
-            mFileName = os.path.join(self.temperatureDir, 'temperature.csv')
-            
-            # Create directory if it does not exist
-            os.makedirs(os.path.dirname(mFileName), exist_ok=True)
-            try:
-                # in case somebody accesses the file
-                with open(mFileName, 'a', newline='') as file:
-                    writer = csv.writer(file)
-                    now = datetime.now()
-                    # dd/mm/YY H:M:S
-                    dt_string = now.strftime("%d/%m/%Y %H:%M:%S")
-                    writer.writerow([dt_string, self.temperatureValue])
-            except:
-                pass
-        
-            # update plot
-            self.updateSetPointData()
-            if self.currPoint < self.nBuffer:
-                self._widget.temperaturePlotCurve.setData(self.timeData[1:self.currPoint],
-                                                    self.setPointData[1:self.currPoint,0])
-            else:
-                self._widget.temperaturePlotCurve.setData(self.timeData, self.setPointData[:,0])
+                # update plot
+                self.updateSetPointData()
+                if self.currPoint < self.nBuffer:
+                    self._widget.temperaturePlotCurve.setData(self.timeData[1:self.currPoint],
+                                                        self.setPointData[1:self.currPoint,0])
+                else:
+                    self._widget.temperaturePlotCurve.setData(self.timeData, self.setPointData[:,0])
             time.sleep(self.tMeasure)
+        self.temperatureController.stop_temperature_polling()
 
 
 

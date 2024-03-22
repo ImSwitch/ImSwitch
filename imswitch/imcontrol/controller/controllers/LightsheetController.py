@@ -49,6 +49,10 @@ class LightsheetController(ImConWidgetController):
         # a bit weird, but we cannot update outside the main thread
         name = "Lightsheet Stack"
         # subsample stack 
+        # if the stack is too large, we have to subsample it 
+        if self.lightsheetStack.shape[0] > 100:
+            subsample = 10
+            self.lightsheetStack = self.lightsheetStack[::subsample,:,:]
         self._widget.setImage(np.uint16(self.lightsheetStack ), colormap="gray", name=name, pixelsize=(20,1,1), translation=(0,0,0))
 
     def valueIlluChanged(self):
@@ -104,12 +108,19 @@ class LightsheetController(ImConWidgetController):
         allFrames = []
         while self.isLightsheetRunning:
             frame = self.detector.getLatestFrame()
+            from juliacall import Main as jl 
+            # jl.seval("Pkg.add(\"FourierTools\")") 
+            jl.seval("using FourierTools") 
+            jl.tofft = jl.copy(frame) 
+            fftImage = np.array(jl.seval("abs.(log10.(abs.(ft(tofft))))")) 
+            print(fftImage) 
+            jl.println("hello from Julia")
             if frame.shape[0] != 0:
                 allFrames.append(frame)
             if controller.is_target_reached():
                 break
             iFrame += 1
-            self.__logger.debug(iFrame)
+            self._logger.debug(iFrame)
         # move back to initial position
         self.stages.move(value=-maxPos, axis=axis, is_absolute=False, is_blocking=True)
         

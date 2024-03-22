@@ -48,11 +48,18 @@ class DPCController(ImConWidgetController):
         self.nPattern = 4
         self.brightfieldPattern = {"0": [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23]}
         self.allDPCPatternNames = ("left", "right", "top", "bottom")
-        self.allDPCPatterns = {self.allDPCPatternNames[0]: [0,1,2,7,8,9,10,11,12,21,22,23,24], 
-                                self.allDPCPatternNames[1]: [3,4,5,6,13,14,15,16,17,18,19,20,21,22], 
-                                self.allDPCPatternNames[2]: [0,5,6,7,8,18,19,20,21,22,23,24], 
-                                self.allDPCPatternNames[3]: [1,2,3,4,9,10,11,12,14,15,16]}
-        
+        if False:
+            self.allDPCPatterns = {self.allDPCPatternNames[0]: [0,1,2,7,8,9,10,11,12,21,22,23,24], 
+                                    self.allDPCPatternNames[1]: [3,4,5,6,13,14,15,16,17,18,19,20,21,22], 
+                                    self.allDPCPatternNames[2]: [0,5,6,7,8,18,19,20,21,22,23,24], 
+                                    self.allDPCPatternNames[3]: [1,2,3,4,9,10,11,12,14,15,16]}
+            self.nLEDs = 25
+        else:        
+            self.allDPCPatterns = {self.allDPCPatternNames[0]: [0,1,2,3,4,5,6,7], 
+                        self.allDPCPatternNames[1]: [8,9,10,11,12,13,14,15], 
+                        self.allDPCPatternNames[2]: [0,7,8,19,14,9,6,1], 
+                        self.allDPCPatternNames[3]: [3,4,11,12,2,9,10,13]}
+            self.nLEDs = 16
         #self._widget.applyChangesButton.clicked.connect(self.applyParams)
         self._widget.startDPCAcquisition.clicked.connect(self.startDPC)
         self._widget.isRecordingButton.clicked.connect(self.toggleRecording)
@@ -64,16 +71,17 @@ class DPCController(ImConWidgetController):
         self.NA = self._master.dpcManager.NA
         self.NAi =  self._master.dpcManager.NAi
         self.n =  self._master.dpcManager.n
+        
+        self.tWait = .1 # time to wait between turning on LED Matrix and frame acquisition
 
         # select LEDArray
         allLEDMatrixNames = self._master.LEDMatrixsManager.getAllDeviceNames()
-        
         self.ledMatrix = self._master.LEDMatrixsManager[allLEDMatrixNames[0]]
         
         # select detectors
         allDetectorNames = self._master.detectorsManager.getAllDeviceNames()
         self.detector = self._master.detectorsManager[allDetectorNames[0]]
-
+        self.detector.startAcquisition()
         self.frameShape = self.detector.getLatestFrame().shape
         # initialize DPC processor
         ''' write parameters from file '''
@@ -134,11 +142,7 @@ class DPCController(ImConWidgetController):
         self.sigDPCProcessorImageComputed.connect(self.displayImage)
         
     def __del__(self):
-        self.imageComputationThread.quit()
-        self.imageComputationThread.wait()
-
-    def toggleDPCDisplay(self, enabled=True):
-        self._widget.setDPCDisplayVisible(enabled)
+        pass
 
     def displayImage(self, im, name="DPC Reconstruction"):
         """ Displays the image in the view. """
@@ -151,8 +155,8 @@ class DPCController(ImConWidgetController):
             #  Start acquisition if not started already
             self._master.detectorsManager.startAcquisition(liveView=False)
             
-            # reset the pattern iterator
-            self.nSyncCameraSLM = self._widget.getFrameSyncVal()
+
+
 
             # start the background thread
             self.active = True
@@ -194,22 +198,22 @@ class DPCController(ImConWidgetController):
             for iPatternName in self.allDPCPatternNames:
                 if not self.active:
                     break
-                
+                self.ledMatrix.mLEDmatrix.setAll(0)
                 # 1. display the pattern
                 ledIDs = self.allDPCPatterns[iPatternName]
                 self._logger.debug("Showing pattern: "+iPatternName)
                 ledPattern = []
-                ledIntensity = (255,255,255)
-                self.nLEDs = 25
+                ledIntensity = (0,255,0)
+                
                 # no sparse update :( 
                 for iLED in range(self.nLEDs): 
                     if iLED in ledIDs:
                         ledPattern.append(ledIntensity)
                     else:
                         ledPattern.append((0,0,0))
-                self.ledMatrix.mLEDmatrix.send_LEDMatrix_array(np.array(ledPattern), getReturn = False)
+                self.ledMatrix.mLEDmatrix.send_LEDMatrix_array(np.array(ledPattern), getReturn = True)
                 # wait a moment
-                time.sleep(0.1)
+                time.sleep(self.tWait)
                 
                 # 2 grab a frame 
                 frame = self.detector.getLatestFrame()

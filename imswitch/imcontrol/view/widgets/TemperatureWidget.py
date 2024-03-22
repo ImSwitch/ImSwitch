@@ -10,15 +10,20 @@ from .basewidgets import NapariHybridWidget
 class TemperatureWidget(NapariHybridWidget):
     """ Displays the Temperature transform of the image. """
 
-    sigShowToggled = QtCore.Signal(bool)  # (enabled)
     sigPIDToggled = QtCore.Signal(bool)  # (enabled)
     sigsliderTemperatureValueChanged = QtCore.Signal(float)  # (value)
+    sigShowTemperatureToggled = QtCore.Signal(bool)  # (enabled)
     
     def __post_init__(self):
 
         # PID Checkbox
         self.PIDCheck = QtWidgets.QCheckBox('Enable PID')
         self.PIDCheck.setCheckable(True)
+
+        # Measurement Checkbox
+        self.measureCheck = QtWidgets.QCheckBox('Enable Measurement')
+        self.measureCheck.setCheckable(True)
+
 
         # PID Values
         self.labelP = QtWidgets.QLabel('P')
@@ -58,10 +63,12 @@ class TemperatureWidget(NapariHybridWidget):
         grid.addWidget(self.labelTemperatureTarget, 2, 2)
         grid.addWidget(self.valueTemperatureTarget, 2, 3)
         grid.addWidget(self.PIDCheck, 2, 4)
+        grid.addWidget(self.measureCheck, 2, 5)
         grid.addWidget(self.temperatureSenseGraph, 3, 0, 1, 6)
 
         # Connect signals
         self.PIDCheck.toggled.connect(self.sigPIDToggled)
+        self.measureCheck.toggled.connect(self.sigShowTemperatureToggled)
         
         # on change of the target temperature value, emit the value
         self.valueTemperatureTarget.editingFinished.connect(

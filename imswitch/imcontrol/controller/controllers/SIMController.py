@@ -344,11 +344,31 @@ class SIMController(ImConWidgetController):
         nColour = 2 #[488, 635]
         dic_wl = [488, 635]
 
+        # retreive Z-stack parameters 
+        zStackParameters = self._widget.getZStackParameters()
+        zMin, zMax, zStep = zStackParameters[0], zStackParameters[1], zStackParameters[2] # if zStep < 0, it will not move in z
+        tDebounce = 0.1 # debounce time between z-steps
+        
+        # retreive timelapse parameters
+        timelapsedParameters = self._widget.getTimelapseParameters()
+        timePeriod, Nframes = timelapsedParameters[0], timelapsedParameters[1] # if NFrames < 0, it will run indefinitely
+        
+        # get current z-position
+        zPosInitially = self.positioner.getPosition()["Z"]
+        
+        # run the experiment indefinitely
         while self.active:
             
+            # iterate over all z-positions
+            if zStep > 0:
+                allZPositions = np.arange(zMin, zMax, zStep)
+            else:
+                allZPositions = [0]
+              
             for iColour in range(nColour):
                 # toggle laser
                 if not self.active:
+                    self.positioner.move(value=zPosInitially, axis="Z", is_absolute=True, is_blocking=True)
                     break
 
                 if iColour == 0 and self.is488 and self.lasers[iColour].power>0.0:
@@ -370,47 +390,58 @@ class SIMController(ImConWidgetController):
                     self.LaserWL = processor.wavelength
                     # set the pattern-path for laser wl 1
                 else:
+                    time.sleep(.1) # reduce CPU load
                     continue
-
                 
                 # select the pattern for the current colour
                 self.SIMClient.set_wavelength(dic_wl[iColour])
                 
-                # display one round of SIM patterns for the right colour
-                self.SIMClient.start_viewer_single_loop(1)
+                for zPos in allZPositions:
+                    # move to the next z-position
+                    self.positioner.move(value=zPos+zPosInitially, axis="Z", is_absolute=True, is_blocking=True)
+                    if zStep >0 : time.sleep(tDebounce)                  
                 
-                # ensure lasers are off to avoid photo damage
-                self.lasers[0].setEnabled(False)
-                self.lasers[1].setEnabled(False)
-                
-                # download images from the camera    
-                self.SIMStack = self.detector.getChunk(); self.detector.flushBuffers()
-                if self.SIMStack is None:
-                    self._logger.error("No image received")
-                    continue
-                self.sigImageReceived.emit(np.array(self.SIMStack),"SIMStack"+str(processor.wavelength))
-                processor.setSIMStack(self.SIMStack)
-
-                # activate recording in processor 
-                processor.setRecordingMode(self.isRecording)
-                processor.setReconstructionMode(self.isRecordReconstruction)
-                processor.setWavelength(self.LaserWL)
-                
-                # store the raw SIM stack
-                if self.isRecording and self.lasers[iColour].power>0.0:
-                    date = datetime. now(). strftime("%Y_%m_%d-%I-%M-%S_%p")
-                    processor.setDate(date)
-                    mFilenameStack = f"{date}_SIM_Stack_{self.LaserWL}nm.tif"
-                    threading.Thread(target=self.saveImageInBackground, args=(self.SIMStack, mFilenameStack,), daemon=True).start()
-                # self.detector.stopAcquisition()
-                # We will collect N*M images and process them with the SIM processor
-                
-                # process the frames and display
-                #processor.reconstructSIMStack()
+                    # display one round of SIM patterns for the right colour
+                    self.SIMClient.start_viewer_single_loop(1)
                     
-                # reset the per-colour stack to add new frames in the next imaging series
-                processor.clearStack()
-    
+                    # ensure lasers are off to avoid photo damage
+                    self.lasers[0].setEnabled(False)
+                    self.lasers[1].setEnabled(False)
+                    
+                    # download images from the camera    
+                    self.SIMStack = self.detector.getChunk(); self.detector.flushBuffers()
+                    if self.SIMStack is None:
+                        self._logger.error("No image received")
+                        continue
+                    self.sigImageReceived.emit(np.array(self.SIMStack),"SIMStack"+str(processor.wavelength))
+                    processor.setSIMStack(self.SIMStack)
+
+                    # activate recording in processor 
+                    processor.setRecordingMode(self.isRecording)
+                    processor.setReconstructionMode(self.isRecordReconstruction)
+                    processor.setWavelength(self.LaserWL)
+                    
+                    # store the raw SIM stack
+                    if self.isRecording and self.lasers[iColour].power>0.0:
+                        date = datetime. now(). strftime("%Y_%m_%d-%I-%M-%S_%p")
+                        processor.setDate(date)
+                        mFilenameStack = f"{date}_SIM_Stack_{self.LaserWL}nm_{zPos+zPosInitially}mum.tif"
+                        threading.Thread(target=self.saveImageInBackground, args=(self.SIMStack, mFilenameStack,), daemon=True).start()
+                    # self.detector.stopAcquisition()
+                    # We will collect N*M images and process them with the SIM processor
+                    
+                    # process the frames and display
+                    #processor.reconstructSIMStack()
+                        
+                    # reset the per-colour stack to add new frames in the next imaging series
+                    processor.clearStack()
+                
+                # move back to initial position 
+                self.positioner.move(value=zPosInitially, axis="Z", is_absolute=True, is_blocking=True)
+            
+            # wait for the next rund
+            time.sleep(timePeriod)
+        
 
     def performSIMTimelapseThread(self, sim_parameters):
         """ 
@@ -925,7 +956,7 @@ class SIMClient:
         url = self.base_url + self.commands["start_viewer"]
         return self.get_request(url)
 
-    def start_viewer_single_loop(self, number_of_runs, timeout=5):
+    def start_viewer_single_loop(self, number_of_runs, timeout=2):
         url = f"{self.base_url}{self.commands['single_run']}{number_of_runs}"
         return self.get_request(url, timeout=timeout)
 

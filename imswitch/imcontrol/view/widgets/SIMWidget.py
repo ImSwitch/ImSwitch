@@ -226,7 +226,7 @@ class SIMWidget(NapariHybridWidget):
 
         # Label/textedit pairs
         settings = [
-            ("Z-min", "-100"), ("Z-max", "100"), ("NSteps", "10")
+            ("Z-min", "-100"), ("Z-max", "100"), ("NSteps", "0")
         ]
         # create widget per label
         self.zmin_label = QLabel(settings[0][0])
@@ -265,9 +265,9 @@ class SIMWidget(NapariHybridWidget):
         
         
     def getZStackParameters(self):
-        return (np.float32(self.zmin_textedit.text()), np.float323(self.zmax_textedit.text()), np.float32(self.nsteps_textedit.text()))
+        return (np.float32(self.zmin_textedit.text()), np.float32(self.zmax_textedit.text()), np.float32(self.nsteps_textedit.text()))
     
-    def getTimeLaspeParameters(self):
+    def getTimelapseParameters(self):
         return (np.float32(self.period_textedit.text()), np.float32(self.frames_textedit.text()))
     
 

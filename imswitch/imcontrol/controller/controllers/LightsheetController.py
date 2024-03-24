@@ -45,6 +45,13 @@ class LightsheetController(ImConWidgetController):
         self._widget.sigSliderIlluValueChanged.connect(self.valueIlluChanged)
         self.sigImageReceived.connect(self.displayImage)
         
+        self._commChannel.sigUpdateMotorPosition.connect(self.updateAllPositionGUI)
+        
+    def updateAllPositionGUI(self):
+        allPositions = self.stages.getPosition()
+        mPositionsXYZ = (allPositions["X"], allPositions["Y"], allPositions["Z"])
+        self._widget.updatePosition(mPositionsXYZ)
+        
     def displayImage(self):
         # a bit weird, but we cannot update outside the main thread
         name = "Lightsheet Stack"

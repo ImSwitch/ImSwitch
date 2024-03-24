@@ -146,7 +146,7 @@ class PositionerController(ImConWidgetController):
         self.__logger.debug(f"Homing axis {axis}")
         self._master.positionersManager[positionerName].doHome(axis, isBlocking=isBlocking)
         self.updatePosition(positionerName, axis)
-
+        self._commChannel.sigUpdateMotorPosition.emit()
 
     def stopAxis(self, positionerName, axis):
         self.__logger.debug(f"Stopping axis {axis}")

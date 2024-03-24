@@ -18,6 +18,9 @@ class ESP32StageManager(PositionerManager):
         self._motor = self._rs232manager._esp32.motor
         self._homeModule = self._rs232manager._esp32.home
 
+        # get bootup position and write to GUI
+        self._position = self.getPosition()
+
         # Calibrated stepsizes in steps/µm
         self.stepsizeX = positionerInfo.managerProperties.get('stepsizeX', 1)
         self.stepsizeY = positionerInfo.managerProperties.get('stepsizeY', 1)
@@ -134,8 +137,6 @@ class ESP32StageManager(PositionerManager):
         if self.homeOnStartY: self.home_y()
         if self.homeOnStartZ: self.home_z()
 
-        # get bootup position and write to GUI
-        self._position = self.getPosition()
         
         # set speed for all axes
         self._speed = {"X": positionerInfo.managerProperties.get('speedX', 10000),
@@ -301,10 +302,11 @@ class ESP32StageManager(PositionerManager):
         # t,x,y,z
         try:
             allPositions = 1.*self._motor.get_position()
+            return {"X": allPositions[1], "Y": allPositions[2], "Z": allPositions[3], "A": allPositions[0]}
         except Exception as e:
             self.__logger.error(e)
-            allPositions = [0.,0.,0.,0.]
-        allPositionsDict={"X": allPositions[1], "Y": allPositions[2], "Z": allPositions[3], "A": allPositions[0]}
+            return self._position
+        
 
         return allPositionsDict
 

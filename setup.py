@@ -73,7 +73,8 @@ setup(
         "imjoy_rpc",
         "imjoy",
         "aiortc >= 1.3.0",
-        "juliacall"
+        "juliacall",
+        "UC2-REST"
     ],
     entry_points={
         "console_scripts": [

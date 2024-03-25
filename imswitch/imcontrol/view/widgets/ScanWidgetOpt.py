@@ -265,13 +265,13 @@ class ScanWidgetOpt(NapariHybridWidget):
         """ For inactivating during scanning when ActivateButton pressed
         and waiting for a scan. When scan finishes, enable again. """
         self.scanPar['OptStepsEdit'].setEnabled(enabled)
-    
+
     def setProgressBarValue(self, value: int) -> None:
         self.sinogramProgressBar.setValue(value)
-    
+
     def setProgressBarVisible(self, visible: bool) -> None:
         self.sinogramProgressBar.setVisible(visible)
-    
+
     def setProgressBarMaximum(self, value: int) -> None:
         self.sinogramProgressBar.setMaximum(value)
 

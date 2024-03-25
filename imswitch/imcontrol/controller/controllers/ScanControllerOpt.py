@@ -8,7 +8,7 @@ from collections import defaultdict
 
 from functools import partial
 import numpy as np
-from typing import Tuple, List, Callable
+from typing import Tuple, List, Callable, Dict
 from ..basecontrollers import ImConWidgetController
 from imswitch.imcommon.model import initLogger, dirtools
 from imswitch.imcommon.framework import Signal, Thread, Worker
@@ -45,7 +45,8 @@ class ScanExecutionMonitor:
         """ Adds an ending key to the report. """
         self.report['end'] = datetime.now()
         try:
-            self.totalTime = (self.report['end'] - self.report['start']).total_seconds()
+            self.totalTime = (self.report['end'] -
+                              self.report['start']).total_seconds()
         except KeyError:
             # TODO: ??? why should there be an exception?
             # if the class is reused, and addStart() is not called before addFinish,
@@ -105,9 +106,12 @@ class ScanOPTWorker(Worker):
         rotatorName (`str`): name identifier of the rotator used for the OPT scan.
     """
     sigNewFrameCaptured = Signal(str, np.ndarray, int)  # (layerLabel, frame, optCurrentStep)
-    sigNewStabilityTrace = Signal(object, object)  # (list: steps, list[list]: stabilityTraces)
-    sigNewSinogramDataPoint = Signal(int) # (int: sinogramGenerationStep)
+    sigNewStabilityTrace = Signal(object, object)   # (list: steps, list[list]: stabilityTraces)
+    sigNewSinogramDataPoint = Signal(int)     # (int: sinogramGenerationStep)
+    sigNewLiveRecon = Signal(np.ndarray, int)  # (reconstruction, step of reconstruction)
     sigScanDone = Signal()
+    sigUpdateReconIdx = Signal(int)  # triggers change of live-recon index
+    sigUpdateLiveReconPlot = Signal(np.ndarray, int)  # recon array, step of the recon
 
     def __init__(self, master, detectorName, rotatorName) -> None:
         super().__init__()
@@ -121,8 +125,10 @@ class ScanOPTWorker(Worker):
         # rotator configuration values
         self.optSteps = None
         self.currentStep = 0
+        self.saveSubfolder = None
 
         # monitor flags
+        self.saveOpt = False                    # save option for the OPT
         self.isOPTScanRunning = False             # OPT scan running flag, default to False
         self.noRAM = False                    # Stack not saved to RAM and Viewwer to save memory
         self.isLiveRecon = False              # OPT live reconstruction flag, default to False
@@ -130,16 +136,16 @@ class ScanOPTWorker(Worker):
         self.frameStack = None                # OPT stack memory buffer
 
         # Demo parameters, synthetic phantom data are generated to emulate OPT scan
-        self.demoEnabled = False         # Demo mode flag; if True synthetic data generated; defaults to False
-        self.sinogram: np.ndarray = None # Demo sinogram; default to None
-    
+        self.demoEnabled = False            # Demo mode flag; if True synthetic data generated; defaults to False
+        self.sinogram: np.ndarray = None    # Demo sinogram; default to None
+
     def preStart(self, resolution: int = 128) -> None:
         """ Utility method to be called before the start of the OPT scan.
         Generates the the sinogram for the demo experiment, if the demo mode is enabled,
         and updates the UI progress bar.
-        
+
         Args:
-            resolution (`int`): resolution of the synthetic sinogram, equivalent to the number of steps in the OPT scan.
+            resolution (`int`): resolution of resulting sinogram, equivalent to the number of steps in the OPT scan.
         """
         def generateSyntheticSinogram(resolution: int) -> np.ndarray:
             self.__logger.info('Demo experiment: preparing synthetic data.')
@@ -152,10 +158,10 @@ class ScanOPTWorker(Worker):
             mx = np.amax(sinogram)
             self.__logger.info('Synthetic data ready.')
             return np.rollaxis((sinogram/mx*255).astype(np.uint8), 2)
-        
+
         if self.demoEnabled:
             self.sinogram = generateSyntheticSinogram(resolution)
-        
+
         self.startOPTScan()
 
     def startOPTScan(self):
@@ -172,6 +178,7 @@ class ScanOPTWorker(Worker):
         # this needs to be changed at the API level at some point...
         self.frameStack = None
         self.signalStability.clear()  # clear lists inbetween experiments
+        self.currentLiveRecon = None
         self.master.detectorsManager[self.detectorName].startAcquisition()
         self.isOPTScanRunning = True
 
@@ -189,12 +196,12 @@ class ScanOPTWorker(Worker):
     def postRotatorStep(self):
         """ Triggered after emission of the `sigPositionUpdated` signal from
         the rotator. If only a rotational step was requested, returns.
-        Otherwise, the method performs the following steps: 
+        Otherwise, the method performs the following steps:
 
         - captures the latest frame from the detector;
+        - (optional) performs live reconstruction;
         - (optional) saves the frame if option is enabled;
         - updates the stability plot;
-        - (optional) performs live reconstruction; 
         - triggers the next motor step.
 
         This workflow is repeated until all the rotational steps
@@ -205,9 +212,23 @@ class ScanOPTWorker(Worker):
         # manual stepping also leads to here, continue only for OPT scan
         if not self.isOPTScanRunning:
             return
+
         frame = self.getNextFrame()
         self.processFrameStability(frame, self.currentStep)
-        self.saveCurrentFrame()
+
+        # live reconstruction processsing
+        if self.isLiveRecon:
+            self.timeMonitor.addStamp('live-recon', self.currentStep, 'beg')
+            self.computeLiveReconstruction(frame)
+            self.sigUpdateLiveReconPlot(self.currentLiveRecon.recon,
+                                        self.currentLiveRecon.step)
+            self.timeMonitor.addStamp('live-recon', self.currentStep, 'end')
+            self.sigNewLiveRecon.emit(self.currentLiveRecon, self.currentStep)
+
+        # save OPT frame, the flag is checked inside the method
+        self.saveCurrentFrame(frame)
+
+        # stop request
         if self.isInterruptionRequested:
             self.stopOPTScan()
         else:
@@ -293,36 +314,34 @@ class ScanOPTWorker(Worker):
         self.timeMonitor.addStamp('stability', self.currentStep, 'end')
         self.sigNewStabilityTrace.emit(stepsList, intensityLists)
 
-    def saveCurrentFrame(self) -> None:
-        # TODO: implement
-        # DP: You mean it should be on this thread,
-        # instead of the handleSave in the ScanController, right?
-        # JA: since it's part of the experiment workflow it makes sense;
-        # JA: alternatively I can think of another solution with another thread...
-        # JA: have to think about it a little
-        pass
+    def saveCurrentFrame(self, frame: np.ndarray) -> None:
+        """Save current camera frame if saving required. Only tiff
+        format enabled, and this is a duplicate of the scan controller
+        method
+
+        Args:
+            frame (np.ndarray): camera frame
+        """
+        if self.saveOpt:
+            self.saveImage(frame,
+                           self.saveSubfolder,
+                           f'{self.currentStep:04}')
 
     def startNextStep(self):
         """
         Update live reconstruction, stop OPT in case of last step,
         otherwise move motor again.
         """
-        # self._widget.updateCurrentStep(self.__currentStep + 1)
-
-        # updating live reconstruction
-        # TODO: live reconstruction section is unclear;
-        # needs some details on the implementation to refactor
-        # if self.liveRecon:
-        #     self.timeMonitor.addStamp('live-recon', self.__currentStep, 'beg')
-        #     self.updateLiveRecon()
-
+        # # updating live reconstruction (DP: doing it in processFrame)
         self.currentStep += 1
 
         if self.currentStep > len(self.optSteps) - 1:
             self.stopOPTScan()
         else:
             self.timeMonitor.addStamp('motor', self.currentStep, 'beg')
-            self.master.rotatorsManager[self.rotatorName].move_abs(self.optSteps[self.currentStep], inSteps=True)
+            self.master.rotatorsManager[self.rotatorName].move_abs(
+                self.optSteps[self.currentStep], inSteps=True,
+                )
 
     def stopOPTScan(self):
         """
@@ -335,15 +354,105 @@ class ScanOPTWorker(Worker):
         self.timeMonitor.makeReport()
         self.sigScanDone.emit()
 
-    def computeLiveReconstruction(self):
-        # TODO: refactor old code here;
-        pass
+    def computeLiveReconstruction(self, frame: np.ndarray):
+        """Updates current live reconstruction object, which
+        is FBPliveRecon class. In the first step, create new Recon object.
+        Also ensures that the reconstruction index is within the limits
+        of number of lines of the camera frame.
+
+        Args:
+            frame (np.ndarray): camera frame.
+        """
+        # check validity of the recon index user chose.
+        if self.currentStep == 0:
+            self.validateReconIdx(frame)
+
+        try:  # update of existing reconstruction
+            self.currentLiveRecon.update_recon(
+                frame[self.reconIdx, :],
+                self.currentStep)
+        except AttributeError:  # in the first step, new recon object created.
+            self.__logger.info(f'Creating a new reconstruction object. {self.optSteps}')
+            self.currentLiveRecon = FBPliveRecon(
+                frame[self.reconIdx, :],
+                self.optSteps,
+                )
+
+    def validateReconIdx(self, frame: np.ndarray) -> None:
+        """Check if reconstruction index is within the 
+        limits of frame lines. If not, change the index to
+        middle line of the frame, and trigger update of the 
+        displayed number in the controller.
+
+        Args:
+            frame (np.ndarray): Snapped frame from the camera.
+        """
+        if 0 <= self.reconIdx < frame.shape[0]:  # recon index valid
+            return
+
+        # trigger update of the reconstruction index
+        self.sigUpdateReconIdx.emit(frame.shape[0] // 2)
+        self.__logger.warning(
+            f'Live-reconstruction changed to {frame.shape[0] // 2}')
+
+    def saveImage(self, frame: np.ndarray, fileExtension: str = "tiff"):
+        """
+        Constructs saving path and saves the image. Method adapted from
+        UC2/STORMreconController from https://github.com/openUC2 fork of
+        imswitch.
+
+        Args:
+            frame (np.ndarray): image array
+            subfolder (str): datetime string for unique folder identification
+            filename (str, optional): part of the filename can be specified.
+                Defaults to "corr".
+            fileExtension (str, optional): Image format. Defaults to "tiff".
+        """
+        filePath = self.getSaveFilePath(
+                            subfolder=self.saveSubfolder,
+                            filename=f'{self.currentStep:04}',
+                            extension=fileExtension)
+
+        tif.imwrite(filePath, frame, append=False)
+
+    def getSaveFilePath(self, subfolder: str,
+                        filename: str,
+                        extension: str,
+                        ) -> os.path:
+        """ Sets datetime part of the filename, combines parts of the
+        filename, ensures existance of the saving folder and returns
+        the full savings path
+
+        Args:
+            subfolder (str): subfolder name
+            filename (str): specific filename string part
+            extension (str): image format extension
+
+        Returns:
+            os.path: save path
+        """
+        if subfolder == 'Corrections':
+            date = datetime.now().strftime("%Y_%m_%d-%H-%M-%S")
+        else:
+            date = datetime.now().strftime("%H-%M-%S")
+        mFilename = f"{date}_{filename}.{extension}"
+        dirPath = os.path.join(dirtools.UserFileDirs.Root,
+                               'recordings',
+                               subfolder,
+                               )
+
+        newPath = os.path.join(dirPath, mFilename)
+
+        if not os.path.exists(dirPath):
+            os.makedirs(dirPath)
+
+        return newPath
 
 
 class ScanControllerOpt(ImConWidgetController):
     """ Optical Projection Tomography (OPT) scan controller.
     """
-    sigImageReceived = Signal(str, np.ndarray)  # (name, frame array)
+    sigImageReceived = Signal(str, np.ndarray)  # (name, frame array), used for corrections
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -351,7 +460,7 @@ class ScanControllerOpt(ImConWidgetController):
         self.__logger = initLogger(self)
 
         # Local flags
-        self.liveRecon = False
+        self.isliveRecon = False
         self.saveOpt = True
 
         # get detectors, select first one, connect update
@@ -377,14 +486,6 @@ class ScanControllerOpt(ImConWidgetController):
         self._widget.scanPar['LiveReconButton'].clicked.connect(self.updateLiveReconFlag)
         self.updateLiveReconFlag()
 
-        # saving flag
-        self._widget.scanPar['SaveButton'].clicked.connect(self.updateSaveFlag)
-        self.updateSaveFlag()
-
-        # live recon
-        self._widget.scanPar['LiveReconIdxEdit'].valueChanged.connect(self.updateLiveReconIdx)
-        self.updateLiveReconIdx()
-
         self._widget.scanPar['OptStepsEdit'].valueChanged.connect(self.updateOptSteps)
 
         # Scan loop control
@@ -400,9 +501,17 @@ class ScanControllerOpt(ImConWidgetController):
                                        )
         self.optWorker.moveToThread(self.optThread)
 
+        # live recon, needs to be after worker init (not so elegant to put all
+        # flags to the worker no?)
+        self._widget.scanPar['LiveReconIdxEdit'].valueChanged.connect(self.getLiveReconIdx)
+
         # noRAM flag
         self._widget.scanPar['noRamButton'].clicked.connect(self.updateRamFlag)
         self.updateRamFlag()
+
+        # saving flag, needs to be after worker init
+        self._widget.scanPar['SaveButton'].clicked.connect(self.updateSaveFlag)
+        self.updateSaveFlag()
 
         # Communication channel signals connection
         # sigRotatorPositionUpdated carries the name of the current rotator
@@ -416,6 +525,8 @@ class ScanControllerOpt(ImConWidgetController):
         self.optWorker.sigNewStabilityTrace.connect(self.updateStabilityPlot)
         self.optWorker.sigScanDone.connect(self.postScanEnd)
         self.optWorker.sigNewSinogramDataPoint.connect(self.checkSinogramProgress)
+        self.optWorker.sigUpdateReconIdx.connect(self.setLiveReconIdx)
+        self.optWorker.sigUpdateLiveReconPlot.connect(self.updateLiveReconPlot)
 
         # Thread signals connection
         self.optThread.started.connect(lambda: self.optWorker.preStart(self.optSteps))
@@ -445,9 +556,7 @@ class ScanControllerOpt(ImConWidgetController):
     # Main OPT scan #
     #################
     def prepareOPTScan(self):
-        """ Makes preliminary checks for the OPT scan.
-        """
-        
+        """ Makes preliminary checks for the OPT scan."""
         # resetting step count on UI
         self._widget.updateCurrentStep(0)
 
@@ -466,7 +575,7 @@ class ScanControllerOpt(ImConWidgetController):
                 if not self._widget.requestOptStepsConfirmation():
                     return
 
-        self.saveSubfolder = datetime.now().strftime("%Y_%m_%d-%H-%M-%S")
+        self.optWorker.saveSubfolder = datetime.now().strftime("%Y_%m_%d-%H-%M-%S")
         self.sigImageReceived.connect(self.displayImage)
 
         # equidistant steps for the OPT scan in absolute values.
@@ -479,12 +588,13 @@ class ScanControllerOpt(ImConWidgetController):
         self.optWorker.optSteps = optScanSteps
 
         # live reconstruction
-        # if self.liveRecon:
-        #     self.updateLiveReconIdx()
-        #     self.currentRecon = None  # avoid update_recon in the first step
+        if self.isliveRecon:
+            self.getLiveReconIdx()
+
+        # starting scan
         self.enableWidget(False)
         self.optThread.start()
-    
+
     def checkSinogramProgress(self, step: int) -> None:
         """ Update the progress bar of the sinogram generation. """
         if step == self.optSteps - 1:
@@ -494,18 +604,13 @@ class ScanControllerOpt(ImConWidgetController):
             self._widget.setProgressBarValue(step)
 
     def plotReport(self):
+        """Display an extra time monitor report plot in a separate widget.
+        """
         self._widget.plotReport(self.optWorker.timeMonitor.getReport())
 
     ##################
     # Image handling #
     ##################
-    # TODO: Call this in from
-    def handleSave(self):
-        if self.saveOpt:
-            self.saveImage(self.frame,
-                           self.saveSubfolder,
-                           f'{self.__currentStep:04}')
-
     def displayImage(self, name: str, frame: np.ndarray) -> None:
         """
         Display stack or image in the napari viewer.
@@ -522,7 +627,7 @@ class ScanControllerOpt(ImConWidgetController):
                                   name=name,
                                   pixelsize=(1, 1),
                                   translation=(0, 0),
-                                  # change because I do not want to put to the signal
+                                  # change because otherwise current step needs to be part of emitted signal
                                   step=self.optWorker.currentStep)
         else:
             self._widget.setImage(np.uint16(frame),
@@ -536,40 +641,62 @@ class ScanControllerOpt(ImConWidgetController):
             # update labels step labels in the widget
             self._widget.updateCurrentStep(self.optWorker.currentStep + 1)
 
-    def updateLiveRecon(self):
+    def saveImage(self, frame, subfolder, filename="corr",
+                  fileExtension="tiff"):
         """
-        Handles updating of the live Reconstruction plot.
-        Safeguarding the possibility of index error when slice of camera
-        is out of range. In that case center line of the image is used.
-        """
-        try:
-            self.currentRecon.update_recon(
-                self.frame[self.reconIdx, :],
-                self.__currentStep)
-        except AttributeError:
-            try:
-                self.__logger.info(f'Creating a new reconstruction object. {self.optSteps}')
-                self.currentRecon = FBPlive(
-                    self.frame[self.reconIdx, :],
-                    self.optSteps)
-            except (ValueError, IndexError):
-                self._logger.warning(
-                    'Index error, reconstructions changed to central line')
-                self.setLiveReconIdx(self.frame.shape[0] // 2)
-                print('recon idx',
-                      self.reconIdx, self.frame.shape,
-                      self.frame[self.reconIdx, :].shape,
-                      )
-                self.currentRecon = FBPlive(
-                    self.frame[self.reconIdx, :],
-                    self.optSteps)
-        try:
-            self.updateLiveReconPlot(self.currentRecon.output)
-        except TypeError:
-            self._logger.info(f'Wrong type: {type(self.currentRecon.output)}')
-        self.timeMonitor.addStamp('live-recon', self.__currentStep, 'end')
+        Constructs saving path and saves the image. Method adapted from
+        UC2/STORMreconController from https://github.com/openUC2 fork of
+        imswitch.
 
-    def updateLiveReconPlot(self, image):
+        Args:
+            frame (np.ndarray): image array
+            subfolder (str): datetime string for unique folder identification
+            filename (str, optional): part of the filename can be specified.
+                Defaults to "corr".
+            fileExtension (str, optional): Image format. Defaults to "tiff".
+        """
+        filePath = self.getSaveFilePath(
+                            subfolder=subfolder,
+                            filename=filename,
+                            extension=fileExtension)
+
+        self._logger.debug(filePath)
+        tif.imwrite(filePath, frame, append=False)
+
+    def getSaveFilePath(self, subfolder: str,
+                        filename: str,
+                        extension: str,
+                        ) -> os.path:
+        """ Sets datetime part of the filename, combines parts of the
+        filename, ensures existance of the saving folder and returns
+        the full savings path
+
+        Args:
+            subfolder (str): subfolder name
+            filename (str): specific filename string part
+            extension (str): image format extension
+
+        Returns:
+            os.path: save path
+        """
+        if subfolder == 'Corrections':
+            date = datetime.now().strftime("%Y_%m_%d-%H-%M-%S")
+        else:
+            date = datetime.now().strftime("%H-%M-%S")
+        mFilename = f"{date}_{filename}.{extension}"
+        dirPath = os.path.join(dirtools.UserFileDirs.Root,
+                               'recordings',
+                               subfolder,
+                               )
+
+        newPath = os.path.join(dirPath, mFilename)
+
+        if not os.path.exists(dirPath):
+            os.makedirs(dirPath)
+
+        return newPath
+
+    def updateLiveReconPlot(self, image, step):
         """
         Dispaly current live reconstruction image.
 
@@ -578,7 +705,7 @@ class ScanControllerOpt(ImConWidgetController):
         """
         self._widget.liveReconPlot.clear()
         self._widget.liveReconPlot.setImage(image)
-        self._widget.updateCurrentReconStep(self.__currentStep + 1)
+        self._widget.updateCurrentReconStep(step + 1)
 
     ##################
     # Helper methods #
@@ -646,7 +773,7 @@ class ScanControllerOpt(ImConWidgetController):
 
     def updateSaveFlag(self):
         """ Update saving flag from the widget value """
-        self.saveOpt = self._widget.scanPar['SaveButton'].isChecked()
+        self.optWorker.saveOpt = self._widget.scanPar['SaveButton'].isChecked()
 
     def updateRamFlag(self):
         """ Update noRAM flag from the widget value """
@@ -662,9 +789,9 @@ class ScanControllerOpt(ImConWidgetController):
         """
         self._widget.updateStabilityPlot(steps, intensity)
 
-    def updateLiveReconIdx(self) -> None:
+    def getLiveReconIdx(self) -> None:
         """ Get camera line index for the live reconstruction. """
-        self.reconIdx = self._widget.getLiveReconIdx()
+        self.optWorker.reconIdx = self._widget.getLiveReconIdx()
 
     def setLiveReconIdx(self, value: int):
         """ Set camera line index for the live reconstruction
@@ -672,7 +799,7 @@ class ScanControllerOpt(ImConWidgetController):
         Args:
             value (int): camera line index
         """
-        self._widget.setLiveReconIdx(value)
+        self._widget.setLiveReconIdx(value)  # triggers getLiveReconIdx via valuChage
 
     ###################
     # Message windows #
@@ -882,85 +1009,31 @@ class ScanControllerOpt(ImConWidgetController):
         self.detector.stopAcquisition()
         self.nFrames.emit()
 
-    def saveImage(self, frame, subfolder, filename="corr",
-                  fileExtension="tiff"):
-        """
-        Constructs saving path and saves the image. Method adapted from
-        UC2/STORMreconController from https://github.com/openUC2 fork of
-        imswitch.
-
-        Args:
-            frame (np.ndarray): image array
-            subfolder (str): datetime string for unique folder identification
-            filename (str, optional): part of the filename can be specified.
-                Defaults to "corr".
-            fileExtension (str, optional): Image format. Defaults to "tiff".
-        """
-        filePath = self.getSaveFilePath(
-                            subfolder=subfolder,
-                            filename=filename,
-                            extension=fileExtension)
-
-        self._logger.debug(filePath)
-        tif.imwrite(filePath, frame, append=False)
-
-    def getSaveFilePath(self, subfolder: str,
-                        filename: str,
-                        extension: str,
-                        ) -> os.path:
-        """ Sets datetime part of the filename, combines parts of the
-        filename, ensures existance of the saving folder and returns
-        the full savings path
-
-        Args:
-            subfolder (str): subfolder name
-            filename (str): specific filename string part
-            extension (str): image format extension
-
-        Returns:
-            os.path: save path
-        """
-        if subfolder == 'Corrections':
-            date = datetime.now().strftime("%Y_%m_%d-%H-%M-%S")
-        else:
-            date = datetime.now().strftime("%H-%M-%S")
-        mFilename = f"{date}_{filename}.{extension}"
-        dirPath = os.path.join(dirtools.UserFileDirs.Root,
-                               'recordings',
-                               subfolder,
-                               )
-
-        newPath = os.path.join(dirPath, mFilename)
-
-        if not os.path.exists(dirPath):
-            os.makedirs(dirPath)
-
-        return newPath
-
 
 class Stability:
-    """ Helper container class to monitor and display the stability traces of the 
-        intensity of the 4 corners of the OPT stack.
+    """ Helper container class to monitor and display the stability traces
+    of the intensity of the 4 corners of the OPT stack.
 
-        iUL -> upper left
-        iUR -> upper right
-        iLL -> lower left
-        iLR -> lower right
+    iUL -> upper left
+    iUR -> upper right
+    iLL -> lower left
+    iLR -> lower right
     """
 
-    def __init__(self, n_pixels=50):
-        # TODO: what does n_pixels mean?
-        self.n_pixels = n_pixels  # size  in pixels of rectangle  to monitor mean intensity at 4 corners
+    def __init__(self, n_pixels: int = 50) -> None:
+        self.n_pixels = n_pixels  # rectangle size in pxs to monitor mean intensity at 4 corners
         # TODO: DP, redo into a dictionary.
-        self.steps = []
-        self.intensity = [[], [], [], []]
+        self.clear()
 
     def clear(self):
-        """Clear the lists between experiments. """
-        self.steps.clear()
-        self.intensity = [[], [], [], []]
+        """Clear the variables between experiments. """
+        self.steps = []
+        self.intensity = {'iUL': [],
+                          'iUR': [],
+                          'iLL': [],
+                          'iLR': []}
 
-    def processStabilityTraces(self, frame: np.ndarray, step: int) -> Tuple[list, List[list]]:
+    def processStabilityTraces(self, frame: np.ndarray, step: int) -> Tuple[list, Dict[List]]:
         """ Process the current frame's stability traces.
 
         Args:
@@ -968,109 +1041,97 @@ class Stability:
             step (`int`): current OPT scan step index
 
         Returns:
-            Tuple[list, List[list]]: list of presently executed OPT scan steps and list of intensity traces
+            Tuple[list, dict[list]]: list of presently executed OPT scan steps
+                and dictionary of intensity traces for the four corners
         """
-        iUL = np.mean(frame[:self.n_pixels, :self.n_pixels])
-        iUR = np.mean(frame[:self.n_pixels, -self.n_pixels:])
-        iLL = np.mean(frame[-self.n_pixels:, :self.n_pixels])
-        iLR = np.mean(frame[-self.n_pixels:, -self.n_pixels:])
+        mean_corners = (
+            np.mean(frame[:self.n_pixels, :self.n_pixels]),    # iUL
+            np.mean(frame[:self.n_pixels, -self.n_pixels:]),   # IUR
+            np.mean(frame[-self.n_pixels:, :self.n_pixels]),   # iLL
+            np.mean(frame[-self.n_pixels:, -self.n_pixels:]),  # iLR
+            )
 
         self.steps.append(step)
         if step == 0:
             # I append ones and save values as normalization factors
-            self.norm_factors = (iUL, iUR, iLL, iLR)
-            for i in range(4):
+            self.norm_factors = mean_corners.copy()
+            for i in self.intensity.keys():
                 self.intensity[i].append(1.)
         else:
-            self.intensity[0].append(iUL/self.norm_factors[0])
-            self.intensity[1].append(iUR/self.norm_factors[1])
-            self.intensity[2].append(iLL/self.norm_factors[2])
-            self.intensity[3].append(iLR/self.norm_factors[3])
+            for i, key in enumerate(self.intensity.keys()):
+                self.intensity[key].append(mean_corners / self.norm_factors[i])
 
         return self.steps, self.intensity
 
 
-class FBPlive():
+class FBPliveRecon():
     def __init__(self, line, steps: int) -> None:
-        self.line = line
-        self.n_steps = steps
-        if line.ndim > 1:  # 3D reconstruction
-            self.sinogram = np.zeros((line.shape[1],
-                                      steps))
-            self.output_size = line.shape[1]
-            self.output = np.zeros((line.shape[1],
-                                    line.shape[1],
-                                    line.shape[0]))
-        else:
-            self.sinogram = np.zeros((len(line), steps))
-            self.output_size = len(line)
-            self.output = np.zeros((len(line), len(line)))
+        """Init function already called with the first projection (line) which will
+        be reconstructed. This is because many preallocation methods depend on the
+        knowledge of line dimension.
+
+        Args:
+            line (np.array): single projection, i.e. slice of the sinogram.
+            steps (int): number of total OPT steps. Crucial because angles
+                has to be known in advance.
+
+        Raises:
+            ValueError: liveRecon class can handle only siblge slice projection
+                therefore input has to be 1D array
+        """
+        self.line = line        # experimental slice of single projection
+        self.n_steps = steps    # total OPT steps
+        self.step = 0           # counter of steps, emitted for update plot
+        if line.ndim > 1:       # 3D reconstruction
+            raise ValueError('Input data can be only 1D array')
+
+        # preallocation
+        self.sinogram = np.zeros((len(line), steps))
+        self.recon_dim = len(line)
+        self.recon = np.zeros((self.recon_dim, self.recon_dim))
+
         self.radon_img = self._sinogram_circle_to_square(self.sinogram)
         self.radon_img_shape = self.radon_img.shape[0]
-        self.offset = (self.radon_img_shape-self.output_size)//2
+        self.offset = (self.radon_img_shape - self.recon_dim)//2
         self.projection_size_padded = max(
                 64,
                 int(2 ** np.ceil(np.log2(2 * self.radon_img_shape))))
-        self.radius = self.output_size // 2
-        self.xpr, self.ypr = np.mgrid[:self.output_size,
-                                      :self.output_size] - self.radius
+        self.radius = self.recon_dim // 2
+        self.xpr, self.ypr = np.mgrid[:self.recon_dim,
+                                      :self.recon_dim] - self.radius
+
         self.x = np.arange(self.radon_img_shape) - self.radon_img_shape // 2
         self.theta = np.deg2rad(
                         np.linspace(0., 360., self.n_steps, endpoint=False)
                         )
         self.update_recon(self.line, 0)
 
-    def update_recon(self, line_in, step):
+    def update_recon(self, line_in, step, interp_mode='linear'):
         self.line = line_in
+        self.step = step
         fourier_filter = self._get_fourier_filter(self.projection_size_padded)
         # padding line
-        if self.line.ndim > 1:
-            line = np.zeros((self.line.shape[0], self.projection_size_padded))
-            line[:, self.offset:line_in.shape[1] + self.offset] = line_in
-            # interpolation on the circle
-            interpolation = 'linear'
-            t = self.ypr * np.cos(self.theta[step]) - self.xpr * np.sin(self.theta[step])
-            for i in range(len(self.line[:, 0])):
-                # fft filtering of the line
-                projection = fft(line[i, :]) * fourier_filter
-                radon_filtered = np.real(ifft(projection)[:self.radon_img_shape])
+        if self.line.ndim > 1:  # 3D reconstruction
+            raise ValueError('Input data can be only 1D array')
 
-                if interpolation == 'linear':
-                    interpolant = interp1d(self.x,
-                                           radon_filtered,
-                                           kind='linear',
-                                           bounds_error=False,
-                                           fill_value=0)
-                elif interpolation == 'cubic':
-                    interpolant = interp1d(self.x,
-                                           radon_filtered,
-                                           kind='cubic',
-                                           bounds_error=False,
-                                           fill_value=0)
-                else:
-                    raise ValueError
-                self.output[:, :, i] += interpolant(t) * (np.pi/(2*self.n_steps))
-        else:
-            line = np.zeros(self.projection_size_padded)
-            line[self.offset:len(line_in)+self.offset] = line_in
+        line = np.zeros(self.projection_size_padded)
+        line[self.offset:len(line_in)+self.offset] = line_in
 
-            # fft filtering of the line
-            projection = fft(line) * fourier_filter
-            radon_filtered = np.real(ifft(projection)[:self.radon_img_shape])
+        # fft filtering of the line
+        projection = fft(line) * fourier_filter
+        radon_filtered = np.real(ifft(projection)[:self.radon_img_shape])
 
-            # interpolation on the circle
-            interpolation = 'linear'
-            t = (self.ypr * np.cos(self.theta[step]) -
-                 self.xpr * np.sin(self.theta[step]))
-            if interpolation == 'linear':
-                interpolant = interp1d(self.x, radon_filtered, kind='linear',
-                                       bounds_error=False, fill_value=0)
-            elif interpolation == 'cubic':
-                interpolant = interp1d(self.x, radon_filtered, kind='cubic',
-                                       bounds_error=False, fill_value=0)
-            else:
-                raise ValueError
-            self.output += interpolant(t) * (np.pi/(2*self.n_steps))
+        t = (self.ypr * np.cos(self.theta[step]) -
+             self.xpr * np.sin(self.theta[step]))
+
+        # interpolation on the circle
+        if interp_mode == 'cubic':
+            interpolant = interp1d(self.x, radon_filtered, kind='cubic',
+                                   bounds_error=False, fill_value=0)
+        else:  # default interpolation is linear
+            interpolant = interp1d(self.x, radon_filtered, kind='linear',
+                                   bounds_error=False, fill_value=0)
+        self.recon += interpolant(t) * (np.pi/(2*self.n_steps))
 
     def _get_fourier_filter(self, size):
         """ size needs to be even. Only ramp filter implemented """

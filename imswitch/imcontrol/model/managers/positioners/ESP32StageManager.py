@@ -308,8 +308,6 @@ class ESP32StageManager(PositionerManager):
             return self._position
         
 
-        return allPositionsDict
-
     def forceStop(self, axis):
         if axis=="X":
             self.stop_x()

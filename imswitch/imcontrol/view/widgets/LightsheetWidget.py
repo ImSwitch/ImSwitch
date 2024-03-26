@@ -87,7 +87,7 @@ class LightsheetWidget(NapariHybridWidget):
         #                       yRange=(-nPixelDimViewer, nPixelDimViewer), 
         #                       zRange=(-nPixelDimViewer, nPixelDimViewer))
         mPos = QtGui.QVector3D(0.0, 0.0, 0.0)
-        self.glWidget.setCameraPosition(pos=(0,0,0), rotation=(1,0,0,0), distance=nPixelDimViewer*2, elevation=30, azimuth=45)
+        self.glWidget.setCameraPosition(pos=mPos, distance=nPixelDimViewer*2, elevation=30, azimuth=45)
 
         # Add a grid to help visualize the space
         grid = gl.GLGridItem()

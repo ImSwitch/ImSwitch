@@ -46,7 +46,6 @@ class VirtualStageManager(PositionerManager):
         # load position from device
         # t,x,y,z
         allPositionsDict = self._positioner.get_position()
-
         return allPositionsDict
 
     def forceStop(self, axis):

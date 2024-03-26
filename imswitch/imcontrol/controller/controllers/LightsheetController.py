@@ -116,6 +116,7 @@ class LightsheetController(ImConWidgetController):
         while self.isLightsheetRunning:
             frame = self.detector.getLatestFrame()
             from juliacall import Main as jl 
+            jl.seval('import Pkg; Pkg.add("FourierTools")')
             # jl.seval("Pkg.add(\"FourierTools\")") 
             jl.seval("using FourierTools") 
             jl.tofft = jl.copy(frame) 
@@ -125,7 +126,7 @@ class LightsheetController(ImConWidgetController):
             if frame.shape[0] != 0:
                 allFrames.append(frame)
             if controller.is_target_reached():
-                break
+                break 
             iFrame += 1
             self._logger.debug(iFrame)
         # move back to initial position

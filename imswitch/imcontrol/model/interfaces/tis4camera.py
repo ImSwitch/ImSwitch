@@ -83,8 +83,6 @@ class CameraTIS4:
 
     def stop_live(self):
         self.__logger.debug('stop live method called')
-        print('Streaming01?', self.cam.is_streaming)
-        print('sink attached01:', self.snapSink.is_attached)
         self.cam.acquisition_stop()  # stop imaging
 
     def grabFrame(self):

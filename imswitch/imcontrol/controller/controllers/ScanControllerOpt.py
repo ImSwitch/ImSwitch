@@ -5,9 +5,10 @@ import tifffile as tif
 import os
 from datetime import datetime
 from collections import defaultdict
-
 from functools import partial
 import numpy as np
+
+from imswitch.imcontrol.view import guitools as guitools
 from typing import Tuple, List, Callable, Dict
 from ..basecontrollers import ImConWidgetController
 from imswitch.imcommon.model import initLogger, dirtools
@@ -24,6 +25,10 @@ class ScanExecutionMonitor:
     def __init__(self):
         # TODO: move this class to the utilities folder and extend its usage
         # to the rest of the application
+        self.outputReport = {}
+        self.report = defaultdict(lambda: [])
+
+    def reinit(self):
         self.outputReport = {}
         self.report = defaultdict(lambda: [])
 
@@ -111,7 +116,6 @@ class ScanOPTWorker(Worker):
     sigNewLiveRecon = Signal(np.ndarray, int)  # (reconstruction, step of reconstruction)
     sigScanDone = Signal()
     sigUpdateReconIdx = Signal(int)  # triggers change of live-recon index
-    sigUpdateLiveReconPlot = Signal(np.ndarray, int)  # recon array, step of the recon
 
     def __init__(self, master, detectorName, rotatorName) -> None:
         super().__init__()
@@ -220,10 +224,10 @@ class ScanOPTWorker(Worker):
         if self.isLiveRecon:
             self.timeMonitor.addStamp('live-recon', self.currentStep, 'beg')
             self.computeLiveReconstruction(frame)
-            self.sigUpdateLiveReconPlot(self.currentLiveRecon.recon,
-                                        self.currentLiveRecon.step)
+            self.sigNewLiveRecon.emit(self.currentLiveRecon.recon,
+                                      self.currentLiveRecon.step)
             self.timeMonitor.addStamp('live-recon', self.currentStep, 'end')
-            self.sigNewLiveRecon.emit(self.currentLiveRecon, self.currentStep)
+            # self.sigNewLiveRecon.emit(self.currentLiveRecon, self.currentStep)
 
         # save OPT frame, the flag is checked inside the method
         self.saveCurrentFrame(frame)
@@ -240,6 +244,10 @@ class ScanOPTWorker(Worker):
         Returns:
             np.ndarray: frame array
         """
+        # TODO: make sure that roator blur does not accur
+        # DP: get camera exposure time and time delay here
+        # before snapping camera, because long exposure snap
+        # might be acquired partially during the motor move.
         return self.master.detectorsManager[self.detectorName].getLatestFrame()
 
     def getFrameFromSino(self) -> np.ndarray:
@@ -309,10 +317,10 @@ class ScanOPTWorker(Worker):
             step (`int`): the current step of the OPT scan
         """
         self.timeMonitor.addStamp('stability', self.currentStep, 'beg')
-        stepsList, intensityLists = self.signalStability.processStabilityTraces(frame, step)
+        stepsList, intensityDict = self.signalStability.processStabilityTraces(frame, step)
         # TODO: sometimes not added to the dict
         self.timeMonitor.addStamp('stability', self.currentStep, 'end')
-        self.sigNewStabilityTrace.emit(stepsList, intensityLists)
+        self.sigNewStabilityTrace.emit(stepsList, intensityDict)
 
     def saveCurrentFrame(self, frame: np.ndarray) -> None:
         """Save current camera frame if saving required. Only tiff
@@ -372,10 +380,10 @@ class ScanOPTWorker(Worker):
                 frame[self.reconIdx, :],
                 self.currentStep)
         except AttributeError:  # in the first step, new recon object created.
-            self.__logger.info(f'Creating a new reconstruction object. {self.optSteps}')
+            self.__logger.info(f'Creating a new reconstruction object. {len(self.optSteps)}')
             self.currentLiveRecon = FBPliveRecon(
                 frame[self.reconIdx, :],
-                self.optSteps,
+                len(self.optSteps),
                 )
 
     def validateReconIdx(self, frame: np.ndarray) -> None:
@@ -460,7 +468,7 @@ class ScanControllerOpt(ImConWidgetController):
         self.__logger = initLogger(self)
 
         # Local flags
-        self.isliveRecon = False
+        # self.isliveRecon = False
         self.saveOpt = True
 
         # get detectors, select first one, connect update
@@ -480,11 +488,10 @@ class ScanControllerOpt(ImConWidgetController):
             self._widget.scanPar['Rotator'].addItem(rotator)
 
         # Connect widget signals
-        self._widget.scanPar['GetHotPixels'].clicked.connect(self.exec_hot_pixels)
-        self._widget.scanPar['GetDark'].clicked.connect(self.exec_dark_field)
-        self._widget.scanPar['GetFlat'].clicked.connect(self.exec_flat_field)
+        self._widget.scanPar['GetHotPixels'].clicked.connect(self.execHotPixelCorrection)
+        self._widget.scanPar['GetDark'].clicked.connect(self.execDarkFieldCorrection)
+        self._widget.scanPar['GetFlat'].clicked.connect(self.execFlatFieldCorrection)
         self._widget.scanPar['LiveReconButton'].clicked.connect(self.updateLiveReconFlag)
-        self.updateLiveReconFlag()
 
         self._widget.scanPar['OptStepsEdit'].valueChanged.connect(self.updateOptSteps)
 
@@ -500,6 +507,7 @@ class ScanControllerOpt(ImConWidgetController):
                                        self.rotatorName,
                                        )
         self.optWorker.moveToThread(self.optThread)
+        self.updateLiveReconFlag()  # has to be after optWorker init
 
         # live recon, needs to be after worker init (not so elegant to put all
         # flags to the worker no?)
@@ -526,7 +534,7 @@ class ScanControllerOpt(ImConWidgetController):
         self.optWorker.sigScanDone.connect(self.postScanEnd)
         self.optWorker.sigNewSinogramDataPoint.connect(self.checkSinogramProgress)
         self.optWorker.sigUpdateReconIdx.connect(self.setLiveReconIdx)
-        self.optWorker.sigUpdateLiveReconPlot.connect(self.updateLiveReconPlot)
+        self.optWorker.sigNewLiveRecon.connect(self.updateLiveReconPlot)
 
         # Thread signals connection
         self.optThread.started.connect(lambda: self.optWorker.preStart(self.optSteps))
@@ -569,6 +577,7 @@ class ScanControllerOpt(ImConWidgetController):
             self._widget.setProgressBarMaximum(self.optSteps)
             self.optWorker.demoEnabled = True
         else:
+            self.optWorker.demoEnabled = False
             # Checking for divisability of motor steps and OPT steps.
             if self.stepsPerTurn % self.optSteps != 0:
                 # ask for confirmation
@@ -586,9 +595,10 @@ class ScanControllerOpt(ImConWidgetController):
                             endpoint=False,
                         ).astype(np.int_)
         self.optWorker.optSteps = optScanSteps
+        self.optWorker.timeMonitor.reinit()
 
         # live reconstruction
-        if self.isliveRecon:
+        if self.optWorker.isLiveRecon:
             self.getLiveReconIdx()
 
         # starting scan
@@ -767,9 +777,9 @@ class ScanControllerOpt(ImConWidgetController):
 
     def updateLiveReconFlag(self):
         """ Update live reconstruction flag based on the widget value """
-        self.liveRecon = self._widget.scanPar['LiveReconButton'].isChecked()
+        self.optWorker.isLiveRecon = self._widget.scanPar['LiveReconButton'].isChecked()
         # enable/disable live-recon index
-        self._widget.scanPar['LiveReconIdxEdit'].setEnabled(self.liveRecon)
+        self._widget.scanPar['LiveReconIdxEdit'].setEnabled(self.optWorker.isLiveRecon)
 
     def updateSaveFlag(self):
         """ Update saving flag from the widget value """
@@ -779,7 +789,7 @@ class ScanControllerOpt(ImConWidgetController):
         """ Update noRAM flag from the widget value """
         self.optWorker.noRAM = self._widget.scanPar['noRamButton'].isChecked()
 
-    def updateStabilityPlot(self, steps: list, intensity: List[list]):
+    def updateStabilityPlot(self, steps: list, intensity: Dict[str, list]):
         """ Update OPT stability plot from 4 corners of the stack via
         widget function.
 
@@ -799,119 +809,69 @@ class ScanControllerOpt(ImConWidgetController):
         Args:
             value (int): camera line index
         """
-        self._widget.setLiveReconIdx(value)  # triggers getLiveReconIdx via valuChage
+        self._widget.setLiveReconIdx(value)  # triggers getLiveReconIdx via valueChange
 
     ###################
     # Message windows #
     ###################
-    def exec_hot_pixels(self):
+    def execHotPixelCorrection(self):
         """
         Block camera message before acquisition of the dark-field counts,
-        used for identification of hot pixels. This is separate operation
-        from dark field correction.
-
-        Returns:
-            int: sys execution status.
+        used for identification of hot pixels. This acquires
+        the correction, but does not correct data.
         """
-        # these two are call repeatedly, TODO: refactor
         std_cutoff = self.getStdCutoff()
         averages = self.getAverages()
-        msg = QtWidgets.QMessageBox()
-        msg.setIcon(QtWidgets.QMessageBox.Information)
-        msg.setText("Block Camera")
-        text = f"Reinitialize camera with maximum exposure time possible.\
-            Saved frame is a frame averaged {averages}x. Hot pixels will \
-            be identified as intensity higher than {std_cutoff}x STD, and their count \
-            shown for reference"
-        msg.setInformativeText(" ".join(text.split()))
-        msg.setStandardButtons(
-            QtWidgets.QMessageBox.Ok | QtWidgets.QMessageBox.Cancel)
-        btn_measure = msg.button(QtWidgets.QMessageBox.Ok)
-        btn_measure.setText('Acquire with current setting?')
-        msg.buttonClicked.connect(
-            partial(
-                self.acquire_correction,
-                corr_type='hot_pixels',
-                n=averages))
-        retval = msg.exec_()
-        return retval
+        if not self.requestHotPixelConfirmation(averages, std_cutoff):
+            return
+        self.acquireCorrection('hot_pixels', averages)
 
-    def exec_dark_field(self):
+    def execDarkFieldCorrection(self):
         """
         Block camera message before acquisition of the dark-field
-        counts, used for identification of hot pixels. This is
-        separate operation from dark field correction.
-
-        Returns:
-            int: sys execution status.
+        counts, used for identification of hot pixels. This acquires
+        the correction, but does not correct data.
         """
         averages = self.getAverages()
-        msg = QtWidgets.QMessageBox()
-        msg.setIcon(QtWidgets.QMessageBox.Information)
-        msg.setText("Block Camera")
-        text = f"Acquire does {averages} averages at current exposure time.\
-            Exposure time MUST be the same as for the\
-            experiment you are going to perform."
-        msg.setInformativeText(" ".join(text.split()))
-        msg.setStandardButtons(
-            QtWidgets.QMessageBox.Ok | QtWidgets.QMessageBox.Cancel)
-        btn_measure = msg.button(QtWidgets.QMessageBox.Ok)
-        btn_measure.setText('Acquire NOW?')
-        msg.buttonClicked.connect(
-            partial(
-                self.acquire_correction,
-                corr_type='dark_field',
-                n=averages))
-        retval = msg.exec_()
-        return retval
+        if not self.requestDarkFieldConfirmation(averages):
+            return
+        self.acquireCorrection('dark_field', averages)
 
-    def exec_flat_field(self):
+    def execFlatFieldCorrection(self):
         """
         Instruction message for the bright-field correction. Exposure
         time should be the same as for the dark-field and subsequent
-        experiment. This is separate operation from bright-field correction.
-
-        Returns:
-            int: sys execution status.
+        experiment. This acquires the correction, but does not correct
+        the data.
         """
         averages = self.getAverages()
-        msg = QtWidgets.QMessageBox()
-        msg.setIcon(QtWidgets.QMessageBox.Information)
-        msg.setText("Unblock Camera")
-        text = "Only for transmission mode.\
-            You should have flat field illumination\
-            within the linear regime. Acquisition will\
-            perform 100x average at current exposure time.\
-            The same as for dark-field."
-        msg.setInformativeText(" ".join(text.split()))
-        msg.setStandardButtons(
-            QtWidgets.QMessageBox.Ok | QtWidgets.QMessageBox.Cancel)
-        btn_measure = msg.button(QtWidgets.QMessageBox.Ok)
-        btn_measure.setText('Acquire with current setting?')
-        msg.buttonClicked.connect(
-            partial(
-                self.acquire_correction,
-                corr_type='flat_field',
-                n=averages))
-        retval = msg.exec_()
-        return retval
-
-    def acquire_correction(self, btn, corr_type, n):
-        """ Handles correction acquisition, connects
-        display signal and calls getNframes(n)
-
-        Args:
-            btn (pyqtbutton): button which user pressed
-            corr_type (str): correction type selector
-            n (int): number of frames for correction averaging
-        """
-        if btn.text() == 'Cancel':
+        if not self.requestFlatFieldConfirmation(averages):
             return
+        self.acquireCorrection('flat_field', averages)
 
+    def requestHotPixelConfirmation(self, averages: int, cutoff: float):
+        text = f"Reinitialize camera with maximum exposure time possible.\
+            Saved frame is a frame averaged {averages}x. Hot pixels will \
+            be identified as intensity higher than {cutoff}x STD, and \
+            their count shown for reference"
+        return guitools.askYesNoQuestion(self._widget, "Confirm Hot-pixel acquisition.", " ".join(text.split()))
+
+    def requestDarkFieldConfirmation(self, averages: int):
+        text = f"Acquire does {averages} averages at current exposure time.\
+            Exposure time MUST be the same as for the\
+            experiment you are going to perform."
+        return guitools.askYesNoQuestion(self._widget, "Confirm Dark-field acquisition.", " ".join(text.split()))
+
+    def requestFlatFieldConfirmation(self, averages: int):
+        text = f"Only for transmission mode. You should have flat \
+            field illumination within the linear regime. Acquisition will\
+            perform {averages} averages at current exposure time.\
+            It should be the same number of averages as for the dark-field."
+        return guitools.askYesNoQuestion(self._widget, "Confirm Flat-field acquisition.", " ".join(text.split()))
+
+    def acquireCorrection(self, corr_type, n):
         self.sigImageReceived.connect(self.displayImage)
-        self.nFrames.connect(
-            partial(self._continue, corr_type=corr_type),
-            )
+        self.nFrames.connect(partial(self._continue, corr_type=corr_type))
         self.getNframes(n)
 
     def _continue(self, corr_type):
@@ -1022,18 +982,17 @@ class Stability:
 
     def __init__(self, n_pixels: int = 50) -> None:
         self.n_pixels = n_pixels  # rectangle size in pxs to monitor mean intensity at 4 corners
-        # TODO: DP, redo into a dictionary.
         self.clear()
 
     def clear(self):
         """Clear the variables between experiments. """
         self.steps = []
-        self.intensity = {'iUL': [],
-                          'iUR': [],
-                          'iLL': [],
-                          'iLR': []}
+        self.intensity = {'UL': [],
+                          'UR': [],
+                          'LL': [],
+                          'LR': []}
 
-    def processStabilityTraces(self, frame: np.ndarray, step: int) -> Tuple[list, Dict[List]]:
+    def processStabilityTraces(self, frame: np.ndarray, step: int) -> Tuple[list, Dict[str, List]]:
         """ Process the current frame's stability traces.
 
         Args:
@@ -1041,34 +1000,34 @@ class Stability:
             step (`int`): current OPT scan step index
 
         Returns:
-            Tuple[list, dict[list]]: list of presently executed OPT scan steps
+            Tuple[list, Dict[str, list]]: list of presently executed OPT scan steps
                 and dictionary of intensity traces for the four corners
         """
-        mean_corners = (
-            np.mean(frame[:self.n_pixels, :self.n_pixels]),    # iUL
-            np.mean(frame[:self.n_pixels, -self.n_pixels:]),   # IUR
-            np.mean(frame[-self.n_pixels:, :self.n_pixels]),   # iLL
-            np.mean(frame[-self.n_pixels:, -self.n_pixels:]),  # iLR
-            )
+        mean_corners = [
+            np.mean(frame[:self.n_pixels, :self.n_pixels]),    # UL
+            np.mean(frame[:self.n_pixels, -self.n_pixels:]),   # UR
+            np.mean(frame[-self.n_pixels:, :self.n_pixels]),   # LL
+            np.mean(frame[-self.n_pixels:, -self.n_pixels:]),  # LR
+        ]
 
         self.steps.append(step)
         if step == 0:
             # I append ones and save values as normalization factors
-            self.norm_factors = mean_corners.copy()
+            self.norm_factors = tuple(mean_corners)
             for i in self.intensity.keys():
                 self.intensity[i].append(1.)
         else:
             for i, key in enumerate(self.intensity.keys()):
-                self.intensity[key].append(mean_corners / self.norm_factors[i])
+                self.intensity[key].append(mean_corners[i] / self.norm_factors[i])
 
         return self.steps, self.intensity
 
 
 class FBPliveRecon():
     def __init__(self, line, steps: int) -> None:
-        """Init function already called with the first projection (line) which will
-        be reconstructed. This is because many preallocation methods depend on the
-        knowledge of line dimension.
+        """Init function already called with the first projection (line)
+        which will be reconstructed. This is because many preallocation
+        methods depend on the knowledge of line dimension.
 
         Args:
             line (np.array): single projection, i.e. slice of the sinogram.

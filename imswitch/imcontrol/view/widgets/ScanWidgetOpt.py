@@ -1,11 +1,10 @@
 from qtpy import QtCore, QtWidgets
 import numpy as np
 import pyqtgraph as pg
-import time
 
 from imswitch.imcontrol.view import guitools as guitools
 from .basewidgets import NapariHybridWidget
-from typing import List
+from typing import Dict, Tuple
 import matplotlib as mpl
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
@@ -17,9 +16,9 @@ class ScanWidgetOpt(NapariHybridWidget):
 
     sigRotStepDone = QtCore.Signal()
     sigRunScanClicked = QtCore.Signal()
-    # sigSetImage = QtCore.Signal()
 
     def __post_init__(self, *args, **kwargs):
+        """Define qwidgets for the widget. """
         self.grid = QtWidgets.QGridLayout()
         self.setLayout(self.grid)
         self.scanPar = {}
@@ -179,14 +178,14 @@ class ScanWidgetOpt(NapariHybridWidget):
         # self.grid.addWidget(self.scanPar['CurrentReconStepLabel'], currentRow, 1)
         self.grid.addWidget(self.scanPar['SaveButton'], currentRow, 1)
         self.grid.addWidget(self.scanPar['noRamButton'], currentRow, 2)
-        
+
         currentRow += 1
 
         # Start and Stop buttons
         self.grid.addWidget(self.scanPar['StartButton'], currentRow, 0)
         self.grid.addWidget(self.scanPar['StopButton'], currentRow, 1)
         self.grid.addWidget(self.scanPar['PlotReportButton'], currentRow, 2)
-        
+
         # Progress bar for synthetic data generation;
         # not visible by default, shown only when mock experiment is requested
         self.sinogramProgressBar = QtWidgets.QProgressBar(self)
@@ -195,7 +194,7 @@ class ScanWidgetOpt(NapariHybridWidget):
         self.sinogramProgressBar.setAlignment(QtCore.Qt.AlignCenter)
         self.sinogramProgressBar.setTextVisible(True)
         self.sinogramProgressBar.setVisible(False)
-        
+
         self.grid.addWidget(self.sinogramProgressBar, currentRow, 0, 1, -1)
 
         currentRow += 1
@@ -225,33 +224,92 @@ class ScanWidgetOpt(NapariHybridWidget):
         return self.scanPar['AveragesEdit'].value()
 
     def getLiveReconIdx(self) -> int:
+        """ Returns live reconstruction idex, i.e. line idex of the
+        camera frame.
+
+        Returns:
+            int: line index to be reconstructed
+        """
         return self.scanPar['LiveReconIdxEdit'].value()
 
     def setLiveReconIdx(self, value: int) -> None:
+        """Set reconstruction index. Called in the case that user
+        chooses index which is incompatible with the frame shape
+
+        Args:
+            value (int): line index value
+        """
         self.scanPar['LiveReconIdxEdit'].setValue(int(value))
 
-    def updateHotPixelCount(self, count):
+    def updateHotPixelCount(self, count: int):
+        """ Displays count of the identified hot pixels.
+
+        Args:
+            count (int): hot pixel count
+        """
         self.scanPar['HotPixelCount'].setText(f'Count: {count:d}')
 
-    def updateHotPixelMean(self, value):
+    def updateHotPixelMean(self, value: float):
+        """Mean intensity of the hot pixels. Used only for display
+        (informative) purposes.
+
+        Args:
+            value (float): Mean intensity of the hot pixels.
+        """
         self.scanPar['HotPixelMean'].setText(f'Hot mean: {value:.3f}')
 
-    def updateNonHotPixelMean(self, value):
+    def updateNonHotPixelMean(self, value: float):
+        """Mean intensity of non-hot pixels. Used only for display
+        (informative) purposes.
+
+        Args:
+            value (float): mean intensity of non-hot pixels.
+        """
         self.scanPar['NonHotPixelMean'].setText(f'Non-hot mean: {value:.3f}')
 
-    def updateDarkMean(self, value):
+    def updateDarkMean(self, value: float):
+        """Mean intensity of the dark field acquisition. Used only for
+        display (informative) purposes.
+
+        Args:
+            value (float): mean dark field correction intensity.
+        """
         self.scanPar['DarkMean'].setText(f'Dark mean: {value:.2f}')
 
-    def updateDarkStd(self, value):
+    def updateDarkStd(self, value: float):
+        """Standart deviation of the dark field correction. Used only
+        for display (informative) purposes.
+
+        Args:
+            value (float): STD of the darkfield correction.
+        """
         self.scanPar['DarkStd'].setText(f'Dark STD: {value:.2f}')
 
-    def updateFlatMean(self, value):
+    def updateFlatMean(self, value: float):
+        """Mean intensity of the flat (bright) field correction. Used only
+        for display (informative) purposes.
+
+        Args:
+            value (float): Mean flat-field intensity
+        """
         self.scanPar['FlatMean'].setText(f'Flat mean: {value:.2f}')
 
-    def updateFlatStd(self, value):
+    def updateFlatStd(self, value: float):
+        """Standard deviation fo the flat/bright field correction. Used only
+        for display (informative) purposes.
+
+        Args:
+            value (float): STD of the flat field correction.
+        """
         self.scanPar['FlatStd'].setText(f'Flat STD: {value:.2f}')
 
-    def updateCurrentStep(self, value='-'):
+    def updateCurrentStep(self, value: str = '-'):
+        """Updates text in the widget of current OPT step counter
+
+        Args:
+            value (str, optional): Current step counter. Numbers converted
+                to string. Defaults to '-'.
+        """
         self.scanPar['CurrentStepLabel'].setText(
             f'Current Step: {value}/{self.getOptSteps()}'
         )
@@ -267,19 +325,52 @@ class ScanWidgetOpt(NapariHybridWidget):
         self.scanPar['OptStepsEdit'].setEnabled(enabled)
 
     def setProgressBarValue(self, value: int) -> None:
+        """Update progressbar
+
+        Args:
+            value (int): value of frames generated so far.
+        """
         self.sinogramProgressBar.setValue(value)
 
     def setProgressBarVisible(self, visible: bool) -> None:
+        """Toggle visibility of the progress Bar.
+
+        Args:
+            visible (bool): whether bar visible.
+        """
         self.sinogramProgressBar.setVisible(visible)
 
     def setProgressBarMaximum(self, value: int) -> None:
+        """Maximum value of the progress bar.
+
+        Args:
+            value (int): number of frames, i.e. OPT steps.
+        """
         self.sinogramProgressBar.setMaximum(value)
 
-    def setImage(self, im, colormap="gray", name="",
-                 pixelsize=(1, 20, 20), translation=(0, 0, 0), step=0):
+    def setImage(self, im: np.ndarray, colormap: str = "gray",
+                 name: str = "", pixelsize: Tuple[int] = (1, 20, 20),
+                 translation: Tuple[int] = (0, 0, 0), step: int = 0):
+        """Display image or stack of images in the napari viewer. It
+        deal with 2D and 3D arrays. For a 3D array, last added frame will
+        displayed using viewer.dims attribute.
+
+        Args:
+            im (np.ndarray): image frames
+            colormap (str, optional): napari colormap. Defaults to "gray".
+            name (str, optional): Name of the layer. Defaults to "".
+            pixelsize (Tuple[int], optional): napari pixel size attr.
+                Defaults to (1, 20, 20).
+            translation (Tuple[int], optional): frame translation, napari attr.
+                Defaults to (0, 0, 0).
+            step (int, optional): Frame step, in order to display the last one.
+                Defaults to 0.
+        """
+        # handle 2D input
         if len(im.shape) == 2:
             translation = (translation[0], translation[1])
 
+        # create new layer if necessary
         if self.layer is None or name not in self.viewer.layers:
             self.layer = self.viewer.add_image(im, rgb=False,
                                                colormap=colormap,
@@ -287,27 +378,39 @@ class ScanWidgetOpt(NapariHybridWidget):
                                                translate=translation,
                                                name=name,
                                                blending='translucent')
+
+        # add images
         self.layer.data = im
         self.layer.contrast_limits = (np.min(im), np.max(im))
+
+        # display last frame
         try:
             self.viewer.dims.current_step = (step, im.shape[1], im.shape[2])
         except Exception as e:
-            print('Except from dims', e)
+            print('Except from viewer.dims', e)
 
     def clearStabilityPlot(self) -> None:
+        """ Removes lines from the stability plot before updating the plot. """
         self.intensityPlot.clear()
 
-    def updateStabilityPlot(self, steps: list, intensity: List[list]):
+    def updateStabilityPlot(self, steps: list, intensity: Dict[str, list]):
+        """Updates widget plot with new stability line plots.
+
+        Args:
+            steps (list): x axis of the plot, basically OPT steps
+            intensity (Dict[list]): Mean intensity values from 4
+                corners of the frame. One list per corner.
+        """
         self.intensityPlot.clear()
         self.intensityPlot.addLegend()
 
         colors = ['w', 'r', 'g', 'b']
-        labels = ['UL', 'UR', 'LL', 'LR']
-        for i in range(4):
+        # iterate over 
+        for i, (key, trace) in enumerate(intensity.items()):
             self.intensityPlot.plot(
                 steps,
-                intensity[i],
-                name=labels[i],
+                trace,
+                name=key,
                 pen=pg.mkPen(colors[i], width=1.5),
             )
 
@@ -325,11 +428,13 @@ class ScanWidgetOpt(NapariHybridWidget):
     def requestOptStepsConfirmation(self):
         text = "Steps per/rev should be divisable by number of OPT steps. \
                 You can continue by casting the steps on integers and risk \
-                imprecise measured angles. Or cancel scan."
+                imprecise measured angles. Cast on integers and proceed (Yes) \
+                or cancel scan (No)."
         return guitools.askYesNoQuestion(self, "Motor steps not integer values.", " ".join(text.split()))
 
     def requestMockConfirmation(self):
-        text = "A mock experiment with synthetic generated data has been requested. Confirm?"
+        text = "A mock experiment with synthetic generated data has been \
+                requested. Confirm?"
         return guitools.askYesNoQuestion(self, "Mock OPT is about to run.", " ".join(text.split()))
 
 

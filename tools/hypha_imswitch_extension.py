@@ -97,6 +97,7 @@ async def get_schema():
         "zero_stage": ZeroStage.schema(),
         "move_to_position": MoveToPositionInput.schema(),
         "set_illumination": SetIlluminationInput.schema(),
+
     }
 
 chatbot_extension = {

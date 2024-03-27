@@ -90,7 +90,7 @@ class HyphaController(LiveUpdatedController):
         # Schedule the async setup on the event loop
         self.asyncio_thread_start()
 
-    async def async_start_service(self, server_url="https://ai.imjoy.io/", workspace=None, token=None):
+    async def async_start_service(self, server_url="https://chat.bioimage.io", workspace=None, token=None):
         
         try:
             self.__logger.debug(f"Starting service...")

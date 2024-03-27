@@ -64,7 +64,7 @@ class FlowStopController(LiveUpdatedController):
             
         # start thread if it was funning 
         if self.wasRunning:
-            timeStamp = datetime.now().strftime("%Y_%m_%d-%I-%M-%S_%p")
+            timeStamp = datetime.datetime.now().strftime("%Y_%m_%d-%I-%M-%S_%p")
             experimentName = self.defaultExperimentName
             experimentDescription = ""
             uniqueId = np.random.randint(0, 2**16)

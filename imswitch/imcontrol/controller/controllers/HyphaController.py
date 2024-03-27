@@ -13,10 +13,10 @@ import os
 import uuid
 import fractions
 import tifffile as tif
-
 import numpy as np
 from av import VideoFrame
 from imjoy_rpc.hypha.sync import connect_to_server, register_rtc_service
+from imjoy_rpc.hypha import connect_to_server, login
 import aiortc
 from aiortc import MediaStreamTrack, RTCPeerConnection, RTCSessionDescription, RTCConfiguration
 from imswitch.imcommon.framework import Signal, Thread, Worker, Mutex
@@ -48,18 +48,6 @@ pcs = set()
 relay = None
 webcam = None
 
-
-class AsyncioThread(QThread):
-    started = pyqtSignal()
-
-    def __init__(self, loop):
-        super().__init__()
-        self.loop = loop
-
-    def run(self):
-        asyncio.set_event_loop(self.loop)
-        self.started.emit()
-        self.loop.run_forever()
 
 class HyphaController(LiveUpdatedController):
     """ Linked to HyphaWidget."""
@@ -95,25 +83,130 @@ class HyphaController(LiveUpdatedController):
         self.detector_names = self._master.detectorsManager.getAllDeviceNames()
         self.detector = self._master.detectorsManager[self.detector_names[0]]
 
-        # start the service
-        self.start_asyncio_thread(server_url, service_id)
+        # wrap the extension
+        self.chatbot_extension = self.getExtensionDefinition()
+        
+        # Schedule the async setup on the event loop
+        self.asyncio_thread_start()
+
+    async def async_start_service(self, server_url="https://ai.imjoy.io/", workspace=None, token=None):
+        
+        try:
+            self.__logger.debug(f"Starting service...")
+            token = await login({"server_url": server_url})
+            server = await connect_to_server({"server_url": server_url, "token": token})
+            svc = await server.register_service(self.chatbot_extension)
+            print(f"Extension service registered with id: {svc.id}, you can visit the service at: {server_url}/public/apps/bioimageio-chatbot-client/chat?extension={svc.id}")
+            '''
+            loop.run_until_complete(server.register_service(
+                {
+                    "id": "microscope-control",
+                    "name": "openUC2 Microscope",
+                    "description": "OpenUC2 Microscope Interface: Precise control over openuc2 microscope.",# Monochrome camera, laser, LED matrix, focusing stage, XY stage. Easy sample manipulation, accurate autofocus, fluorescence microscopy. LED matrix enhances phase contrast. High-quality grayscale imaging. Unparalleled precision.",
+                    "config":{
+                        "visibility": "public",
+                        "run_in_executor": True,
+                        "require_context": True,
+                    },
+                    "type": "microscope",
+                    "move": self.setPosition,
+                    "setLaserActive": self.setLaserActive,
+                    "setLaserValue": self.setLaserValue,
+                    "setLEDValue": self.setLEDValue,
+                    "getImage": self.getImage, 
+                    "getProcessedImages": self.getProcessedImages
+                }
+            ))
+            self.__logger.debug(f"Extension service registered with id: {svc.id}, you can visit the service at: {server_url}/public/apps/bioimageio-chatbot-client/chat?extension={svc.id}")
+            coturn = loop.run_until_complete(server.get_service("coturn"))
+            ice_servers = loop.run_until_complete(coturn.get_rtc_ice_servers())
+            register_rtc_service(
+                server,
+                service_id=service_id,
+                config={
+                    "visibility": "public",
+                    "ice_servers": ice_servers,
+                    "on_init": self.on_init,
+                },
+            )
+            self.__logger.debug(
+                f"Service (client_id={client_id}, service_id={service_id}) started successfully, available at https://ai.imjoy.io/{server.config.workspace}/services"
+            )
+            self.__logger.debug(f"You can access the webrtc stream at https://oeway.github.io/webrtc-hypha-demo/?service_id={service_id}")
+            '''
+        except Exception as e:
+            print(f"Failed to register extension: {e}")
+
+    def asyncio_thread_start(self):
+        # Perform any necessary setup after the asyncio thread has started
+        # Connect to the server and start the service
+        if 0:
+            # this doesn't launch anything
+            loop = asyncio.get_event_loop()
+            loop.create_task(self.async_start_service())
+        else:
+            #this results in an error with the chatbot - maybe the service dies before it connects to the website?
+            asyncio.run(self.async_start_service())
+        
+    def getExtensionDefinition(self):
+            return {
+            "_rintf": True,
+            "type": "bioimageio-chatbot-extension",
+            "id": "UC2_microscope",
+            "name": "UC2 Microscope Control",
+            "description": "Control the microscope based on the user's request. Now you can move the microscope stage, and snap an image.",
+            "get_schema": self.get_schema,
+            "tools": {
+                "move_by_distance": self.move_stage_by_distance,
+                "snap_image": self.snap_image,
+                "home_stage": self.home_stage,
+                "zero_stage": self.zero_stage,
+                "move_to_position": self.move_to_position,
+                "set_illumination": self.set_illumination,
+            }
+        }
+
+
+    async def move_stage_by_distance(self, kwargs):
+        config = MoveByDistanceInput(**kwargs)
+        #squid_svc.move_by_distance(config.x, config.y, config.z)
+        print(config.x, config.y, config.z)
+        return "Moved the stage!"
+
+    async def home_stage(self, kwargs):
+        config = HomeStage(**kwargs)
+        ##squid_svc.home_z()
+        ##squid_svc.home_x()
+        ##squid_svc.home_y()
+        return "Homed the stage!"
+
+    async def zero_stage(self, kwargs):
+        config = ZeroStage(**kwargs)
+        ##squid_svc.zero_z()
+        ##squid_svc.zero_x()
+        ##squid_svc.zero_y()
+        return "Zeroed the stage!"
+
+    async def move_to_position(self, kwargs):
+        config = MoveToPositionInput(**kwargs)
+        ##squid_svc.move_to_position(config.x, config.y, config.z)
+        return "Moved the stage to the specified position!"
+
+    async def set_illumination(self, kwargs):
+        config = SetIlluminationInput(**kwargs)
+        ##squid_svc.set_illumination(config.channel, config.intensity)
+        return "Set the illumination!"
+
+    async def snap_image(self, kwargs):
+        config = SnapImageInput(**kwargs)
+        import numpy as np
+        squid_image = np.random.randnint(0, 255, (512, 512))
+        #squid_image = await #squid_svc.snap()
+        return "Here is the image"
 
     def update(self, detectorName, im, init, isCurrentDetector):
         """ Update with new detector frame. """
         pass
-
-    def start_asyncio_thread(self, server_url, service_id):
-        loop = asyncio.get_event_loop()
-        self.asyncio_thread = AsyncioThread(loop)
-        self.asyncio_thread.started.connect(self.on_asyncio_thread_started)
-        self.asyncio_thread.start()
-
-    def on_asyncio_thread_started(self):
-        # Perform any necessary setup after the asyncio thread has started
-        # Connect to the server and start the service
-        service_id="aiortc-demo"
-        logging.basicConfig(level=logging.DEBUG)
-        self.start_service(service_id)
 
     async def on_shutdown(self, app):
         # close peer connections
@@ -323,52 +416,15 @@ class HyphaController(LiveUpdatedController):
         self._logger.debug(f"Moving stage to {value} along {axis}")
         self.stages.move(value=value, axis=axis, is_absolute=is_absolute, is_blocking=is_blocking)
 
-    def start_service(self, service_id, server_url="https://ai.imjoy.io/", workspace=None, token=None):
-        client_id = service_id + "-client"
-        self.__logger.debug(f"Starting service...")
-        server = connect_to_server(
-            {
-                "client_id": client_id,
-                "server_url": server_url,
-                "workspace": workspace,
-                "token": token,
-            }
-        )
-        server.register_service(
-            {
-                "id": "microscope-control",
-                "name": "openUC2 Microscope",
-                "description": "OpenUC2 Microscope Interface: Precise control over openuc2 microscope.",# Monochrome camera, laser, LED matrix, focusing stage, XY stage. Easy sample manipulation, accurate autofocus, fluorescence microscopy. LED matrix enhances phase contrast. High-quality grayscale imaging. Unparalleled precision.",
-                "config":{
-                    "visibility": "public",
-                    "run_in_executor": True,
-                    "require_context": True,
-                },
-                "type": "microscope",
-                "move": self.setPosition,
-                "setLaserActive": self.setLaserActive,
-                "setLaserValue": self.setLaserValue,
-                "setLEDValue": self.setLEDValue,
-                "getImage": self.getImage, 
-                "getProcessedImages": self.getProcessedImages
-            }
-        )
-        # print("Workspace: ", workspace, "Token:", await server.generate_token({"expires_in": 3600*24*100}))
-        coturn = server.get_service("coturn")
-        ice_servers = coturn.get_rtc_ice_servers()
-        register_rtc_service(
-            server,
-            service_id=service_id,
-            config={
-                "visibility": "public",
-                "ice_servers": ice_servers,
-                "on_init": self.on_init,
-            },
-        )
-        self.__logger.debug(
-            f"Service (client_id={client_id}, service_id={service_id}) started successfully, available at https://ai.imjoy.io/{server.config.workspace}/services"
-        )
-        self.__logger.debug(f"You can access the webrtc stream at https://oeway.github.io/webrtc-hypha-demo/?service_id={service_id}")
+    def get_schema(self):
+        return {
+            "move_by_distance": MoveByDistanceInput.schema(),
+            "snap_image": SnapImageInput.schema(),
+            "home_stage": HomeStage.schema(),
+            "zero_stage": ZeroStage.schema(),
+            "move_to_position": MoveToPositionInput.schema(),
+            "set_illumination": SetIlluminationInput.schema(),
+        }
 
 
 

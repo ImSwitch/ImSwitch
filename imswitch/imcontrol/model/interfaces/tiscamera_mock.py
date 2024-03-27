@@ -19,7 +19,7 @@ class MockCameraTIS:
             'pixelSize': 1
         }
         if mocktype is None:
-            self.mocktype = "default"
+            self.mocktype = "normal"
         else:
             self.mocktype = mocktype
         
@@ -148,8 +148,12 @@ class MockCameraTIS:
         elif self.mocktype=="OffAxisHolo":
             img = self.holo_intensity_image
             self.iFrame+=1
-        elif self.mocktype=="default":
-            img = np.random.randint(0, 255, (self.SensorHeight, self.SensorWidth)).astype('uint8')
+        elif self.mocktype=="normal":
+            img = np.zeros((self.SensorHeight, self.SensorWidth)).astype('uint8')
+            indices = np.random.randint(0, self.SensorHeight*self.SensorWidth, 1000)
+            # Convert the flat indices to 2D indices
+            indices_2d = np.unravel_index(indices, (self.SensorHeight, self.SensorWidth))
+            img[indices_2d] = np.random.randint(0,255,1000)
         else:
             img = np.zeros((self.SensorHeight, self.SensorWidth))
             beamCenter = [int(np.random.randn() * 30 + 250), int(np.random.randn() * 30 + 300)]

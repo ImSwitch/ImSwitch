@@ -258,6 +258,10 @@ class HistoScanInfo:
     pass
 
 @dataclass(frozen=True)
+class FlowStopInfo:
+    pass
+
+@dataclass(frozen=True)
 class FlatfieldInfo:
     pass
 
@@ -514,6 +518,9 @@ class SetupInfo:
 
     HistoScan: Optional[HistoScanInfo] = field(default_factory=lambda: None)
     """ HistoScan settings. Required to be defined to use HistoScan functionality. """
+
+    FlowStop:  Optional[FlowStopInfo] = field(default_factory=lambda: None)
+    """ FlowStop settings. Required to be defined to use FlowStop functionality. """
 
     Flatfield: Optional[FlatfieldInfo] = field(default_factory=lambda: None)
     """ Flatfield settings. Required to be defined to use Flatfield functionality. """

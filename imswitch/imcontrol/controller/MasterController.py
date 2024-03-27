@@ -3,7 +3,8 @@ from imswitch.imcontrol.model import (
     DetectorsManager, LasersManager, MultiManager, PositionersManager,
     RecordingManager, RS232sManager, SLMManager, SIMManager, DPCManager, LEDMatrixsManager, MCTManager, ROIScanManager, MockXXManager, WebRTCManager, HyphaManager,
     ISMManager, UC2ConfigManager, AutofocusManager, HistoScanManager, PixelCalibrationManager, LightsheetManager, NidaqManager, FOVLockManager,
-    StandManager, RotatorsManager, JetsonNanoManager, LEDsManager, ScanManagerBase, ScanManagerPointScan, ScanManagerMoNaLISA, FlatfieldManager
+    StandManager, RotatorsManager, JetsonNanoManager, LEDsManager, ScanManagerBase, ScanManagerPointScan, ScanManagerMoNaLISA, FlatfieldManager, 
+    FlowStopManager
 )
 
 
@@ -53,11 +54,13 @@ class MasterController:
         self.MockXXManager = MockXXManager(self.__setupInfo.mockxx)
         self.jetsonnanoManager = JetsonNanoManager(self.__setupInfo.jetsonnano)
         self.HistoScanManager = HistoScanManager(self.__setupInfo.HistoScan)
+        self.FlowStopManager = FlowStopManager(self.__setupInfo.FlowStop)
         self.FlatfieldManager = FlatfieldManager(self.__setupInfo.Flatfield)
         self.PixelCalibrationManager = PixelCalibrationManager(self.__setupInfo.PixelCalibration)
         self.AutoFocusManager = AutofocusManager(self.__setupInfo.autofocus)
         self.FOVLockManager = FOVLockManager(self.__setupInfo.fovLock)
         self.ismManager = ISMManager(self.__setupInfo.ism)
+        # TODO: Need to add a way to integrate the Plugin MAnagers
 
         if self.__setupInfo.microscopeStand:
             self.standManager = StandManager(self.__setupInfo.microscopeStand,

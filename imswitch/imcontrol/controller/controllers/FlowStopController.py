@@ -6,8 +6,7 @@ try:
 except:
     isNIP = False
 import time
-import threading
-import collections
+import os
 from imswitch.imcommon.model import dirtools, modulesconfigtools, ostools, APIExport
 from imswitch.imcommon.framework import Signal, Worker, Mutex, Timer
 from imswitch.imcontrol.view import guitools
@@ -25,7 +24,19 @@ class FlowStopController(LiveUpdatedController):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._logger = initLogger(self, tryInheritParent=False)
-
+        
+        # load from config file in User/Documents/ImSwitchConfig
+        self.wasRunning = self._master.FlowStopManager.defaultConfig["wasRunning"]
+        self.defaultFlowRate = self._master.FlowStopManager.defaultConfig["defaultFlowRate"]
+        self.defaultNumberOfFrames = self._master.FlowStopManager.defaultConfig["defaultNumberOfFrames"]
+        self.defaultExperimentName = self._master.FlowStopManager.defaultConfig["defaultExperimentName"]
+        self.defaultFrameRate = self._master.FlowStopManager.defaultConfig["defaultFrameRate"]
+        self.defaultSavePath = self._master.FlowStopManager.defaultConfig["defaultSavePath"]
+        self.pumpAxis = self._master.FlowStopManager.defaultConfig["defaultAxisFlow"]
+        self.focusAxis = self._master.FlowStopManager.defaultConfig["defaultAxisFocus"]
+        self.defaultDelayTimeAfterRestart = self._master.FlowStopManager.defaultConfig["defaultDelayTimeAfterRestart"]
+        self.tSettle = 0.05
+        
         # select detectors
         allDetectorNames = self._master.detectorsManager.getAllDeviceNames()
         self.detectorFlowCam = allDetectorNames[0]
@@ -33,9 +44,7 @@ class FlowStopController(LiveUpdatedController):
         # connect camera and stage
         self.positionerName = self._master.positionersManager.getAllDeviceNames()[0]
         self.positioner = self._master.positionersManager[self.positionerName]
-        # self.imageComputationWorker.setPositioner(self.positioner)
-        self.pumpAxis = 'Y'
-        self.focusAxis = 'Z'
+
         # Connect FlowStopWidget signals
         if not imswitch.IS_HEADLESS:
             # Connect CommunicationChannel signals
@@ -47,14 +56,28 @@ class FlowStopController(LiveUpdatedController):
             self._widget.sigGainChanged.connect(self.changeGain)
             self._widget.sigPumpDirectionToggled.connect(self.changePumpDirection)
 
-
             # Connect buttons
             self._widget.buttonStart.clicked.connect(self.startFlowStopExperimentByButton)
             self._widget.buttonStop.clicked.connect(self.stopFlowStopExperimentByButton)
             self._widget.pumpMovePosButton.clicked.connect(self.movePumpPos)
             self._widget.pumpMoveNegButton.clicked.connect(self.movePumpNeg)
-            # start measurment thread (pressure)
-
+            
+        # start thread if it was funning 
+        if self.wasRunning:
+            timeStamp = datetime.now().strftime("%Y_%m_%d-%I-%M-%S_%p")
+            experimentName = self.defaultExperimentName
+            experimentDescription = ""
+            uniqueId = np.random.randint(0, 2**16)
+            numImages = self.defaultNumberOfFrames
+            volumePerImage = self.defaultFlowRate
+            timeToStabilize = self.tSettle
+            delayToStart = self.defaultDelayTimeAfterRestart
+            frameRate = self.defaultFrameRate
+            filePath = self.defaultSavePath
+            self.startFlowStopExperiment(timeStamp, experimentName, experimentDescription, 
+                                         uniqueId, numImages, volumePerImage, timeToStabilize, delayToStart, 
+                                         frameRate, filePath)
+            
     def startFlowStopExperimentByButton(self):
         """ Start FlowStop experiment. """
         self.is_measure=True
@@ -88,9 +111,15 @@ class FlowStopController(LiveUpdatedController):
         return self.is_measure, self.imagesTaken
 
     @APIExport(runOnUIThread=True)
-    def startFlowStopExperiment(self, timeStamp: str, experimentName: str, experimentDescription: str, uniqueId: str, numImages: int, volumePerImage: float, timeToStabilize: float):
+    def startFlowStopExperiment(self, timeStamp: str, experimentName: str, experimentDescription: str, 
+                                uniqueId: str, numImages: int, volumePerImage: float, timeToStabilize: float, 
+                                delayToStart: float=1, frameRate: float=1, filePath: str="./"):
         """ Start FlowStop experiment. """
-        self.thread = Thread(target=self.flowExperimentThread, name="FlowStopExperiment", args=(timeStamp, experimentName, experimentDescription, uniqueId, numImages, volumePerImage, timeToStabilize))
+        self.thread = Thread(target=self.flowExperimentThread, 
+                             name="FlowStopExperiment", 
+                             args=(timeStamp, experimentName, experimentDescription, 
+                                   uniqueId, numImages, volumePerImage, timeToStabilize,
+                                   delayToStart, frameRate, filePath))
         self.thread.start()
 
     def stopFlowStopExperimentByButton(self):
@@ -111,7 +140,11 @@ class FlowStopController(LiveUpdatedController):
             self._widget.buttonStart.setStyleSheet("background-color: green")
 
 
-    def flowExperimentThread(self, timeStamp: str, experimentName: str, experimentDescription: str, uniqueId: str, numImages: int, volumePerImage: float, timeToStabilize: float):
+    def flowExperimentThread(self, timeStamp: str, experimentName: str, 
+                             experimentDescription: str, uniqueId: str, 
+                             numImages: int, volumePerImage: float, 
+                             timeToStabilize: float, delayToStart: float=0, 
+                             frameRate: float=1, filePath:str="./"):
         ''' FlowStop experiment thread.
         The device captures images periodically by moving the pump at n-steps / ml, waits for a certain time
         and then moves on to the next step. The experiment is stopped when the user presses the stop button or
@@ -120,8 +153,18 @@ class FlowStopController(LiveUpdatedController):
         User supplied parameters:
 
         '''
+        self._logger.debug("Starting the FlowStop experiment thread in {delayToStart} seconds.")
+        time.sleep(delayToStart)
         self.is_measure = True
-        for i in range(numImages):
+        if numImages < 0: numImages = np.inf
+        self.imagesTaken = 0
+        dirPath  = os.path.join(dirtools.UserFileDirs.Root, 'recordings', timeStamp)
+        if not os.path.exists(dirPath):
+            os.makedirs(dirPath)
+        while True:
+            currentTime = time.time()
+            self.imagesTaken += 1
+            if self.imagesTaken > numImages: break
             if self.is_measure:
                 stepsToMove = volumePerImage
                 self.positioner.move(value=stepsToMove, speed=1000, axis=self.pumpAxis, is_absolute=False, is_blocking=True)
@@ -136,13 +179,18 @@ class FlowStopController(LiveUpdatedController):
                     'timeToStabilize': timeToStabilize,
                 }
                 self.setSharedAttr('FlowStop', _metaDataAttr, metaData)
-                mFileName = f'{timeStamp}_{experimentName}_{uniqueId}_{i}'
-                self.snapImageFlowCam(mFileName, metaData)
-                time.sleep(timeToStabilize)
-                self.imagesTaken = i
+                
 
+                # save image                    
+                mFileName = f'{timeStamp}_{experimentName}_{uniqueId}_{self.imagesTaken}'
+                mFilePath = os.path.join(dirPath, mFileName)
+                self.snapImageFlowCam(mFilePath, metaData)
+                
+                # maintain framerate
+                while (time.time()-currentTime)<(1/frameRate):
+                    time.sleep(0.05)
                 if not imswitch.IS_HEADLESS:
-                    self._widget.labelStatusValue.setText(f'Running: {i+1}/{numImages}')
+                    self._widget.labelStatusValue.setText(f'Running: {self.imagesTaken+1}/{numImages}')
             else:
                 break
 

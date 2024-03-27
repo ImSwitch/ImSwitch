@@ -68,8 +68,7 @@ class ImConMainController(MainController):
                         packageController = entry_point.load()
                         self.controllers[widgetKey] = self.__factory.createController(packageController, widget)
                         break
-                self.__logger.debug(e)
-                raise ValueError(f'No controller found for widget {widgetKey}')
+                raise ValueError(f'No controller found for widget {widgetKey} with error {e}')
         # Generate API
         self.__api = None
         apiObjs = list(self.controllers.values()) + [self.__commChannel]

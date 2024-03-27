@@ -50,40 +50,11 @@ class SIMManager(SignalInterface):
         self.fastAPISIMParams = {"host":fastAPISIM_host, "port":fastAPISIM_port}
         self.isFastAPISIM = self.__simInfo.isFastAPISIM
 
-    def loadPatterns(self, patternsDir, filetype="bmp"):
-        # sort filenames numerically
-        allPatterns = []
-        allPatternsPerWavelength = []
-        for iPatternDir in patternsDir:
-            allPatternPaths = sorted(glob.glob(os.path.join(iPatternDir, "*."+filetype)))
-            for iPatternPath in allPatternPaths:
-                mImage = cv2.imread(iPatternPath)
-                mImage = cv2.cvtColor(mImage, cv2.COLOR_BGR2GRAY)
-
-                allPatternsPerWavelength.append(mImage)
-            allPatterns.append(allPatternsPerWavelength)
-                
-        return allPatterns
-        
-        
-    def saveState(self, state_general=None, state_pos=None, state_aber=None):
-        if state_general is not None:
-            self.state_general = state_general
-        if state_pos is not None:
-            self.state_pos = state_pos
-        if state_aber is not None:
-            self.state_aber = state_aber
 
     def update(self):
-        #self.allPatternsPaths
-        #self.maskDouble = self.__masks[0].concat(self.__masks[1])
-        #self.maskCombined = self.maskDouble 
-        #self.sigSIMMaskUpdated.emit(self.maskCombined)
+        pass
 
-        #returnmask = self.maskDouble 
-        return None #returnmask.image()
-
-# Copyright (C) 2020-2023 ImSwitch developers
+# Copyright (C) 2020-2024 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

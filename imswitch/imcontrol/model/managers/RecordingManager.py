@@ -123,6 +123,8 @@ class PNGStorer(Storer):
             #with AsTemporayFile(f'{self.filepath}_{channel}.png') as path:
             path = f'{self.filepath}_{channel}.png'
             # if image is BW only, we have to convert it to RGB
+            if image.dtype == np.float32 or image.dtype == np.float64:
+                image = cv2.convertScaleAbs(image)
             if image.ndim == 2:
                 image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
             cv2.imwrite(path, image)

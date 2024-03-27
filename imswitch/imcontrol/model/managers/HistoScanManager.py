@@ -16,7 +16,6 @@ from imswitch.imcommon.model import initLogger
 
 
 class HistoScanManager(SignalInterface):
-    sigHistoScanMaskUpdated = Signal(object)  # (maskCombined)
 
     def __init__(self, HistoScanInfo, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -39,16 +38,13 @@ class HistoScanManager(SignalInterface):
             self.offsetX = 0
             self.offsetY = 0
 
-        self.update()
-
+        
     def writeConfig(self, data):
         with open(os.path.join(self.defaultConfigPath, self.histoConfigFilename), "w") as outfile:
             json.dump(data, outfile, indent=4)
 
-    
-
     def update(self):
-        return None #returnmask.image()
+        return None
 
 # Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.

@@ -19,11 +19,13 @@ def main():
         enabledModuleIds = modulesconfigtools.getEnabledModuleIds()
 
         if 'imscripting' in enabledModuleIds and not imswitch.IS_HEADLESS:
-            # Ensure th at imscripting is added last
-
+            # Ensure that imscripting is added last
             enabledModuleIds.append(enabledModuleIds.pop(enabledModuleIds.index('imscripting')))
 
-
+        if 'imnotebook' in enabledModuleIds and not imswitch.IS_HEADLESS:
+            # Ensure that imnotebook is added last
+            enabledModuleIds.append(enabledModuleIds.pop(enabledModuleIds.index('imnotebook')))
+            
         modulePkgs = [importlib.import_module(pythontools.joinModulePath('imswitch', moduleId))
                     for moduleId in enabledModuleIds]
 

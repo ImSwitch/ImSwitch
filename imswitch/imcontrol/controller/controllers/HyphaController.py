@@ -13,10 +13,10 @@ import os
 import uuid
 import fractions
 import tifffile as tif
+
 import numpy as np
 from av import VideoFrame
-from imjoy_rpc.hypha.sync import connect_to_server, register_rtc_service
-from imjoy_rpc.hypha import connect_to_server, login
+from imjoy_rpc.hypha.sync import connect_to_server, register_rtc_service, login
 import aiortc
 from aiortc import MediaStreamTrack, RTCPeerConnection, RTCSessionDescription, RTCConfiguration
 from imswitch.imcommon.framework import Signal, Thread, Worker, Mutex
@@ -24,7 +24,6 @@ from imswitch.imcontrol.view import guitools
 from imswitch.imcommon.model import initLogger
 from ..basecontrollers import LiveUpdatedController
 from PyQt5.QtCore import QThread, pyqtSignal
-from pydantic import BaseModel, Field
 
 import asyncio
 import logging
@@ -40,6 +39,7 @@ from aiortc.rtcrtpsender import RTCRtpSender
 from av import VideoFrame
 import fractions
 import numpy as np
+from pydantic import BaseModel, Field
 
 ROOT = os.path.dirname(__file__)
 
@@ -49,6 +49,18 @@ pcs = set()
 relay = None
 webcam = None
 
+
+class AsyncioThread(QThread):
+    started = pyqtSignal()
+
+    def __init__(self, loop):
+        super().__init__()
+        self.loop = loop
+
+    def run(self):
+        asyncio.set_event_loop(self.loop)
+        self.started.emit()
+        self.loop.run_forever()
 
 class HyphaController(LiveUpdatedController):
     """ Linked to HyphaWidget."""
@@ -84,130 +96,25 @@ class HyphaController(LiveUpdatedController):
         self.detector_names = self._master.detectorsManager.getAllDeviceNames()
         self.detector = self._master.detectorsManager[self.detector_names[0]]
 
-        # wrap the extension
-        self.chatbot_extension = self.getExtensionDefinition()
-        
-        # Schedule the async setup on the event loop
-        self.asyncio_thread_start()
-
-    async def async_start_service(self, server_url="https://chat.bioimage.io", workspace=None, token=None):
-        
-        try:
-            self.__logger.debug(f"Starting service...")
-            token = await login({"server_url": server_url})
-            server = await connect_to_server({"server_url": server_url, "token": token})
-            svc = await server.register_service(self.chatbot_extension)
-            print(f"Extension service registered with id: {svc.id}, you can visit the service at: {server_url}/public/apps/bioimageio-chatbot-client/chat?extension={svc.id}")
-            '''
-            loop.run_until_complete(server.register_service(
-                {
-                    "id": "microscope-control",
-                    "name": "openUC2 Microscope",
-                    "description": "OpenUC2 Microscope Interface: Precise control over openuc2 microscope.",# Monochrome camera, laser, LED matrix, focusing stage, XY stage. Easy sample manipulation, accurate autofocus, fluorescence microscopy. LED matrix enhances phase contrast. High-quality grayscale imaging. Unparalleled precision.",
-                    "config":{
-                        "visibility": "public",
-                        "run_in_executor": True,
-                        "require_context": True,
-                    },
-                    "type": "microscope",
-                    "move": self.setPosition,
-                    "setLaserActive": self.setLaserActive,
-                    "setLaserValue": self.setLaserValue,
-                    "setLEDValue": self.setLEDValue,
-                    "getImage": self.getImage, 
-                    "getProcessedImages": self.getProcessedImages
-                }
-            ))
-            self.__logger.debug(f"Extension service registered with id: {svc.id}, you can visit the service at: {server_url}/public/apps/bioimageio-chatbot-client/chat?extension={svc.id}")
-            coturn = loop.run_until_complete(server.get_service("coturn"))
-            ice_servers = loop.run_until_complete(coturn.get_rtc_ice_servers())
-            register_rtc_service(
-                server,
-                service_id=service_id,
-                config={
-                    "visibility": "public",
-                    "ice_servers": ice_servers,
-                    "on_init": self.on_init,
-                },
-            )
-            self.__logger.debug(
-                f"Service (client_id={client_id}, service_id={service_id}) started successfully, available at https://ai.imjoy.io/{server.config.workspace}/services"
-            )
-            self.__logger.debug(f"You can access the webrtc stream at https://oeway.github.io/webrtc-hypha-demo/?service_id={service_id}")
-            '''
-        except Exception as e:
-            print(f"Failed to register extension: {e}")
-
-    def asyncio_thread_start(self):
-        # Perform any necessary setup after the asyncio thread has started
-        # Connect to the server and start the service
-        if 0:
-            # this doesn't launch anything
-            loop = asyncio.get_event_loop()
-            loop.create_task(self.async_start_service())
-        else:
-            #this results in an error with the chatbot - maybe the service dies before it connects to the website?
-            asyncio.run(self.async_start_service())
-        
-    def getExtensionDefinition(self):
-            return {
-            "_rintf": True,
-            "type": "bioimageio-chatbot-extension",
-            "id": "UC2_microscope",
-            "name": "UC2 Microscope Control",
-            "description": "Control the microscope based on the user's request. Now you can move the microscope stage, and snap an image.",
-            "get_schema": self.get_schema,
-            "tools": {
-                "move_by_distance": self.move_stage_by_distance,
-                "snap_image": self.snap_image,
-                "home_stage": self.home_stage,
-                "zero_stage": self.zero_stage,
-                "move_to_position": self.move_to_position,
-                "set_illumination": self.set_illumination,
-            }
-        }
-
-
-    async def move_stage_by_distance(self, kwargs):
-        config = MoveByDistanceInput(**kwargs)
-        #squid_svc.move_by_distance(config.x, config.y, config.z)
-        print(config.x, config.y, config.z)
-        return "Moved the stage!"
-
-    async def home_stage(self, kwargs):
-        config = HomeStage(**kwargs)
-        ##squid_svc.home_z()
-        ##squid_svc.home_x()
-        ##squid_svc.home_y()
-        return "Homed the stage!"
-
-    async def zero_stage(self, kwargs):
-        config = ZeroStage(**kwargs)
-        ##squid_svc.zero_z()
-        ##squid_svc.zero_x()
-        ##squid_svc.zero_y()
-        return "Zeroed the stage!"
-
-    async def move_to_position(self, kwargs):
-        config = MoveToPositionInput(**kwargs)
-        ##squid_svc.move_to_position(config.x, config.y, config.z)
-        return "Moved the stage to the specified position!"
-
-    async def set_illumination(self, kwargs):
-        config = SetIlluminationInput(**kwargs)
-        ##squid_svc.set_illumination(config.channel, config.intensity)
-        return "Set the illumination!"
-
-    async def snap_image(self, kwargs):
-        config = SnapImageInput(**kwargs)
-        import numpy as np
-        squid_image = np.random.randnint(0, 255, (512, 512))
-        #squid_image = await #squid_svc.snap()
-        return "Here is the image"
+        # start the service
+        self.start_asyncio_thread(server_url, service_id)
 
     def update(self, detectorName, im, init, isCurrentDetector):
         """ Update with new detector frame. """
         pass
+
+    def start_asyncio_thread(self, server_url, service_id):
+        loop = asyncio.get_event_loop()
+        self.asyncio_thread = AsyncioThread(loop)
+        self.asyncio_thread.started.connect(self.on_asyncio_thread_started)
+        self.asyncio_thread.start()
+
+    def on_asyncio_thread_started(self):
+        # Perform any necessary setup after the asyncio thread has started
+        # Connect to the server and start the service
+        service_id="aiortc-demo"
+        logging.basicConfig(level=logging.DEBUG)
+        self.start_service(service_id)
 
     async def on_shutdown(self, app):
         # close peer connections
@@ -343,12 +250,16 @@ class HyphaController(LiveUpdatedController):
             processedImage = mImage
         
         tif.imsave(path,processedImage)
-        return processedImage
+        return processedImage      
+        
+    def snap_image(self, kwargs):
+        config = SnapImageInput(**kwargs)
+        mExposureTime = config.exposure = 100
+        mFilePath = config.filepath 
+        self.getImage(path=mFilePath)
+        return "Here is the image"
 
-        
-        
-        
-    def getImage(self, path="Default.tif", context=None):
+    def getImage(self, path="Default.tif"):
         """
         Captures a single microscopic image and saves it to a specified path.
 
@@ -381,6 +292,20 @@ class HyphaController(LiveUpdatedController):
         mImage = self.detector.getLatestFrame()
         tif.imsave(path,mImage)
         return mImage
+
+    def move_stage_by_distance(self, kwargs):
+        config = MoveByDistanceInput(**kwargs)
+        if config.x: self.setPosition(value=config.x, axis="X", is_absolute=False, is_blocking=True)
+        if config.y: self.setPosition(value=config.y, axis="Y", is_absolute=False, is_blocking=True)
+        if config.z: self.setPosition(value=config.z, axis="Z", is_absolute=False, is_blocking=True)
+        return "Moved the stage a relative distance!"
+
+    def move_to_position(self, kwargs):
+        config = MoveToPositionInput(**kwargs)
+        if config.x: self.setPosition(value=config.x, axis="X", is_absolute=True, is_blocking=True)
+        if config.y: self.setPosition(value=config.y, axis="Y", is_absolute=True, is_blocking=True)
+        if config.z: self.setPosition(value=config.z, axis="Z", is_absolute=True, is_blocking=True)
+        return "Moved the stage to the specified position!"
 
     def setPosition(self, value, axis, is_absolute=True, is_blocking=True, context=None):
         """
@@ -417,7 +342,64 @@ class HyphaController(LiveUpdatedController):
         self._logger.debug(f"Moving stage to {value} along {axis}")
         self.stages.move(value=value, axis=axis, is_absolute=is_absolute, is_blocking=is_blocking)
 
-    async def get_schema(self):
+    def start_service(self, service_id, server_url="https://chat.bioimage.io", workspace=None, token=None):
+        client_id = service_id + "-client"
+        self.__logger.debug(f"Starting service...")
+        token = login({"server_url": server_url})
+        if 0:
+            server = connect_to_server(
+                {
+                    "client_id": client_id,
+                    "server_url": server_url,
+                    #"workspace": workspace,
+                    "token": token,
+                }
+            )
+        else:
+            server = connect_to_server({"server_url": server_url, "token": token})
+        svc = server.register_service(self.getExtensionDefinition())
+        print(f"Extension service registered with id: {svc.id}, you can visit the service at: {server_url}/public/apps/bioimageio-chatbot-client/chat?extension={svc.id}")
+        
+        if 0:
+            server.register_service(
+                {
+                    "id": "microscope-control",
+                    "name": "openUC2 Microscope",
+                    "description": "OpenUC2 Microscope Interface: Precise control over openuc2 microscope.",# Monochrome camera, laser, LED matrix, focusing stage, XY stage. Easy sample manipulation, accurate autofocus, fluorescence microscopy. LED matrix enhances phase contrast. High-quality grayscale imaging. Unparalleled precision.",
+                    "config":{
+                        "visibility": "public",
+                        "run_in_executor": True,
+                        "require_context": True,
+                    },
+                    "type": "microscope",
+                    "move": self.setPosition,
+                    "setLaserActive": self.setLaserActive,
+                    "setLaserValue": self.setLaserValue,
+                    "setLEDValue": self.setLEDValue,
+                    "getImage": self.getImage, 
+                    "getProcessedImages": self.getProcessedImages
+                }
+            )
+        # print("Workspace: ", workspace, "Token:", await server.generate_token({"expires_in": 3600*24*100}))
+        if 0:
+            coturn = server.get_service("coturn")
+            ice_servers = coturn.get_rtc_ice_servers()
+            register_rtc_service(
+                server,
+                service_id=service_id,
+                config={
+                    "visibility": "public",
+                    "ice_servers": ice_servers,
+                    "on_init": self.on_init,
+                },
+            )
+            self.__logger.debug(
+                f"Service (client_id={client_id}, service_id={service_id}) started successfully, available at https://ai.imjoy.io/{server.config.workspace}/services"
+            )
+            self.__logger.debug(f"You can access the webrtc stream at https://oeway.github.io/webrtc-hypha-demo/?service_id={service_id}")
+        
+        
+    def get_schema(self):
         return {
             "move_by_distance": MoveByDistanceInput.schema(),
             "snap_image": SnapImageInput.schema(),
@@ -426,6 +408,69 @@ class HyphaController(LiveUpdatedController):
             "move_to_position": MoveToPositionInput.schema(),
             "set_illumination": SetIlluminationInput.schema(),
         }
+
+
+
+    def home_stage(self, kwargs):
+        config = HomeStage(**kwargs)
+        return "Homed the stage!"
+
+    def zero_stage(self, kwargs):
+        config = ZeroStage(**kwargs)
+        return "Zeroed the stage!"
+
+    def set_illumination(self, kwargs):
+        config = SetIlluminationInput(**kwargs)
+        return "Set the illumination!"
+
+    def getExtensionDefinition(self):
+            return {
+            "_rintf": True,
+            "type": "bioimageio-chatbot-extension",
+            "id": "UC2_microscope",
+            "name": "UC2 Microscope Control",
+            "description": "Control the microscope based on the user's request. Now you can move the microscope stage, and snap an image.",
+            "get_schema": self.get_schema,
+            "tools": {
+                "move_by_distance": self.move_stage_by_distance,
+                "snap_image": self.snap_image,
+                "home_stage": self.home_stage,
+                "zero_stage": self.zero_stage,
+                "move_to_position": self.move_to_position,
+                "set_illumination": self.set_illumination,
+            }
+        }
+
+
+class MoveByDistanceInput(BaseModel):
+    """Move the stage by a specified distance, the unit of distance is millimeters, so you need to input the distance in millimeters."""
+    x: float = Field(description="Move the stage along X axis.")
+    y: float = Field(description="Move the stage along Y axis.")
+    z: float = Field(description="Move the stage along Z axis.")
+
+class SnapImageInput(BaseModel):
+    """Snap an image from microscope."""
+    exposure: int = Field(description="Set the microscope camera's exposure time. and the time unit is ms, so you need to input the time in miliseconds.")
+    filepath: str = Field(description="The path to save the captured image.")
+    
+class SetIlluminationInput(BaseModel):
+    """Set the illumination of the microscope."""
+    channel: int = Field(description="Set the channel of the illumination. The value should choosed from this list: BF LED matrix full=0, Fluorescence 405 nm Ex=11, Fluorescence 488 nm Ex=12, Fluorescence 638 nm Ex=13, Fluorescence 561 nm Ex  =14, Fluorescence 730 nm Ex=15.")
+    intensity: float = Field(description="Set the intensity of the illumination. The value should be between 0 and 100; ")
+
+class HomeStage(BaseModel):
+    """Home the stage."""
+    home: int = Field(description="Home the stage.")
+
+class ZeroStage(BaseModel):
+    """Move the stage to the zero position. Before putting sample on the stage, you also need to zero the stage."""
+    zero: bool = Field(description="Zero the stage.")
+
+class MoveToPositionInput(BaseModel):
+    """Move the stage to a specified position, the unit of distance is millimeters. The limit of """
+    x: float = Field(description="Move the stage to the specified position along X axis.")
+    y: float = Field(description="Move the stage to the specified position along Y axis.")
+    z: float = Field(description="Move the stage to the specified position along Z axis.")
 
 
 
@@ -465,36 +510,6 @@ class VideoTransformTrack(MediaStreamTrack):
         self.count+=1
         new_frame.time_base = fractions.Fraction(1, 1000)
         return new_frame
-
-
-class MoveByDistanceInput(BaseModel):
-    """Move the stage by a specified distance, the unit of distance is millimeters, so you need to input the distance in millimeters."""
-    x: float = Field(description="Move the stage along X axis.")
-    y: float = Field(description="Move the stage along Y axis.")
-    z: float = Field(description="Move the stage along Z axis.")
-
-class SnapImageInput(BaseModel):
-    """Snap an image from microscope."""
-    exposure: int = Field(description="Set the microscope camera's exposure time. and the time unit is ms, so you need to input the time in miliseconds.")
-
-class SetIlluminationInput(BaseModel):
-    """Set the illumination of the microscope."""
-    channel: int = Field(description="Set the channel of the illumination. The value should choosed from this list: BF LED matrix full=0, Fluorescence 405 nm Ex=11, Fluorescence 488 nm Ex=12, Fluorescence 638 nm Ex=13, Fluorescence 561 nm Ex  =14, Fluorescence 730 nm Ex=15.")
-    intensity: float = Field(description="Set the intensity of the illumination. The value should be between 0 and 100; ")
-
-class HomeStage(BaseModel):
-    """Home the stage."""
-    home: int = Field(description="Home the stage.")
-
-class ZeroStage(BaseModel):
-    """Move the stage to the zero position. Before putting sample on the stage, you also need to zero the stage."""
-    zero: bool = Field(description="Zero the stage.")
-
-class MoveToPositionInput(BaseModel):
-    """Move the stage to a specified position, the unit of distance is millimeters. The limit of """
-    x: float = Field(description="Move the stage to the specified position along X axis.")
-    y: float = Field(description="Move the stage to the specified position along Y axis.")
-    z: float = Field(description="Move the stage to the specified position along Z axis.")
 
 
 

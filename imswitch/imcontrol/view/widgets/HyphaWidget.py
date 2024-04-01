@@ -15,6 +15,8 @@ from imjoy_rpc.hypha.sync import login
 
 class HyphaWidget(Widget):
     """ Widget containing Hypha interface. """
+    sigLoginHypha = QtCore.Signal(bool)
+    
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.__logger = initLogger(self)
@@ -91,10 +93,13 @@ class HyphaWidget(Widget):
         """ Set the URL of the chat. """
         if url is None or not url:
             url = self._chatURLTextEdit.text()
-            
+        self._chatURLTextEdit.setText(url)
         self._chatURL = url
         try:
             self.webView.load(QtCore.QUrl(self._chatURL))
+            # set tab active to chat
+            self.tabWidget.setCurrentIndex(1)
+            
         except Exception as e:
             self.__logger.error(f"Could not load URL {url}: {e}")
             
@@ -102,50 +107,11 @@ class HyphaWidget(Widget):
         """ Open the browser with the URL self._webrtcURL. """
         webbrowser.open(f"https://oeway.github.io/webrtc-hypha-demo/?service_id={self._webrtc_service_name.text()}")
         
-    def _login_callback(self, context):
-        """
-        Callback function for login.
-        This function is used for display the login URL,
-        Or launch the browser, display a QR code etc. for the user to login
-        Once done, it should return;
-
-        The context is a dictionary contains the following keys:
-        - login_url: the login URL
-        - report_url: the report URL
-        - key: the key for the login
-        """
-        self.__logger.debug(f"Please go to the login url: {context['login_url']}")
-        webbrowser.open(context['login_url'])
-        
     def _login_to_hypha(self):
         """ Login to the Hypha server. """
-        
-        # try to load token from .hypha-token file
-        # try:
-        #     with open(".hypha-token", "r") as f:
-        #         token_info = json.loads(f.read())
-        #         token = token_info["token"]
-        #         # check if the token is expired
-        #         if time.time() - token_info["time"] > 3600 * 12:
-        #             raise Exception("Token expired")
-        # except Exception:
-        #     token = await login({"server_url": SERVER_URL})
-        #     # write token into .hypha-token file and save the current time as json file
-        #     with open(".hypha-token", "w") as f:
-        #         f.write(json.dumps({"token": token, "time": time.time()}))
-        
+        self.sigLoginHypha.emit(True)
         # Documentation about the login function: https://ha.amun.ai/#/
-        token = login({"server_url": "https://ai.imjoy.io", "login_callback": self._login_callback})
-        # show alert if login successful
-        self.__logger.debug(f'Login successful, token: {token}')
-        # TODO: pass it to connect_to_server({....token: token})
-    
-        
-        
-        
-    
-    
-    
+
         
 # Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.

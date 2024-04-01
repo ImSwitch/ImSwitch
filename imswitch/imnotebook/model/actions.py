@@ -17,7 +17,7 @@ class _Actions:
         self._scriptPath = scriptPath
         self._scriptLogger = initLogger('script')
 
-    @APIExport()
+    @APIExport(runOnUIThread=True)
     def importScript(self, path: str) -> Any:
         """ Imports the script at the specified path (either absolute or
         relative to the main script) and returns it as a module variable. """

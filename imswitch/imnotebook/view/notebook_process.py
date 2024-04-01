@@ -13,7 +13,6 @@ _webaddr = None
 
 
 def testnotebook(notebook_executable="jupyter-notebook"):
-    print(os.system("%s --version" % notebook_executable))
     return 0 == os.system("%s --version" % notebook_executable)
 
 
@@ -34,21 +33,18 @@ def startnotebook(notebook_executable="jupyter-notebook", port=8888, directory='
     webaddr = None
     while webaddr is None:
         line = notebookp.stderr.readline().decode('utf-8').strip()
-        print(line)
         log(line)
         if "http://" in line:
             start = line.find("http://")
             # end = line.find("/", start+len("http://")) new notebook
             # needs a token which is at the end of the line
             webaddr = line[start:]
-    print("Server found at %s, migrating monitoring to listener thread" % webaddr)
     log("Server found at %s, migrating monitoring to listener thread" % webaddr)
 
     # pass monitoring over to child thread
     def process_thread_pipe(process):
         while process.poll() is None:  # while process is still alive
             log(process.stderr.readline().decode('utf-8').strip())
-            print(process.stderr.readline().decode('utf-8').strip())
     notebookmonitor = threading.Thread(name="Notebook Monitor", target=process_thread_pipe,
                                        args=(notebookp,), daemon=True)
     notebookmonitor.start()

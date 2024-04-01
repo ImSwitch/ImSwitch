@@ -27,6 +27,8 @@ DEBUG = True
 class ImScrMainView(QtWidgets.QMainWindow):
     """ Main self.view of ImNotebook. """
     
+    sigClosing = QtCore.Signal()
+    
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.setWindowTitle('Notebook')
@@ -95,17 +97,10 @@ class ImScrMainView(QtWidgets.QMainWindow):
         setup_logging(logfile)
 
     def closeEvent(self, event):
-        self.sigClosing.emit()
+        #self.sigClosing.emit()
         event.accept()
         # stop the notebook process
         stopnotebook()
-
-        
-class MyUrlRequestInterceptor(QWebEngineUrlRequestInterceptor):
-    def interceptRequest(self, info):
-        url = info.requestUrl()
-        if url.scheme() != 'file':
-            info.block(True)
 
 
 

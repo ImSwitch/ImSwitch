@@ -1,10 +1,9 @@
 from imswitch.imcommon.controller import MainController
-from imswitch.imcommon.model import generateAPI, pythontools
+from imswitch.imcommon.model import generateAPI, pythontools, APIExport
 from imswitch.imscripting.model import getActionsScope
 from .CommunicationChannel import CommunicationChannel
 from .ImScrMainViewController import ImScrMainViewController
 from .basecontrollers import ImScrWidgetControllerFactory
-
 
 class ImScrMainController(MainController):
     """ Main controller of imscripting. """
@@ -17,7 +16,6 @@ class ImScrMainController(MainController):
                                                      moduleMainControllers)
 
         # Connect view signals
-        return
         self.__mainView.sigClosing.connect(self.closeEvent)
 
         # Init communication channel and master controller
@@ -58,12 +56,13 @@ class ImScrMainController(MainController):
 
         return scope
 
+    
+    @APIExport(runOnUIThread=True)
+    def _returnScriptScope(self) -> dict:
+        return self.__scriptScope
+    
     def closeEvent(self):
         self.__factory.closeAllCreatedControllers()
-
-
-    def _startJupyterNotebook(self):
-        """ Starts the Jupyter notebook. """
 
 
 # Copyright (C) 2020-2023 ImSwitch developers

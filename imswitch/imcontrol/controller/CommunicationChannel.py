@@ -88,6 +88,8 @@ class CommunicationChannel(SignalInterface):
 
     sigSendScanFreq = Signal(float)  # (scanPeriod)
 
+    sigDisplayImageNapari = Signal(str, np.ndarray, bool)  # (layername, image, isRGB)
+
     #sigRequestScannersInScan = Signal()
 
     #sigSendScannersInScan = Signal(object)  # (scannerList)
@@ -156,29 +158,8 @@ class CommunicationChannel(SignalInterface):
     def get_image(self, detectorName=None):
         return self.__main.controllers['View'].get_image(detectorName)
 
-
     def move(self, positionerName, axis="X", dist=0):
         return self.__main.controllers['Positioner'].move(positionerName, axis=axis, dist=dist)
-
-
-    @APIExport(runOnUIThread=False)
-    def get_image(self) -> StreamingResponse:
-        # Generate a NumPy array representing an image
-
-        img_arr = np.zeros((100, 100, 3), dtype=np.uint8)
-        img_arr[:, :, 0] = 255  # set red channel to max value
-
-        # Convert NumPy array to PIL Image
-        img = Image.fromarray(img_arr)
-
-        # Save PIL Image to BytesIO buffer
-        img_bytes = BytesIO()
-        img.save(img_bytes, format="png")
-
-        # Return image as StreamingResponse
-        img_bytes.seek(0)
-        return StreamingResponse(img_bytes, media_type="image/png")
-
 
     @APIExport(runOnUIThread=True)
     def acquireImage(self) -> None:

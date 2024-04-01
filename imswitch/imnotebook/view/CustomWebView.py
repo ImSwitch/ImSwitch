@@ -93,3 +93,10 @@ class CustomWebView(QWebView):
                 self.parent.windows.remove(self)
             self.log("Window count: %s" % (len(self.parent.windows)+1))
         event.accept()
+        
+class MyUrlRequestInterceptor(QWebEngineUrlRequestInterceptor):
+    def interceptRequest(self, info):
+        url = info.requestUrl()
+        if url.scheme() != 'file':
+            info.block(True)
+

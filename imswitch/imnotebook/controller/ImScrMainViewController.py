@@ -16,25 +16,6 @@ class ImScrMainViewController(ImScrWidgetController):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        if not isQsciAvailable or imswitch.IS_HEADLESS:
-            return
-        
-        self.filesController = self._factory.createController(FilesController,
-                                                              self._widget.files)
-        
-        self.editorController = self._factory.createController(EditorController,
-                                                               self._widget.editor)
-        self.consoleController = self._factory.createController(ConsoleController,
-                                                                self._widget.console)
-        self.outputController = self._factory.createController(OutputController,
-                                                               self._widget.output)
-
-        # Connect signals
-        self._widget.sigNewFile.connect(self._commChannel.sigNewFile)
-        self._widget.sigOpenFile.connect(self._commChannel.sigOpenFile)
-        self._widget.sigSaveFile.connect(self._commChannel.sigSaveFile)
-        self._widget.sigSaveAsFile.connect(self._commChannel.sigSaveAsFile)
-
 
 # Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.

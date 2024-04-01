@@ -1,8 +1,9 @@
-from PyQt5 import QtWidgets
 from scipy.fftpack import fft, ifft
 from scipy.interpolate import interp1d
 import tifffile as tif
 import os
+import time
+import json
 from datetime import datetime
 from collections import defaultdict
 from functools import partial
@@ -91,7 +92,7 @@ class ScanExecutionMonitor:
         report['Total'] = np.sum(diffs)                 # total time spent on the task
         report['Mean'] = np.mean(diffs)                 # mean time per step
         report['STD'] = np.std(diffs)                   # STD of time per step
-        report['Tseries'] = np.array([steps, diffs]).T  # timeseries of times per step
+        report['Tseries'] = np.array([steps, diffs]).tolist()  # timeseries of times per step
         report['PercTime'] = np.sum(diffs)/self.totalTime * 100  # percentage of total exp. time
 
         # put the task dictionary into the report dictionary
@@ -130,6 +131,7 @@ class ScanOPTWorker(Worker):
         self.optSteps = None
         self.currentStep = 0
         self.saveSubfolder = None
+        self.waitConst = 10          # base wait const if query to detector for exposure fails
 
         # monitor flags
         self.saveOpt = False                    # save option for the OPT
@@ -184,6 +186,13 @@ class ScanOPTWorker(Worker):
         self.signalStability.clear()  # clear lists inbetween experiments
         self.currentLiveRecon = None
         self.master.detectorsManager[self.detectorName].startAcquisition()
+        # query to exposure time is not detector agnostic (that is why I put try/except),
+        # mock is caught in the prepareOPTScan in controller
+        try:
+            self.waitConst = self.master.detectorsManager[self.detectorName].getParameter('exposure')
+            self.__logger.info(f'Wait constant equals exposure time: {self.waitConst}')
+        except:
+            self.__logger.info(f'Exposure time query failed, wait constant is: {self.waitConst} ms')
         self.isOPTScanRunning = True
 
         # TODO: how to save the final report in image metadata?
@@ -227,7 +236,6 @@ class ScanOPTWorker(Worker):
             self.sigNewLiveRecon.emit(self.currentLiveRecon.recon,
                                       self.currentLiveRecon.step)
             self.timeMonitor.addStamp('live-recon', self.currentStep, 'end')
-            # self.sigNewLiveRecon.emit(self.currentLiveRecon, self.currentStep)
 
         # save OPT frame, the flag is checked inside the method
         self.saveCurrentFrame(frame)
@@ -245,9 +253,9 @@ class ScanOPTWorker(Worker):
             np.ndarray: frame array
         """
         # TODO: make sure that roator blur does not accur
-        # DP: get camera exposure time and time delay here
-        # before snapping camera, because long exposure snap
+        # DP: time delay before querying camera snap, because long exposure snap
         # might be acquired partially during the motor move.
+        time.sleep(self.waitConst)
         return self.master.detectorsManager[self.detectorName].getLatestFrame()
 
     def getFrameFromSino(self) -> np.ndarray:
@@ -458,8 +466,7 @@ class ScanOPTWorker(Worker):
 
 
 class ScanControllerOpt(ImConWidgetController):
-    """ Optical Projection Tomography (OPT) scan controller.
-    """
+    """ Optical Projection Tomography (OPT) scan controller. """
     sigImageReceived = Signal(str, np.ndarray)  # (name, frame array), used for corrections
 
     def __init__(self, *args, **kwargs):
@@ -468,15 +475,15 @@ class ScanControllerOpt(ImConWidgetController):
         self.__logger = initLogger(self)
 
         # Local flags
-        # self.isliveRecon = False
         self.saveOpt = True
 
-        # get detectors, select first one, connect update
-        # Should it be synchronized with recording selector?
+        # get detectors, select first one
+        # TODO: there is no updateDetector for case of more cameras
         allDetectorNames = self._master.detectorsManager.getAllDeviceNames()
         self.detectorName = allDetectorNames[0]
         self.detector = self._master.detectorsManager[allDetectorNames[0]]
 
+        # rotators list
         self.rotatorsList = self._master.rotatorsManager.getAllDeviceNames()
         self.rotatorName = None
         self.stepsPerTurn = 0
@@ -545,15 +552,29 @@ class ScanControllerOpt(ImConWidgetController):
 
     # JA: method to add your metadata to recordings
     # TODO: metadata still not taken care of, implement
-    def setSharedAttr(self, rotatorName, meta1, meta2, attr, value):
-        pass
+    def setSharedAttr(self, HWName, attr, value):
+        self._commChannel.sharedAttrs[(_attrCategory, HWName, attr)] = value
 
     def requestInterruption(self):
         """ Request interruption of the OPT scan. """
         self.optWorker.isInterruptionRequested = True
 
+    def saveMetadata(self):
+        metadata = self._commChannel.sharedAttrs.getJSON()
+        path = self.getSaveFilePath(self.optWorker.saveSubfolder,
+                                    'metadata', 'json')
+        with open(path, "w") as outfile:
+            json.dump(metadata, outfile)
+
     def postScanEnd(self):
         """ Triggered after the end of the OPT scan. """
+        # save metadata
+        stab = self.optWorker.signalStability.getStabilityTraces()
+        self.setSharedAttr('scan', 'stability', stab)
+        self.setSharedAttr('scan', 'timeReport',
+                           self.optWorker.timeMonitor.outputReport)
+        self.saveMetadata()
+
         self._logger.info('OPT scan finished.')
         self.optWorker.isInterruptionRequested = False  # reset interruption flag
         self.optThread.quit()  # stop the worker thread
@@ -569,6 +590,8 @@ class ScanControllerOpt(ImConWidgetController):
         self._widget.updateCurrentStep(0)
 
         self.optSteps = self.getOptSteps()
+        self.setSharedAttr(self.rotatorName, 'nSteps', self.optSteps)
+        self.setSharedAttr(self.rotatorName, 'stepsPerTurn', self.stepsPerTurn)
 
         if self._widget.scanPar['MockOpt'].isChecked():
             if not self._widget.requestMockConfirmation():
@@ -577,27 +600,31 @@ class ScanControllerOpt(ImConWidgetController):
             self._widget.setProgressBarMaximum(self.optSteps)
             self.optWorker.demoEnabled = True
         else:
+            # check if any HW is mock
+            if self.detector.model == 'mock' or self.rotator.model == 'mock':
+                self.__logger.error('Select Demo, OPT cannot run with mock HW.')
+                return
+
             self.optWorker.demoEnabled = False
             # Checking for divisability of motor steps and OPT steps.
             if self.stepsPerTurn % self.optSteps != 0:
                 # ask for confirmation
                 if not self._widget.requestOptStepsConfirmation():
                     return
-
+        self.setSharedAttr('scan', 'demo', self.optWorker.demoEnabled)
         self.optWorker.saveSubfolder = datetime.now().strftime("%Y_%m_%d-%H-%M-%S")
         self.sigImageReceived.connect(self.displayImage)
 
         # equidistant steps for the OPT scan in absolute values.
-        optScanSteps = np.linspace(
-                            0,
-                            self.stepsPerTurn,
-                            self.optSteps,
-                            endpoint=False,
-                        ).astype(np.int_)
-        self.optWorker.optSteps = optScanSteps
+        self.optWorker.optSteps = np.linspace(0, self.stepsPerTurn, self.optSteps,
+                                              endpoint=False,
+                                              ).astype(np.int_)
+        # tolist() because of the int32 conversion
+        self.setSharedAttr('scan', 'absSteps', self.optWorker.optSteps.tolist())
         self.optWorker.timeMonitor.reinit()
 
         # live reconstruction
+        self.setSharedAttr('scan', 'liveRecon', self.optWorker.isLiveRecon)
         if self.optWorker.isLiveRecon:
             self.getLiveReconIdx()
 
@@ -682,9 +709,9 @@ class ScanControllerOpt(ImConWidgetController):
         the full savings path
 
         Args:
-            subfolder (str): subfolder name
-            filename (str): specific filename string part
-            extension (str): image format extension
+            subfolder (`str`): subfolder name
+            filename (`str`): specific filename string part
+            extension (`str`): image format extension
 
         Returns:
             os.path: save path
@@ -822,6 +849,7 @@ class ScanControllerOpt(ImConWidgetController):
         """
         std_cutoff = self.getStdCutoff()
         averages = self.getAverages()
+        self.setSharedAttr('scan', 'averagesHot', averages)
         if not self.requestHotPixelConfirmation(averages, std_cutoff):
             return
         self.acquireCorrection('hot_pixels', averages)
@@ -833,6 +861,7 @@ class ScanControllerOpt(ImConWidgetController):
         the correction, but does not correct data.
         """
         averages = self.getAverages()
+        self.setSharedAttr('scan', 'averagesDark', averages)
         if not self.requestDarkFieldConfirmation(averages):
             return
         self.acquireCorrection('dark_field', averages)
@@ -845,6 +874,7 @@ class ScanControllerOpt(ImConWidgetController):
         the data.
         """
         averages = self.getAverages()
+        self.setSharedAttr('scan', 'averagesFlat', averages)
         if not self.requestFlatFieldConfirmation(averages):
             return
         self.acquireCorrection('flat_field', averages)
@@ -928,8 +958,10 @@ class ScanControllerOpt(ImConWidgetController):
         camera pixels.
         """
         self.saveImage(self.dark_field, 'Corrections', 'dark_field')
-        self._widget.updateDarkMean(np.mean(self.dark_field))
-        self._widget.updateDarkStd(np.std(self.dark_field))
+        mean, std = np.mean(self.dark_field), np.std(self.dark_field)
+        self._widget.updateDarkMean(mean)
+        self._widget.updateDarkStd(std)
+        self.setSharedAttr('scan', 'darkMeanStd', (mean, std))
 
         self.sigImageReceived.emit('dark_field', self.dark_field)
 
@@ -939,8 +971,10 @@ class ScanControllerOpt(ImConWidgetController):
         camera pixels.
         """
         self.saveImage(self.flat_field, 'Corrections', 'flat_field')
-        self._widget.updateFlatMean(np.mean(self.flat_field))
-        self._widget.updateFlatStd(np.std(self.flat_field))
+        mean, std = np.mean(self.flat_field), np.std(self.flat_field)
+        self._widget.updateFlatMean(mean)
+        self._widget.updateFlatStd(std)
+        self.setSharedAttr('scan', 'flatMeanStd', (mean, std))
 
         self.sigImageReceived.emit('flat_field', self.flat_field)
 
@@ -970,6 +1004,9 @@ class ScanControllerOpt(ImConWidgetController):
         self.nFrames.emit()
 
 
+_attrCategory = 'OPT'
+
+
 class Stability:
     """ Helper container class to monitor and display the stability traces
     of the intensity of the 4 corners of the OPT stack.
@@ -992,7 +1029,16 @@ class Stability:
                           'LL': [],
                           'LR': []}
 
-    def processStabilityTraces(self, frame: np.ndarray, step: int) -> Tuple[list, Dict[str, List]]:
+    def getStabilityTraces(self) -> Tuple[List, Dict]:
+        """Getter for the steps and stability traces.
+
+        Returns:
+            Tuple[List, Dict]: list of steps (x axis), second is dictionary of
+            corner intensity traces for each step.
+        """
+        return self.steps, self.intensity
+
+    def processStabilityTraces(self, frame: np.ndarray, step: int) -> Tuple[List, Dict[str, List]]:
         """ Process the current frame's stability traces.
 
         Args:

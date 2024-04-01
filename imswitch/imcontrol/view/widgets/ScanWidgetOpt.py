@@ -511,7 +511,7 @@ class ReportCanvas(FigureCanvas):
 
         # add plot 3
         for i, k in enumerate(keys):
-            self.ax3.plot(tseries[i][:, 0], tseries[i][:, 1], 'o', label=k)
+            self.ax3.plot(tseries[i][0], tseries[i][1], 'o', label=k)
         self.ax3.set_yscale('log')
         self.ax3.set_ylabel('duration [s]')
         self.ax3.legend()

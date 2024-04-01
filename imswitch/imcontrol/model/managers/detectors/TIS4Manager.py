@@ -1,5 +1,4 @@
 import numpy as np
-import pdb
 
 from imswitch.imcommon.model import initLogger
 from .DetectorManager import (DetectorManager, DetectorAction,

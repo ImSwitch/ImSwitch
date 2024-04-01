@@ -87,10 +87,10 @@ class CameraTIS4:
 
     def grabFrame(self):
         image = self.snapSink.snap_single(int(1.2*self.exposure))
-        # fixing the leaks
-        # frame = image.numpy_wrap()[:, :, 0]
         frame = image.numpy_copy()[:, :, 0]
-        image.release()
+        # this used to fix the leaks
+        # now v 1.0.1.373 of ic4 driver testing without
+        # image.release()
 
         # shift bits if necessary, works
         if self.pixel_format == '12bit':

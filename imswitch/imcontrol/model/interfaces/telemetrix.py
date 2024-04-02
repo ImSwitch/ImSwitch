@@ -41,6 +41,7 @@ class MockTelemetrixBoard:
 
     def __init__(self) -> None:
         self.__logger = initLogger(self)
+        self.__name = 'mock'
         self.__speed: int = 0
         self.__maxSpeed: int = 0
         self.__stepsToTurn: int = 0
@@ -51,11 +52,15 @@ class MockTelemetrixBoard:
         self.motorIDCount: int = 0
         self.__mockScheduler = BackgroundScheduler(executors={'default': ThreadPoolExecutor(1)}, job_defaults={'coalesce': False, 'max_instances': 1})
         self.__mockJob = self.__mockScheduler.add_job(self.__mock_continous_movement, 'interval', seconds=1)
-        
+
         # daemon thread
         self.__mockEvent = Event()
         self.__mockThread = Thread(target=self.__stepper_run_daemon, daemon=True)
         self.__mockThread.start()
+
+    def name(self) -> str:
+        """ Unique rotator name, defined in the rotator's setup info. """
+        return self.__name
 
     def stepper_get_current_position(self, _: int, callback: Callable) -> None:
         callback(self.callbackResponse)
@@ -69,7 +74,7 @@ class MockTelemetrixBoard:
             'pin3': pin3,
             'pin4': pin4
         }
-        self.__logger.info(f'Mock board setting pin mode for stepper motor.')
+        self.__logger.info('Mock board setting pin mode for stepper motor.')
         self.__logger.info(f"Interface: {interface}")
         self.__logger.info(f"Pins: {pins}")
         self.motorIDCount += 1
@@ -90,7 +95,7 @@ class MockTelemetrixBoard:
 
     def stepper_move(self, _: int, steps: int) -> None:
         self.__stepsToTurn = steps
-    
+
     def __stepper_run_daemon(self) -> None:
         """ Simulates the movement of the stepper motor on a background thread.
         Started from the `stepper_run` method.
@@ -99,13 +104,13 @@ class MockTelemetrixBoard:
             self.__mockEvent.wait()
             newPosition = (self.currentPosition[0] + self.__stepsToTurn) % self.stepsPerTurn
             self.currentPosition = (newPosition, stepsToAngle(newPosition, self.stepsPerTurn))
-            
+
             # this is a hack due to the fact that in the manager, the callback
             # does not actually use this response, but instead is immediatly passed
             # to the callback retrieving the current position.
             self.callbackResponse = (17, 0, self.currentPosition[0] + self.__stepsToTurn, 0.1)
             self.__logger.debug(f"New position requested: {stepsToAngle(self.currentPosition[0], self.stepsPerTurn)}")
-            
+
             # the sleep simulates the communication delay with the board
             time.sleep(.3)
             self.callback(self.callbackResponse)
@@ -116,8 +121,9 @@ class MockTelemetrixBoard:
 
         Args:
             _ (`int`): motor ID (unused in this method)
-            callback (`Callable`): callback function to execute after the movement is done.
-                                Receives the new position as an argument, formatted as a tuple (steps, degrees).
+            callback (`Callable`): callback function to execute after
+                the movement is done. Receives the new position as an
+                argument, formatted as a tuple (steps, degrees).
         """
         self.callback = callback
         self.__mockEvent.set()
@@ -146,10 +152,9 @@ class MockTelemetrixBoard:
         newPosition = (self.currentPosition[0] + self.__stepsToTurn) % self.stepsPerTurn
         self.currentPosition = (newPosition, stepsToAngle(newPosition, self.stepsPerTurn))
         self.__logger.info(f"Mock board continous movement. New angle: {self.currentPosition[1]}")
-    
+
     def __del__(self) -> None:
         if self.__mockScheduler.running:
             self.__mockScheduler.pause_job(self.__mockJob.id)
         self.__mockScheduler.remove_all_jobs()
         self.__mockScheduler.shutdown()
-    

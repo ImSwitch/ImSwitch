@@ -4,6 +4,7 @@ import tifffile as tif
 import os
 import time
 import json
+import pdb
 from datetime import datetime
 from collections import defaultdict
 from functools import partial
@@ -37,9 +38,11 @@ class ScanExecutionMonitor:
         """ Add a time stamp to the report.
 
         Args:
-            key (`str`): identifier of the stamp; monitors the type of operation recorded.
+            key (`str`): identifier of the stamp; monitors the
+                type of operation recorded.
             idx (`int`): index of the current OPT scan step.
-            tag (`str`): tag to identify the beginning ("beg") or the end ("end") of the operation.
+            tag (`str`): tag to identify the beginning ("beg") or the
+                end ("end") of the operation.
         """
         self.report[key].append((idx, tag, datetime.now()))
 
@@ -131,7 +134,7 @@ class ScanOPTWorker(Worker):
         self.optSteps = None
         self.currentStep = 0
         self.saveSubfolder = None
-        self.waitConst = 10          # base wait const if query to detector for exposure fails
+        self.waitConst = 1   # base wait const (ms) if query to detector for exposure fails
 
         # monitor flags
         self.saveOpt = False                    # save option for the OPT
@@ -188,14 +191,14 @@ class ScanOPTWorker(Worker):
         self.master.detectorsManager[self.detectorName].startAcquisition()
         # query to exposure time is not detector agnostic (that is why I put try/except),
         # mock is caught in the prepareOPTScan in controller
+        print(self.master.detectorsManager[self.detectorName].getParameter('exposure'))
         try:
             self.waitConst = self.master.detectorsManager[self.detectorName].getParameter('exposure')
-            self.__logger.info(f'Wait constant equals exposure time: {self.waitConst}')
+            self.__logger.info(f'Wait constant equals exposure time: {self.waitConst} ms')
         except:
             self.__logger.info(f'Exposure time query failed, wait constant is: {self.waitConst} ms')
         self.isOPTScanRunning = True
 
-        # TODO: how to save the final report in image metadata?
         self.timeMonitor.addStart()
         self.currentStep = 0
 
@@ -255,7 +258,7 @@ class ScanOPTWorker(Worker):
         # TODO: make sure that roator blur does not accur
         # DP: time delay before querying camera snap, because long exposure snap
         # might be acquired partially during the motor move.
-        time.sleep(self.waitConst)
+        time.sleep(self.waitConst/1000)
         return self.master.detectorsManager[self.detectorName].getLatestFrame()
 
     def getFrameFromSino(self) -> np.ndarray:
@@ -485,7 +488,8 @@ class ScanControllerOpt(ImConWidgetController):
 
         # rotators list
         self.rotatorsList = self._master.rotatorsManager.getAllDeviceNames()
-        self.rotatorName = None
+        self.rotator = None         # from rotatorsManager by rotatorName
+        self.rotatorName = None   # from rotatorsManager
         self.stepsPerTurn = 0
 
         self._widget.scanPar['Rotator'].currentIndexChanged.connect(self.updateRotator)
@@ -550,8 +554,6 @@ class ScanControllerOpt(ImConWidgetController):
         self._widget.updateCurrentStep(0)
         self.enableWidget(True)
 
-    # JA: method to add your metadata to recordings
-    # TODO: metadata still not taken care of, implement
     def setSharedAttr(self, HWName, attr, value):
         self._commChannel.sharedAttrs[(_attrCategory, HWName, attr)] = value
 
@@ -560,11 +562,26 @@ class ScanControllerOpt(ImConWidgetController):
         self.optWorker.isInterruptionRequested = True
 
     def saveMetadata(self):
+        # DP: not sure what is the best way to deal with object serialization
         metadata = self._commChannel.sharedAttrs.getJSON()
         path = self.getSaveFilePath(self.optWorker.saveSubfolder,
                                     'metadata', 'json')
         with open(path, "w") as outfile:
             json.dump(metadata, outfile)
+
+        # h5py approach
+        # import h5py
+        # metadata = self._commChannel.sharedAttrs.getHDF5Attributes()
+        # for k, val in metadata.items():
+        #     if type(val) is object:
+        #         print('problem')
+        #         metadata[k] = val.astype(dict)
+
+        # print(metadata)
+        # path = self.getSaveFilePath(self.optWorker.saveSubfolder,
+        #                             'metadata', 'h5')
+        # with h5py.File(path, 'w') as outfile:
+        #     outfile.create_dataset('optScan', data=metadata)
 
     def postScanEnd(self):
         """ Triggered after the end of the OPT scan. """
@@ -601,7 +618,10 @@ class ScanControllerOpt(ImConWidgetController):
             self.optWorker.demoEnabled = True
         else:
             # check if any HW is mock
-            if self.detector.model == 'mock' or self.rotator.model == 'mock':
+            # print(dir(self._master.rotatorsManager[self.rotatorName]))
+            print(self.detector.name)
+            print(self.rotator.name)
+            if self.detector.name == 'mock' or self.rotator.name == 'mock':
                 self.__logger.error('Select Demo, OPT cannot run with mock HW.')
                 return
 
@@ -773,7 +793,8 @@ class ScanControllerOpt(ImConWidgetController):
         also displayed in the widget.
         """
         self.rotatorName = self.rotatorsList[self._widget.getRotatorIdx()]
-        self.stepsPerTurn = self._master.rotatorsManager[self.rotatorName]._stepsPerTurn
+        self.rotator = self._master.rotatorsManager[self.rotatorName]
+        self.stepsPerTurn = self.rotator._stepsPerTurn
         self._widget.scanPar['StepsPerRevLabel'].setText(f'{self.stepsPerTurn:d} steps/rev')
 
     def getOptSteps(self):

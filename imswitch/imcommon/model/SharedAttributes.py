@@ -1,4 +1,5 @@
 import json
+import h5py
 
 from imswitch.imcommon.framework import Signal, SignalInterface
 
@@ -15,6 +16,9 @@ class SharedAttributes(SignalInterface):
         """
         attrs = {}
         for key, value in self._data.items():
+            if not h5py.check_dtype_serializable(type(value)):
+                print(value, type(value))
+                continue
             attrs[':'.join(key)] = value
 
         return attrs
@@ -23,6 +27,8 @@ class SharedAttributes(SignalInterface):
         """ Returns a JSON representation of this instance. """
         attrs = {}
         for key, value in self._data.items():
+            if not self.is_jsonable(value):
+                continue
             parent = attrs
             for i in range(len(key) - 1):
                 if key[i] not in parent:
@@ -32,6 +38,14 @@ class SharedAttributes(SignalInterface):
             parent[key[-1]] = value
 
         return json.dumps(attrs)
+
+    def is_jsonable(self, x):
+        try:
+            json.dumps(x)
+            return True
+        except (TypeError, OverflowError):
+            print(x, type(x))
+            return False
 
     def update(self, data):
         """ Updates this object with the data in the given dictionary or

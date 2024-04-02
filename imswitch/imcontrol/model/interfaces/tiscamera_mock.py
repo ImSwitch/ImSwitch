@@ -1,8 +1,6 @@
 import numpy as np
 from scipy.stats import multivariate_normal
 
-import time
-
 
 class MockCameraTIS:
     def __init__(self):
@@ -21,9 +19,10 @@ class MockCameraTIS:
         self.gain = 1
         self.brightness = 1
         self.model = 'mock'
+        self.name = 'mock'
         self.SensorHeight = 500
         self.SensorWidth = 500
-        self.shape = (self.SensorHeight,self.SensorWidth)
+        self.shape = (self.SensorHeight, self.SensorWidth)
 
     def local_init(self, value):
         pass
@@ -48,11 +47,11 @@ class MockCameraTIS:
 
     def grabFrame(self, **kwargs):
         mocktype = "random_peak"
-        if mocktype=="focus_lock":
+        if mocktype == "focus_lock":
             img = np.zeros((500, 600))
             beamCenter = [int(np.random.randn() * 1 + 250), int(np.random.randn() * 30 + 300)]
             img[beamCenter[0] - 10:beamCenter[0] + 10, beamCenter[1] - 10:beamCenter[1] + 10] = 1
-        elif mocktype=="random_peak":
+        elif mocktype == "random_peak":
             imgsize = (800, 800)
             peakmax = 60
             noisemean = 10
@@ -60,7 +59,7 @@ class MockCameraTIS:
             img = np.zeros(imgsize)
             # add a random gaussian peak sometimes
             if np.random.rand() > 0.8:
-                x, y = np.meshgrid(np.linspace(0,imgsize[1],imgsize[1]), np.linspace(0,imgsize[0],imgsize[0]))
+                x, y = np.meshgrid(np.linspace(0, imgsize[1], imgsize[1]), np.linspace(0,imgsize[0],imgsize[0]))
                 pos = np.dstack((x, y))
                 xc = (np.random.rand()*2-1)*imgsize[0]/2 + imgsize[0]/2
                 yc = (np.random.rand()*2-1)*imgsize[1]/2 + imgsize[1]/2
@@ -73,7 +72,7 @@ class MockCameraTIS:
             img = np.zeros((500, 600))
             beamCenter = [int(np.random.randn() * 30 + 250), int(np.random.randn() * 30 + 300)]
             img[beamCenter[0] - 10:beamCenter[0] + 10, beamCenter[1] - 10:beamCenter[1] + 10] = 1
-            img = np.random.randn(img.shape[0],img.shape[1])
+            img = np.random.randn(img.shape[0], img.shape[1])
         return img
 
     def getLast(self, is_resize=False):
@@ -93,15 +92,12 @@ class MockCameraTIS:
 
     def openPropertiesGUI(self):
         pass
-    
-    def close(self):
-        pass
 
     def close(self):
         pass
-    
+
     def flushBuffer(self):
-        pass 
+        pass
 
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

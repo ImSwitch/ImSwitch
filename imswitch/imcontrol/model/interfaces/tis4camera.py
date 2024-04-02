@@ -15,7 +15,9 @@ class CameraTIS4:
                               '16bit': ic4.PixelFormat.Mono16}
         ic4.PropertyDialogFlags.ALLOW_STREAM_RESTART
         cam_names = ic4.DeviceEnum.devices()
+        # this is not json compatible
         self.model = cam_names[cameraNo]
+        self.name = cam_names[cameraNo].model_name
         self.cam = ic4.Grabber()
         self.buffers = ic4.SnapSink.AllocationStrategy(
                             num_buffers_alloc_on_connect=1,
@@ -79,18 +81,15 @@ class CameraTIS4:
                 self.snapSink,
                 setup_option=ic4.StreamSetupOption.ACQUISITION_START,
             )
-        self.__logger.info(f'output_image_type {self.snapSink.output_image_type}')
+        # self.__logger.debug(f'output_image_type {self.snapSink.output_image_type}')
 
     def stop_live(self):
         self.__logger.debug('stop live method called')
         self.cam.acquisition_stop()  # stop imaging
 
     def grabFrame(self):
-        image = self.snapSink.snap_single(int(1.2*self.exposure))
+        image = self.snapSink.snap_single(int(2.2*self.exposure))
         frame = image.numpy_copy()[:, :, 0]
-        # this used to fix the leaks
-        # now v 1.0.1.373 of ic4 driver testing without
-        # image.release()
 
         # shift bits if necessary, works
         if self.pixel_format == '12bit':

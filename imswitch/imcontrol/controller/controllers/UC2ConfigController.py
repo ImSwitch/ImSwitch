@@ -49,6 +49,20 @@ class UC2ConfigController(ImConWidgetController):
             self.stages.move(-1, "A", is_absolute=False, is_blocking=True)
         '''
         self._commChannel.sigUpdateMotorPosition.emit()
+        
+        # register the callback to take a snapshot triggered by the ESP32
+        self.registerCaptureCallback()
+
+    def registerCaptureCallback(self):
+        # This will capture an image based on a signal coming from the ESP32
+        def snapImage(value):
+            self.detector_names = self._master.detectorsManager.getAllDeviceNames()
+            self.detector = self._master.detectorsManager[self.detector_names[0]]
+            mImage = self.detector.getLatestFrame()
+            # save image 
+            #tif.imsave()
+            self._commChannel.sigDisplayImageNapari.emit('Image', mImage, False) # layername, image, isRGB
+        self._master.UC2ConfigManager.ESP32.message.register_callback(1, snapImage) # FIXME: Too hacky?
 
     def set_motor_positions(self, a, x, y, z):
         # Add your logic to set motor positions here.

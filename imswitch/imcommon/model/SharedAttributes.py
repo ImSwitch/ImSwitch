@@ -27,7 +27,7 @@ class SharedAttributes(SignalInterface):
         """ Returns a JSON representation of this instance. """
         attrs = {}
         for key, value in self._data.items():
-            if not self.is_jsonable(value):
+            if not self.isJsonable(value):
                 continue
             parent = attrs
             for i in range(len(key) - 1):
@@ -39,12 +39,22 @@ class SharedAttributes(SignalInterface):
 
         return json.dumps(attrs)
 
-    def is_jsonable(self, x):
+    def isJsonable(self, x: object) -> bool:
+        """Test if object x is serializable with json.
+
+        Args:
+            x (object): object to serialize
+
+        Returns:
+            bool: True if serializable
+        """
         try:
             json.dumps(x)
             return True
         except (TypeError, OverflowError):
-            print(x, type(x))
+            # TODO: how to call logger from here?
+            print(
+                f'{x} of type {type(x)} not json compatible')
             return False
 
     def update(self, data):

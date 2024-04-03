@@ -1,20 +1,17 @@
-from PyQt5.QtCore import pyqtSlot
-
 import numpy as np
 from scipy.signal import correlate
 import pyqtgraph as pg
 
 from imswitch.imcommon.model import initLogger
 from ..basecontrollers import ImConWidgetController
-from imswitch.imcommon.framework import Signal
+from imswitch.imcommon.framework import Thread
+
+from .ScanControllerOpt import ScanOPTWorker
 
 
 class AlignOptController(ImConWidgetController):
-    """ OPT scan controller.
+    """ OPT alignment controller.
     """
-    sigImageReceived = Signal(str, np.ndarray)
-    # sigRequestSnap = Signal()
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -30,96 +27,130 @@ class AlignOptController(ImConWidgetController):
         # select detectors, this does not update if detector in
         # recording changes, right?
         allDetectorNames = self._master.detectorsManager.getAllDeviceNames()
+        self.detectorName = allDetectorNames[0]
         self.detector = self._master.detectorsManager[allDetectorNames[0]]
 
-        self._widget.scanPar['Rotator'].currentIndexChanged.connect(
-            self.updateRotator)
+        # rotators list
+        self.rotatorsList = self._master.rotatorsManager.getAllDeviceNames()
+        self.rotator = None         # from rotatorsManager by rotatorName
+        self.rotatorName = None   # from rotatorsManager
+
+        self._widget.scanPar['Rotator'].currentIndexChanged.connect(self.updateRotator)
+        self.updateRotator()
+
+        for rotator in self.rotatorsList:
+            self._widget.scanPar['Rotator'].addItem(rotator)
+
         self._widget.scanPar['xShift'].valueChanged.connect(self.replotAll)
         self.updateShift()
 
-        # get rotators
-        self.getRotators()
-        # populated widget comboBox, this triggers the updateRotator too
-        for rotator in self.__rotators:
-            self._widget.scanPar['Rotator'].addItem(rotator)
-
-        # Connect widget signals
-        self._widget.scanPar['StartButton'].clicked.connect(self.getProj)
+        # Scan loop control
+        self._widget.scanPar['StartButton'].clicked.connect(self.prepareOPTScan)
+        self._widget.scanPar['StopButton'].clicked.connect(self.requestInterruption)
         self._widget.scanPar['PlotHorCuts'].clicked.connect(self.plotHorCuts)
 
-    def getProj(self):
-        """ Reset and initiate Opt 0 and 180 degrees. """
-        self.sigImageReceived.connect(self.processAlign)
-        self._widget.scanPar['StartButton'].setEnabled(False)
+        # OPT worker thread
+        self.optThread = Thread()
+        self.optWorker = ScanOPTWorker(self._master,
+                                       self.detectorName,
+                                       self.rotatorName,
+                                       )
+        self.optWorker.moveToThread(self.optThread)
 
-        self._master.rotatorsManager[
-            self.__rotators[self.motorIdx]].sigOptStepDone.connect(
-                self.post_step)
+        self._commChannel.sigRotatorPositionUpdated.connect(
+            lambda _: self.optWorker.postRotatorStep(),
+            )
 
-        # equidistant steps for the OPT scan in absolute values.
-        curPos = self._master.rotatorsManager[
-            self.__rotators[self.motorIdx]].current_pos[0]
-        counterPos = (curPos + self.__motor_steps//2) % self.__motor_steps
-        self.opt_steps = [curPos, counterPos]
+        self.optWorker.sigScanDone.connect(self.postScanEnd)
+        self.optWorker.sigNewFrameCaptured.connect(self.processImage)
+
+        # Thread signals connection
+        self.optThread.started.connect(
+            lambda: self.optWorker.preStart(self.optSteps),
+            )
+
+    def postScanEnd(self):
+        """ Triggered after the end of the OPT scan. """
+
+        self._logger.info('OPT scan finished.')
+        self.optStack = np.array(self.allFrames)
+
+        self.processAlign(self.optStack)
+        self.optWorker.isInterruptionRequested = False  # reset interruption flag
+        self.optThread.quit()  # stop the worker thread
+        self.enableWidget(True)
+
+    def prepareOPTScan(self):
+        """ Makes preliminary checks for the OPT scan."""
+        self.optWorker.demoEnabled = False
+        self.optWorker.noRAM = True
         self.allFrames = []
 
-        # run OPT
-        self.detector.startAcquisition()
-        if not self.isOptRunning:
-            self.isOptRunning = True
-            self.__currentStep = 0
-            self.moveAbsRotator(self.__rotators[self.motorIdx],
-                                self.opt_steps[self.__currentStep])
+        # equidistant steps for the OPT scan in absolute values.
+        curPos = self._master.rotatorsManager[self.rotatorName].get_position()[0]
+        counterPos = (curPos + self.stepsPerTurn//2) % self.stepsPerTurn
+        self.optWorker.optSteps = [curPos, counterPos]
+        self.optSteps = 2
 
-    @pyqtSlot()
-    def moveAbsRotator(self, name, dist):
-        """ Move a specific rotator to a certain position. """
-        self._master.rotatorsManager[name].move_abs(dist, inSteps=True)
+        # starting scan
+        self.enableWidget(False)
+        self.optThread.start()
 
-    def post_step(self):
-        """Acquire image after motor step is done, stop OPT in
-        case of last step,
-        otherwise move motor again.
+    ##################
+    # Helper methods #
+    ##################
+    def enableWidget(self, value: bool) -> None:
+        """ Upon starting/stopping the alignment scan, widget
+        editable fields get (dis)enabled from the bool value.
+
+        Args:
+            value (bool): enable value, False means disable
         """
-        self.handleSnap()
+        self._widget.scanPar['StartButton'].setEnabled(value)
+        self._widget.scanPar['StopButton'].setEnabled(not value)
+        self._widget.scanPar['LineIdxsEdit'].setEnabled(value)
+        self._widget.scanPar['xShift'].setEnabled(value)
+        self._widget.scanPar['PlotHorCuts'].setEnabled(value)
 
-        self.__currentStep += 1
+    def requestInterruption(self):
+        """ Request interruption of the OPT scan. """
+        self.optWorker.isInterruptionRequested = True
 
-        if self.__currentStep > len(self.opt_steps)-1:
-            self.stopOpt()
-        else:
-            self.moveAbsRotator(self.__rotators[self.motorIdx],
-                                self.opt_steps[self.__currentStep])
+    def getHorCutIdxs(self):
+        return [int(k) for k in self._widget.getHorCutsIdxList().split()]
 
-    def stopOpt(self):
-        """Stop OPT acquisition and enable buttons
+    def updateShift(self):
+        self.xShift = self._widget.scanPar['xShift'].value()
+
+    def updateRotator(self):
+        """ Update rotator attributes when rotator is changed.
+        setting an index of the motor, motor_steps describe
+        number of steps per revolution (resolution of the motor),
+        also displayed in the widget.
         """
-        self.detector.stopAcquisition()
-        self.isOptRunning = False
-        self.optStack = np.array(self.allFrames)
-        self.sigImageReceived.emit('OPT stack', self.optStack)
-
-        self._master.rotatorsManager[
-            self.__rotators[self.motorIdx]].sigOptStepDone.disconnect()
-        self._widget.scanPar['StartButton'].setEnabled(True)
+        self.rotatorName = self.rotatorsList[self._widget.getRotatorIdx()]
+        self.rotator = self._master.rotatorsManager[self.rotatorName]
+        self.stepsPerTurn = self.rotator._stepsPerTurn
 
     ##################
     # Image handling #
     ##################
-    def handleSnap(self):
-        """ Handles computation over a snapped image. Method is triggered by
-        the `sigMemorySnapAvailable` signal.
+    def processImage(self, name: str, frame: np.ndarray) -> None:
         """
-        self.frame = self.detector.getLatestFrame()
-        if self.isOptRunning:
-            self.allFrames.append(self.frame)
+        Display stack or image in the napari viewer.
 
-    def processAlign(self, name, arr):
-        # subsample stack
-        self.cor = AlignCOR(name, arr, self.xShift)
+        Args:
+            name (`str`): napari layer name
+            frame (`np.ndarray`): image or stack
+            step (`int`): current OPT scan step
+        """
+        if self.optWorker.isOPTScanRunning:
+            self.allFrames.append(np.uint16(frame))
+
+    def processAlign(self, arr):
+        self.cor = AlignCOR('alignOPT', arr, self.xShift)
         self.cor.merge()
         self._widget.plotCounterProj(self.cor.merged)
-        self.sigImageReceived.disconnect()
 
     def normalize(self, data, mode='01'):  # other mode max
         """this works for positive cuts and images, ngative
@@ -169,7 +200,6 @@ class AlignOptController(ImConWidgetController):
             self._widget.plotCC.plot(
                     self.cor.crossCorr[i]/np.amax(self.cor.crossCorr[i]),
                     name=f'{px}',
-                    #  pen=pg.mkPen('r'),
                     )
         # plot center Hor line
         self._widget.plotCC.addItem(
@@ -186,21 +216,6 @@ class AlignOptController(ImConWidgetController):
             self.plotHorCuts()
         except TypeError:
             self.__logger.info('No alignment stack available')
-
-    def getHorCutIdxs(self):
-        return [int(k) for k in self._widget.getHorCutsIdxList().split()]
-
-    def updateShift(self):
-        self.xShift = self._widget.scanPar['xShift'].value()
-
-    def getRotators(self):
-        """ Get a list of all rotators."""
-        self.__rotators = self._master.rotatorsManager.getAllDeviceNames()
-
-    def updateRotator(self):
-        self.motorIdx = self._widget.getRotatorIdx()
-        self.__motor_steps = self._master.rotatorsManager[
-            self.__rotators[self.motorIdx]]._stepsPerTurn
 
 
 class AlignCOR():

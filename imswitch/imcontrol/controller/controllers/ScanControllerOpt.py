@@ -4,7 +4,6 @@ import tifffile as tif
 import os
 import time
 import json
-import pdb
 from datetime import datetime
 from collections import defaultdict
 from functools import partial
@@ -224,6 +223,7 @@ class ScanOPTWorker(Worker):
         are completed, or when the `isInterruptionRequested` flag is raised
         by the main thread.
         """
+        print('here1')
         self.timeMonitor.addStamp('motor', self.currentStep, 'end')
         # manual stepping also leads to here, continue only for OPT scan
         if not self.isOPTScanRunning:
@@ -351,6 +351,7 @@ class ScanOPTWorker(Worker):
         Update live reconstruction, stop OPT in case of last step,
         otherwise move motor again.
         """
+        print(self.currentStep)
         # # updating live reconstruction (DP: doing it in processFrame)
         self.currentStep += 1
 
@@ -561,27 +562,15 @@ class ScanControllerOpt(ImConWidgetController):
         """ Request interruption of the OPT scan. """
         self.optWorker.isInterruptionRequested = True
 
-    def saveMetadata(self):
-        # DP: not sure what is the best way to deal with object serialization
+    def saveMetadata(self) -> None:
+        """ Get metadata and save them as json file to the experimental
+        folder as metadata.json.
+        """
         metadata = self._commChannel.sharedAttrs.getJSON()
         path = self.getSaveFilePath(self.optWorker.saveSubfolder,
                                     'metadata', 'json')
         with open(path, "w") as outfile:
             json.dump(metadata, outfile)
-
-        # h5py approach
-        # import h5py
-        # metadata = self._commChannel.sharedAttrs.getHDF5Attributes()
-        # for k, val in metadata.items():
-        #     if type(val) is object:
-        #         print('problem')
-        #         metadata[k] = val.astype(dict)
-
-        # print(metadata)
-        # path = self.getSaveFilePath(self.optWorker.saveSubfolder,
-        #                             'metadata', 'h5')
-        # with h5py.File(path, 'w') as outfile:
-        #     outfile.create_dataset('optScan', data=metadata)
 
     def postScanEnd(self):
         """ Triggered after the end of the OPT scan. """
@@ -618,12 +607,13 @@ class ScanControllerOpt(ImConWidgetController):
             self.optWorker.demoEnabled = True
         else:
             # check if any HW is mock
-            # print(dir(self._master.rotatorsManager[self.rotatorName]))
-            print(self.detector.name)
-            print(self.rotator.name)
-            if self.detector.name == 'mock' or self.rotator.name == 'mock':
-                self.__logger.error('Select Demo, OPT cannot run with mock HW.')
-                return
+            # TODO: Not HW agnostic, so added try except
+            try:
+                if self.detector.name == 'mock' or self.rotator.name == 'mock':
+                    self.__logger.error('Select Demo, OPT cannot run with mock HW.')
+                    return
+            except:
+                pass
 
             self.optWorker.demoEnabled = False
             # Checking for divisability of motor steps and OPT steps.
@@ -636,7 +626,8 @@ class ScanControllerOpt(ImConWidgetController):
         self.sigImageReceived.connect(self.displayImage)
 
         # equidistant steps for the OPT scan in absolute values.
-        self.optWorker.optSteps = np.linspace(0, self.stepsPerTurn, self.optSteps,
+        self.optWorker.optSteps = np.linspace(0, self.stepsPerTurn,
+                                              self.optSteps,
                                               endpoint=False,
                                               ).astype(np.int_)
         # tolist() because of the int32 conversion
@@ -671,6 +662,8 @@ class ScanControllerOpt(ImConWidgetController):
     def displayImage(self, name: str, frame: np.ndarray) -> None:
         """
         Display stack or image in the napari viewer.
+        TODO: everything is converted to uint16, however it should
+        follow the dtype of the incomming frames.
 
         Args:
             name (`str`): napari layer name

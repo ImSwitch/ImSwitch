@@ -8,8 +8,8 @@ from imswitch.imcommon.model import initLogger
 
 class CommunicationChannel(SignalInterface):
     """
-    Communication Channel is a class that handles the communication between Master Controller
-    and Widgets, or between Widgets.
+    Communication Channel is a class that handles the communication
+    between Master Controller and Widgets, or between Widgets.
     """
 
     sigUpdateImage = Signal(
@@ -28,7 +28,8 @@ class CommunicationChannel(SignalInterface):
 
     sigAdjustFrame = Signal(object)  # (shape)
 
-    sigDetectorSwitched = Signal(str, str)  # (newDetectorName, oldDetectorName)
+    # (newDetectorName, oldDetectorName)
+    sigDetectorSwitched = Signal(str, str)
 
     sigGridToggled = Signal(bool)  # (enabled)
 
@@ -54,9 +55,10 @@ class CommunicationChannel(SignalInterface):
 
     sigMemoryRecordingAvailable = Signal(
         str, object, object, bool
-    ) # (name, file, filePath, savedToDisk)
+    )  # (name, file, filePath, savedToDisk)
 
-    sigRunScan = Signal(bool, bool)  # (recalculateSignals, isNonFinalPartOfSequence)
+    # (recalculateSignals, isNonFinalPartOfSequence)
+    sigRunScan = Signal(bool, bool)
 
     sigAbortScan = Signal()
 
@@ -78,31 +80,41 @@ class CommunicationChannel(SignalInterface):
 
     sigSnapImg = Signal()
 
-    sigSnapImgPrev = Signal(str, np.ndarray, str)  # (detector, image, nameSuffix)
+    # (detector, image, nameSuffix)
+    sigSnapImgPrev = Signal(str, np.ndarray, str)
 
     sigRequestScanParameters = Signal()
 
-    sigSendScanParameters = Signal(dict, dict, object)  # (analogParams, digitalParams, scannerList)
+    # (analogParams, digitalParams, scannerList)
+    sigSendScanParameters = Signal(dict, dict, object)
 
-    sigSetAxisCenters = Signal(object, object)  # (axisDeviceList, axisCenterList)
+    # (axisDeviceList, axisCenterList)
+    sigSetAxisCenters = Signal(object, object)
 
     sigStartRecordingExternal = Signal()
 
     sigRequestScanFreq = Signal()
-    
+
     sigSendScanFreq = Signal(float)  # (scanPeriod)
 
-    #sigRequestScannersInScan = Signal()
+    # sigRequestScannersInScan = Signal()
 
-    #sigSendScannersInScan = Signal(object)  # (scannerList)
+    # sigSendScannersInScan = Signal(object)  # (scannerList)
 
     sigSaveFocus = Signal()
 
-    sigScanFrameFinished = Signal()  # TODO: emit this signal when a scanning frame finished, maybe in scanController if possible? Otherwise in APDManager for now, even if that is not general if you want to do camera-based experiments. Could also create a signal specifically for this from the scan curve generator perhaps, specifically for the rotation experiments, would that be smarter?
-    
+    # TODO: emit this signal when a scanning frame finished, maybe in
+    # scanController if possible? Otherwise in APDManager for now, even
+    # if that is not general if you want to do camera-based experiments.
+    # Could also create a signal specifically for this from the scan curve
+    # generator perhaps, specifically for the rotation experiments, would
+    # that be smarter?
+    sigScanFrameFinished = Signal()
+
     sigUpdateRotatorPosition = Signal(str)  # (rotatorName)
 
-    sigSetSyncInMovementSettings = Signal(str, float)  # (rotatorName, position)
+    # (rotatorName, position)
+    sigSetSyncInMovementSettings = Signal(str, float)
 
     sigNewFrame = Signal()
 
@@ -122,7 +134,8 @@ class CommunicationChannel(SignalInterface):
         self.__sharedAttrs = SharedAttributes()
         self.__logger = initLogger(self)
         self._scriptExecution = False
-        self.__main._moduleCommChannel.sigExecutionFinished.connect(self.executionFinished)
+        self.__main._moduleCommChannel.sigExecutionFinished.connect(
+            self.executionFinished)
 
     def getCenterViewbox(self):
         """ Returns the center point of the viewbox, as an (x, y) tuple. """

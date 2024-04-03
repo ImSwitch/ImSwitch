@@ -35,7 +35,10 @@ class AlignOptWidget(Widget):
             'Acquires 0 and 180 deg projections to compare and autocorrelate \
 horizontal cuts to allow for COR alignment.'
         )
+        self.scanPar['StopButton'] = guitools.BetterPushButton('Stop')
+        self.scanPar['StopButton'].setToolTip('Interupt scan')
         self.scanPar['Rotator'] = QtWidgets.QComboBox()
+        self.scanPar['Rotator'].setToolTip('Select rotator for the scan')
         self.scanPar['RotatorLabel'] = QtWidgets.QLabel('Rotator')
 
         self.plotMerge = pg.ImageView()
@@ -53,8 +56,10 @@ horizontal cuts to allow for COR alignment.'
 
         currentRow = 0
         self.grid.addWidget(self.scanPar['StartButton'], currentRow, 0)
-        self.grid.addWidget(self.scanPar['RotatorLabel'], currentRow, 1)
-        self.grid.addWidget(self.scanPar['Rotator'], currentRow, 2)
+        self.grid.addWidget(self.scanPar['StopButton'], currentRow, 1)
+
+        self.grid.addWidget(self.scanPar['RotatorLabel'], currentRow, 2)
+        self.grid.addWidget(self.scanPar['Rotator'], currentRow, 3)
 
         currentRow += 1
         self.grid.addWidget(self.plotMerge, currentRow, 0, 1, -1)

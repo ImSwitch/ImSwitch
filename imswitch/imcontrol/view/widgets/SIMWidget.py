@@ -115,10 +115,10 @@ class SIMWidget(NapariHybridWidget):
 
         # Label/textedit pairs
         params = [
-            ("Wavelength 1", "488"), ("Wavelength 2", "635"), ("NA", "1.4"),
-            ("n", "1."),
-            ("Pixelsize (eff)", "1"), ("Alpha", "0.5"), ("Beta", "0.5"),
-            ("w", "1"), ("eta", "2")
+            ("Wavelength 1", "0.52"), ("Wavelength 2", "0.66"), ("NA", "1.4"),
+            ("n", "1.52"),
+            ("Pixelsize", "6.5"), ("Alpha", "0.5"), ("Beta", "0.98"),
+            ("w", "1"), ("eta", "0.6"), ("Magnification", "90")
         ]
         
         # create widget per label
@@ -128,18 +128,20 @@ class SIMWidget(NapariHybridWidget):
         self.wavelength2_textedit = QLineEdit(params[1][1])
         self.NA_label = QLabel(params[2][0])
         self.NA_textedit = QLineEdit(params[2][1])
-        self.pixelsize_label = QLabel(params[3][0])
-        self.pixelsize_textedit = QLineEdit(params[3][1])
-        self.alpha_label = QLabel(params[4][0])
-        self.alpha_textedit = QLineEdit(params[4][1])
-        self.beta_label = QLabel(params[5][0])
-        self.beta_textedit = QLineEdit(params[5][1])
-        self.w_label = QLabel(params[6][0])
-        self.w_textedit = QLineEdit(params[6][1])
-        self.eta_label = QLabel(params[7][0])
-        self.eta_textedit = QLineEdit(params[7][1])
-        self.n_label = QLabel(params[8][0])
-        self.n_textedit = QLineEdit(params[8][1])
+        self.n_label = QLabel(params[3][0])
+        self.n_textedit = QLineEdit(params[3][1])
+        self.pixelsize_label = QLabel(params[4][0])
+        self.pixelsize_textedit = QLineEdit(params[4][1])
+        self.alpha_label = QLabel(params[5][0])
+        self.alpha_textedit = QLineEdit(params[5][1])
+        self.beta_label = QLabel(params[6][0])
+        self.beta_textedit = QLineEdit(params[6][1])
+        self.w_label = QLabel(params[7][0])
+        self.w_textedit = QLineEdit(params[7][1])
+        self.eta_label = QLabel(params[8][0])
+        self.eta_textedit = QLineEdit(params[8][1])
+        self.magnification_label = QLabel(params[9][0])
+        self.magnification_textedit = QLineEdit(params[9][1])
         row_layout_1 = QHBoxLayout()
         row_layout_1.addWidget(self.wavelength1_label)
         row_layout_1.addWidget(self.wavelength1_textedit)
@@ -167,6 +169,9 @@ class SIMWidget(NapariHybridWidget):
         row_layout_9 = QHBoxLayout()
         row_layout_9.addWidget(self.n_label)
         row_layout_9.addWidget(self.n_textedit)
+        row_layout_10 = QHBoxLayout()
+        row_layout_10.addWidget(self.magnification_label)
+        row_layout_10.addWidget(self.magnification_textedit)
         
         layout.addLayout(row_layout_1)
         layout.addLayout(row_layout_2)
@@ -177,6 +182,7 @@ class SIMWidget(NapariHybridWidget):
         layout.addLayout(row_layout_7)
         layout.addLayout(row_layout_8)
         layout.addLayout(row_layout_9)
+        layout.addLayout(row_layout_10)
         
 
         tab.setLayout(layout)

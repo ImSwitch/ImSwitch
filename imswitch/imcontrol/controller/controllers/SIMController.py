@@ -61,8 +61,8 @@ except:
 
 try:
     # FIXME: This does not pass pytests!
-    #import torch
-    isPytorch = False
+    import torch
+    isPytorch = True
 except:
     isPytorch = False
 
@@ -390,11 +390,12 @@ class SIMController(ImConWidgetController):
                     continue
                 self.sigImageReceived.emit(np.array(self.SIMStack),"SIMStack"+str(processor.wavelength))
                 processor.setSIMStack(self.SIMStack)
+                processor.getWF(self.SIMStack)
 
                 # activate recording in processor 
                 processor.setRecordingMode(self.isRecording)
                 processor.setReconstructionMode(self.isRecordReconstruction)
-                processor.setWavelength(self.LaserWL)
+                processor.setWavelength(self.LaserWL,sim_parameters)
                 
                 # store the raw SIM stack
                 if self.isRecording and self.lasers[iColour].power>0.0:
@@ -406,7 +407,7 @@ class SIMController(ImConWidgetController):
                 # We will collect N*M images and process them with the SIM processor
                 
                 # process the frames and display
-                #processor.reconstructSIMStack()
+                processor.reconstructSIMStack()
                     
                 # reset the per-colour stack to add new frames in the next imaging series
                 processor.clearStack()
@@ -464,11 +465,12 @@ class SIMController(ImConWidgetController):
                 continue
             self.sigImageReceived.emit(np.array(self.SIMStack),"SIMStack"+str(processor.wavelength))
             processor.setSIMStack(self.SIMStack)
+            
 
             # activate recording in processor 
             processor.setRecordingMode(self.isRecording)
             processor.setReconstructionMode(self.isRecordReconstruction)
-            processor.setWavelength(self.LaserWL)
+            processor.setWavelength(self.LaserWL,sim_parameters)
             
             # store the raw SIM stack
             if self.isRecording and self.lasers[iColour].power>0.0:
@@ -528,7 +530,7 @@ class SIMController(ImConWidgetController):
         sim_parameters.eta = np.float32(self._widget.eta_textedit.text())
         sim_parameters.wavelength_1 = np.float32(self._widget.wavelength1_textedit.text())
         sim_parameters.wavelength_2 = np.float32(self._widget.wavelength2_textedit.text())
-        
+        sim_parameters.magnification = np.float32(self._widget.magnification_textedit.text())
         return sim_parameters
         
 
@@ -540,11 +542,12 @@ class SIMController(ImConWidgetController):
     
 
 class SIMParameters(object):
-    wavelength_1 = 488
-    wavelength_2 = 635
-    NA = 0.85
+    wavelength_1 = 0.52
+    wavelength_2 = 0.66
+    NA = 1.4
     n = 1.0
-    pixelsize = 2.3
+    magnification = 90
+    pixelsize = 6.5
     eta = 0.6
     alpha = 0.5
     beta = 0.98
@@ -559,7 +562,7 @@ class SIMProcessor(object):
         '''
         setup parameters
         '''
-        #current parameters is setting for 20x objective 488nm illumination
+        #current parameters is setting for 60x objective 488nm illumination
         self.parent = parent
         self.mFile = "/Users/bene/Dropbox/Dokumente/Promotion/PROJECTS/MicronController/PYTHON/NAPARI-SIM-PROCESSOR/DATA/SIMdata_2019-11-05_15-21-42.tiff"
         self.phases_number = 3
@@ -639,8 +642,9 @@ class SIMProcessor(object):
         self.NA= sim_parameters.NA
         self.n= sim_parameters.n
         self.reconstructionMethod = "napari" # sim_parameters["reconstructionMethod"]
-        self.use_gpu = False #sim_parameters["useGPU"]
+        #self.use_gpu = False #sim_parameters["useGPU"]
         self.eta =  sim_parameters.eta
+        self.magnification = sim_parameters.magnification
         
     def setReconstructionMethod(self, method):
         self.reconstructionMethod = method
@@ -652,10 +656,11 @@ class SIMProcessor(object):
         '''
 
         self.h.usePhases = self.use_phases
-        self.h.magnification = 1.
+        self.h.magnification = 90
         self.h.NA = self.NA
         self.h.n = self.n
-        self.h.wavelength = self.wavelength
+        #self.h.wavelength = self.wavelength
+        #self.h.wavelength = 0.52
         self.h.pixelsize = self.pixelsize
         self.h.alpha = self.alpha
         self.h.beta = self.beta
@@ -665,13 +670,11 @@ class SIMProcessor(object):
             self.h.kx = self.kx_input
             self.h.ky = self.ky_input
 
-    def addFrameToStack(self, frame):
-        self.stack.append(frame)
+    def getWF(self, mStack):
         # display the BF image
-        if len(self.stack) % 3 == 0 and len(self.stack)>0:
-            bfFrame = np.sum(np.array(self.stack[-3:]), 0)
-            #self.parent.sigSIMProcessorImageComputed.emit(bfFrame, "Widefield SUM "+str(self.wavelength)+" um") 
-
+        bfFrame = np.sum(np.array(mStack[-3:]), 0)
+        self.parent.sigSIMProcessorImageComputed.emit(bfFrame, "Widefield SUM") 
+       
     def setSIMStack(self, stack):
         self.stack = stack
 
@@ -715,7 +718,8 @@ class SIMProcessor(object):
             if self.use_gpu:
                 self.h.calibrate_pytorch(imRaw, self.find_carrier)
             else:
-                self.h.calibrate(imRaw, self.find_carrier)
+                #self.h.calibrate(imRaw, self.find_carrier)
+                self.h.calibrate(imRaw)
             self.isCalibrated = True
             if self.find_carrier: # store the value found
                 self.kx_input = self.h.kx
@@ -791,8 +795,12 @@ class SIMProcessor(object):
     def setDate(self, date):
         self.date = date
         
-    def setWavelength(self, wavelength):
+    def setWavelength(self, wavelength, sim_parameters):
         self.LaserWL = wavelength
+        if self.LaserWL == 488:
+            self.h.wavelength = sim_parameters.wavelength_1
+        elif self.LaserWL == 635:
+            self.h.wavelength = sim_parameters.wavelength_2
         
     def reconstructSIMStackBackground(self, mStack):
         '''

@@ -31,12 +31,14 @@ class SIMManager(SignalInterface):
         self.nRotations = self.__simInfo.nRotations
         self.nPhases = self.__simInfo.nPhases
         self.simMagnefication = self.__simInfo.nPhases
+        self.isFastAPISIM = self.__simInfo.isFastAPISIM
         self.simPixelsize = self.__simInfo.simPixelsize
         self.simNA = self.__simInfo.simNA
         self.simN = self.__simInfo.simN # refr
         self.simETA = self.__simInfo.simETA
-        self.simN = self.__simInfo.simN
-        
+
+
+
         self.isHamamatsuSLM = self.__simInfo.isHamamatsuSLM
 
         # Load all patterns
@@ -47,7 +49,11 @@ class SIMManager(SignalInterface):
         # define paramerters for fastAPI (optional)
         fastAPISIM_host = self.__simInfo.fastAPISIM_host
         fastAPISIM_port = self.__simInfo.fastAPISIM_port
-        self.fastAPISIMParams = {"host":fastAPISIM_host, "port":fastAPISIM_port}
+        fastAPISIM_tWaitSequence = self.__simInfo.tWaitSequence
+        self.fastAPISIMParams = {"host":fastAPISIM_host,
+                                 "port":fastAPISIM_port,
+                                 "tWaitSquence":fastAPISIM_tWaitSequence}
+
         self.isFastAPISIM = self.__simInfo.isFastAPISIM
 
 

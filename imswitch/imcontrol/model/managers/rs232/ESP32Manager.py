@@ -14,7 +14,10 @@ class ESP32Manager:
             self._host = rs232Info.managerProperties['host']
         except:
             self._host = None
-
+        try:
+            self._port = rs232Info.managerProperties['port']
+        except:
+            self._port = None
         try:
             self._serialport = rs232Info.managerProperties['serialport']
         except:

@@ -194,7 +194,7 @@ class SIMWidget(NapariHybridWidget):
 
         # Label/textedit pairs
         settings = [
-            ("Period", "60"), ("Number of frames", "10")
+            ("Period", "0"), ("Number of frames", "10")
         ]
         
         # create widget per label

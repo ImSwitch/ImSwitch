@@ -15,16 +15,6 @@ import threading
 import time 
 import imswitch
 
-try:
-    import julia
-    from julia.api import Julia
-    jl = Julia(compiled_modules=False)
-
-    julia.install()
-    from julia import Base
-    from julia import Main
-except:
-    pass
 class HoloController(LiveUpdatedController):
     """ Linked to HoloWidget."""
 
@@ -87,6 +77,17 @@ class HoloController(LiveUpdatedController):
         self._widget.textEditCCCenterX.textChanged.connect(self.updateCCCenter)
         self._widget.textEditCCCenterY.textChanged.connect(self.updateCCCenter)
         self._widget.textEditCCRadius.textChanged.connect(self.updateCCRadius)
+
+        try:
+            import julia
+            from julia.api import Julia
+            jl = Julia(compiled_modules=False)
+
+            julia.install()
+            from julia import Base
+            from julia import Main
+        except:
+            pass
 
     def updateCCCenter(self):
         centerX = int(self._widget.textEditCCCenterX.text())

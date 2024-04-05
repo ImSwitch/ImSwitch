@@ -419,7 +419,7 @@ class SIMController(ImConWidgetController):
                     # activate recording in processor 
                     processor.setRecordingMode(self.isRecording)
                     processor.setReconstructionMode(self.isRecordReconstruction)
-                    processor.setWavelength(self.LaserWL)
+                    processor.setWavelength(self.LaserWL,sim_parameters)
                     
                     # store the raw SIM stack
                     if self.isRecording and self.lasers[iColour].power>0.0:

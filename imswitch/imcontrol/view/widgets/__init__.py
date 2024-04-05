@@ -12,13 +12,12 @@ from .JoystickWidget import JoystickWidget
 from .HistogrammWidget import HistogrammWidget
 from .STORMReconWidget import STORMReconWidget
 from .HoliSheetWidget import HoliSheetWidget
+from .FlowStopWidget import FlowStopWidget
+from .FLIMLabsWidget import FLIMLabsWidget
+from .ObjectiveRevolverWidget import ObjectiveRevolverWidget
 from .TemperatureWidget import TemperatureWidget
 from .LEDMatrixWidget import LEDMatrixWidget
 from .WellPlateWidget import WellPlateWidget
-from .DeckWidget import DeckWidget
-from .DeckScanWidget import DeckScanWidget
-from .OpentronsDeckWidget import OpentronsDeckWidget
-from .OpentronsDeckScanWidget import OpentronsDeckScanWidget
 from .FocusLockWidget import FocusLockWidget
 from .FOVLockWidget import FOVLockWidget
 from .ImageWidget import ImageWidget

@@ -143,7 +143,7 @@ class MockXXController(ImConWidgetController):
         # start the timelapse
         if not self.isMockXXrunning and (self.Laser1Value>0 or self.Laser2Value>0 or self.LEDValue>0):
             self.nImagesTaken = 0
-            self._widget.setnImagesTaken("Starting timelapse...")
+            self._widget.setMessageGUI("Starting timelapse...")
             self.switchOffIllumination()
 
             # get parameters from GUI
@@ -181,7 +181,7 @@ class MockXXController(ImConWidgetController):
     def stopMockXX(self):
         self.isMockXXrunning = False
 
-        self._widget.setnImagesTaken("Stopping timelapse...")
+        self._widget.setMessageGUI("Stopping timelapse...")
 
         self._widget.MockXXStartButton.setEnabled(True)
 
@@ -204,7 +204,7 @@ class MockXXController(ImConWidgetController):
         except:
             pass
 
-        self._widget.setnImagesTaken("Done wit timelapse...")
+        self._widget.setMessageGUI("Done wit timelapse...")
 
         # store old values for later
         if len(self.lasers)>0:
@@ -269,7 +269,7 @@ class MockXXController(ImConWidgetController):
 
     def doAutofocus(self, params):
         self._logger.info("Autofocusing...")
-        self._widget.setnImagesTaken("Autofocusing...")
+        self._widget.setMessageGUI("Autofocusing...")
         self._commChannel.sigAutoFocus.emit(int(params["valueRange"]), int(params["valueSteps"]))
         self.isAutofocusRunning = True
 
@@ -321,7 +321,7 @@ class MockXXController(ImConWidgetController):
                     autofocusParams = self._widget.getAutofocusValues()
                     
                     if self._widget.isAutofocus() and np.mod(self.nImagesTaken, int(autofocusParams['valuePeriod'])) == 0:
-                        self._widget.setnImagesTaken("Autofocusing...")
+                        self._widget.setMessageGUI("Autofocusing...")
                         # turn on illuimination
                         if autofocusParams['illuMethod']=="Laser1":
                             self.lasers[0].setValue(self.Laser1Value)
@@ -344,7 +344,7 @@ class MockXXController(ImConWidgetController):
                     # acquire one xyzc scan
                     self.acquireScan(timestamp=self.nImagesTaken)
                    
-                    self._widget.setnImagesTaken(self.nImagesTaken)
+                    self._widget.setMessageGUI(self.nImagesTaken)
 
                     # sneak images into arrays for displaying stack
                     if self.zStackEnabled and not self.xyScanEnabled:

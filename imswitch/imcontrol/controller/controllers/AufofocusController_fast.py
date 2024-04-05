@@ -3,7 +3,7 @@ import time
 import numpy as np
 import scipy.ndimage as ndi
 import threading
-
+import imswitch
 from imswitch.imcommon.framework import Thread, Timer
 from imswitch.imcommon.model import initLogger, APIExport
 from ..basecontrollers import ImConWidgetController
@@ -36,8 +36,9 @@ class AutofocusController(ImConWidgetController):
         #self._master.detectorsManager[self.camera].crop(*self.cropFrame)
 
         # Connect AutofocusWidget buttons
-        self._widget.focusButton.clicked.connect(self.focusButton)
-        self._commChannel.sigAutoFocus.connect(self.autoFocus)
+        if not imswitch.IS_HEADLESS:
+            self._widget.focusButton.clicked.connect(self.focusButton)
+            self._commChannel.sigAutoFocus.connect(self.autoFocus)
 
         # select stage
         self.stages = self._master.positionersManager[self._master.positionersManager.getAllDeviceNames()[0]]

@@ -116,6 +116,29 @@ class TiffStorer(Storer):
                 tiff.imwrite(path, image,) # TODO: Parse metadata to tiff meta data
                 logger.info(f"Saved image to tiff file {path}")
 
+class PNGStorer(Storer):
+    """ A storer that stores the images in a series of png files """
+    def snap(self, images: Dict[str, np.ndarray], attrs: Dict[str, str] = None):
+        for channel, image in images.items():
+            #with AsTemporayFile(f'{self.filepath}_{channel}.png') as path:
+            path = f'{self.filepath}_{channel}.png'
+            # if image is BW only, we have to convert it to RGB
+            if image.ndim == 2:
+                image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
+            cv2.imwrite(path, image)
+            logger.info(f"Saved image to png file {path}")
+
+class JPGStorer(Storer):
+    """ A storer that stores the images in a series of jpg files """
+    def snap(self, images: Dict[str, np.ndarray], attrs: Dict[str, str] = None):
+        for channel, image in images.items():
+            #with AsTemporayFile(f'{self.filepath}_{channel}.jpg') as path:
+            path = f'{self.filepath}_{channel}.jpg'
+            # if image is BW only, we have to convert it to RGB
+            if image.ndim == 2:
+                image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
+            cv2.imwrite(path, image)
+            logger.info(f"Saved image to jpg file {path}")
 class MP4Storer(Storer):
     """ A storer that writes the frames to an MP4 file """
 
@@ -136,13 +159,17 @@ class SaveFormat(enum.Enum):
     HDF5 = 2
     ZARR = 3
     MP4 = 4
+    PNG = 5
+    JPG = 6
 
 
 DEFAULT_STORER_MAP: Dict[str, Type[Storer]] = {
     SaveFormat.ZARR: ZarrStorer,
     SaveFormat.HDF5: HDF5Storer,
     SaveFormat.TIFF: TiffStorer,
-    SaveFormat.MP4: MP4Storer
+    SaveFormat.MP4: MP4Storer,
+    SaveFormat.PNG: PNGStorer,
+    SaveFormat.JPG: JPGStorer
 }
 
 
@@ -228,11 +255,14 @@ class RecordingManager(SignalInterface):
         if wait:
             self.__thread.wait()
 
-    def snap(self, detectorNames, savename, saveMode, saveFormat, attrs):
+    def snap(self, detectorNames=None, savename="", saveMode=SaveMode.Disk, saveFormat=SaveFormat.TIFF, attrs=None):
         """ Saves an image with the specified detectors to a file
         with the specified name prefix, save mode, file format and attributes
         to save to the capture per detector. """
         acqHandle = self.__detectorsManager.startAcquisition()
+
+        if detectorNames is None:
+            detectorNames = self.__detectorsManager.detectorNames
 
         try:
             images = {}
@@ -254,6 +284,9 @@ class RecordingManager(SignalInterface):
                     for channel, image in images.items():
                         name = os.path.basename(f'{savename}_{channel}')
                         self.sigMemorySnapAvailable.emit(name, image, savename, saveMode == SaveMode.DiskAndRAM)
+
+        except Exception as e:
+            self.__logger.error(f'Failed to snap image: {e}')
 
         finally:
             self.__detectorsManager.stopAcquisition(acqHandle)
@@ -290,6 +323,10 @@ class RecordingManager(SignalInterface):
             file.close()
         elif saveFormat == SaveFormat.TIFF:
             tiff.imwrite(filePath, image)
+        elif saveFormat == SaveFormat.PNG:
+            cv2.imwrite(filePath, image)
+        elif saveFormat == SaveFormat.JPG:
+            cv2.imwrite(filePath, image)
         elif saveFormat == SaveFormat.ZARR:
             path = self.getSaveFilePath(f'{savename}.{fileExtension}')
             store = zarr.storage.DirectoryStore(path)
@@ -408,6 +445,16 @@ class RecordingWorker(Worker):
 
 
             elif self.saveFormat == SaveFormat.TIFF:
+                fileExtension = str(self.saveFormat.name).lower()
+                filenames[detectorName] = self.__recordingManager.getSaveFilePath(
+                    f'{self.savename}_{detectorName}.{fileExtension}', False, False)
+
+            elif self.saveFormat == SaveFormat.PNG:
+                fileExtension = str(self.saveFormat.name).lower()
+                filenames[detectorName] = self.__recordingManager.getSaveFilePath(
+                    f'{self.savename}_{detectorName}.{fileExtension}', False, False)
+
+            elif self.saveFormat == SaveFormat.JPG:
                 fileExtension = str(self.saveFormat.name).lower()
                 filenames[detectorName] = self.__recordingManager.getSaveFilePath(
                     f'{self.savename}_{detectorName}.{fileExtension}', False, False)

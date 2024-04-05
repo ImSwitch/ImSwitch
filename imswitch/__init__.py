@@ -1,7 +1,13 @@
 import glob
-__version__ = "1.2.9" # used to be, but actions will replace this with the current release TAG ->1.2.9
+from sys import platform
+# used to be, but actions will replace this with the current release TAG ->1.2.9
+__version__ = "1.2.9"
 
-IS_HEADLESS = False
+if platform == "linux" or platform == "linux2":
+    IS_HEADLESS = True
+else:
+    IS_HEADLESS = False
+
 
 # Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.

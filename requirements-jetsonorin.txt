@@ -37,3 +37,5 @@ scikit-learn>=0.24.2
 imjoy-rpc
 hypha>=0.15.31
 imjoy 
+websockets>=9.1
+websocket-client>=1.2.1

@@ -159,7 +159,10 @@ class SettingsController(ImConWidgetController):
 
         # Adjust frame
         params = self.allParams[detector.name]
-        binning = int(params.binning.value())
+        try:
+            binning = int(params.binning.value())
+        except:
+            binning = 1
         width = params.width.value()
         height = params.height.value()
         x0 = params.x0.value()
@@ -371,20 +374,23 @@ class SettingsController(ImConWidgetController):
             self.ROIchanged()
 
         else:
-            if frameMode == 'Full chip':
-                fullChipShape = detector.fullShape
-                params.x0.setValue(0)
-                params.y0.setValue(0)
-                params.width.setValue(fullChipShape[0])
-                params.height.setValue(fullChipShape[1])
+            if frameMode == "":
+                pass
             else:
-                roiInfo = self._setupInfo.rois[frameMode]
-                params.x0.setValue(roiInfo.x)
-                params.y0.setValue(roiInfo.y)
-                params.width.setValue(roiInfo.w)
-                params.height.setValue(roiInfo.h)
+                if frameMode == 'Full chip':
+                    fullChipShape = detector.fullShape
+                    params.x0.setValue(0)
+                    params.y0.setValue(0)
+                    params.width.setValue(fullChipShape[0])
+                    params.height.setValue(fullChipShape[1])
+                else:
+                    roiInfo = self._setupInfo.rois[frameMode]
+                    params.x0.setValue(roiInfo.x)
+                    params.y0.setValue(roiInfo.y)
+                    params.width.setValue(roiInfo.w)
+                    params.height.setValue(roiInfo.h)
 
-            self.adjustFrame(detector=detector)
+                self.adjustFrame(detector=detector)
 
         self.syncFrameParams(doAdjustFrame=False)
 
@@ -515,6 +521,19 @@ class SettingsController(ImConWidgetController):
         )
         self.updateSharedAttrs()
 
+    @APIExport(runOnUIThread=True)
+    def setDetectorExposureTime(self, detectorName: str=None, exposureTime: float=1) -> None:
+        """ Sets the exposure time for the specified detector. """
+        if detectorName is None:
+            detectorName = self._master.detectorsManager.getCurrentDetectorName()
+        self.setDetectorParameter(detectorName, 'exposure', exposureTime)
+        
+    @APIExport(runOnUIThread=True)
+    def setDetectorGain(self, detectorName: str=None, gain: float=0) -> None:
+        """ Sets the gain for the specified detector. """
+        if detectorName is None:
+            detectorName = self._master.detectorsManager.getCurrentDetectorName()
+        self.setDetectorParameter(detectorName, 'gain', gain)
 
 _attrCategory = 'Detector'
 _modelAttr = 'Model'
@@ -539,3 +558,4 @@ _detectorParameterSubCategory = 'Param'
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
+

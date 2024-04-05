@@ -17,11 +17,14 @@ class MCTManager(SignalInterface):
     def __init__(self, mctInfo, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.__logger = initLogger(self)
-
-        if mctInfo is None:
-            return
+        
+        if mctInfo is not None and mctInfo.tWait is not None:
+            self.tWait = mctInfo.tWait
+        else:
+            self.tWait = 0.1
 
         self.update()
+
 
     def update(self):
         # self.allPatternsPaths

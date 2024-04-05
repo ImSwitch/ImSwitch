@@ -28,7 +28,11 @@ class PositionerController(ImConWidgetController):
             for axis in pManager.axes:
                 self.setSharedAttr(pName, axis, _positionAttr, pManager.position[axis])
                 if hasSpeed:
-                    self.setSharedAttr(pName, axis, _speedAttr, pManager.speed[axis])
+                    if pManager.speed[axis]== 0:
+                        mSpeed = 10000
+                    else:
+                        mSpeed = pManager.speed[axis]
+                    self.setSharedAttr(pName, axis, _speedAttr, mSpeed)
                 if hasHome:
                     self.setSharedAttr(pName, axis, _homeAttr, pManager.home[axis])
                 if hasStop:
@@ -73,18 +77,23 @@ class PositionerController(ImConWidgetController):
                 speed = self._widget.getSpeed(positionerName, "X")
             else:
                 speed = self._widget.getSpeed(positionerName, axis)
-        
+        # set speed for the positioner
         self.setSpeed(positionerName=positionerName, speed=speed, axis=axis)
         try:
+            # special case for UC2 positioner that takes more arguments
             self._master.positionersManager[positionerName].move(dist, axis, isAbsolute, isBlocking)
             if dist is None:
                 self.__logger.info(f"Moving {positionerName}, axis {axis}, at speed {str(speed)}")
                 self._master.positionersManager[positionerName].moveForeverByAxis(speed=speed, axis=axis, is_stop=~(abs(speed)>0))            
         except Exception as e:
+            # if the positioner does not have the move method, use the default move method
             self._logger.error(e)
             self._master.positionersManager[positionerName].move(dist, axis)
         self._commChannel.sigUpdateMotorPosition.emit()
         self.updatePosition(positionerName, axis)
+
+    def moveForever(self, speed=(0, 0, 0, 0), is_stop=False):
+        self._master.positionersManager.execOnAll(lambda p: p.moveForever(speed=speed, is_stop=is_stop))
 
     def setPos(self, positionerName, axis, position):
         """ Moves the positioner to the specified position in the specified axis. """
@@ -135,7 +144,7 @@ class PositionerController(ImConWidgetController):
     @APIExport(runOnUIThread=True)
     def homeAxis(self, positionerName, axis, isBlocking=False):
         self.__logger.debug(f"Homing axis {axis}")
-        self._master.positionersManager[positionerName].doHome(axis)
+        self._master.positionersManager[positionerName].doHome(axis, isBlocking=isBlocking)
         self.updatePosition(positionerName, axis)
 
 
@@ -206,6 +215,11 @@ class PositionerController(ImConWidgetController):
         except Exception as e:
             self.__logger.error(e)
             self.move(positionerName, axis, dist)
+
+    @APIExport(runOnUIThread=True)
+    def movePositionerForever(self, speed=(0, 0, 0, 0), is_stop=False):
+        self.move_forever(speed=speed, is_stop=is_stop)
+   
 
     @APIExport(runOnUIThread=True)
     def setPositioner(self, positionerName: str, axis: str, position: float) -> None:

@@ -133,7 +133,7 @@ class HyphaController(LiveUpdatedController):
                 self.__logger.debug(f"Track {track.kind} ended")
 
 
-    def setLaserActive(self, laserId=0, value=0):
+    def setLaserActive(self, laserId=0, value=0, context=None):
         """
         Activates or deactivates a laser by setting its enabled state.
 
@@ -156,7 +156,7 @@ class HyphaController(LiveUpdatedController):
         """
         self.lasers[laserId].setEnabled(value)
 
-    def setLaserValue(self, laserId=0, value=0):
+    def setLaserValue(self, laserId=0, value=0, context=None):
         """
         Sets the value of a laser.
 
@@ -179,7 +179,7 @@ class HyphaController(LiveUpdatedController):
         """
         self.lasers[laserId].setValue(value)
 
-    def setLEDValue(self, ledId=0, value=0):
+    def setLEDValue(self, ledId=0, value=0, context=None):
         """
         Sets the value of an LED in an LED matrix.
 
@@ -201,7 +201,60 @@ class HyphaController(LiveUpdatedController):
         """
         self.ledMatrix[ledId].setValue(value)
 
-    def getImage(self, path="Default.tif"):
+    def getProcessedImages(self, path="Default.tif", pythonFunctionString="", context=None):
+        '''
+        Captures a single image and processes it using a Python function provided as a string.
+        
+        Args:
+            path (str, optional): The path to save the captured image. Default is "Default.tif".
+            pythonFunctionString (str, optional): The Python function to use for processing the image. Default is "".
+            Example:
+                functionString = """
+                def processImage(image):
+                    # Example processing: Convert to grayscale
+                    return cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+                """
+        
+                context (dict, optional): Context information containing user details.
+        
+        Returns:
+            numpy.ndarray: The processed image as a NumPy array.
+        
+        Notes:
+            - The function captures a single image using the microscope's detector.
+            - The function that processes the image should follow the following pattern:
+                def processImage(image):
+                    # optinal imports of libraries
+                    processImage = fu(image)
+                    # process the image
+                    return processedImage
+        '''
+        self._logger.debug("getProcessedImages - functionstring: "+pythonFunctionString)
+        mImage = self.detector.getLatestFrame()
+        # Step 2: Load and Execute Python Function from String
+        if pythonFunctionString and pythonFunctionString !=  "":
+            # Define a default processImage function in case exec fails
+            def processImage(image):
+                return image
+
+            # Execute the function string
+            exec(pythonFunctionString, globals(), locals())
+
+            # Step 3: Process the Image
+            fctName = pythonFunctionString.split("def ")[1].split("(")[0]
+            processedImage = locals()[fctName](mImage)
+
+            
+        else:
+            processedImage = mImage
+        
+        tif.imsave(path,processedImage)
+        return processedImage
+
+        
+        
+        
+    def getImage(self, path="Default.tif", context=None):
         """
         Captures a single microscopic image and saves it to a specified path.
 
@@ -235,7 +288,7 @@ class HyphaController(LiveUpdatedController):
         tif.imsave(path,mImage)
         return mImage
 
-    def setPosition(self, value, axis, is_absolute=True, is_blocking=True):
+    def setPosition(self, value, axis, is_absolute=True, is_blocking=True, context=None):
         """
         Moves the microscope stage in the specified axis by a certain distance.
 
@@ -244,16 +297,17 @@ class HyphaController(LiveUpdatedController):
             axis (str): The axis along which the stage should be moved. Valid values are 'X', 'Y', 'Z', and 'A'.
             is_absolute (bool, optional): Specifies whether the movement should be relative or absolute. Default is True (absolute).
             is_blocking (bool, optional): Specifies whether the function should block until the stage has arrived at the destination. Default is True.
+            context (dict, optional): Context information containing user details.
 
         Returns:
             None
 
         Example Use:
             # Move the stage 10000 µm in the positive X direction in absolute coordinates and wait for the stage to arrive.
-            self.setPosition(value=10000, axis="X", is_absolute=True, is_blocking=True)
+            self.setPosition(value=10000, axis="X", is_absolute=True, is_blocking=True, context=context)
 
             # move the stage 10000 µm in the negative Y direction in relative coordinates and return immediately.
-            self.setPosition(value=-10000, axis="Y", is_absolute=False, is_blocking=False)
+            self.setPosition(value=-10000, axis="Y", is_absolute=False, is_blocking=False, context=context)
 
         Notes:
             - Successful movement requires supported axis.
@@ -286,7 +340,7 @@ class HyphaController(LiveUpdatedController):
                 "name": "openUC2 Microscope",
                 "description": "OpenUC2 Microscope Interface: Precise control over openuc2 microscope.",# Monochrome camera, laser, LED matrix, focusing stage, XY stage. Easy sample manipulation, accurate autofocus, fluorescence microscopy. LED matrix enhances phase contrast. High-quality grayscale imaging. Unparalleled precision.",
                 "config":{
-                    "visibility": "protected",
+                    "visibility": "public",
                     "run_in_executor": True,
                     "require_context": True,
                 },
@@ -295,7 +349,8 @@ class HyphaController(LiveUpdatedController):
                 "setLaserActive": self.setLaserActive,
                 "setLaserValue": self.setLaserValue,
                 "setLEDValue": self.setLEDValue,
-                "getImage": self.getImage
+                "getImage": self.getImage, 
+                "getProcessedImages": self.getProcessedImages
             }
         )
         # print("Workspace: ", workspace, "Token:", await server.generate_token({"expires_in": 3600*24*100}))

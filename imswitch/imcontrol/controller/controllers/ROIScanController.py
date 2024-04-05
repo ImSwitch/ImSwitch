@@ -170,7 +170,7 @@ class ROIScanController(ImConWidgetController):
         # move to all coordinates and take an image
         iImage = 0
         for i in range(nTimes):
-            if self.isRoiscanRunning:
+            if not self.isRoiscanRunning:
                 return
             currentTime = datetime.now().strftime("%d-%m-%Y_%H-%M-%S")
             t0 = time.time()

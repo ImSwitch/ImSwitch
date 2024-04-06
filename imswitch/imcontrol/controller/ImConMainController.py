@@ -62,12 +62,20 @@ class ImConMainController(MainController):
                 )
             except Exception as e:
                 #try to get it from the plugins
+                foundPluginController = False
                 for entry_point in pkg_resources.iter_entry_points(f'imswitch.implugins'):
                     if entry_point.name == f'{widgetKey}_controller':
                         packageController = entry_point.load()
                         self.controllers[widgetKey] = self.__factory.createController(packageController, widget)
+                        foundPluginController = True
                         break
+<<<<<<< Updated upstream
                 raise ValueError(f'No controller found for widget {widgetKey} with error {e}')
+=======
+                if not foundPluginController:
+                    self.__logger.debug(e)
+                    raise ValueError(f'No controller found for widget {widgetKey}')
+>>>>>>> Stashed changes
         # Generate API
         self.__api = None
         apiObjs = list(self.controllers.values()) + [self.__commChannel]

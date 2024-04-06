@@ -67,6 +67,7 @@ def main():
                 logger.info(f'initialize module {moduleId}')
             except Exception as e:
                 logger.error(f'Failed to initialize module {moduleId}')
+                logger.error(e)
                 logger.error(traceback.format_exc())
                 moduleCommChannel.unregister(modulePkg)
                 if not imswitch.IS_HEADLESS: multiModuleWindow.addModule(moduleId, moduleName, ModuleLoadErrorView(e))

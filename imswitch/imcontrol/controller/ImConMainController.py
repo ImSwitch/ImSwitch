@@ -69,13 +69,9 @@ class ImConMainController(MainController):
                         self.controllers[widgetKey] = self.__factory.createController(packageController, widget)
                         foundPluginController = True
                         break
-<<<<<<< Updated upstream
-                raise ValueError(f'No controller found for widget {widgetKey} with error {e}')
-=======
                 if not foundPluginController:
                     self.__logger.debug(e)
                     raise ValueError(f'No controller found for widget {widgetKey}')
->>>>>>> Stashed changes
         # Generate API
         self.__api = None
         apiObjs = list(self.controllers.values()) + [self.__commChannel]

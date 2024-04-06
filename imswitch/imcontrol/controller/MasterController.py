@@ -1,4 +1,6 @@
 from imswitch.imcommon.model import VFileItem, initLogger
+import pkg_resources
+        
 from imswitch.imcontrol.model import (
     DetectorsManager, LasersManager, MultiManager, PositionersManager,
     RecordingManager, RS232sManager, SLMManager, SIMManager, DPCManager, LEDMatrixsManager, MCTManager, ROIScanManager, MockXXManager, WebRTCManager, HyphaManager,
@@ -60,7 +62,29 @@ class MasterController:
         self.AutoFocusManager = AutofocusManager(self.__setupInfo.autofocus)
         self.FOVLockManager = FOVLockManager(self.__setupInfo.fovLock)
         self.ismManager = ISMManager(self.__setupInfo.ism)
-        # TODO: Need to add a way to integrate the Plugin MAnagers
+        # load all implugin-related managers and add them to the class
+        # try to get it from the plugins
+        # If there is a imswitch_sim_manager, we want to add this as self.imswitch_sim_widget to the 
+        # MasterController Class
+        for entry_point in pkg_resources.iter_entry_points(f'imswitch.implugins'):
+            if entry_point.name.find("manager")>=0:
+                ManagerClass = entry_point.load()  # Load the manager class
+                self.__setupInfo.add_attribute(attr_name=entry_point.name.split("_manager")[0], attr_value={})
+                manager_setup_info = getattr(self.__setupInfo, entry_point.name.split("_manager")[0], None)
+                
+                # get info from user config dict
+                # sideload the simInfo from the user config dict
+                moduleInfo_dict = self.__setupInfo._catchAll[entry_point.name.split("_manager")[0]]
+                class ModuleInfoClass:
+                    def __init__(self, dictionary):
+                        for key, value in dictionary.items():
+                            setattr(self, key, value)
+                moduleInfo = ModuleInfoClass(moduleInfo_dict) # assign class structure
+                
+                manager = ManagerClass(moduleInfo)  # Initialize the manager
+                setattr(self, entry_point.name, manager)  # Add the manager to the class
+                
+        
 
         if self.__setupInfo.microscopeStand:
             self.standManager = StandManager(self.__setupInfo.microscopeStand,

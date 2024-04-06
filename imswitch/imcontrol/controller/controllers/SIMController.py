@@ -323,7 +323,7 @@ class SIMController(ImConWidgetController):
         self._widget.updateSIMDisplay(image)
         # self._logger.debug("Updated displayed image")
 
-    @APIExport(runOnUIThread=True)
+    #@APIExport(runOnUIThread=True)
     def simPatternByID(self, patternID: int, wavelengthID: int):
         try:
             patternID = int(patternID)
@@ -334,7 +334,7 @@ class SIMController(ImConWidgetController):
         except Exception as e:
             self._logger.error(e)
 
-    @APIExport(runOnUIThread=True)
+    #@APIExport(runOnUIThread=True)
     def performSIMExperimentThread(self, sim_parameters):
         """ 
         Iterate over all SIM patterns, display them and acquire images 
@@ -534,12 +534,12 @@ class SIMController(ImConWidgetController):
         self._logger.debug("Zstack finished")        
         
         
-    @APIExport(runOnUIThread=True)
+    #@APIExport(runOnUIThread=True)
     def sim_getSnapAPI(self, mystack):
         mystack.append(self.detector.getLatestFrame())
         #print(np.shape(mystack))
         
-    @APIExport(runOnUIThread=True)
+    #@APIExport(runOnUIThread=True)
     def saveImageInBackground(self, image, filename):
         filename = os.path.join('C:\\Users\\admin\\Desktop\\Timelapse\\',filename) #FIXME: Remove hardcoded path
         tif.imsave(filename, image)

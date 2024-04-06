@@ -44,7 +44,6 @@ class SIMManager(SignalInterface):
         # Load all patterns
         if type(self.__patternsDir) is not list:
             self.__patternsDir = [self.__patternsDir]
-        self.allPatterns = self.loadPatterns(self.__patternsDir)
 
         # define paramerters for fastAPI (optional)
         fastAPISIM_host = self.__simInfo.fastAPISIM_host

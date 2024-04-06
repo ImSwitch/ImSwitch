@@ -24,7 +24,7 @@ async def snap_image(kwargs):
     return "success"
 
 async def setup():
-    chatbot = await api.createWindow(src="https://chat.bioimage.io/public/apps/bioimageio-chatbot-client/chat")
+    chatbot = await api.createWindow(src="https://bioimage.io/chat", name="BioImage.IO Chatbot")
     
     def get_schema():
         return {

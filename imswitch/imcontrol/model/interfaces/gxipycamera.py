@@ -382,9 +382,9 @@ class CameraGXIPY:
         numpy_image = frame.get_numpy_array()
 
         # flip image if needed
-        if self.flipImage[0]: # X
+        if self.flipImage[0]: # Y
             numpy_image = np.flip(numpy_image, axis=0)
-        if self.flipImage[1]: # Y
+        if self.flipImage[1]: # X
             numpy_image = np.flip(numpy_image, axis=1)
         if numpy_image is None:
             self.__logger.error("Got a None frame")

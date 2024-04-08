@@ -1,5 +1,7 @@
 import numpy as np
 import datetime
+from memory_profiler import profile
+import tifffile as tif
 try:
     import NanoImagingPack as nip
     isNIP = True
@@ -14,7 +16,7 @@ from imswitch.imcommon.model import initLogger
 from ..basecontrollers import LiveUpdatedController
 import imswitch
 from threading import Thread
-
+from imswitch.imcontrol.model import RecMode, SaveMode, SaveFormat
 
 class FlowStopController(LiveUpdatedController):
     """ Linked to FlowStopWidget."""
@@ -39,7 +41,8 @@ class FlowStopController(LiveUpdatedController):
         
         # select detectors
         allDetectorNames = self._master.detectorsManager.getAllDeviceNames()
-        self.detectorFlowCam = allDetectorNames[0]
+        self.detectorFlowCam = self._master.detectorsManager[allDetectorNames[0]]
+        
         self.is_measure = False
         
         # select light source and activate
@@ -149,7 +152,7 @@ class FlowStopController(LiveUpdatedController):
             self._widget.buttonStop.setStyleSheet("background-color: grey")
             self._widget.buttonStart.setStyleSheet("background-color: green")
 
-
+    @profile
     def flowExperimentThread(self, timeStamp: str, experimentName: str, 
                              experimentDescription: str, uniqueId: str, 
                              numImages: int, volumePerImage: float, 
@@ -213,17 +216,23 @@ class FlowStopController(LiveUpdatedController):
         finally:
             self.settingAttr = False
 
-
+    @profile
     @APIExport(runOnUIThread=True)
     def snapImageFlowCam(self, fileName=None, metaData={}):
         """ Snap image. """
         if fileName is None or not fileName:
             fileName = datetime.datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
 
-        from imswitch.imcontrol.model import RecMode, SaveMode, SaveFormat
-        pngFormat = SaveFormat.PNG
-        saveMode = SaveMode.Disk
-        self._master.recordingManager.snap([self.detectorFlowCam], saveMode=saveMode, saveFormat=pngFormat, savename=fileName, attrs=metaData)
+        if 1:
+            mFrame = self.detectorFlowCam.getLatestFrame()  
+            if mFrame is None:
+                self._logger.warning("No frame received from the camera.")
+                return
+            tif.imsave(fileName, mFrame, append=False)
+        else:
+            pngFormat = SaveFormat.PNG
+            saveMode = SaveMode.Disk
+            self._master.recordingManager.snap([self.detectorFlowCam], saveMode=saveMode, saveFormat=pngFormat, savename=fileName, attrs=metaData)
 
     def movePumpPos(self):
         self.positioner.moveRelative((0,0,1*self.directionPump))

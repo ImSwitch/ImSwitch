@@ -186,6 +186,17 @@ class ESP32StageManager(PositionerManager):
         self._motor.setup_motor(axis=axis, minPos=minPos, maxPos=maxPos, stepSize=stepSize, backlash=backlash)
 
     def move(self, value=0, axis="X", is_absolute=False, is_blocking=True, acceleration=None, speed=None, isEnable=None, timeout=gTIMEOUT):
+        '''
+        Move the motor to a new position
+        :param value: The new position
+        :param axis: The axis to move
+        :param is_absolute: If True, the motor will move to the absolute position given by value. If False, the motor will move by the amount given by value.
+        :param is_blocking: If True, the function will block until the motor has reached the new position. If False, the function will return immediately.
+        :param acceleration: The acceleration to use for the move. If None, the default acceleration for the axis will be used.
+        :param speed: The speed to use for the move. If None, the default speed for the axis will be used.
+        :param isEnable: If True, the motor will be enabled before the move. If False, the motor will be disabled before the move.
+        :param timeout: The maximum time to wait for the motor to reach the new position. If the motor has not reached the new position after this time, a TimeoutError will be raised.
+        '''
         #FIXME: for i, iaxis in enumerate(("A","X","Y","Z")):
         #    self._position[iaxis] = self._motor._position[i]
         if isEnable is None:

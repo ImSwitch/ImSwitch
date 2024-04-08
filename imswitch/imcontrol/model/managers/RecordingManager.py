@@ -130,6 +130,7 @@ class PNGStorer(Storer):
             cv2.imwrite(path, image)
             del image
             logger.info(f"Saved image to png file {path}")
+            del image 
 
 class JPGStorer(Storer):
     """ A storer that stores the images in a series of jpg files """

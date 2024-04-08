@@ -171,7 +171,8 @@ class ImSwitchServer(Worker):
 
 # Dynamically add functions to the exposed object
 #https://chat.openai.com/c/40db1be0-b85c-4043-8f1a-074dcb70bc09
-'''for func_name in dir(my_module):
+'''
+for func_name in dir(my_module):
     if not func_name.startswith("_"):  # Filter out magic methods or private methods
         func = getattr(my_module, func_name)
         if callable(func):

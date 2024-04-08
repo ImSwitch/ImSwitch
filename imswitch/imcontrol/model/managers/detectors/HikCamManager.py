@@ -3,7 +3,6 @@ import numpy as np
 from imswitch.imcommon.model import initLogger
 from .DetectorManager import DetectorManager, DetectorAction, DetectorNumberParameter, DetectorListParameter, DetectorBooleanParameter
 
-
 class HikCamManager(DetectorManager):
     """ DetectorManager that deals with TheImagingSource cameras and the
     parameters for frame extraction from them.
@@ -72,7 +71,7 @@ class HikCamManager(DetectorManager):
                         editable=False),
             'frame_rate': DetectorNumberParameter(group='Misc', value=-1, valueUnits='fps',
                                     editable=True),
-            'exposure_mode': DetectorListParameter(group='Misc', value='manual', valueUnits='',
+            'exposure_mode': DetectorListParameter(group='Misc', value='manual', 
                             options=['manual', 'auto', 'single'], editable=True),
             'flat_fielding': DetectorBooleanParameter(group='Misc', value=True, editable=True),            
             'trigger_source': DetectorListParameter(group='Acquisition mode',
@@ -97,7 +96,7 @@ class HikCamManager(DetectorManager):
 
     def setFlatfieldImage(self, flatfieldImage, isFlatfielding):
         self._camera.setFlatfieldImage(flatfieldImage, isFlatfielding)
-        
+    
     def getLatestFrame(self, is_save=False):
         return self._camera.getLast()
 

@@ -1,6 +1,5 @@
 import numpy as np
 import datetime
-from memory_profiler import profile
 import tifffile as tif
 try:
     import NanoImagingPack as nip
@@ -48,9 +47,8 @@ class FlowStopController(LiveUpdatedController):
         # select light source and activate
         allIlluNames = self._master.lasersManager.getAllDeviceNames()
         ledSource = self._master.lasersManager[allIlluNames[0]]
+        ledSource.setValue(1023)
         ledSource.setEnabled(1)
-        ledSource.setValue(255)
-
         # connect camera and stage
         self.positionerName = self._master.positionersManager.getAllDeviceNames()[0]
         self.positioner = self._master.positionersManager[self.positionerName]
@@ -152,7 +150,6 @@ class FlowStopController(LiveUpdatedController):
             self._widget.buttonStop.setStyleSheet("background-color: grey")
             self._widget.buttonStart.setStyleSheet("background-color: green")
 
-    @profile
     def flowExperimentThread(self, timeStamp: str, experimentName: str, 
                              experimentDescription: str, uniqueId: str, 
                              numImages: int, volumePerImage: float, 
@@ -168,6 +165,7 @@ class FlowStopController(LiveUpdatedController):
         '''
         self._logger.debug("Starting the FlowStop experiment thread in {delayToStart} seconds.")
         time.sleep(delayToStart)
+        self._commChannel.sigStartLiveAcquistion.emit(True)
         self.is_measure = True
         if numImages < 0: numImages = np.inf
         self.imagesTaken = 0
@@ -216,7 +214,6 @@ class FlowStopController(LiveUpdatedController):
         finally:
             self.settingAttr = False
 
-    @profile
     @APIExport(runOnUIThread=True)
     def snapImageFlowCam(self, fileName=None, metaData={}):
         """ Snap image. """
@@ -257,7 +254,7 @@ class FlowStopController(LiveUpdatedController):
     @APIExport(runOnUIThread=True)
     def changeAutoExposureTime(self, value):
         """ Change auto exposure time. """
-        self.detector.setParameter(name="exposure_mode", value=value)
+        self.detectorFlowCam.setParameter(name="exposure_mode", value=value)
         
     def changeGain(self, value):
         """ Change gain. """

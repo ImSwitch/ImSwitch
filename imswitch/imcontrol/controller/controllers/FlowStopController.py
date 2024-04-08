@@ -44,10 +44,20 @@ class FlowStopController(LiveUpdatedController):
         self.detectorFlowCam = self._master.detectorsManager[allDetectorNames[0]]
         
         self.is_measure = False
+        
+        # select light source and activate
+        allIlluNames = self._master.lasersManager.getAllDeviceNames()
+        ledSource = self._master.lasersManager[allIlluNames[0]]
+        ledSource.setEnabled(1)
+        ledSource.setValue(255)
+
         # connect camera and stage
         self.positionerName = self._master.positionersManager.getAllDeviceNames()[0]
         self.positioner = self._master.positionersManager[self.positionerName]
 
+        # start live and adjust camera settings to auto exposure
+        self.changeAutoExposureTime('auto')
+        
         # Connect FlowStopWidget signals
         if not imswitch.IS_HEADLESS:
             # Connect CommunicationChannel signals
@@ -239,10 +249,16 @@ class FlowStopController(LiveUpdatedController):
         self.speedPump = value
         self.positioner.moveForever(speed=(self.speedPump,self.speedRotation,0),is_stop=False)
 
+    @APIExport(runOnUIThread=True)
     def changeExposureTime(self, value):
         """ Change exposure time. """
-        self.detectorFlowCam.setExposureTime(value)
-
+        self.detector.setParameter(name="exposure", value=value)
+    
+    @APIExport(runOnUIThread=True)
+    def changeAutoExposureTime(self, value):
+        """ Change auto exposure time. """
+        self.detector.setParameter(name="exposure_mode", value=value)
+        
     def changeGain(self, value):
         """ Change gain. """
         self.detectorFlowCam.setGain(value)

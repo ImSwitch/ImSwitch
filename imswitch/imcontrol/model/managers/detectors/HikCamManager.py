@@ -55,8 +55,6 @@ class HikCamManager(DetectorManager):
         self._running = False
         self._adjustingParameters = False
         
-
-
         # TODO: Not implemented yet
         self.crop(hpos=0, vpos=0, hsize=fullShape[0], vsize=fullShape[1])
 
@@ -74,6 +72,8 @@ class HikCamManager(DetectorManager):
                         editable=False),
             'frame_rate': DetectorNumberParameter(group='Misc', value=-1, valueUnits='fps',
                                     editable=True),
+            'exposure_mode': DetectorListParameter(group='Misc', value='manual', valueUnits='',
+                            options=['manual', 'auto', 'single'], editable=True),
             'flat_fielding': DetectorBooleanParameter(group='Misc', value=True, editable=True),            
             'trigger_source': DetectorListParameter(group='Acquisition mode',
                             value='Continous',

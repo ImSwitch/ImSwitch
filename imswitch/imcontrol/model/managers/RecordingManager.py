@@ -128,6 +128,7 @@ class PNGStorer(Storer):
             if image.ndim == 2:
                 image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
             cv2.imwrite(path, image)
+            del image
             logger.info(f"Saved image to png file {path}")
 
 class JPGStorer(Storer):

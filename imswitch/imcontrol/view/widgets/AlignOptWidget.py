@@ -1,5 +1,6 @@
 from qtpy import QtWidgets
 import pyqtgraph as pg
+import numpy as np
 
 from imswitch.imcontrol.view import guitools as guitools
 from .basewidgets import Widget
@@ -28,6 +29,60 @@ class AlignOptWidget(Widget):
         """Returns currently selected rotator for the OPT
         """
         return self.scanPar['Rotator'].currentIndex()
+
+    def execPlotHorCuts(self, idxList, cor):
+        self.plotHorCuts.clear()  # clear plotWidget first
+        self.plotHorCuts.addLegend()
+        self.plotHorCuts.setTitle('Horizontal cuts', color='b')
+        for i, px in enumerate(idxList):
+            self.plotHorCuts.plot(
+                    self.normalize(cor.horCuts[i][0], '01'),
+                    name=f'single {px}',
+                    pen=pg.mkPen('r'))
+            self.plotHorCuts.plot(
+                    self.normalize(cor.horCuts[i][1], '01'),
+                    name=f'merge {px}',
+                    pen=pg.mkPen('b'))
+
+        # plot CC
+        self.plotCC.clear()  # clear plotWidget first
+        self.plotCC.addLegend()
+        self.plotCC.setTitle('Norm. cross-correlation', color='b')
+        # find
+        for i, px in enumerate(idxList):
+            # I plot it normalized
+            self.plotCC.plot(
+                    cor.crossCorr[i]/np.amax(cor.crossCorr[i]),
+                    name=f'{px}',
+                    )
+        # plot center Hor line
+        self.plotCC.addItem(
+            pg.InfiniteLine(cor.center_px,
+                            angle=90,
+                            pen=pg.mkPen(width=2, color='r'))
+            )
+
+    def normalize(self, data: np.array, mode: str = '01') -> np.array:
+        """this works for positive cuts and images, negative
+        values are not reliably taken care of at this point.
+
+        Args:
+            data (_type_): _description_
+            mode (str, optional): Mode of normalization.
+                '01': normalizes between 0 and 1
+                'max': just divides by max
+                Defaults to '01'.
+
+        Returns:
+            np.array: normalized data, same shape as data
+        """
+        if mode == '01':
+            mn = np.amin(data)
+            return (data - mn)/abs(np.amax(data) - mn)
+        elif mode == 'max':
+            return data / np.amax(data)
+        else:
+            raise ValueError('Unknown mode of normalization')
 
     def widgetLayout(self):
         self.scanPar['StartButton'] = guitools.BetterPushButton('Acquire')

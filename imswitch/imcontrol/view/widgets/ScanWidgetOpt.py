@@ -6,8 +6,15 @@ from imswitch.imcontrol.view import guitools as guitools
 from .basewidgets import NapariHybridWidget
 from typing import Dict, Tuple
 import matplotlib as mpl
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.backends.backend_qt5agg import (
+    FigureCanvasQTAgg as FigureCanvas
+)
 from matplotlib.figure import Figure
+
+__author__ = "David Palecek", "Jacopo Abramo"
+__credits__ = []
+__maintainer__ = "David Palecek"
+__email__ = "david@stanka.de"
 
 
 class ScanWidgetOpt(NapariHybridWidget):
@@ -24,7 +31,7 @@ class ScanWidgetOpt(NapariHybridWidget):
         self.scanPar = {}
         self.enabled = True
         self.layer = None
-        
+
         self.scanPar['GetHotPixels'] = guitools.BetterPushButton('Hot Pixels')
 
         self.scanPar['HotPixelsStdEdit'] = QtWidgets.QDoubleSpinBox()
@@ -80,7 +87,7 @@ class ScanWidgetOpt(NapariHybridWidget):
             )
         self.scanPar['LiveReconButton'].setCheckable(True)
         self.scanPar['LiveReconIdxEdit'] = QtWidgets.QSpinBox()
-        self.scanPar['LiveReconIdxEdit'].setRange(0, 10000)  # step 1 by default
+        self.scanPar['LiveReconIdxEdit'].setRange(0, 10000)  # dflt step 1
         self.scanPar['LiveReconIdxEdit'].setValue(200)
         self.scanPar['LiveReconIdxEdit'].setToolTip(
             'Line px of the camera to reconstruct live via FBP',
@@ -175,7 +182,6 @@ class ScanWidgetOpt(NapariHybridWidget):
         currentRow += 1
 
         self.grid.addWidget(self.scanPar['CurrentStepLabel'], currentRow, 0)
-        # self.grid.addWidget(self.scanPar['CurrentReconStepLabel'], currentRow, 1)
         self.grid.addWidget(self.scanPar['SaveButton'], currentRow, 1)
         self.grid.addWidget(self.scanPar['noRamButton'], currentRow, 2)
 
@@ -201,8 +207,7 @@ class ScanWidgetOpt(NapariHybridWidget):
         self.grid.addWidget(self.tabs, currentRow, 0, 1, -1)
 
     def getRotatorIdx(self):
-        """Returns currently selected rotator for the OPT
-        """
+        """Returns currently selected rotator for the OPT """
         return self.scanPar['Rotator'].currentIndex()
 
     def getOptSteps(self) -> int:
@@ -241,7 +246,7 @@ class ScanWidgetOpt(NapariHybridWidget):
         """
         self.scanPar['LiveReconIdxEdit'].setValue(int(value))
 
-    def updateHotPixelCount(self, count: int):
+    def updateHotPixelCount(self, count: int) -> None:
         """ Displays count of the identified hot pixels.
 
         Args:
@@ -249,7 +254,7 @@ class ScanWidgetOpt(NapariHybridWidget):
         """
         self.scanPar['HotPixelCount'].setText(f'Count: {count:d}')
 
-    def updateHotPixelMean(self, value: float):
+    def updateHotPixelMean(self, value: float) -> None:
         """Mean intensity of the hot pixels. Used only for display
         (informative) purposes.
 
@@ -258,7 +263,7 @@ class ScanWidgetOpt(NapariHybridWidget):
         """
         self.scanPar['HotPixelMean'].setText(f'Hot mean: {value:.3f}')
 
-    def updateNonHotPixelMean(self, value: float):
+    def updateNonHotPixelMean(self, value: float) -> None:
         """Mean intensity of non-hot pixels. Used only for display
         (informative) purposes.
 
@@ -267,7 +272,7 @@ class ScanWidgetOpt(NapariHybridWidget):
         """
         self.scanPar['NonHotPixelMean'].setText(f'Non-hot mean: {value:.3f}')
 
-    def updateDarkMean(self, value: float):
+    def updateDarkMean(self, value: float) -> None:
         """Mean intensity of the dark field acquisition. Used only for
         display (informative) purposes.
 
@@ -276,7 +281,7 @@ class ScanWidgetOpt(NapariHybridWidget):
         """
         self.scanPar['DarkMean'].setText(f'Dark mean: {value:.2f}')
 
-    def updateDarkStd(self, value: float):
+    def updateDarkStd(self, value: float) -> None:
         """Standart deviation of the dark field correction. Used only
         for display (informative) purposes.
 
@@ -285,7 +290,7 @@ class ScanWidgetOpt(NapariHybridWidget):
         """
         self.scanPar['DarkStd'].setText(f'Dark STD: {value:.2f}')
 
-    def updateFlatMean(self, value: float):
+    def updateFlatMean(self, value: float) -> None:
         """Mean intensity of the flat (bright) field correction. Used only
         for display (informative) purposes.
 
@@ -294,7 +299,7 @@ class ScanWidgetOpt(NapariHybridWidget):
         """
         self.scanPar['FlatMean'].setText(f'Flat mean: {value:.2f}')
 
-    def updateFlatStd(self, value: float):
+    def updateFlatStd(self, value: float) -> None:
         """Standard deviation fo the flat/bright field correction. Used only
         for display (informative) purposes.
 
@@ -303,7 +308,7 @@ class ScanWidgetOpt(NapariHybridWidget):
         """
         self.scanPar['FlatStd'].setText(f'Flat STD: {value:.2f}')
 
-    def updateCurrentStep(self, value: str = '-'):
+    def updateCurrentStep(self, value: str = '-') -> None:
         """Updates text in the widget of current OPT step counter
 
         Args:
@@ -314,14 +319,18 @@ class ScanWidgetOpt(NapariHybridWidget):
             f'Current Step: {value}/{self.getOptSteps()}'
         )
 
-    def updateCurrentReconStep(self, value='-'):
+    def updateCurrentReconStep(self, value='-') -> None:
         self.scanPar['CurrentReconStepLabel'].setText(
             f'Current Recon: {value}/{self.getOptSteps()}'
         )
 
-    def setRotStepEnable(self, enabled):
+    def setRotStepEnable(self, enabled: bool) -> None:
         """ For inactivating during scanning when ActivateButton pressed
-        and waiting for a scan. When scan finishes, enable again. """
+        and waiting for a scan. When scan finishes, enable again.
+
+        Args:
+            enabled (bool): boolean for the setter.
+        """
         self.scanPar['OptStepsEdit'].setEnabled(enabled)
 
     def setProgressBarValue(self, value: int) -> None:
@@ -405,7 +414,7 @@ class ScanWidgetOpt(NapariHybridWidget):
         self.intensityPlot.addLegend()
 
         colors = ['w', 'r', 'g', 'b']
-        # iterate over 
+        # iterate over
         for i, (key, trace) in enumerate(intensity.items()):
             self.intensityPlot.plot(
                 steps,
@@ -430,18 +439,22 @@ class ScanWidgetOpt(NapariHybridWidget):
                 You can continue by casting the steps on integers and risk \
                 imprecise measured angles. Cast on integers and proceed (Yes) \
                 or cancel scan (No)."
-        return guitools.askYesNoQuestion(self, "Motor steps not integer values.", " ".join(text.split()))
+        return guitools.askYesNoQuestion(self,
+                                         "Motor steps not integer values.",
+                                         " ".join(text.split()))
 
     def requestMockConfirmation(self):
         text = "A mock experiment with synthetic generated data has been \
                 requested. Confirm?"
-        return guitools.askYesNoQuestion(self, "Mock OPT is about to run.", " ".join(text.split()))
+        return guitools.askYesNoQuestion(self,
+                                         "Mock OPT is about to run.",
+                                         " ".join(text.split()))
 
 
 class PlotDialog(QtWidgets.QDialog):
     """Create a pop-up widget with the OPT time execution
     statistical plots. Timings are collected during the last run
-    OPT scan. The plots show the relevant statistics spent 
+    OPT scan. The plots show the relevant statistics spent
     on particular tasks during the overall experiment,
     as well as per OPT step.
     """
@@ -461,8 +474,10 @@ class ReportCanvas(FigureCanvas):
         Args:
             report (dict): report data dictionary
             parent (_type_, optional): parent class. Defaults to None.
-            width (int, optional): width of the plot in pixels. Defaults to 300.
-            height (int, optional): height of the plot in pixels. Defaults to 300.
+            width (int, optional): width of the plot in pixels.
+                Defaults to 300.
+            height (int, optional): height of the plot in pixels.
+                Defaults to 300.
         """
         fig = Figure(figsize=(width, height))
         self.ax1 = fig.add_subplot(131)

@@ -1,17 +1,21 @@
 import numpy as np
 from scipy.signal import correlate
-import pyqtgraph as pg
 
 from imswitch.imcommon.model import initLogger
 from ..basecontrollers import ImConWidgetController
 from imswitch.imcommon.framework import Thread
+from typing import List
 
 from .ScanControllerOpt import ScanOPTWorker
 
+__author__ = "David Palecek"
+__credits__ = ["Jacopo Abramo"]
+__maintainer__ = "David Palecek"
+__email__ = "david@stanka.de"
+
 
 class AlignOptController(ImConWidgetController):
-    """ OPT alignment controller.
-    """
+    """ OPT alignment controller. """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -24,15 +28,14 @@ class AlignOptController(ImConWidgetController):
         self._widget.initControls()
         self.isOptRunning = False
 
-        # select detectors, this does not update if detector in
-        # recording changes, right?
+        # TODO: no selector for detectors (not linked to the settings widget)
         allDetectorNames = self._master.detectorsManager.getAllDeviceNames()
         self.detectorName = allDetectorNames[0]
         self.detector = self._master.detectorsManager[allDetectorNames[0]]
 
         # rotators list
         self.rotatorsList = self._master.rotatorsManager.getAllDeviceNames()
-        self.rotator = None         # from rotatorsManager by rotatorName
+        self.rotator = None       # from rotatorsManager by rotatorName
         self.rotatorName = None   # from rotatorsManager
 
         self._widget.scanPar['Rotator'].currentIndexChanged.connect(self.updateRotator)
@@ -41,13 +44,14 @@ class AlignOptController(ImConWidgetController):
         for rotator in self.rotatorsList:
             self._widget.scanPar['Rotator'].addItem(rotator)
 
-        self._widget.scanPar['xShift'].valueChanged.connect(self.replotAll)
-        self.updateShift()
-
         # Scan loop control
         self._widget.scanPar['StartButton'].clicked.connect(self.prepareOPTScan)
         self._widget.scanPar['StopButton'].clicked.connect(self.requestInterruption)
         self._widget.scanPar['PlotHorCuts'].clicked.connect(self.plotHorCuts)
+
+        # cross projection x-shift parameter
+        self._widget.scanPar['xShift'].valueChanged.connect(self.replotAll)
+        self.updateShift()
 
         # OPT worker thread
         self.optThread = Thread()
@@ -61,6 +65,7 @@ class AlignOptController(ImConWidgetController):
             lambda _: self.optWorker.postRotatorStep(),
             )
 
+        # worker signals
         self.optWorker.sigScanDone.connect(self.postScanEnd)
         self.optWorker.sigNewFrameCaptured.connect(self.processImage)
 
@@ -69,19 +74,24 @@ class AlignOptController(ImConWidgetController):
             lambda: self.optWorker.preStart(self.optSteps),
             )
 
-    def postScanEnd(self):
-        """ Triggered after the end of the OPT scan. """
-
+    def postScanEnd(self) -> None:
+        """ Triggered after the end of the OPT scan.
+        It will process the projections, and quit the worker
+        thread, enable widget fields.
+        """
         self._logger.info('OPT scan finished.')
         self.optStack = np.array(self.allFrames)
 
         self.processAlign(self.optStack)
-        self.optWorker.isInterruptionRequested = False  # reset interruption flag
+        self.optWorker.isInterruptionRequested = False  # reset flag
         self.optThread.quit()  # stop the worker thread
         self.enableWidget(True)
 
-    def prepareOPTScan(self):
-        """ Makes preliminary checks for the OPT scan."""
+    def prepareOPTScan(self) -> None:
+        """ Makes preliminary checks for the OPT scan.
+        Sets experimental flags and generates steps array/list.
+        In the end, worker OPT thread is started.
+        """
         self.optWorker.demoEnabled = False
         self.optWorker.noRAM = True
         self.allFrames = []
@@ -112,14 +122,20 @@ class AlignOptController(ImConWidgetController):
         self._widget.scanPar['xShift'].setEnabled(value)
         self._widget.scanPar['PlotHorCuts'].setEnabled(value)
 
-    def requestInterruption(self):
+    def requestInterruption(self) -> None:
         """ Request interruption of the OPT scan. """
         self.optWorker.isInterruptionRequested = True
 
-    def getHorCutIdxs(self):
+    def getHorCutIdxs(self) -> List[int]:
+        """Decodes field of indices for row cuts
+
+        Returns:
+            List[int]: integers used as row indices
+        """
         return [int(k) for k in self._widget.getHorCutsIdxList().split()]
 
-    def updateShift(self):
+    def updateShift(self) -> None:
+        """ Update x-shift value for alignment """
         self.xShift = self._widget.scanPar['xShift'].value()
 
     def updateRotator(self):
@@ -147,68 +163,32 @@ class AlignOptController(ImConWidgetController):
         if self.optWorker.isOPTScanRunning:
             self.allFrames.append(np.uint16(frame))
 
-    def processAlign(self, arr):
+    def processAlign(self, arr: np.ndarray) -> None:
+        """Plot counter projection using AlignCOR class
+
+        Args:
+            arr (np.ndarray): two-frame array
+        """
         self.cor = AlignCOR('alignOPT', arr, self.xShift)
         self.cor.merge()
         self._widget.plotCounterProj(self.cor.merged)
 
-    def normalize(self, data, mode='01'):  # other mode max
-        """this works for positive cuts and images, ngative
-        values are not reliably taken care of.
-
-        Args:
-            data (_type_): _description_
-            mode (str, optional): _description_. Defaults to '01'.
-
-        Returns:
-            _type_: _description_
+    def plotHorCuts(self) -> None:
+        """Create widget plot of the horizontal cuts
+        and the crosscorrelations.
         """
-        if mode == '01':
-            return (data - np.amin(data))/abs(np.amax(data))
-        elif mode == 'max':
-            return data / np.amax(data)
-        else:
-            raise ValueError('Unknown mode of normalization')
-
-    def plotHorCuts(self):
         # query the line indeces to get hor cuts.
         self.horIdxList = self.getHorCutIdxs()
         # process the hor cuts
         self.cor.processHorCuts(self.horIdxList)
 
-        # plotting
-        self._widget.plotHorCuts.clear()  # clear plotWidget first
-        self._widget.plotHorCuts.addLegend()
-        self._widget.plotHorCuts.setTitle('Horizontal cuts', color='b')
-        for i, px in enumerate(self.horIdxList):
-            self._widget.plotHorCuts.plot(
-                    self.normalize(self.cor.horCuts[i][0], '01'),
-                    name=f'single {px}',
-                    pen=pg.mkPen('r'))
-            self._widget.plotHorCuts.plot(
-                    self.normalize(self.cor.horCuts[i][1], '01'),
-                    name=f'merge {px}',
-                    pen=pg.mkPen('b'))
+        # here call widget func
+        self._widget.execPlotHorCuts(self.horIdxList, self.cor)
 
-        # plot CC
-        self._widget.plotCC.clear()  # clear plotWidget first
-        self._widget.plotCC.addLegend()
-        self._widget.plotCC.setTitle('Norm. cross-correlation', color='b')
-        # find
-        for i, px in enumerate(self.horIdxList):
-            # I plot it normalized
-            self._widget.plotCC.plot(
-                    self.cor.crossCorr[i]/np.amax(self.cor.crossCorr[i]),
-                    name=f'{px}',
-                    )
-        # plot center Hor line
-        self._widget.plotCC.addItem(
-            pg.InfiniteLine(self.cor.center_px,
-                            angle=90,
-                            pen=pg.mkPen(width=2, color='r'))
-        )
-
-    def replotAll(self):
+    def replotAll(self) -> None:
+        """When xshift changes, replot the cuts, image
+        overlay and the crosscorrelation plots.
+        """
         self.updateShift()
         try:
             self.cor._updateShift(self.xShift)
@@ -219,36 +199,70 @@ class AlignOptController(ImConWidgetController):
 
 
 class AlignCOR():
-    def __init__(self, name, img_stack, shift):
+    """Class to visualize alignment of the two 180 deg tomographic
+    projections
+    """
+    def __init__(self, name: str, img_stack: np.ndarray, shift: int) -> None:
+        """Init class, check validity of the img_stack shape and calculate
+        shifted overlay stack
+
+        Args:
+            name (str): object name
+            img_stack (np.ndarray): stack od two counter-projections
+            shift (int): shift of one of the projections in respect to the
+                other one, in pixels.
+
+        Raises:
+            IndexError: In case of wrong array shape
+        """
         self.name = name
         if len(img_stack) != 2:
-            raise IndexError('Snap save mode should contain save to display')
+            raise IndexError('Stack must contain exactly two images.')
         # img_stack is opt acquired at 0 and 180 deg
         self.img_stack_raw = img_stack
         self.shift = shift
+
+        # invert one of the images and do overlay.
         self.createShiftedStack()
 
         self.horCuts = []
         self.merged = None
 
-    def _updateShift(self, value):
+    def _updateShift(self, value: int) -> None:
+        """ Updates x-shift value between projections. Triggers
+        recalculation of the merge
+
+        Args:
+            value (int): shift between projections in pixels.
+        """
         self.shift = value
         self.recalcWithShift()
 
-    def merge(self):
+    def merge(self) -> None:
+        """ Merge of the two projections is their mean. """
         self.merged = np.array(self.img_stack).mean(axis=0).astype(np.int16)
 
-    def processHorCuts(self, idx_list):
+    def processHorCuts(self, idx_list: List[int]) -> None:
+        """Retrive rows from the camera frames, mirror flip and merge
+        the projections. Second part calculates cross-correlation of the
+        cuts which should be ideally perfectly matching and central ->
+        optimization enabler
+
+        Args:
+            idx_list (List[int]): indices of row for horizontal cuts.
+        """
         self.horCuts = []
         self.valid_idx = []
-        for i in idx_list:  # idx is line of the detector
+
+        # add rows
+        for i in idx_list:  # idx is row of the detector
             try:
-                # append tuple of first from stack and merged one at given idx
+                # append tuple of (first from stack, merged one) at given idx
                 self.horCuts.append((self.img_stack[0][i],
                                      self.merged[i]))
                 self.valid_idx.append(i)
             except IndexError:
-                # TODO: this has to update the valid idx list too
+                # TODO: this could update the valid idx list too
                 print('Index out of range')
 
         # calculate cross-correlation between 0, 180 projs
@@ -260,12 +274,11 @@ class AlignCOR():
                           mode='full'),
                 )
         # column dimension, which is center
-        # of full cross correlation
+        # of full cross correlation, which is size 2n
         self.center_px = self.img_stack[0].shape[1]
 
-    def recalcWithShift(self):
-        """Called after shift value changes.
-        """
+    def recalcWithShift(self) -> None:
+        """ Called after shift value changes. """
         # first redo the stack
         self.createShiftedStack()
 
@@ -276,11 +289,12 @@ class AlignCOR():
         self.processHorCuts(self.valid_idx)
 
     def createShiftedStack(self):
-        """This shfits the first of the two projections
-        by self.shift
+        """ This shifts the first of the two projections by self.shift,
+        first image in the stack is also mirrored around vertical center axis
         """
         shifted = np.zeros(self.img_stack_raw[0].shape)
 
+        # rolling around axis 1, which are columns
         if self.shift < 0:
             shifted[:, :self.shift] = np.roll(self.img_stack_raw[0],
                                               self.shift,
@@ -291,6 +305,7 @@ class AlignCOR():
                                               self.shift,
                                               axis=1,
                                               )[:, self.shift:]
+        # in the stack, first is shifted and mirrored
         self.img_stack = [shifted[:, ::-1],
                           self.img_stack_raw[1]]
 

@@ -16,6 +16,11 @@ from imswitch.imcommon.model import initLogger, dirtools
 from imswitch.imcommon.framework import Signal, Thread, Worker
 from skimage.transform import radon
 
+__author__ = "David Palecek", "Jacopo Abramo"
+__credits__ = []
+__maintainer__ = "David Palecek"
+__email__ = "david@stanka.de"
+
 
 class ScanExecutionMonitor:
     """ Helper class dedicated to monitor the execution time of an OPT scan.
@@ -23,17 +28,19 @@ class ScanExecutionMonitor:
     relative to each step of the scan execution. It is also saved in the
     metadata file of the experiment.
     """
-    def __init__(self):
+    def __init__(self) -> None:
+        """Empty report containers """
         # TODO: move this class to the utilities folder and extend its usage
         # to the rest of the application
         self.outputReport = {}
         self.report = defaultdict(lambda: [])
 
-    def reinit(self):
+    def reinit(self) -> None:
+        """ Reinit empty containers before experiment """
         self.outputReport = {}
         self.report = defaultdict(lambda: [])
 
-    def addStamp(self, key: str, idx: int, tag: str):
+    def addStamp(self, key: str, idx: int, tag: str) -> None:
         """ Add a time stamp to the report.
 
         Args:
@@ -90,6 +97,7 @@ class ScanExecutionMonitor:
         if len(diffs) != len(stamps) // 2:
             print('Some data were not matched')
 
+        # statistical metrics of the time series.
         report = {}
         report['Total'] = np.sum(diffs)                 # total time spent on the task
         report['Mean'] = np.mean(diffs)                 # mean time per step
@@ -124,20 +132,20 @@ class ScanOPTWorker(Worker):
         super().__init__()
         self.__logger = initLogger(self)
         self.master = master
-        self.detectorName = detectorName
-        self.rotatorName = rotatorName
+        self.detectorName = detectorName    # detector identifier
+        self.rotatorName = rotatorName      # rotator identifier
         self.timeMonitor = ScanExecutionMonitor()
         self.signalStability = Stability()
 
         # rotator configuration values
-        self.optSteps = None
-        self.currentStep = 0
-        self.saveSubfolder = None
+        self.optSteps = None            # number of experimental steps
+        self.currentStep = 0            # current experimental step
+        self.saveSubfolder = None       # save folder
         self.waitConst = 1   # base wait const (ms) if query to detector for exposure fails
 
         # monitor flags
-        self.saveOpt = False                    # save option for the OPT
-        self.isOPTScanRunning = False             # OPT scan running flag, default to False
+        self.saveOpt = False                  # save option for the OPT
+        self.isOPTScanRunning = False         # OPT scan running flag, default to False
         self.noRAM = False                    # Stack not saved to RAM and Viewwer to save memory
         self.isLiveRecon = False              # OPT live reconstruction flag, default to False
         self.isInterruptionRequested = False  # interruption request flag, set from the main thread; defaults to False
@@ -156,17 +164,31 @@ class ScanOPTWorker(Worker):
             resolution (`int`): resolution of resulting sinogram, equivalent to the number of steps in the OPT scan.
         """
         def generateSyntheticSinogram(resolution: int) -> np.ndarray:
+            """Generates sinogram of a 3D shepp logan phantom. The resuling
+            array is a cube with an edge of resolution pixels.
+
+            Args:
+                resolution (int): edge dimension of the data cube
+
+            Returns:
+                np.ndarray: shepp-logan sinogram in int8.
+            """
             self.__logger.info('Demo experiment: preparing synthetic data.')
-            data = shepp3d(resolution)  # shepp-logan 3D phantom
-            sinogram = np.zeros(data.shape)  # preallocate sinogram array
+            data = shepp3d(resolution)          # shepp-logan 3D phantom
+            sinogram = np.zeros(data.shape)     # preallocate sinogram array
             angles = np.linspace(0, 360, resolution, endpoint=False)  # angles
+
+            # radon transform for each projection, converion to sinogram
             for i in range(resolution):
-                self.sigNewSinogramDataPoint.emit(i)
+                self.sigNewSinogramDataPoint.emit(i)  # progress bar monitor
                 sinogram[i, :, :] = radon(data[i, :, :], theta=angles)
-            mx = np.amax(sinogram)
+
             self.__logger.info('Synthetic data ready.')
+            # normalize and return
+            mx = np.amax(sinogram)
             return np.rollaxis((sinogram/mx*255).astype(np.uint8), 2)
 
+        # generate sinogram only if demo experiment chosen
         if self.demoEnabled:
             self.sinogram = generateSyntheticSinogram(resolution)
 
@@ -204,9 +226,11 @@ class ScanOPTWorker(Worker):
         # we select the frame retrieval method based off the demo flag
         self.getFrame: Callable = self.getFrameFromSino if self.demoEnabled else self.snapCamera
 
-        # we move the rotator to the first position
+        # move the rotator to the first position
         self.timeMonitor.addStamp('motor', self.currentStep, 'beg')
-        self.master.rotatorsManager[self.rotatorName].move_abs(self.optSteps[self.currentStep], inSteps=True)
+        self.master.rotatorsManager[self.rotatorName].move_abs(
+                                        self.optSteps[self.currentStep],
+                                        inSteps=True)
 
     def postRotatorStep(self):
         """ Triggered after emission of the `sigPositionUpdated` signal from
@@ -223,7 +247,6 @@ class ScanOPTWorker(Worker):
         are completed, or when the `isInterruptionRequested` flag is raised
         by the main thread.
         """
-        print('here1')
         self.timeMonitor.addStamp('motor', self.currentStep, 'end')
         # manual stepping also leads to here, continue only for OPT scan
         if not self.isOPTScanRunning:
@@ -344,14 +367,13 @@ class ScanOPTWorker(Worker):
         if self.saveOpt:
             self.saveImage(frame,
                            self.saveSubfolder,
-                           f'{self.currentStep:04}')
+                           )
 
     def startNextStep(self):
         """
         Update live reconstruction, stop OPT in case of last step,
         otherwise move motor again.
         """
-        print(self.currentStep)
         # # updating live reconstruction (DP: doing it in processFrame)
         self.currentStep += 1
 
@@ -549,13 +571,22 @@ class ScanControllerOpt(ImConWidgetController):
         self.optWorker.sigNewLiveRecon.connect(self.updateLiveReconPlot)
 
         # Thread signals connection
-        self.optThread.started.connect(lambda: self.optWorker.preStart(self.optSteps))
+        self.optThread.started.connect(lambda: self.optWorker.preStart(
+            self.optSteps))
 
         # setup UI
         self._widget.updateCurrentStep(0)
         self.enableWidget(True)
 
-    def setSharedAttr(self, HWName, attr, value):
+    def setSharedAttr(self, HWName: str, attr: str, value) -> None:
+        """Setting one shared attribute key, value pair. Key is a tuple of
+        identifiers
+
+        Args:
+            HWName (str): hardware part
+            attr (str): attribute name
+            value (_type_): value of the attribute
+        """
         self._commChannel.sharedAttrs[(_attrCategory, HWName, attr)] = value
 
     def requestInterruption(self):
@@ -898,20 +929,26 @@ class ScanControllerOpt(ImConWidgetController):
             Saved frame is a frame averaged {averages}x. Hot pixels will \
             be identified as intensity higher than {cutoff}x STD, and \
             their count shown for reference"
-        return guitools.askYesNoQuestion(self._widget, "Confirm Hot-pixel acquisition.", " ".join(text.split()))
+        return guitools.askYesNoQuestion(self._widget,
+                                         "Confirm Hot-pixel acquisition.",
+                                         " ".join(text.split()))
 
     def requestDarkFieldConfirmation(self, averages: int):
         text = f"Acquire does {averages} averages at current exposure time.\
             Exposure time MUST be the same as for the\
             experiment you are going to perform."
-        return guitools.askYesNoQuestion(self._widget, "Confirm Dark-field acquisition.", " ".join(text.split()))
+        return guitools.askYesNoQuestion(self._widget,
+                                         "Confirm Dark-field acquisition.",
+                                         " ".join(text.split()))
 
     def requestFlatFieldConfirmation(self, averages: int):
         text = f"Only for transmission mode. You should have flat \
             field illumination within the linear regime. Acquisition will\
             perform {averages} averages at current exposure time.\
             It should be the same number of averages as for the dark-field."
-        return guitools.askYesNoQuestion(self._widget, "Confirm Flat-field acquisition.", " ".join(text.split()))
+        return guitools.askYesNoQuestion(self._widget,
+                                         "Confirm Flat-field acquisition.",
+                                         " ".join(text.split()))
 
     def acquireCorrection(self, corr_type, n):
         self.sigImageReceived.connect(self.displayImage)

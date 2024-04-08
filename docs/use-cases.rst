@@ -143,5 +143,60 @@ of a RS232 connection, such as:
 
 The pulses will be directly handled by the National Instruments card and our TTLDesigner.
 
+Optical Projection Tomography (OPT) using rotator stepping 
+----------------------------------------------------------
 
+.. .. image:: ./images/OPT_GUI.png
+..     :width: 600px
+..     :align: center
 
+Optical Projection Tomography (OPT) is an optical analogue of a X-ray computer tomography used
+in medical imaging. Imswitch implementation aims to provide user-friendly access to end-to-end
+pipeline for the OPT, which consist of indispensible steps described below.
+
+Hardware control
+^^^^^^^^^^^^^^^^
+
+The setup consists of collimated light-source, diffuser, sample mounted on a rotational stage,
+in the refractive index matched medium and infinity corrected objective imaging the
+2D projections onto the CMOS camera. All elements are aligned to the camera optical axis.
+Rotational axis of the sample needs to be as close to perpendicular to the optical axis as possible.
+
+Alingment widget
+^^^^^^^^^^^^^^^^
+
+.. .. image:: ./images/alignment_GUI.png
+..     :width: 600px
+..     :align: center
+
+Rotational axis of the sample needs to be perpendicular to the optical axis and aligned as close to
+the center column of the camera as possible. The alignment procedure allows to acquire 2 projections
+at 0 and 180 degrees, which for mirror images to each other. Flipping one 
+
+The widget shows the overlays and matching via whole image, camera horizontal lines cuts
+and crosscorrelation function. 
+
+* Example
+    
+    Consider motor shaft being imaged on the camera. If rotational axis of the shaft is not
+    at the center column pixel, the merged overlay of projection at 0 degrees and mirrored projection
+    at 180 degrees will show a double step function instead of single step from background light to
+    dark shaft shadow.
+
+    Tilt of the shaft is visible as two horizontal
+    cuts through the camera row 100 (red) and row 1600 (blue), which need to match perfectly
+
+Demo experiment
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Even without a hardware, OPT widget allows to simulate and experiment on the Shepp-Logan
+phantom.
+
+OPT acquisition
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Napari OPT preprocessing module
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Napari deep learning reconstruction
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

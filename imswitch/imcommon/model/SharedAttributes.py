@@ -16,9 +16,6 @@ class SharedAttributes(SignalInterface):
         """
         attrs = {}
         for key, value in self._data.items():
-            if not h5py.check_dtype_serializable(type(value)):
-                print(value, type(value))
-                continue
             attrs[':'.join(key)] = value
 
         return attrs

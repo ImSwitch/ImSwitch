@@ -10,8 +10,8 @@ from telemetrix import telemetrix
 
 
 class TelemetrixInterface(telemetrix.Telemetrix):
-    """ Expanding the Telemetrix 
-    class to store additional parameters 
+    """ Expanding the Telemetrix
+    class to store additional parameters
     related to the manager handling.
     """
     currentPosition: Tuple[int, int] = (0, 0)  # (steps, degrees)
@@ -24,14 +24,17 @@ class TelemetrixRotatorManager(RotatorManager):
     Reference documentation of the interface can be found at this [link](https://mryslab.github.io/telemetrix/)
 
     Manager properties:
-        - stepsPerTurn (`int`): conversion factor for calculating the rotation angle from the number of steps.
+        - stepsPerTurn (`int`): conversion factor for calculating the rotation
+            angle from the number of steps.
         - startSpeed (`int`): initial speed of the motor.
         - maximumSpeed (`int`): maximum speed of the motor.
         - acceleration (`int`): acceleration of the motor.
         - interface (`str`): the type of interface used to control the motor;
-            can be one of the following values: 'StepperDriver', 'FULL2WIRE', 'FULL3WIRE', 'FULL4WIRE', 'HALF3WIRE', 'HALF4WIRE'.
-        - pinConfig (`Dict[str, int]`): a string-int pair dictionary with the pin configuration for the selected interface;
-            the keys are `pin1`, `pin2`, `pin3`, `pin4`; the values are the pin numbers (integers).
+            can be one of the following values: 'StepperDriver', 'FULL2WIRE',
+            'FULL3WIRE', 'FULL4WIRE', 'HALF3WIRE', 'HALF4WIRE'.
+        - pinConfig (`Dict[str, int]`): a string-int pair dictionary with the
+            pin configuration for the selected interface; the keys are `pin1`,
+            `pin2`, `pin3`, `pin4`; the values are the pin numbers (integers).
     """
 
     def __init__(self, rotatorInfo, name, *args, **kwargs):
@@ -58,7 +61,8 @@ class TelemetrixRotatorManager(RotatorManager):
         self.__setupBoardConnection()
 
     def __setupBoardConnection(self):
-        """ Initializes the handle to the hardware interface. If no hardware is found, a mock object is used instead.
+        """ Initializes the handle to the hardware interface.
+        If no hardware is found, a mock object is used instead.
         """
         self.__logger.info(f'Trying to initialize Arduino stepper motor (interface: {self.interface.name})')
         self.board = self.__initializeBoard()        
@@ -78,7 +82,8 @@ class TelemetrixRotatorManager(RotatorManager):
         self.board.shutdown()
 
     def __initializeBoard(self) -> Union[TelemetrixInterface, MockTelemetrixBoard]:
-        """ Initializes communication with the Telemetrix firmware. If no board is found, a mock object is used instead.
+        """ Initializes communication with the Telemetrix firmware.
+        If no board is found, a mock object is used instead.
         """
         board = None
         try:
@@ -142,7 +147,8 @@ class TelemetrixRotatorManager(RotatorManager):
         else:
             steps = angleToSteps(value, self._stepsPerTurn)
 
-        self.board.stepper_move(self.motorID, int(steps - self.board.currentPosition[0]))
+        self.board.stepper_move(self.motorID,
+                                int(steps - self.board.currentPosition[0]))
         self.board.stepper_run(self.motorID, self.__moveFinishedCallback)
 
     def get_position(self) -> Tuple[int, int]:
@@ -167,9 +173,10 @@ class TelemetrixRotatorManager(RotatorManager):
     # Callbacks #
     #############
     def __moveFinishedCallback(self, data: Tuple[int, int, float]) -> None:
-        """Receives data from stepper_run telemetrix callback.
-        The received data is not used, but kept for compatibility with the telemetrix interface.
-        Retrieves the current position of the motor and emits a signal to update the position in the Rotator widget.
+        """Receives data from stepper_run telemetrix callback. The received
+        data is not used, but kept for compatibility with the telemetrix
+        interface. Retrieves the current position of the motor and emits a
+        signal to update the position in the Rotator widget.
 
         Args:
             data (`Tuple[int, int, float]`): callback data, packed as follows:
@@ -177,7 +184,8 @@ class TelemetrixRotatorManager(RotatorManager):
                 REPORT_TYPE=19, motor_id, timestamp
         """
         # we make a second callback to be sure of the final position
-        self.board.stepper_get_current_position(self.motorID, self.__currentPositionCallback)
+        self.board.stepper_get_current_position(self.motorID,
+                                                self.__currentPositionCallback)
 
     def __currentPositionCallback(self, data: Tuple[int, int, int, float]) -> None:
         """Receives data from stepper_get_current_position telemetrix callback.
@@ -185,12 +193,13 @@ class TelemetrixRotatorManager(RotatorManager):
         and emits signal to update the position in the Rotator widget
 
         Args:
-            data (Tuple[int, int, int, float]): callback data, packed as follows:
-            
+            data (Tuple[int, int, int, float]): callback data, packed as
+            follows:
                 REPORT_TYPE=17, motor_id, position in steps, timestamp.
         """
         steps = data[2] % self.board.stepsPerTurn
-        self.board.currentPosition = (steps, stepsToAngle(steps, self._stepsPerTurn))
+        self.board.currentPosition = (steps,
+                                      stepsToAngle(steps, self._stepsPerTurn))
         if steps != data[2]:
             self.board.stepper_set_current_position(self.motorID, steps)
         self.sigRotatorPositionUpdated.emit()

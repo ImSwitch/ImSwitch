@@ -15,6 +15,7 @@ import threading
 import time 
 import imswitch
 
+'''
 try:
     import julia
     from julia.api import Julia
@@ -25,6 +26,7 @@ try:
     from julia import Main
 except:
     pass
+'''
 class HoloController(LiveUpdatedController):
     """ Linked to HoloWidget."""
 

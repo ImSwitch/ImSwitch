@@ -68,7 +68,7 @@ chatbot_extension = {
 }
 
 async def register_extension():
-    server_url = "https://chat.bioimage.io"
+    server_url = "https://bioimage.io/chat"
     try:
         import asyncio
         from imjoy_rpc.hypha import connect_to_server, login

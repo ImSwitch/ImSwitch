@@ -66,26 +66,27 @@ class MasterController:
         # try to get it from the plugins
         # If there is a imswitch_sim_manager, we want to add this as self.imswitch_sim_widget to the 
         # MasterController Class
-        for entry_point in pkg_resources.iter_entry_points(f'imswitch.implugins'):
-            if entry_point.name.find("manager")>=0:
-                ManagerClass = entry_point.load()  # Load the manager class
-                self.__setupInfo.add_attribute(attr_name=entry_point.name.split("_manager")[0], attr_value={})
-                manager_setup_info = getattr(self.__setupInfo, entry_point.name.split("_manager")[0], None)
-                
-                # get info from user config dict
-                # sideload the simInfo from the user config dict
-                moduleInfo_dict = self.__setupInfo._catchAll[entry_point.name.split("_manager")[0]]
-                class ModuleInfoClass:
-                    def __init__(self, dictionary):
-                        for key, value in dictionary.items():
-                            setattr(self, key, value)
-                moduleInfo = ModuleInfoClass(moduleInfo_dict) # assign class structure
-                
-                manager = ManagerClass(moduleInfo)  # Initialize the manager
-                setattr(self, entry_point.name, manager)  # Add the manager to the class
-                
-        
-
+        try:
+            for entry_point in pkg_resources.iter_entry_points(f'imswitch.implugins'):
+                if entry_point.name.find("manager")>=0:
+                    ManagerClass = entry_point.load()  # Load the manager class
+                    self.__setupInfo.add_attribute(attr_name=entry_point.name.split("_manager")[0], attr_value={})
+                    manager_setup_info = getattr(self.__setupInfo, entry_point.name.split("_manager")[0], None)
+                    
+                    # get info from user config dict
+                    # sideload the simInfo from the user config dict
+                    moduleInfo_dict = self.__setupInfo._catchAll[entry_point.name.split("_manager")[0]]
+                    class ModuleInfoClass:
+                        def __init__(self, dictionary):
+                            for key, value in dictionary.items():
+                                setattr(self, key, value)
+                    moduleInfo = ModuleInfoClass(moduleInfo_dict) # assign class structure
+                    
+                    manager = ManagerClass(moduleInfo)  # Initialize the manager
+                    setattr(self, entry_point.name, manager)  # Add the manager to the class
+        except Exception as e:
+            self.__logger.error(e)
+            
         if self.__setupInfo.microscopeStand:
             self.standManager = StandManager(self.__setupInfo.microscopeStand,
                                              **lowLevelManagers)

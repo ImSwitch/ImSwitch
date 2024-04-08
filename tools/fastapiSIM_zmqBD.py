@@ -202,10 +202,8 @@ class PygameViewer:
     def change_wavelength(self, wavelength):
         if wavelength == 488:
             self.current_images = self.loader.images_488
-            print("wl is 488")
         elif wavelength == 635:
             self.current_images = self.loader.images_635
-            print("wl is 635")
         else:
             print("Unsupported wavelength")
             
@@ -231,7 +229,6 @@ class PygameViewer:
                 self.trigger()
                 print(str(i))
                 time.sleep(self.tWait)
-            self.display_pattern(0) #go back to default pattern
 
         
 @app.get("/display_pattern/{pattern_id}")

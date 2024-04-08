@@ -99,6 +99,9 @@ class CommunicationChannel(SignalInterface):
     sigAutoFocus =  Signal(float, float) # scanrange and stepsize
     sigAutoFocusRunning = Signal(bool) # indicate if autofocus is running or not
 
+    sigStartLiveAcquistion = Signal(bool)
+    sigStopLiveAcquisition = Signal(bool)
+    
     sigInitialFocalPlane = Signal(float) # initial focal plane for DeckScanController
 
     sigBroadcast = Signal(str, str, object)

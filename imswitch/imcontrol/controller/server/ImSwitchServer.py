@@ -139,7 +139,7 @@ class ImSwitchServer(Worker):
         print(f"Registering service {service_name}, type {service_type}, at {server_ip}:{server_port}")
         zeroconf.register_service(self.info)
 
-    @expose
+    #@expose
     def testMethod(self):
         return "Hello World"
     
@@ -167,8 +167,15 @@ class ImSwitchServer(Worker):
                 module = func.module
             else:
                 module = func.__module__.split('.')[-1]
-            self.func = includePyro(includeAPI("/"+module+"/"+f, func))
+            self.func = includePyro("/"+module+"/"+f)#, func))includeAPI
 
+# Dynamically add functions to the exposed object
+#https://chat.openai.com/c/40db1be0-b85c-4043-8f1a-074dcb70bc09
+for func_name in dir(my_module):
+    if not func_name.startswith("_"):  # Filter out magic methods or private methods
+        func = getattr(my_module, func_name)
+        if callable(func):
+            setattr(MyService.exposed_MyExposedObject, 'exposed_' + func_name, staticmethod(func))
 
 # Copyright (C) 2020-2024 ImSwitch developers
 # This file is part of ImSwitch.

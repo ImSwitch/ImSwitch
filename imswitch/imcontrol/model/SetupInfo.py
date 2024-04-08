@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, make_dataclass
 from typing import Any, Dict, List, Optional, Union
 
 from dataclasses_json import dataclass_json, Undefined, CatchAll
@@ -197,6 +197,8 @@ class SIMInfo:
     nPhases: int
 
     simMagnefication: float
+    
+    isFastAPISIM: bool
 
     simPixelsize: float
 
@@ -205,6 +207,8 @@ class SIMInfo:
     simETA: float
 
     simN: float
+    
+    tWaitSequence: float
 
 
 @dataclass(frozen=True)
@@ -560,8 +564,22 @@ class SetupInfo:
 
     pyroServerInfo: PyroServerInfo = field(default_factory=PyroServerInfo)
 
+
     _catchAll: CatchAll = None
 
+    def add_attribute(self, attr_name, attr_value):
+        # load all implugin-related setup infos and add them to the class
+        # try to get it from the plugins
+        # If there is a imswitch_sim_info, we want to add this as self.imswitch_sim_info to the 
+        # SetupInfo Class
+
+        import pkg_resources
+        for entry_point in pkg_resources.iter_entry_points('imswitch.implugins'):
+            if entry_point.name == attr_name+"_info":
+                ManagerClass = entry_point.load()
+                ManagerDataClass = make_dataclass(entry_point.name.split("_info")[0], [(entry_point.name, ManagerClass)])
+                setattr(self, entry_point.name.split("_info")[0], field(default_factory=ManagerDataClass))
+        
     def getDevice(self, deviceName):
         """ Returns the DeviceInfo for a specific device.
 

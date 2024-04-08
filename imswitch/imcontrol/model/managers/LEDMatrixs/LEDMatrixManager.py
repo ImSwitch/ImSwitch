@@ -39,7 +39,7 @@ class LEDMatrixManager(ABC):
         """ Sets whether the LEDMatrix is enabled. """
         pass
     
-    def setAll(self, intensity=0) -> None:
+    def setAll(self, intensity=0, getReturn=True) -> None:
         """ Sets the value of the LEDMatrix. """
         pass
 

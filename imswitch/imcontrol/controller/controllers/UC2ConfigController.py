@@ -3,8 +3,7 @@ import os
 import threading
 
 import numpy as np
-
-from imswitch.imcommon.model import dirtools, initLogger
+from imswitch.imcommon.model import APIExport, initLogger
 from ..basecontrollers import ImConWidgetController
 
 
@@ -83,7 +82,6 @@ class UC2ConfigController(ImConWidgetController):
         self._master.UC2ConfigManager.interruptSerialCommunication()
         self._widget.reconnectDeviceLabel.setText("We are intrrupting the last command")
         
-
     def set_auto_enable(self):
         # Add your logic to auto-enable the motors here.
         # get motor controller
@@ -112,13 +110,15 @@ class UC2ConfigController(ImConWidgetController):
     def reconnectThread(self):
         self._master.UC2ConfigManager.initSerial()
         self._widget.reconnectDeviceLabel.setText("We are connected: "+str(self._master.UC2ConfigManager.isConnected()))
-        
+    
+    @APIExport(runOnUIThread=True)
     def reconnect(self):
         self._logger.debug('Reconnecting to ESP32 device.')
         self._widget.reconnectDeviceLabel.setText("Reconnecting to ESP32 device.")
         mThread = threading.Thread(target=self.reconnectThread)
         mThread.start()
-
+    
+    @APIExport(runOnUIThread=True)
     def btpairing(self):
         self._logger.debug('Pairing BT device.')
         mThread = threading.Thread(target=self._master.UC2ConfigManager.pairBT)

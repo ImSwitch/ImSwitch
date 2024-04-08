@@ -129,6 +129,7 @@ class PNGStorer(Storer):
                 image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
             cv2.imwrite(path, image)
             logger.info(f"Saved image to png file {path}")
+            del image 
 
 class JPGStorer(Storer):
     """ A storer that stores the images in a series of jpg files """

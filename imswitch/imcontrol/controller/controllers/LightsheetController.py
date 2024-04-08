@@ -78,8 +78,7 @@ class LightsheetController(ImConWidgetController):
         speed = self._widget.getSpeed()
         illuSource = self._widget.getIlluminationSource()
         stageAxis = self._widget.getStageAxis()
-        self._logger.debug("Starting lightsheet scanning with "+str(illuSource)+" on "+str(stageAxis)+" axis.")
-
+        
         self._widget.startButton.setEnabled(False)
         self._widget.stopButton.setEnabled(True)
         self._widget.startButton.setText("Running")

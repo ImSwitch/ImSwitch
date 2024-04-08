@@ -167,7 +167,7 @@ class ImSwitchServer(Worker):
                 module = func.module
             else:
                 module = func.__module__.split('.')[-1]
-            self.func = includePyro("/"+module+"/"+f)#, func))includeAPI
+            self.func = includePyro(includeAPI("/"+module+"/"+f, func))
 
 # Dynamically add functions to the exposed object
 #https://chat.openai.com/c/40db1be0-b85c-4043-8f1a-074dcb70bc09

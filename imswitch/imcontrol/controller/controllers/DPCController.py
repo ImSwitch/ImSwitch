@@ -46,8 +46,9 @@ class DPCController(ImConWidgetController):
 
         # define patterns
         self.nPattern = 4
-        self.brightfieldPattern = {"0": [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23]}
-        self.allDPCPatternNames = ("left", "right", "top", "bottom")
+        #self.brightfieldPattern = {"0": [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23]}
+        self.brightfieldPattern = {"0": [1,2,4,5,6,7,8,9,10,11,13,14]}
+        self.allDPCPatternNames = ("top", "bottom", "right", "left")
         if False:
             self.allDPCPatterns = {self.allDPCPatternNames[0]: [0,1,2,7,8,9,10,11,12,21,22,23,24], 
                                     self.allDPCPatternNames[1]: [3,4,5,6,13,14,15,16,17,18,19,20,21,22], 
@@ -55,10 +56,10 @@ class DPCController(ImConWidgetController):
                                     self.allDPCPatternNames[3]: [1,2,3,4,9,10,11,12,14,15,16]}
             self.nLEDs = 25
         else:        
-            self.allDPCPatterns = {self.allDPCPatternNames[0]: [0,1,2,3,4,5,6,7], 
-                        self.allDPCPatternNames[1]: [8,9,10,11,12,13,14,15], 
-                        self.allDPCPatternNames[2]: [0,7,8,19,14,9,6,1], 
-                        self.allDPCPatternNames[3]: [3,4,11,12,2,9,10,13]}
+            self.allDPCPatterns = {self.allDPCPatternNames[0]: [8,9,10,11,13,14], 
+                        self.allDPCPatternNames[1]: [1,2,4,5,6,7], 
+                        self.allDPCPatternNames[2]: [2,4,5,11,10,13], 
+                        self.allDPCPatternNames[3]: [1,6,7,8,9,14]}
             self.nLEDs = 16
         #self._widget.applyChangesButton.clicked.connect(self.applyParams)
         self._widget.startDPCAcquisition.clicked.connect(self.startDPC)
@@ -72,7 +73,7 @@ class DPCController(ImConWidgetController):
         self.NAi =  self._master.dpcManager.NAi
         self.n =  self._master.dpcManager.n
         
-        self.tWait = .1 # time to wait between turning on LED Matrix and frame acquisition
+        self.tWait = .3 # time to wait between turning on LED Matrix and frame acquisition
 
         # select LEDArray
         allLEDMatrixNames = self._master.LEDMatrixsManager.getAllDeviceNames()

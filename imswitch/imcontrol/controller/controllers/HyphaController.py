@@ -343,14 +343,14 @@ class HyphaController(LiveUpdatedController):
             "token": token}
             )
         svc = server.register_service(self.getExtensionDefinition())
-        self.hyphaURL = f"{server_url}/public/bioimage/chat?extension={svc.id}"
-        try:bioimage/chat
+        self.hyphaURL = f"https://bioimage.io/chat?server={server_url}&extension={svc.id}"
+        try:
             webbrowser.open(self.hyphaURL)
             self._widget.setChatURL(url=self.hyphaURL)
             self._isConnected = True
         except:
             pass
-        print(f"Extension service registered with id: {svc.id}, you can visit the service at: {server_url}/public/bioimage/chat?extension={svc.id}")
+        print(f"Extension service registered with id: {svc.id}, you can visit the chatbot at {self.hyphaURL}, and the service at: {server_url}/{server.config.workspace}/services/{svc.id.split(':')[1]}")
         
         if 0:
             coturn = server.get_service("coturn")

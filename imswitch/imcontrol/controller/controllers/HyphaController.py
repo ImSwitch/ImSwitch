@@ -328,7 +328,7 @@ class HyphaController(LiveUpdatedController):
         self._logger.debug(f"Moving stage to {value} along {axis}")
         self.stages.move(value=value, axis=axis, is_absolute=is_absolute, is_blocking=is_blocking)
 
-    def start_service(self, service_id, server_url="https://chat.bioimage.io", workspace=None, token=None):
+    def start_service(self, service_id, server_url="https://bioimage.io/chat", workspace=None, token=None):
         client_id = service_id + "-client"
         self.__logger.debug(f"Starting service...")
         def autoLogin(message):

@@ -15,16 +15,27 @@ class ViewController(ImConWidgetController):
         self._widget.sigGridToggled.connect(self.gridToggle)
         self._widget.sigCrosshairToggled.connect(self.crosshairToggle)
         self._widget.sigLiveviewToggled.connect(self.liveview)
+        
+        self._commChannel.sigStartLiveAcquistion.connect(self.startLiveView)
+        self._commChannel.sigStopLiveAcquisition.connect(self.stopLiveView)
+        
 
+    def startLiveView(self):
+        self.liveview(enabled=True)
+    
+    def stopLiveView(self):
+        self.liveview(enabled=False)
+     
     def liveview(self, enabled):
         """ Start liveview and activate detector acquisition. """
         if enabled and self._acqHandle is None:
             self._acqHandle = self._master.detectorsManager.startAcquisition(liveView=True)
-            self._widget.setViewToolsEnabled(True)
         elif not enabled and self._acqHandle is not None:
             self._master.detectorsManager.stopAcquisition(self._acqHandle, liveView=True)
             self._acqHandle = None
-
+        self._widget.setViewToolsEnabled(enabled)
+        self._widget.setLiveViewActive(enabled)
+        
     def gridToggle(self, enabled):
         """ Connect with grid toggle from Image Widget through communication channel. """
         self._commChannel.sigGridToggled.emit(enabled)

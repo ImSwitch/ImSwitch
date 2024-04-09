@@ -14,7 +14,6 @@ from . import controllers
 from .CommunicationChannel import CommunicationChannel
 from .MasterController import MasterController
 from .PickSetupController import PickSetupController
-from .PickUC2BoardConfigController import PickUC2BoardConfigController
 from .basecontrollers import ImConWidgetControllerFactory
 
 
@@ -63,13 +62,16 @@ class ImConMainController(MainController):
                 )
             except Exception as e:
                 #try to get it from the plugins
+                foundPluginController = False
                 for entry_point in pkg_resources.iter_entry_points(f'imswitch.implugins'):
                     if entry_point.name == f'{widgetKey}_controller':
                         packageController = entry_point.load()
                         self.controllers[widgetKey] = self.__factory.createController(packageController, widget)
+                        foundPluginController = True
                         break
-                self.__logger.debug(e)
-                raise ValueError(f'No controller found for widget {widgetKey}')
+                if not foundPluginController:
+                    self.__logger.debug(e)
+                    raise ValueError(f'No controller found for widget {widgetKey}')
         # Generate API
         self.__api = None
         apiObjs = list(self.controllers.values()) + [self.__commChannel]

@@ -63,7 +63,7 @@
         UC2_server = await connect_to_server({"server_url": "https://ai.imjoy.io/"})
         UC2_svc = await UC2_server.get_service("microscope-control-UC2")
     
-        chatbot = await api.createWindow(src="https://chat.bioimage.io/public/apps/bioimageio-chatbot-client/chat")
+        chatbot = await api.createWindow(src="https://bioimage.io/chat", name="BioImage.IO Chatbot")
     
         async def get_schema():
             return {

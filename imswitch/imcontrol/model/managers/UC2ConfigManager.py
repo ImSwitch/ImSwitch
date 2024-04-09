@@ -26,7 +26,7 @@ class UC2ConfigManager(SignalInterface):
             self.ESP32 = lowLevelManagers["rs232sManager"]["ESP32"]._esp32
         except:
             return
-
+        
 
     def saveState(self, state_general=None, state_pos=None, state_aber=None):
         if state_general is not None:
@@ -35,6 +35,7 @@ class UC2ConfigManager(SignalInterface):
             self.state_pos = state_pos
         if state_aber is not None:
             self.state_aber = state_aber
+
 
     def setGeneral(self, general_info):
         pass

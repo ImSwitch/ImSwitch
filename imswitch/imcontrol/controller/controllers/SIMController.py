@@ -1,4 +1,4 @@
-    
+import requests
 import json
 import os
 
@@ -20,6 +20,10 @@ import numpy as np
 from pathlib import Path
 import tifffile
 
+import imswitch
+
+from datetime import datetime
+
 try:
     import mcsim
     ismcSIM=True
@@ -36,22 +40,24 @@ if ismcSIM:
         import numpy as cp 
         from mcsim.analysis import sim_reconstruction as sim
         isGPU = False
-
+else:
+    isGPU = False
+    
 try:
     import NanoImagingPack as nip
     isNIP = True
 except:
     isNIP = False
+    
 
 
 try:
     from napari_sim_processor.processors.convSimProcessor import ConvSimProcessor
     from napari_sim_processor.processors.hexSimProcessor import HexSimProcessor
     isSIM = True
-    isGPU = False
+    
 except:
     isSIM = False
-    isGPU = False
 
 try:
     # FIXME: This does not pass pytests!
@@ -65,25 +71,27 @@ isDEBUG = False
 class SIMController(ImConWidgetController):
     """Linked to SIMWidget."""
 
-    sigImageReceived = Signal()
+    sigImageReceived = Signal(np.ndarray, str)
     sigSIMProcessorImageComputed = Signal(np.ndarray, str)
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._logger = initLogger(self)
-        self.nSyncCameraSLM = 1  # 5 frames will be captured before a frame is retrieved from buffer for prcoessing 
-        self.iSyncCameraSLM = 0 # counter for syncCameraSLM
         self.IS_FASTAPISIM=False
         self.IS_HAMAMATSU=False
         # switch to detect if a recording is in progress
         self.isRecording = False
+        self.isRecordReconstruction = False
 
         # Laser flag
         self.LaserWL = 0
+ 
+        self.simFrameVal = 0
+        self.nsimFrameSyncVal = 1 
 
         # Choose which laser will be recorded
         self.is488 = True
         self.is635 = True
-        
+
         # we can switch between mcSIM and napari
         self.reconstructionMethod = "napari" # or "mcSIM"
 
@@ -97,75 +105,80 @@ class SIMController(ImConWidgetController):
             self._widget.replaceWithError('SIM is not configured in your setup file.')
             return
 
-        # initialize external dispaly (if available => id = 2?)
-        monitorindex = self._setupInfo.sim.monitorIdx
-        if monitorindex is None: monitorindex = 0
-        self._widget.initSIMDisplay(monitorindex)
+        # connect live update  https://github.com/napari/napari/issues/1110
+        self.sigImageReceived.connect(self.displayImage)      
         
-        # self.loadPreset(self._defaultPreset)
-
-        # Connect CommunicationChannel signals
-        self._commChannel.sigSIMMaskUpdated.connect(self.displayMask)
-
-        # Connect SIMWidget signals
-        #self._widget.controlPanel.saveButton.clicked.connect(self.saveParams)
-        #self._widget.controlPanel.loadButton.clicked.connect(self.loadParams)
-
-        self._widget.startSIMAcquisition.clicked.connect(self.startSIM)
-        self._widget.isRecordingButton.clicked.connect(self.toggleRecording)
-        self._widget.is488LaserButton.clicked.connect(self.toggle488Laser)
-        self._widget.is635LaserButton.clicked.connect(self.toggle635Laser)
-        
-        # sim parameters
-        self.patternID = 0
-        self.nRotations = self._master.simManager.nRotations
-        self.nPhases = self._master.simManager.nPhases
-        self.simMagnefication = self._master.simManager.simMagnefication
-        self.simPixelsize = self._master.simManager.simPixelsize
-        self.simNA = self._master.simManager.simNA
-        self.simETA = self._master.simManager.simETA
-        self.simN =  self._master.simManager.simN
-
-        # se    ect lasers
+        # select lasers
         allLaserNames = self._master.lasersManager.getAllDeviceNames()
         self.lasers = []
         for iDevice in allLaserNames:
             if iDevice.lower().find("laser")>=0 or iDevice.lower().find("led"):
                 self.lasers.append(self._master.lasersManager[iDevice])
-
-
+        
         # select detectors
         allDetectorNames = self._master.detectorsManager.getAllDeviceNames()
         self.detector = self._master.detectorsManager[allDetectorNames[0]]
 
-
-        # activate hamamatsu slm if necessary
-        if self._master.simManager.isHamamatsuSLM:
-            self.IS_HAMAMATSU = True
-            self.initHamamatsuSLM()
-        elif self._master.simManager.isFastAPISIM:
-            self.IS_FASTAPISIM = True
-            self.initFastAPISIM(self._master.simManager.fastAPISIMParams)
-        else:
-            self.IS_HAMAMATSU = False
-            initPattern = self._master.simManager.allPatterns[0][self.patternID]
-            self._widget.updateSIMDisplay(initPattern)
-
-            # enable display of SIM pattern by default 
-            self.toggleSIMDisplay(enabled=True)
-
-        # initialize SIM processor
-        sim_info_dict = self.getInfoDict(generalParams=self._widget.SIMParameterTree.p)
-        self.SimProcessorLaser1 = SIMProcessor(self, wavelength=sim_info_dict["wavelength (p1)"])
-        self.SimProcessorLaser2 = SIMProcessor(self, wavelength=sim_info_dict["wavelength (p2)"])
+        # select positioner
+        self.positioner = self._master.positionersManager['ESP32Stage']
         
-        # connect the reconstructed image to the displayer
+        # setup the SIM processors
+        sim_parameters = SIMParameters()
+        self.SimProcessorLaser1 = SIMProcessor(self, sim_parameters, wavelength=sim_parameters.wavelength_1)
+        self.SimProcessorLaser2 = SIMProcessor(self, sim_parameters, wavelength=sim_parameters.wavelength_2)
+
+        # Connect CommunicationChannel signals
         self.sigSIMProcessorImageComputed.connect(self.displayImage)
         
+        self.initFastAPISIM(self._master.simManager.fastAPISIMParams)
+        
+        if imswitch.IS_HEADLESS:
+            return
+        self._widget.start_button.clicked.connect(self.startSIM)
+        self._widget.stop_button.clicked.connect(self.stopSIM)
+        
+        #self._widget.is488LaserButton.clicked.connect(self.toggle488Laser)
+        #self._widget.is635LaserButton.clicked.connect(self.toggle635Laser)
+        self._widget.checkbox_record_raw.stateChanged.connect(self.toggleRecording)
+        self._widget.checkbox_record_reconstruction.stateChanged.connect(self.toggleRecordReconstruction)
+        #self._widget.sigPatternID.connect(self.patternIDChanged)
+        self._widget.number_dropdown.currentIndexChanged.connect(self.patternIDChanged)
+        #self._widget.checkbox_reconstruction.stateChanged.connect(self.toggleRecording)
+        # read parameters from the widget
+        self._widget.start_timelapse_button.clicked.connect(self.startTimelapse)
+        self._widget.start_zstack_button.clicked.connect(self.startZstack)
+
+    def toggleRecording(self):
+        self.isRecording = not self.isRecording
+        if not self.isRecording:
+            self.isActive = False
+            
+    def toggleRecordReconstruction(self):
+        self.isRecordReconstruction = not self.isRecordReconstruction
+        if not self.isRecordReconstruction:
+            self.isActive = False
+        
+    
         
     def initFastAPISIM(self, params):
         self.fastAPISIMParams = params
+        self.IS_FASTAPISIM = True
+        
+        # Usage example
+        host = self.fastAPISIMParams["host"]
+        port = self.fastAPISIMParams["port"]
+        tWaitSequence = self.fastAPISIMParams["tWaitSquence"]
 
+        if tWaitSequence is None:
+            tWaitSequence = 0.1
+        if host is None:
+            host = "169.254.165.4"
+        if port is None:
+            port = 8000
+        
+        self.SIMClient = SIMClient(URL=host, PORT=port)
+        self.SIMClient.set_pause(tWaitSequence)
+                
 
     def initHamamatsuSLM(self):
         self.hamamatsuslm = nip.HAMAMATSU_SLM() # FIXME: Add parameters
@@ -175,8 +188,9 @@ class SIMController(ImConWidgetController):
             self.hamamatsuslm.send_dat(im, im_number)
 
     def __del__(self):
-        self.imageComputationThread.quit()
-        self.imageComputationThread.wait()
+        pass
+        #self.imageComputationThread.quit()
+        #self.imageComputationThread.wait()
 
     def toggleSIMDisplay(self, enabled=True):
         self._widget.setSIMDisplayVisible(enabled)
@@ -185,7 +199,18 @@ class SIMController(ImConWidgetController):
         self._widget.setSIMDisplayMonitor(monitor)
 
     def patternIDChanged(self, patternID):
-        self.patternID = patternID
+        wl = self.getpatternWavelength()
+        if wl == 'Laser 488nm':
+            laserTag = 0
+        elif wl == 'Laser 635nm':
+            laserTag = 1
+        else:
+            laserTag = 0
+            self._logger.error("The laser wavelenth is not implemented")    
+        self.simPatternByID(patternID,laserTag)
+
+    def getpatternWavelength(self):
+        return self._widget.laser_dropdown.currentText()
 
     def displayMask(self, image):
         self._widget.updateSIMDisplay(image)
@@ -202,40 +227,81 @@ class SIMController(ImConWidgetController):
 
     def loadParams(self):
         pass
+    
+    def stopSIM(self):
+        self.active = False
+        self.simThread.join()
+        self.lasers[0].setEnabled(False)
+        self.lasers[1].setEnabled(False)
+        self.detector.setParameter("trigger_source","Internal trigger")
+        self.detector.setParameter("buffer_size",-1)
+        self.detector.flushBuffers()
+
 
     def startSIM(self):
-        if self._widget.startSIMAcquisition.text() == "Start":
-            # start live processing => every frame is captured by the update() function. It also handles the pattern addressing
-            self.iReconstructed = 0
-            #  Start acquisition if not started already
-            self._master.detectorsManager.startAcquisition(liveView=False)
+        #  need to be in trigger mode
+        # therefore, we need to stop the camera first and then set the trigger mode
+        self._commChannel.sigStopLiveAcquisition.emit(True)
+        self.detector.setParameter("trigger_source","External start")
+        self.detector.setParameter("buffer_size",9)
+        self.detector.flushBuffers()
+        #self._commChannel.sigStartLiveAcquistion.emit(True)
             
-            # reset the pattern iterator
-            self.nSyncCameraSLM = self._widget.getFrameSyncVal()
+        # start the background thread
+        self.active = True
+        sim_parameters = self.getSIMParametersFromGUI()
+        #sim_parameters["reconstructionMethod"] = self.getReconstructionMethod()
+        #sim_parameters["useGPU"] = self.getIsUseGPU()
+        self.simThread = threading.Thread(target=self.performSIMExperimentThread, args=(sim_parameters,), daemon=True)
+        self.simThread.start()
+    
+    # for timelapse and zstack, check running is still needed also stop
+    
+    def startTimelapse(self):
+        self._commChannel.sigStopLiveAcquisition.emit(True)
+        self.detector.setParameter("trigger_source","External start")
+        self.detector.setParameter("buffer_size",9)
+        self.detector.flushBuffers()
+        
+        self.active = True
+        sim_parameters = self.getSIMParametersFromGUI()
+        
+        timePeriod = int(self._widget.period_textedit.text())
+        Nframes = int(self._widget.frames_textedit.text())
+        self.oldTime = time.time()-timePeriod # to start the timelapse immediately
+        iiter = 0
+        # if it is nessary to put timelapse in background
+        while iiter < Nframes:
+            if time.time() - self.oldTime > timePeriod:
+                self.oldTime = time.time()
+                self.simThread = threading.Thread(target=self.performSIMTimelapseThread, args=(sim_parameters,), daemon=True)
+                self.simThread.start()
+                iiter += 1
+        self._logger.debug("Timelapse finished")
+        self.active = False
+        self.lasers[0].setEnabled(False)
+        self.lasers[1].setEnabled(False)
+        self.detector.setParameter("trigger_source","Internal trigger")
+        self.detector.setParameter("buffer_size",-1)
+        self.detector.flushBuffers()
 
-            # start the background thread
-            self.active = True
-            sim_info_dict = self.getInfoDict(generalParams=self._widget.SIMParameterTree.p)
-            sim_info_dict["reconstructionMethod"] = self.getReconstructionMethod()
-            sim_info_dict["useGPU"] = self.getIsUseGPU()
-            self.simThread = threading.Thread(target=self.performSIMExperimentThread, args=(sim_info_dict,), daemon=True)
-            self.simThread.start()
-            self._widget.startSIMAcquisition.setText("Stop")
-        else:
-            # stop live processing 
-            self.active = False
-            self._master.detectorsManager.startAcquisition(liveView=True)
-            self.simThread.join()
-            self.lasers[0].setEnabled(False)
-            self.lasers[1].setEnabled(False)
-            self._widget.startSIMAcquisition.setText("Start")
-            
-    def toggleRecording(self):
-        self.isRecording = not self.isRecording
-        if self.isRecording:
-            self._widget.isRecordingButton.setText("Stop Recording")
-        else:
-            self._widget.isRecordingButton.setText("Start Recording")
+    def startZstack(self):
+        self._commChannel.sigStopLiveAcquisition.emit(True)
+        self.detector.setParameter("trigger_source","External start")
+        self.detector.setParameter("buffer_size",9)
+        self.detector.flushBuffers()
+        
+        self.active = True
+        sim_parameters = self.getSIMParametersFromGUI()
+        zMin = float(self._widget.zmin_textedit.text())
+        zMax = float(self._widget.zmax_textedit.text())
+        zStep = int(self._widget.nsteps_textedit.text())
+        zDis = int((zMax - zMin) / zStep)
+        self._master.detectorsManager
+        #do Zstack in background
+        self.simThread = threading.Thread(target=self.performSIMZstackThread, args=(sim_parameters,zDis,zStep), daemon=True)
+        self.simThread.start()
+
     
     def toggle488Laser(self):
         self.is488 = not self.is488
@@ -250,154 +316,252 @@ class SIMController(ImConWidgetController):
             self._widget.is635LaserButton.setText("635 on")
         else:
             self._widget.is635LaserButton.setText("635 off")
-
         
     def updateDisplayImage(self, image):
         image = np.fliplr(image.transpose())
         self._widget.img.setImage(image, autoLevels=True, autoDownsample=False)
         self._widget.updateSIMDisplay(image)
         # self._logger.debug("Updated displayed image")
-        
-    @APIExport(runOnUIThread=True)
-    def updateDisplayImageImageFastAPISIM(self, patternID, host, port):
-        import requests
-        if host.find("http://")<0:
-            host = "http://" + host
-        full_url = f"{host}:{port}/{patternID}"
-        headers = {"accept": "application/json"}
-        try:
-            response = requests.get(full_url, headers=headers, timeout=0.1)
-            if response.status_code == 200:
-                return response.json()
-            else:
-                self._logger.error(f"Error: {response.status_code}")
-                return None
-        except:
-            self._logger.error("couldn't display fastapi image")
-            return None
 
-    @APIExport(runOnUIThread=True)
-    def simPatternByID(self, patternID, wavelengthID=0):
-        if self.IS_FASTAPISIM:
-            host = self.fastAPISIMParams["host"]
-            port = self.fastAPISIMParams["port"]
-            self.updateDisplayImageImageFastAPISIM(patternID, host, port)
-        else:   
-            try:
-                currentPattern = self._master.simManager.allPatterns[wavelengthID][patternID]
-                self.updateDisplayImage(currentPattern)
-                return currentPattern
-            except Exception as e:
-                self._logger.error(e)
-            
-    def performSIMExperimentThread(self, sim_info_dict):
+    #@APIExport(runOnUIThread=True)
+    def simPatternByID(self, patternID: int, wavelengthID: int):
+        try:
+            patternID = int(patternID)
+            wavelengthID = int(wavelengthID)
+            self.SIMClient.set_wavelength(wavelengthID)
+            self.SIMClient.display_pattern(patternID)
+            return wavelengthID
+        except Exception as e:
+            self._logger.error(e)
+
+    #@APIExport(runOnUIThread=True)
+    def performSIMExperimentThread(self, sim_parameters):
         """ 
         Iterate over all SIM patterns, display them and acquire images 
         """     
         self.patternID = 0
         self.isReconstructing = False
-        nColour = 2
-        
+        nColour = 2 #[488, 635]
+        dic_wl = [488, 635]
 
+        # retreive Z-stack parameters 
+        zStackParameters = self._widget.getZStackParameters()
+        zMin, zMax, zStep = zStackParameters[0], zStackParameters[1], zStackParameters[2] # if zStep < 0, it will not move in z
+        tDebounce = 0.1 # debounce time between z-steps
+        
+        # retreive timelapse parameters
+        timelapsedParameters = self._widget.getTimelapseParameters()
+        timePeriod, Nframes = timelapsedParameters[0], timelapsedParameters[1] # if NFrames < 0, it will run indefinitely
+        
+        # get current z-position
+        zPosInitially = self.positioner.getPosition()["Z"]
+        
+        # run the experiment indefinitely
         while self.active:
             
+            # iterate over all z-positions
+            if zStep > 0:
+                allZPositions = np.arange(zMin, zMax, zStep)
+            else:
+                allZPositions = [0]
+              
             for iColour in range(nColour):
                 # toggle laser
                 if not self.active:
+                    self.positioner.move(value=zPosInitially, axis="Z", is_absolute=True, is_blocking=True)
                     break
 
-                if iColour == 0 and self.is488:
+                if iColour == 0 and self.is488 and self.lasers[iColour].power>0.0:
+                    # enable laser 1
                     self.lasers[0].setEnabled(True)
                     self.lasers[1].setEnabled(False)
                     self._logger.debug("Switching to pattern"+self.lasers[0].name)
                     processor = self.SimProcessorLaser1
-                    processor.setParameters(sim_info_dict)
+                    processor.setParameters(sim_parameters)
                     self.LaserWL = processor.wavelength
                     # set the pattern-path for laser wl 1
-                elif iColour == 1 and self.is635:
+                elif iColour == 1 and self.is635 and self.lasers[iColour].power>0.0:
+                    # enable laser 2
                     self.lasers[0].setEnabled(False)
                     self.lasers[1].setEnabled(True)
+                    self._logger.debug("Switching to pattern"+self.lasers[1].name)
                     processor = self.SimProcessorLaser2
-                    processor.setParameters(sim_info_dict)                    
+                    processor.setParameters(sim_parameters)                    
                     self.LaserWL = processor.wavelength
                     # set the pattern-path for laser wl 1
                 else:
+                    time.sleep(.1) # reduce CPU load
+                    continue
+                
+                # select the pattern for the current colour
+                self.SIMClient.set_wavelength(dic_wl[iColour])
+                
+                for zPos in allZPositions:
+                    # move to the next z-position
+                    self.positioner.move(value=zPos+zPosInitially, axis="Z", is_absolute=True, is_blocking=True)
+                    if zStep >0 : time.sleep(tDebounce)                  
+                
+                    # display one round of SIM patterns for the right colour
+                    self.SIMClient.start_viewer_single_loop(1)
+                    
+                    # ensure lasers are off to avoid photo damage
                     self.lasers[0].setEnabled(False)
                     self.lasers[1].setEnabled(False)
-                    processor = None
-                    # disable both laser
-                    return
+                    
+                    # download images from the camera    
+                    self.SIMStack = self.detector.getChunk(); self.detector.flushBuffers()
+                    if self.SIMStack is None:
+                        self._logger.error("No image received")
+                        continue
+                    self.sigImageReceived.emit(np.array(self.SIMStack),"SIMStack"+str(processor.wavelength))
+                    processor.setSIMStack(self.SIMStack)
+
+                    # activate recording in processor 
+                    processor.setRecordingMode(self.isRecording)
+                    processor.setReconstructionMode(self.isRecordReconstruction)
+                    processor.setWavelength(self.LaserWL)
+                    
+                    # store the raw SIM stack
+                    if self.isRecording and self.lasers[iColour].power>0.0:
+                        date = datetime. now(). strftime("%Y_%m_%d-%I-%M-%S_%p")
+                        processor.setDate(date)
+                        mFilenameStack = f"{date}_SIM_Stack_{self.LaserWL}nm_{zPos+zPosInitially}mum.tif"
+                        threading.Thread(target=self.saveImageInBackground, args=(self.SIMStack, mFilenameStack,), daemon=True).start()
+                    # self.detector.stopAcquisition()
+                    # We will collect N*M images and process them with the SIM processor
+                    
+                    # process the frames and display
+                    #processor.reconstructSIMStack()
+                        
+                    # reset the per-colour stack to add new frames in the next imaging series
+                    processor.clearStack()
                 
-                for iPattern in range(self.nRotations*self.nPhases):
-                    if not self.active:
-                        break
-                    
-                    # 1 display the pattern
-                    self.simPatternByID(patternID=iPattern, wavelengthID=iColour)
-                    time.sleep(0.30) #FIXME: ???
-                    
-                    # 2 grab a frame 
-                    frame = self.detector.getLatestFrame()
-                    processor.addFrameToStack(nip.extract(frame, (512,512)))
-                    
+                # move back to initial position 
+                self.positioner.move(value=zPosInitially, axis="Z", is_absolute=True, is_blocking=True)
             
-                # We will collect N*M images and process them with the SIM processor
-                # process the frames and display
-                if not self.isReconstructing:
-                    self.isReconstructing=True
-
-                    # load the per-colour SIM Stack for further processing
-                    SIMStack = processor.getSIMStack()
-                    
-                    # reconstruct and save the stack in background to not block the main thread
-                    self.mReconstructionThread = threading.Thread(target=self.reconstructSIMStack, args=(SIMStack, processor,), daemon=True)
-                    self.mReconstructionThread.start()
-
-                # reset the per-colour stack to add new frames in the next imaging series
-                processor.clearStack()
+            # wait for the next rund
+            time.sleep(timePeriod)
         
-    def reconstructSIMStack(self, SIMStack, processor):
-        '''
-        reconstruct the image stack asychronously
-        '''
 
-
-        # compute image
-        # initialize the model
-        self._logger.debug("Processing frames")
-        if not processor.getIsCalibrated():
-            processor.setReconstructor()
-            processor.calibrate(SIMStack)
-        SIMReconstruction = processor.reconstruct(SIMStack)
-        
-        # save images eventually
-        if self.isRecording:
-            date = datetime. now(). strftime("%Y_%m_%d-%I-%M-%S_%p")
-            mFilenameStack = f"{date}_SIM_Stack_{self.LaserWL}nm.tif"
-            mFilenameRecon = f"{date}_SIM_Reconstruction_{self.LaserWL}nm.tif"                            
-            threading.Thread(target=self.saveImageInBackground, args=(SIMStack, mFilenameStack,), daemon=True).start()
-            threading.Thread(target=self.saveImageInBackground, args=(SIMReconstruction, mFilenameRecon,), daemon=True).start()
-            
-        self.sigSIMProcessorImageComputed.emit(np.array(SIMReconstruction), "SIM Reconstruction")
-
-        self.iReconstructed += 1
+    def performSIMTimelapseThread(self, sim_parameters):
+        """ 
+        Do timelapse SIM 
+        Q: should it have a separate thread?
+        """     
         self.isReconstructing = False
+        nColour = 2 #[488, 635]
+        dic_wl = [488, 635]
+        for iColour in range(nColour):
+            # toggle laser
+            if not self.active:
+                break
 
+            if iColour == 0 and self.is488 and self.lasers[iColour].power>0.0:
+                # enable laser 1
+                self.lasers[0].setEnabled(True)
+                self.lasers[1].setEnabled(False)
+                self._logger.debug("Switching to pattern"+self.lasers[0].name)
+                processor = self.SimProcessorLaser1
+                processor.setParameters(sim_parameters)
+                self.LaserWL = processor.wavelength
+                # set the pattern-path for laser wl 1
+            elif iColour == 1 and self.is635 and self.lasers[iColour].power>0.0:
+                # enable laser 2
+                self.lasers[0].setEnabled(False)
+                self.lasers[1].setEnabled(True)
+                self._logger.debug("Switching to pattern"+self.lasers[1].name)
+                processor = self.SimProcessorLaser2
+                processor.setParameters(sim_parameters)                    
+                self.LaserWL = processor.wavelength
+                # set the pattern-path for laser wl 1
+            else:
+                continue
+
+            
+            # select the pattern for the current colour
+            self.SIMClient.set_wavelength(dic_wl[iColour])
+            
+            # display one round of SIM patterns for the right colour
+            self.SIMClient.start_viewer_single_loop(1)
+            
+            # ensure lasers are off to avoid photo damage
+            self.lasers[0].setEnabled(False)
+            self.lasers[1].setEnabled(False)
+            
+            # download images from the camera    
+            self.SIMStack = self.detector.getChunk(); self.detector.flushBuffers()
+            if self.SIMStack is None:
+                self._logger.error("No image received")
+                continue
+            self.sigImageReceived.emit(np.array(self.SIMStack),"SIMStack"+str(processor.wavelength))
+            processor.setSIMStack(self.SIMStack)
+
+            # activate recording in processor 
+            processor.setRecordingMode(self.isRecording)
+            processor.setReconstructionMode(self.isRecordReconstruction)
+            processor.setWavelength(self.LaserWL)
+            
+            # store the raw SIM stack
+            if self.isRecording and self.lasers[iColour].power>0.0:
+                date = datetime. now(). strftime("%Y_%m_%d-%I-%M-%S_%p")
+                processor.setDate(date)
+                mFilenameStack = f"{date}_SIM_Stack_{self.LaserWL}nm.tif"
+                threading.Thread(target=self.saveImageInBackground, args=(self.SIMStack, mFilenameStack,), daemon=True).start()
+            # self.detector.stopAcquisition()
+            # We will collect N*M images and process them with the SIM processor
+            
+            # process the frames and display
+            #processor.reconstructSIMStack()
+                
+            # reset the per-colour stack to add new frames in the next imaging series
+            processor.clearStack()
+            
+    def performSIMZstackThread(self,sim_parameters,zDis,zStep):
+        mStep = 0
+        acc = 0    #hardcoded acceleration
+        mspeed = 1000   #hardcoded speed
+        while mStep < zStep:
+            self.positioner.move(zDis,acceleration = acc, speed=mspeed)
+            mStep += 1
+            self.performSIMTimelapseThread(sim_parameters)
+            time.sleep(0.1)
+        self.active = False
+        self.lasers[0].setEnabled(False)
+        self.lasers[1].setEnabled(False)
+        self.detector.setParameter("trigger_source","Internal trigger")
+        self.detector.setParameter("buffer_size",-1)
+        self.detector.flushBuffers()
+        self._logger.debug("Zstack finished")        
+        
+        
+    #@APIExport(runOnUIThread=True)
+    def sim_getSnapAPI(self, mystack):
+        mystack.append(self.detector.getLatestFrame())
+        #print(np.shape(mystack))
+        
+    #@APIExport(runOnUIThread=True)
     def saveImageInBackground(self, image, filename):
+        filename = os.path.join('C:\\Users\\admin\\Desktop\\Timelapse\\',filename) #FIXME: Remove hardcoded path
         tif.imsave(filename, image)
         self._logger.debug("Saving file: "+filename)
 
-    def getInfoDict(self, generalParams=None):
-        state_general = None
-        if generalParams is not None:
-            # create dict for general params
-            generalparamnames = []
-            for i in generalParams.getValues()["general"][1]: generalparamnames.append(i)
-            state_general = {generalparamname: float(
-                generalParams.param("general").param(generalparamname).value()) for generalparamname
-                             in generalparamnames}
-            
-        return state_general
+    def getSIMParametersFromGUI(self):
+        ''' retrieve parameters from the GUI '''
+        sim_parameters = SIMParameters()
+        
+        
+        # parse textedit fields 
+        sim_parameters.pixelsize = np.float32(self._widget.pixelsize_textedit.text())
+        sim_parameters.NA = np.float32(self._widget.NA_textedit.text())
+        sim_parameters.n = np.float32(self._widget.n_textedit.text())
+        sim_parameters.alpha = np.float32(self._widget.alpha_textedit.text())
+        sim_parameters.beta = np.float32(self._widget.beta_textedit.text())
+        sim_parameters.eta = np.float32(self._widget.eta_textedit.text())
+        sim_parameters.wavelength_1 = np.float32(self._widget.wavelength1_textedit.text())
+        sim_parameters.wavelength_2 = np.float32(self._widget.wavelength2_textedit.text())
+        
+        return sim_parameters
+        
 
     def getReconstructionMethod(self):
         return self._widget.SIMReconstructorList.currentText()
@@ -405,51 +569,58 @@ class SIMController(ImConWidgetController):
     def getIsUseGPU(self):
         return self._widget.useGPUCheckbox.isChecked()
     
+
+class SIMParameters(object):
+    wavelength_1 = 488
+    wavelength_2 = 635
+    NA = 0.85
+    n = 1.0
+    pixelsize = 2.3
+    eta = 0.6
+    alpha = 0.5
+    beta = 0.98
+    
 '''#####################################
 # SIM PROCESSOR
 #####################################'''
 
 class SIMProcessor(object):
 
-    def __init__(self, parent, wavelength):
+    def __init__(self, parent, simParameters, wavelength=488):
         '''
         setup parameters
         '''
+        #current parameters is setting for 20x objective 488nm illumination
         self.parent = parent
         self.mFile = "/Users/bene/Dropbox/Dokumente/Promotion/PROJECTS/MicronController/PYTHON/NAPARI-SIM-PROCESSOR/DATA/SIMdata_2019-11-05_15-21-42.tiff"
-        self.phases_number = parent.nPhases
-        self.angles_number = parent.nRotations
-        self.magnification = parent.simMagnefication
-        self.NA = parent.simNA
-        self.n = parent.simN
+        self.phases_number = 3
+        self.angles_number = 3
+        self.NA = simParameters.NA
+        self.n = simParameters.n
         self.wavelength = wavelength
-        self.pixelsize = parent.simPixelsize
+        self.pixelsize = simParameters.pixelsize
         self.dz= 0.55
         self.alpha = 0.5
         self.beta = 0.98
         self.w = 0.2
-        self.eta = parent.simETA
+        self.eta = simParameters.eta
         self.group = 30
         self.use_phases = True
         self.find_carrier = True
         self.isCalibrated = False
         self.use_gpu = isPytorch
         self.stack = []
+
+        # processing parameters
+        self.isRecording = False
+        self.allPatterns = []
+        self.isReconstructing = False
         
         # initialize logger
         self._logger = initLogger(self, tryInheritParent=False)
 
         # switch for the different reconstruction algorithms
         self.reconstructionMethod = "napari"
-
-        '''
-        initialize
-        '''
-
-        # load images
-        #import tifffile as tif
-        #mImages = tif.imread(self.mFile)
-
 
         # set model
         #h = HexSimProcessor(); #
@@ -474,15 +645,33 @@ class SIMProcessor(object):
             pinned_mempool = cp.get_default_pinned_memory_pool()
             memory_start = mempool.used_bytes()
 
-    def setParameters(self, sim_info_dict):
+    def loadPattern(self, path=None, filetype="bmp"):
+        # sort filenames numerically
+        import glob
+        import cv2
+
+        if path is None:
+            path = sim_parameters["patternPath"]
+        allPatternPaths = sorted(glob.glob(os.path.join(path, "*."+filetype)))
+        self.allPatterns = []
+        for iPatternPath in allPatternPaths:
+            mImage = cv2.imread(iPatternPath)
+            mImage = cv2.cvtColor(mImage, cv2.COLOR_BGR2GRAY)
+            self.allPatterns.append(mImage)
+        return self.allPatterns
+
+    def getPattern(self, iPattern):
+        # return ith sim pattern
+        return self.allPatterns[iPattern]
+
+    def setParameters(self, sim_parameters):
         # uses parameters from GUI
-        self.pixelsize= sim_info_dict["pixelsize"]
-        self.NA= sim_info_dict["NA"]
-        self.n= sim_info_dict["n"]
-        self.reconstructionMethod = sim_info_dict["reconstructionMethod"]
-        self.use_gpu = sim_info_dict["useGPU"]
-        self.eta = sim_info_dict["eta"]
-        self.magnification = sim_info_dict["magnefication"]
+        self.pixelsize= sim_parameters.pixelsize
+        self.NA= sim_parameters.NA
+        self.n= sim_parameters.n
+        self.reconstructionMethod = "napari" # sim_parameters["reconstructionMethod"]
+        self.use_gpu = False #sim_parameters["useGPU"]
+        self.eta =  sim_parameters.eta
         
     def setReconstructionMethod(self, method):
         self.reconstructionMethod = method
@@ -494,7 +683,7 @@ class SIMProcessor(object):
         '''
 
         self.h.usePhases = self.use_phases
-        self.h.magnification = self.magnification
+        self.h.magnification = 1.
         self.h.NA = self.NA
         self.h.n = self.n
         self.h.wavelength = self.wavelength
@@ -512,8 +701,10 @@ class SIMProcessor(object):
         # display the BF image
         if len(self.stack) % 3 == 0 and len(self.stack)>0:
             bfFrame = np.sum(np.array(self.stack[-3:]), 0)
-            self.parent.sigSIMProcessorImageComputed.emit(bfFrame, "Widefield SUM "+str(self.wavelength)+" nm") 
+            #self.parent.sigSIMProcessorImageComputed.emit(bfFrame, "Widefield SUM "+str(self.wavelength)+" um") 
 
+    def setSIMStack(self, stack):
+        self.stack = stack
 
     def getSIMStack(self):
         return np.array(self.stack)
@@ -547,9 +738,11 @@ class SIMProcessor(object):
         '''
         calibration
         '''
-        self._logger.debug("Starting to calibrate the stack")
+        #self._logger.debug("Starting to calibrate the stack")
         if self.reconstructionMethod == "napari":
             #imRaw = get_current_stack_for_calibration(mImages)
+            if type(imRaw) is list:
+                imRaw = np.array(imRaw)
             if self.use_gpu:
                 self.h.calibrate_pytorch(imRaw, self.find_carrier)
             else:
@@ -607,6 +800,54 @@ class SIMProcessor(object):
     def getIsCalibrated(self):
         return self.isCalibrated
 
+
+    def reconstructSIMStack(self):
+        '''
+        reconstruct the image stack asychronously
+        '''
+        # TODO: Perhaps we should work with quees? 
+        # reconstruct and save the stack in background to not block the main thread
+        if not self.isReconstructing:  # not
+            self.isReconstructing=True
+            mStackCopy = np.array(self.stack.copy())
+            self.mReconstructionThread = threading.Thread(target=self.reconstructSIMStackBackground, args=(mStackCopy,), daemon=True)
+            self.mReconstructionThread.start()
+
+    def setRecordingMode(self, isRecording):
+        self.isRecording = isRecording
+        
+    def setReconstructionMode(self, isRecordReconstruction):
+        self.isRecordReconstruction = isRecordReconstruction
+        
+    def setDate(self, date):
+        self.date = date
+        
+    def setWavelength(self, wavelength):
+        self.LaserWL = wavelength
+        
+    def reconstructSIMStackBackground(self, mStack):
+        '''
+        reconstruct the image stack asychronously
+        the stack is a list of 9 images (3 angles, 3 phases)
+        '''
+        # compute image
+        # initialize the model
+        
+        self._logger.debug("Processing frames")
+        if not self.getIsCalibrated():
+            self.setReconstructor()
+            self.calibrate(mStack)
+        SIMReconstruction = self.reconstruct(mStack)
+
+        # save images eventually
+         
+        if self.isRecordReconstruction:
+            mFilenameRecon = f"{self.date}_SIM_Reconstruction_{self.LaserWL}nm.tif"                            
+            threading.Thread(target=SIMController.saveImageInBackground, args=(SIMReconstruction, mFilenameRecon,), daemon=True).start()
+            
+        self.parent.sigSIMProcessorImageComputed.emit(np.array(SIMReconstruction), "SIM Reconstruction")
+        self.isReconstructing = False
+
     def reconstruct(self, currentImage):
         '''
         reconstruction
@@ -616,7 +857,7 @@ class SIMProcessor(object):
             self._logger.debug("reconstructing the stack with napari") 
             assert self.isCalibrated, 'SIM processor not calibrated, unable to perform SIM reconstruction'
             
-            dshape= currentImage.shape
+            dshape= np.shape(currentImage)
             phases_angles = self.phases_number*self.angles_number
             rdata = currentImage[:phases_angles, :, :].reshape(phases_angles, dshape[-2],dshape[-1])
             if self.use_gpu:
@@ -679,7 +920,68 @@ class SIMProcessor(object):
         return allImages
 
 
+class SIMClient:
+    # Usage example
+    # client = SIMClient(URL="169.254.165.4", PORT=8000)
+    # client.start_viewer()
+    # client.start_viewer_single_loop(5)
+    # client.wait_for_viewer_completion()
+    # client.set_pause(1.5)
+    # client.stop_loop()
+    # client.set_wavelength(1)    
+    def __init__(self, URL, PORT):
+        self.base_url = f"http://{URL}:{PORT}"
+        self.commands = {
+            "start": "/start_viewer/",
+            "single_run": "/start_viewer_single_loop/",
+            "pattern_compeleted": "/wait_for_viewer_completion/",
+            "pause_time": "/set_wait_time/",
+            "stop_loop": "/stop_viewer/",
+            "pattern_wl": "/change_wavelength/",
+            "display_pattern": "/display_pattern/",
+        }
+        self.iseq = 60
+        self.itime = 120
+        self.laser_power = (400, 250)
+
+    def get_request(self, url, timeout=0.3):
+        try: 
+            response = requests.get(url, timeout=timeout)
+            return response.json()
+        except Exception as e:
+            print(e)
+            return -1
         
+    def start_viewer(self):
+        url = self.base_url + self.commands["start_viewer"]
+        return self.get_request(url)
+
+    def start_viewer_single_loop(self, number_of_runs, timeout=2):
+        url = f"{self.base_url}{self.commands['single_run']}{number_of_runs}"
+        return self.get_request(url, timeout=timeout)
+
+    def wait_for_viewer_completion(self):
+        url = self.base_url + self.commands["pattern_compeleted"]
+        self.get_request(url)
+
+    def set_pause(self, period):
+        url = f"{self.base_url}{self.commands['pause_time']}{period}"
+        self.get_request(url)
+
+    def stop_loop(self):
+        url = self.base_url + self.commands["stop_loop"]
+        self.get_request(url)
+
+    def set_wavelength(self, wavelength):
+        url = f"{self.base_url}{self.commands['pattern_wl']}{wavelength}"
+        self.get_request(url)
+        
+    def display_pattern(self, iPattern):
+        url = f"{self.base_url}{self.commands['display_pattern']}{iPattern}"
+        self.get_request(url)
+
+
+      
 
 # Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.

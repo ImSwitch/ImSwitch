@@ -2,7 +2,7 @@ import numpy as np
 import skimage
 import skimage.transform
 from qtpy import QtCore, QtGui, QtWidgets
-
+from imswitch.imcommon.model import modulesconfigtools, pythontools, initLogger
 
 class SIMDisplay(QtWidgets.QLabel):
     """ Full-screen SIM display. """
@@ -13,6 +13,7 @@ class SIMDisplay(QtWidgets.QLabel):
         super().__init__()
 
         self._parent = parent
+        self.__logger = initLogger(self)
 
         self.setWindowTitle('SIM display')
         self.setWindowFlags(QtCore.Qt.Window)
@@ -21,6 +22,15 @@ class SIMDisplay(QtWidgets.QLabel):
         self.setMonitor(preferredMonitor)
         self.imgArr = np.zeros((2, 2))
         self.hasShownMonitorWarning = False
+
+        #self.pixmapChanged.connect(self.onPixmapChanged)
+        self.frameID = -1
+
+    def onPixmapChanged(self):
+        self.frameID +=1
+
+    def getFrameID(self):
+        return self.frameID
 
     def setMonitor(self, monitor, updateImage=False):
         if monitor is None:
@@ -66,6 +76,8 @@ class SIMDisplay(QtWidgets.QLabel):
         )
         qpixmap = QtGui.QPixmap(qimage)
         self.setPixmap(qpixmap)
+        #self.__logger.debug("updateImage "+str(np.mean(imgArr)))
+        #self.show() #if it is the problem of slow show up of the images
         
     def setVisible(self, visible):
         super().setVisible(visible)

@@ -60,12 +60,16 @@ class ImageWidget(QtWidgets.QWidget):
                 except KeyError:
                     addImage(name, rgb, 'grayclip')
 
-    def addStaticLayer(self, name, im):
-        if len(im.shape)==3:
-            isRGB = True
+    def addStaticLayer(self, name, im, isRGB=None):
+        if isRGB is None:
+            if len(im.shape)==3:
+                isRGB = True
+            else:
+                isRGB = False
+        if name not in self.napariViewer.layers:
+            self.napariViewer.add_image(im, rgb=isRGB, name=name, blending='additive')
         else:
-            isRGB = False
-        self.napariViewer.add_image(im, rgb=isRGB, name=name, blending='additive')
+            self.imgLayers[name].data = np.squeeze(im)
 
     def getCurrentImageName(self):
         return self.napariViewer.active_layer.name

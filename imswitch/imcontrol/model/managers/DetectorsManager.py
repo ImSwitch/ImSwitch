@@ -152,7 +152,18 @@ class DetectorsManager(MultiManager, SignalInterface):
         if disableAcq:
             self.execOnAll(lambda c: c.stopAcquisition(), condition=lambda c: c.forAcquisition)
             self.sigAcquisitionStopped.emit()
-
+    
+    def getAcquistionHandles(self):
+        """ Returns the list of active acquisition handles. """
+        return self._activeAcqHandles + self._activeAcqLVHandles
+    
+    def checkIfIsLiveView(self):
+        """ Returns if there is live view ongoing """
+        if self._activeAcqLVHandles and len(self._activeAcqLVHandles):
+            return True
+        else:
+            return False
+    
     def setUpdatePeriod(self, updatePeriod):
         self._lvWorker.setUpdatePeriod(updatePeriod)
         self._thread.quit()

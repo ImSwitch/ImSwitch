@@ -76,6 +76,10 @@ setup(
         "juliacall",
         "UC2-REST"
     ],
+     extras_require={
+        'PyQt5': [
+            "PyQt5 >= 5.15.2",
+        ]},
     entry_points={
         "console_scripts": [
             "imswitch = imswitch.__main__:main",

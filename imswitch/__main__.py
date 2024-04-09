@@ -14,7 +14,7 @@ def main():
     try:
         logger = initLogger('main')
         logger.info(f'Starting ImSwitch {imswitch.__version__}')
-
+        logger.info(f'Headless mode: {imswitch.IS_HEADLESS}')
         app = prepareApp()
         enabledModuleIds = modulesconfigtools.getEnabledModuleIds()
 

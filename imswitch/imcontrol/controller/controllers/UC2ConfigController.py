@@ -61,8 +61,12 @@ class UC2ConfigController(ImConWidgetController):
             # save image 
             #tif.imsave()
             self._commChannel.sigDisplayImageNapari.emit('Image', mImage, False) # layername, image, isRGB
-        self._master.UC2ConfigManager.ESP32.message.register_callback(1, snapImage) # FIXME: Too hacky?
-
+        
+        try:
+            self._master.UC2ConfigManager.ESP32.message.register_callback(1, snapImage) # FIXME: Too hacky?
+        except Exception as e:
+            self.__logger.error(f"Could not register callback: {e}")
+            
     def set_motor_positions(self, a, x, y, z):
         # Add your logic to set motor positions here.
         self.__logger.debug(f"Setting motor positions: A={a}, X={x}, Y={y}, Z={z}")

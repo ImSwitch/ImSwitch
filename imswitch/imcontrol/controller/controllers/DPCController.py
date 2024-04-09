@@ -199,7 +199,7 @@ class DPCController(ImConWidgetController):
             for iPatternName in self.allDPCPatternNames:
                 if not self.active:
                     break
-                self.ledMatrix.mLEDmatrix.setAll(0)
+                
                 # 1. display the pattern
                 ledIDs = self.allDPCPatterns[iPatternName]
                 self._logger.debug("Showing pattern: "+iPatternName)
@@ -316,28 +316,31 @@ class DPCProcessor(object):
     def reconstructThread(self, isRecording):
         # compute image
         # initialize the model
-        self._logger.debug("Processing frames")
-        qdpc_result = self.dpc_solver_obj.solve(dpc_imgs=self.stackToReconstruct)
+        try:
+            self._logger.debug("Processing frames")
+            qdpc_result = self.dpc_solver_obj.solve(dpc_imgs=self.stackToReconstruct)
 
-        # save images eventually
-        if isRecording:
-            date = datetime.now().strftime("%Y_%m_%d-%I-%M-%S_%p")
-            mFilenameRecon = f"{date}_DPC_Reconstruction.tif"   
-            tif.imsave(mFilenameRecon, qdpc_result)         
-        
-        # compute gradient images
-        dpc_result_1 = (self.stackToReconstruct[0]-self.stackToReconstruct[1])/(self.stackToReconstruct[0]+self.stackToReconstruct[1])
-        dpc_result_2 = (self.stackToReconstruct[2]-self.stackToReconstruct[3])/(self.stackToReconstruct[2]+self.stackToReconstruct[3])
+            # save images eventually
+            if isRecording:
+                date = datetime.now().strftime("%Y_%m_%d-%I-%M-%S_%p")
+                mFilenameRecon = f"{date}_DPC_Reconstruction.tif"   
+                tif.imsave(mFilenameRecon, qdpc_result)         
+            
+            # compute gradient images
+            dpc_result_1 = (self.stackToReconstruct[0]-self.stackToReconstruct[1])/(self.stackToReconstruct[0]+self.stackToReconstruct[1])
+            dpc_result_2 = (self.stackToReconstruct[2]-self.stackToReconstruct[3])/(self.stackToReconstruct[2]+self.stackToReconstruct[3])
 
-        # display images
-        self.parent.sigDPCProcessorImageComputed.emit(np.angle(np.array(qdpc_result)), "qDPC Reconstruction (Phase)")
-        self.parent.sigDPCProcessorImageComputed.emit(np.abs(np.array(qdpc_result)), "qDPC Reconstruction (Magnitude)")
-        self.parent.sigDPCProcessorImageComputed.emit(np.array(dpc_result_1), "DPC left/right")
-        self.parent.sigDPCProcessorImageComputed.emit(np.array(dpc_result_2), "DPC top/bottom")
-        self.parent.isReconstructing = False
-        return dpc_result_1, dpc_result_2, qdpc_result
-
-
+            # display images
+            self.parent.sigDPCProcessorImageComputed.emit(np.angle(np.array(qdpc_result)), "qDPC Reconstruction (Phase)")
+            self.parent.sigDPCProcessorImageComputed.emit(np.abs(np.array(qdpc_result)), "qDPC Reconstruction (Magnitude)")
+            self.parent.sigDPCProcessorImageComputed.emit(np.array(dpc_result_1), "DPC left/right")
+            self.parent.sigDPCProcessorImageComputed.emit(np.array(dpc_result_2), "DPC top/bottom")
+            self.parent.isReconstructing = False
+            return dpc_result_1, dpc_result_2, qdpc_result
+        except Exception as e:
+            self._logger.error(f"Error during reconstruction: {e}")
+            self.parent.isReconstructing = False
+            return None
 
 # (C) Wallerlab 2019
 # https://github.com/Waller-Lab/DPC/blob/master/python_code/dpc_algorithm.py

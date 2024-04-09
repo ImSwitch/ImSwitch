@@ -146,7 +146,7 @@ class Positioner:
             del psf
             del obj
         else:
-            self.psf = np.ones(self._parent.camera.image.shape)
+            self.psf = np.ones(self.mDimensions).copy()
 
         
     def get_psf(self):
@@ -157,12 +157,12 @@ class Positioner:
 class Illuminator:
     def __init__(self, parent):
         self._parent = parent
-        self.intensity = 1.0
+        self.intensity = 0
         self.lock = threading.Lock()
 
     def set_intensity(self, channel, intensity):
         with self.lock:
-            self.intensity = intensity
+            self.intensity = intensity/1024
 
     def get_intensity(self, channel):
         with self.lock:

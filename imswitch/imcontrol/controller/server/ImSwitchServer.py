@@ -137,7 +137,11 @@ class ImSwitchServer(Worker):
 
         zeroconf = Zeroconf()
         print(f"Registering service {service_name}, type {service_type}, at {server_ip}:{server_port}")
-        zeroconf.register_service(self.info)
+        try:
+            zeroconf.register_service(self.info)
+        except Exception as e:
+            print(f"Failed to register service: {e}")
+        
 
     #@expose
     def testMethod(self):

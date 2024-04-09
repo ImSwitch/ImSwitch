@@ -328,7 +328,7 @@ class HyphaController(LiveUpdatedController):
         self._logger.debug(f"Moving stage to {value} along {axis}")
         self.stages.move(value=value, axis=axis, is_absolute=is_absolute, is_blocking=is_blocking)
 
-    def start_service(self, service_id, server_url="https://bioimage.io/chat", workspace=None, token=None):
+    def start_service(self, service_id, server_url="https://ai.imjoy.io", workspace=None, token=None):
         client_id = service_id + "-client"
         self.__logger.debug(f"Starting service...")
         def autoLogin(message):
@@ -343,14 +343,14 @@ class HyphaController(LiveUpdatedController):
             "token": token}
             )
         svc = server.register_service(self.getExtensionDefinition())
-        self.hyphaURL = f"{server_url}/public/apps/bioimageio-chatbot-client/chat?extension={svc.id}"
-        try:
+        self.hyphaURL = f"{server_url}/public/bioimage/chat?extension={svc.id}"
+        try:bioimage/chat
             webbrowser.open(self.hyphaURL)
             self._widget.setChatURL(url=self.hyphaURL)
             self._isConnected = True
         except:
             pass
-        print(f"Extension service registered with id: {svc.id}, you can visit the service at: {server_url}/public/apps/bioimageio-chatbot-client/chat?extension={svc.id}")
+        print(f"Extension service registered with id: {svc.id}, you can visit the service at: {server_url}/public/bioimage/chat?extension={svc.id}")
         
         if 0:
             coturn = server.get_service("coturn")

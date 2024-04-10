@@ -74,7 +74,8 @@ setup(
         "imjoy",
         "aiortc >= 1.3.0",
         "juliacall",
-        "UC2-REST"
+        "UC2-REST", 
+        "QtWebEngineWidgets >= 5.15.2",
     ],
      extras_require={
         'PyQt5': [

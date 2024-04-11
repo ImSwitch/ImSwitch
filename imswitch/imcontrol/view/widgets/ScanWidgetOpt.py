@@ -82,6 +82,9 @@ class ScanWidgetOpt(NapariHybridWidget):
         self.scanPar['RotatorLabel'] = QtWidgets.QLabel('Rotator')
         self.scanPar['StepsPerRevLabel'] = QtWidgets.QLabel(f'{0:d} steps/rev')
 
+        self.scanPar['Detector'] = QtWidgets.QComboBox()
+        self.scanPar['DetectorLabel'] = QtWidgets.QLabel('Detector')
+
         self.scanPar['LiveReconButton'] = QtWidgets.QCheckBox(
             'Live reconstruction',
             )
@@ -168,6 +171,10 @@ class ScanWidgetOpt(NapariHybridWidget):
         self.grid.addWidget(self.scanPar['StepsPerRevLabel'], currentRow, 2)
 
         currentRow += 1
+        self.grid.addWidget(self.scanPar['DetectorLabel'], currentRow, 0)
+        self.grid.addWidget(self.scanPar['Detector'], currentRow, 1)
+
+        currentRow += 1
 
         self.grid.addWidget(self.scanPar['RotStepsLabel'], currentRow, 0)
         self.grid.addWidget(self.scanPar['OptStepsEdit'], currentRow, 1)
@@ -209,6 +216,10 @@ class ScanWidgetOpt(NapariHybridWidget):
     def getRotatorIdx(self):
         """Returns currently selected rotator for the OPT """
         return self.scanPar['Rotator'].currentIndex()
+
+    def getDetectorIdx(self):
+        """Returns currently selected detector for the OPT """
+        return self.scanPar['Detector'].currentIndex()
 
     def getOptSteps(self) -> int:
         """ Returns the user-input number of OPTsteps. """

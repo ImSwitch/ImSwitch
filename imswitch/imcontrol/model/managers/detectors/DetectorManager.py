@@ -105,9 +105,10 @@ class DetectorManager(SignalInterface):
 
         self.__forAcquisition = detectorInfo.forAcquisition
         self.__forFocusLock = detectorInfo.forFocusLock
-        if not detectorInfo.forAcquisition and not detectorInfo.forFocusLock:
-            raise ValueError('At least one of forAcquisition and forFocusLock must be set in'
-                             ' DetectorInfo.')
+        self.__forOpt = detectorInfo.forOpt
+        if not detectorInfo.forAcquisition and not detectorInfo.forFocusLock and not detectorInfo.forOpt:
+            raise ValueError('At least one of forAcquisition/forFocusLock/forOpt'
+                             ' must be set in DetectorInfo.')
 
         self.setBinning(supportedBinnings[0])
 
@@ -135,7 +136,8 @@ class DetectorManager(SignalInterface):
         """ Sets the detector's binning. """
 
         if binning not in self.__supportedBinnings:
-            raise ValueError(f'Specified binning value "{binning}" not supported by the detector')
+            raise ValueError(f'Specified binning value "{binning}" not'
+                             ' supported by the detector')
 
         self._binning = binning
 
@@ -204,6 +206,11 @@ class DetectorManager(SignalInterface):
     def forFocusLock(self) -> bool:
         """ Whether the detector is used for focus lock. """
         return self.__forFocusLock
+
+    @property
+    def forOpt(self) -> bool:
+        """ Whether the detector is used for OPT acquisition. """
+        return self.__forOpt
 
     @property
     def scale(self) -> List[int]:

@@ -88,7 +88,7 @@ class CameraTIS4:
         self.cam.acquisition_stop()  # stop imaging
 
     def grabFrame(self):
-        image = self.snapSink.snap_single(int(2.2*self.exposure))
+        image = self.snapSink.snap_single(int(1.2*self.exposure))
         frame = image.numpy_copy()[:, :, 0]
 
         # shift bits if necessary, works

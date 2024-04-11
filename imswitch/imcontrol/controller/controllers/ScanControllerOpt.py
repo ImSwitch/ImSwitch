@@ -141,7 +141,7 @@ class ScanOPTWorker(Worker):
         self.optSteps = None            # number of experimental steps
         self.currentStep = 0            # current experimental step
         self.saveSubfolder = None       # save folder
-        self.waitConst = 1   # base wait const (ms) if query to detector for exposure fails
+        self.waitConst = None   # in ms, None to ensure it is set from controller
 
         # monitor flags
         self.saveOpt = False                  # save option for the OPT
@@ -281,6 +281,7 @@ class ScanOPTWorker(Worker):
         # TODO: make sure that roator blur does not accur
         # DP: time delay before querying camera snap, because long exposure snap
         # might be acquired partially during the motor move.
+        # TODO: resolve unit issues.
         time.sleep(self.waitConst/1000)
         return self.master.detectorsManager[self.detectorName].getLatestFrame()
 
@@ -350,10 +351,7 @@ class ScanOPTWorker(Worker):
             frame (`np.ndarray`): the incoming frame
             step (`int`): the current step of the OPT scan
         """
-        self.timeMonitor.addStamp('stability', self.currentStep, 'beg')
         stepsList, intensityDict = self.signalStability.processStabilityTraces(frame, step)
-        # TODO: sometimes not added to the dict
-        self.timeMonitor.addStamp('stability', self.currentStep, 'end')
         self.sigNewStabilityTrace.emit(stepsList, intensityDict)
 
     def saveCurrentFrame(self, frame: np.ndarray) -> None:
@@ -615,6 +613,7 @@ class ScanControllerOpt(ImConWidgetController):
         self._logger.info('OPT scan finished.')
         self.optWorker.isInterruptionRequested = False  # reset interruption flag
         self.optThread.quit()  # stop the worker thread
+        self.optWorker.waitConst = None  # reset wait constant
         self._widget.updateCurrentStep(0)
         self.enableWidget(True)
 
@@ -652,6 +651,8 @@ class ScanControllerOpt(ImConWidgetController):
                 # ask for confirmation
                 if not self._widget.requestOptStepsConfirmation():
                     return
+
+            # TODO: request exposure time from the detector to set self.waitConst in self.workeropt
         self.setSharedAttr('scan', 'demo', self.optWorker.demoEnabled)
         self.optWorker.saveSubfolder = datetime.now().strftime("%Y_%m_%d-%H-%M-%S")
         self.sigImageReceived.connect(self.displayImage)

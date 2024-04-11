@@ -8,8 +8,8 @@ from typing import List
 
 from .ScanControllerOpt import ScanOPTWorker
 
-__author__ = "David Palecek"
-__credits__ = ["Jacopo Abramo"]
+__author__ = "David Palecek", "Jacopo Abramo"
+__credits__ = []
 __maintainer__ = "David Palecek"
 __email__ = "david@stanka.de"
 

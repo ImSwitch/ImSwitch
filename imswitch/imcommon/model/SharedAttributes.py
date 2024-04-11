@@ -1,5 +1,4 @@
 import json
-import h5py
 
 from imswitch.imcommon.framework import Signal, SignalInterface
 

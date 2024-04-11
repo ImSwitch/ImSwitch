@@ -61,6 +61,9 @@ class HamamatsuManager(DetectorManager):
     def pixelSizeUm(self):
         umxpx = self.parameters['Camera pixel size'].value
         return [1, umxpx, umxpx]
+    
+    def getExposure(self) -> int:
+        return self._camera.getPropertyValue('exposure_time')[0]
 
     def getLatestFrame(self, is_save=True):
         return self._camera.getLast()
@@ -105,11 +108,11 @@ class HamamatsuManager(DetectorManager):
 
     def setParameter(self, name, value):
         super().setParameter(name, value)
-
         if name == 'Set exposure time':
             self._setExposure(value)
             self._updatePropertiesFromCamera()
         elif name == 'Trigger source':
+            self.__logger.debug(f"Src: {value}")
             self._setTriggerSource(value)
 
         return self.parameters

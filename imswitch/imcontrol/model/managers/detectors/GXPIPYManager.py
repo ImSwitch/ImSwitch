@@ -68,7 +68,9 @@ class GXPIPYManager(DetectorManager):
 
         super().__init__(detectorInfo, name, fullShape=fullShape, supportedBinnings=[1],
                          model=model, parameters=parameters, actions=actions, croppable=True)
-        
+    
+    def getExposure(self) -> int:
+        return self._camera.getPropertyValue('exposure')
 
     def getLatestFrame(self, is_save=False):
         return self._camera.getLast()

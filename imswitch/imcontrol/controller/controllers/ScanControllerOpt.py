@@ -509,12 +509,13 @@ class ScanControllerOpt(ImConWidgetController):
             self.detector = None
         else:
             self.__logger.error('No detector for OPT found.')
-            # self.detectorName = allDetectorNames[0]
-            # self.detector = self._master.detectorsManager[allDetectorNames[0]]
 
         # update detector list in the widget and connect update method
         self._widget.scanPar['Detector'].currentIndexChanged.connect(self.updateDetector)
         self.updateDetector()
+
+        for detector in self.forOptDetectorsList:
+            self._widget.scanPar['Detector'].addItem(detector)
 
         # rotators list
         self.rotatorsList = self._master.rotatorsManager.getAllDeviceNames()
@@ -661,7 +662,13 @@ class ScanControllerOpt(ImConWidgetController):
                 if not self._widget.requestOptStepsConfirmation():
                     return
 
-            # TODO: request exposure time from the detector to set self.waitConst in self.workeropt
+            # TODO: request exposure time from the detector to set
+            # self.waitConst in self.workeropt
+
+            
+            # also save the value to shared attributes (including exposure)
+            self.setSharedAttr(self.detectorName, 'name', self.detector.name)
+
         self.setSharedAttr('scan', 'demo', self.optWorker.demoEnabled)
         self.optWorker.saveSubfolder = datetime.now().strftime("%Y_%m_%d-%H-%M-%S")
         self.sigImageReceived.connect(self.displayImage)

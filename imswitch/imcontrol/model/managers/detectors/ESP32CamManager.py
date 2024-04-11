@@ -1,5 +1,3 @@
-import numpy as np
-
 from imswitch.imcommon.model import initLogger
 from imswitch.imcontrol.model.interfaces.esp32camera import CameraESP32Cam
 from .DetectorManager import DetectorManager, DetectorAction, DetectorNumberParameter
@@ -38,18 +36,17 @@ class ESP32CamManager(DetectorManager):
 
         # Prepare parameters
         parameters = {
-            
+
             'exposure': DetectorNumberParameter(group='Misc', value=100, valueUnits='ms',
                                                 editable=True),
             'gain': DetectorNumberParameter(group='Misc', value=1, valueUnits='arb.u.',
                                             editable=True),
             'blacklevel': DetectorNumberParameter(group='Misc', value=100, valueUnits='arb.u.',
-                                            editable=True),
+                                                  editable=True),
             'image_width': DetectorNumberParameter(group='Misc', value=fullShape[0], valueUnits='arb.u.',
-                        editable=False),
+                                                   editable=False),
             'image_height': DetectorNumberParameter(group='Misc', value=fullShape[1], valueUnits='arb.u.',
-                        editable=False),
-            
+                                                    editable=False),
             }            
 
         # Prepare actions

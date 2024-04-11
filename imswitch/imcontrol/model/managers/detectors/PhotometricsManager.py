@@ -68,6 +68,9 @@ class PhotometricsManager(DetectorManager):
         umxpx = self.parameters['Camera pixel size'].value
         return [1, umxpx, umxpx]
 
+    def getExposure(self) -> int:
+        return self._camera.exp_time
+
     def getLatestFrame(self):
         try:
             status = self._camera.check_frame_status()

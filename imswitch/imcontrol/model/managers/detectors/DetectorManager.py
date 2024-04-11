@@ -225,6 +225,11 @@ class DetectorManager(SignalInterface):
         pass
 
     @abstractmethod
+    def getExposure(self) -> int:
+        """ Returns the current exposure time in microseconds. """
+        pass
+
+    @abstractmethod
     def getLatestFrame(self) -> np.ndarray:
         """ Returns the frame that represents what the detector currently is
         capturing. The returned object is a numpy array of shape

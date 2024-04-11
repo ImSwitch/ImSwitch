@@ -72,6 +72,9 @@ class TISManager(DetectorManager):
     @property
     def scale(self):
         return [1, 1]
+    
+    def getExposure(self) -> int:
+        return self._camera.getPropertyValue('exposure')
 
     def getLatestFrame(self, is_save=False):
         if not self._adjustingParameters:

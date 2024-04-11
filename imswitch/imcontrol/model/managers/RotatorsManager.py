@@ -12,11 +12,12 @@ class RotatorsManager(MultiManager, SignalInterface):
         MultiManager.__init__(self, rotatorsInfo, 'rotators', **lowLevelManagers)
         SignalInterface.__init__(self)
 
-        for rotatorName, rotatorInfo in rotatorsInfo.items():
-            # Connect signals
-            self._subManagers[rotatorName].sigRotatorPositionUpdated.connect(
-                lambda: self.sigRotatorPositionUpdated.emit(rotatorName)
-            )
+        if rotatorsInfo:
+            for rotatorName, rotatorInfo in rotatorsInfo.items():
+                # Connect signals
+                self._subManagers[rotatorName].sigRotatorPositionUpdated.connect(
+                    lambda: self.sigRotatorPositionUpdated.emit(rotatorName)
+                )
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

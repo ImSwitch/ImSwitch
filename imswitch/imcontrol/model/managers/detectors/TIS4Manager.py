@@ -113,6 +113,9 @@ class TIS4Manager(DetectorManager):
             value = self._camera.setPropertyValue(name, value)
         return value
 
+    def getExposure(self) -> int:
+        return self._camera.getPropertyValue('exposure')
+
     def getParameter(self, name):
         """Gets a parameter value and returns the value.
         If the parameter doesn't exist, i.e. the parameters field doesn't

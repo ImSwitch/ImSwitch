@@ -45,6 +45,9 @@ class DetectorInfo(DeviceInfo):
     forFocusLock: bool = False
     """ Whether the detector is used for focus lock. """
 
+    forOpt: bool = False
+    """ Whether the detector is used for OPT. """
+
 
 @dataclass(frozen=True)
 class LaserInfo(DeviceInfo):
@@ -162,6 +165,7 @@ class FocusLockInfo:
     piKi: float
     """ Default ki value of feedback loop. """
 
+
 @dataclass(frozen=True)
 class AutofocusInfo:
     camera: str
@@ -226,6 +230,15 @@ class EtSTEDInfo:
 
     laserFast: str
     """ Name of the widefield laser to use. """
+
+
+@dataclass(frozen=True)
+class OptInfo:
+    detectors: List[str]
+    """ Name of the detector to use. """
+
+    rotator: str
+    """ Name of the laser to use. """
 
 
 @dataclass(frozen=True)
@@ -298,7 +311,7 @@ class SetupInfo:
     focusLock: Optional[FocusLockInfo] = field(default_factory=lambda: None)
     """ Focus lock settings. Required to be defined to use focus lock
     functionality. """
-    
+
     autofocus: Optional[AutofocusInfo] = field(default_factory=lambda: None)
     """ Autofocus settings. Required to be defined to use autofocus 
     functionality. """
@@ -308,6 +321,9 @@ class SetupInfo:
 
     etSTED: Optional[EtSTEDInfo] = field(default_factory=lambda: None)
     """ EtSTED settings. Required to be defined to use etSTED functionality. """
+
+    optInfo: Optional[OptInfo] = field(default_factory=lambda: None)
+    """ OPT settings. Required to be defined to use OPT functionality. """
 
     rotators: Optional[Dict[str, DeviceInfo]] = field(default_factory=lambda: None)
     """ Standa motorized rotator mounts settings. Required to be defined to use rotator functionality. """

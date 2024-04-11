@@ -501,11 +501,20 @@ class ScanControllerOpt(ImConWidgetController):
         # Local flags
         self.saveOpt = True
 
-        # get detectors, select first one
-        # TODO: there is no updateDetector for case of more cameras
+        # select cameras based on the forOPt flag
         allDetectorNames = self._master.detectorsManager.getAllDeviceNames()
-        self.detectorName = allDetectorNames[0]
-        self.detector = self._master.detectorsManager[allDetectorNames[0]]
+        self.forOptDetectorsList = [name for name in allDetectorNames if self._master.detectorsManager[name].forOpt]
+        if self.forOptDetectorsList:
+            self.detectorName = None
+            self.detector = None
+        else:
+            self.__logger.error('No detector for OPT found.')
+            # self.detectorName = allDetectorNames[0]
+            # self.detector = self._master.detectorsManager[allDetectorNames[0]]
+
+        # update detector list in the widget and connect update method
+        self._widget.scanPar['Detector'].currentIndexChanged.connect(self.updateDetector)
+        self.updateDetector()
 
         # rotators list
         self.rotatorsList = self._master.rotatorsManager.getAllDeviceNames()
@@ -802,14 +811,22 @@ class ScanControllerOpt(ImConWidgetController):
         self._widget.scanPar['StartButton'].setEnabled(value)
         self._widget.scanPar['StopButton'].setEnabled(not value)
         self._widget.scanPar['PlotReportButton'].setEnabled(value)
-        self._widget.scanPar['SaveButton'].setEnabled(value)
-        self._widget.scanPar['LiveReconIdxEdit'].setEnabled(value)
+
+        self._widget.scanPar['Detector'].setEnabled(value)
+        self._widget.scanPar['Rotator'].setEnabled(value)
+
         self._widget.scanPar['OptStepsEdit'].setEnabled(value)
         self._widget.scanPar['GetDark'].setEnabled(value)
         self._widget.scanPar['GetFlat'].setEnabled(value)
         self._widget.scanPar['GetHotPixels'].setEnabled(value)
         self._widget.scanPar['AveragesEdit'].setEnabled(value)
         self._widget.scanPar['MockOpt'].setEnabled(value)
+
+        self._widget.scanPar['LiveReconButton'].setEnabled(value)
+        self._widget.scanPar['LiveReconIdxEdit'].setEnabled(value)
+
+        self._widget.scanPar['SaveButton'].setEnabled(value)
+        self._widget.scanPar['noRamButton'].setEnabled(value)
 
     def updateRotator(self):
         """ Update rotator attributes when rotator is changed.
@@ -821,6 +838,13 @@ class ScanControllerOpt(ImConWidgetController):
         self.rotator = self._master.rotatorsManager[self.rotatorName]
         self.stepsPerTurn = self.rotator._stepsPerTurn
         self._widget.scanPar['StepsPerRevLabel'].setText(f'{self.stepsPerTurn:d} steps/rev')
+
+    def updateDetector(self):
+        """ Update detector attributes when detector is changed.
+        Setting detectorName and detector object.
+        """
+        self.detectorName = self.forOptDetectorsList[self._widget.getDetectorIdx()]
+        self.detector = self._master.detectorsManager[self.detectorName]
 
     def getOptSteps(self):
         """ Get the total number of rotation steps for an OPT experiment. """

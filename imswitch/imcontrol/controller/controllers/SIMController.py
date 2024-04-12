@@ -118,6 +118,13 @@ class SIMController(ImConWidgetController):
         # select detectors
         allDetectorNames = self._master.detectorsManager.getAllDeviceNames()
         self.detector = self._master.detectorsManager[allDetectorNames[0]]
+        
+        if self.detector.model == "CameraPCO":
+            # here we can use the buffer mode
+            self.isPCO = True
+        else:
+            # here we need to capture frames consecutively
+            self.isPCO = False
 
         # select positioner
         self.positioner = self._master.positionersManager['ESP32Stage']
@@ -249,10 +256,13 @@ class SIMController(ImConWidgetController):
     def startSIM(self):
         #  need to be in trigger mode
         # therefore, we need to stop the camera first and then set the trigger mode
-        self._commChannel.sigStopLiveAcquisition.emit(True)
-        self.detector.setParameter("trigger_source","External start")
-        self.detector.setParameter("buffer_size",9)
-        self.detector.flushBuffers()
+        
+        if self.isPCO:
+            # prepare camera for buffer mode
+            self._commChannel.sigStopLiveAcquisition.emit(True)
+            self.detector.setParameter("trigger_source","External start")
+            self.detector.setParameter("buffer_size",9)
+            self.detector.flushBuffers()
         #self._commChannel.sigStartLiveAcquistion.emit(True)
             
         # start the background thread
@@ -412,18 +422,36 @@ class SIMController(ImConWidgetController):
                         self.positioner.move(value=zPos+zPosInitially, axis="Z", is_absolute=True, is_blocking=True)
                         time.sleep(tDebounce)                  
                 
-                    # display one round of SIM patterns for the right colour
-                    self.SIMClient.start_viewer_single_loop(1)
-                    
-                    # ensure lasers are off to avoid photo damage
-                    self.lasers[0].setEnabled(False)
-                    self.lasers[1].setEnabled(False)
-                    
-                    # download images from the camera    
-                    self.SIMStack = self.detector.getChunk(); self.detector.flushBuffers()
-                    if self.SIMStack is None:
-                        self._logger.error("No image received")
-                        continue
+                    if self.isPCO:
+                        # display one round of SIM patterns for the right colour
+                        self.SIMClient.start_viewer_single_loop(1)
+                        
+                        # ensure lasers are off to avoid photo damage
+                        self.lasers[0].setEnabled(False)
+                        self.lasers[1].setEnabled(False)
+                        
+                        # download images from the camera    
+                        self.SIMStack = self.detector.getChunk(); self.detector.flushBuffers()
+                        if self.SIMStack is None:
+                            self._logger.error("No image received")
+                            continue
+                    else: 
+                        # we need to capture images and display patterns one-by-one    
+                        self.SIMStack = []
+                        try:
+                            mExposureTime = self.detector.getParameter("exposure")/1000 # s^-1
+                        except:
+                            mExposureTime = 0.1
+                        for iPattern in range(9):
+                            self.SIMClient.display_pattern(iPattern)
+                            time.sleep(mExposureTime) # make sure we take the next newest frame to avoid motion blur from the pattern change
+                            
+                            # Todo: Need to ensure that we have the right pattern displayed and the buffer is free - this heavily depends on the exposure time..
+                            self.SIMStack = self.detector.getLatestFrame()
+                        if self.SIMStack is None:
+                            self._logger.error("No image received")
+                            continue
+                            
                     self.sigImageReceived.emit(np.array(self.SIMStack),"SIMStack"+str(processor.wavelength))
                     processor.setSIMStack(self.SIMStack)
                     processor.getWF(self.SIMStack)

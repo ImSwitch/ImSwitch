@@ -1,6 +1,6 @@
 import numpy as np
 import imagingcontrol4 as ic4
-from enum import Enum
+from imswitch.imcontrol.model.managers.detectors.DetectorManager import ExposureTimeToUs
 
 from imswitch.imcommon.model import initLogger
 
@@ -39,25 +39,30 @@ class CameraTIS4:
             reinit = False
         self.cam.device_open(self.model)
 
-        # query exposure_time internal unit
+        # query exposure_time internal unit from the camera
         exp = self.cam.device_property_map.find_float(ic4.PropId.EXPOSURE_TIME)
         self.exposure_unit = exp.unit
 
         if self.exposure_unit == 'ns':
-            self.exposure_conv_factor = 1e6
+            self.exposure_conv_factor = 1e-3
         elif self.exposure_unit == 'us':
-            self.exposure_conv_factor = 1000
-        elif self.exposure_unit == 'ms':
             self.exposure_conv_factor = 1
+        elif self.exposure_unit == 'ms':
+            self.exposure_conv_factor = 1e3
         elif self.exposure_unit == 's':
-            self.exposure_conv_factor = 0.001
+            self.exposure_conv_factor = 1e6
         else:
             self.__logger.warning('Unknown exposure time unit, assuming ms.')
-            self.exposure_conv_factor = 1
+            self.exposure_conv_factor = 1e-3
 
         # for the purposes of adjusting the timeout for frame grabber
-        self.exposure = self.cam.device_property_map.get_value_float(
-                                ic4.PropId.EXPOSURE_TIME) / self.exposure_conv_factor
+        # this should be always in us
+        self.exposure = int(self.cam.device_property_map.get_value_float(
+                                ic4.PropId.EXPOSURE_TIME) * self.exposure_conv_factor)
+        
+        # TODO: to be tested, use with property map return and avoid manual conversion
+        # convert exposure time to us using the ExposureTimeToUs class
+        self.exposure2 = ExposureTimeToUs.convert(self.exposure, 'ms')
 
         # set pixel format, not needed because it gets set in the manager
         if reinit:
@@ -88,7 +93,8 @@ class CameraTIS4:
         self.cam.acquisition_stop()  # stop imaging
 
     def grabFrame(self):
-        image = self.snapSink.snap_single(int(1.2*self.exposure))
+        # self.exposure is in us, but the camera needs ms
+        image = self.snapSink.snap_single(int(1.2 * self.exposure / self.exposure_conv_factor))
         frame = image.numpy_copy()[:, :, 0]
 
         # shift bits if necessary, works
@@ -126,8 +132,8 @@ class CameraTIS4:
             # factor 1000 because camera in us
             self.cam.device_property_map.set_value(
                                 ic4.PropId.EXPOSURE_TIME,
-                                property_value*self.exposure_conv_factor)
-            self.exposure = property_value*self.exposure_conv_factor
+                                property_value / self.exposure_conv_factor)
+            self.exposure = int(property_value / self.exposure_conv_factor)
         elif property_name == 'image_height':
             self.cam.device_property_map.set_value(
                                 ic4.PropId.HEIGHT,
@@ -155,8 +161,8 @@ class CameraTIS4:
             property_value = self.cam.device_property_map.get_value_float(
                                 ic4.PropId.GAIN)
         elif property_name == "exposure":
-            property_value = self.cam.device_property_map.get_value_float(
-                                ic4.PropId.EXPOSURE_TIME) / self.exposure_conv_factor
+            property_value = int(self.cam.device_property_map.get_value_float(
+                                ic4.PropId.EXPOSURE_TIME) * self.exposure_conv_factor)
         elif property_name == "image_width":
             property_value = self.cam.device_property_map.get_value_int(
                                 ic4.PropId.WIDTH)

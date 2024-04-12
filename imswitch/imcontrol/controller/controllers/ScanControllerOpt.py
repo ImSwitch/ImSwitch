@@ -210,14 +210,12 @@ class ScanOPTWorker(Worker):
         self.signalStability.clear()  # clear lists inbetween experiments
         self.currentLiveRecon = None
         self.master.detectorsManager[self.detectorName].startAcquisition()
-        # query to exposure time is not detector agnostic (that is why I put try/except),
+
         # mock is caught in the prepareOPTScan in controller
-        print(self.master.detectorsManager[self.detectorName].getParameter('exposure'))
-        try:
-            self.waitConst = self.master.detectorsManager[self.detectorName].getParameter('exposure')
-            self.__logger.info(f'Wait constant equals exposure time: {self.waitConst} ms')
-        except:
-            self.__logger.info(f'Exposure time query failed, wait constant is: {self.waitConst} ms')
+        # TDOO: make sure that the waitConst is set correctly for all submanagers
+        self.waitConst = self.master.detectorsManager[self.detectorName].getExposure()
+        self.__logger.info(f'Wait constant equals exposure time: {self.waitConst} us.')
+
         self.isOPTScanRunning = True
 
         self.timeMonitor.addStart()
@@ -278,11 +276,8 @@ class ScanOPTWorker(Worker):
         Returns:
             np.ndarray: frame array
         """
-        # TODO: make sure that roator blur does not accur
-        # DP: time delay before querying camera snap, because long exposure snap
-        # might be acquired partially during the motor move.
-        # TODO: resolve unit issues.
-        time.sleep(self.waitConst/1000)
+        # waitConst is always in us, so we need to convert it to seconds
+        time.sleep(self.waitConst/1e6)
         return self.master.detectorsManager[self.detectorName].getLatestFrame()
 
     def getFrameFromSino(self) -> np.ndarray:
@@ -614,6 +609,11 @@ class ScanControllerOpt(ImConWidgetController):
     def postScanEnd(self):
         """ Triggered after the end of the OPT scan. """
         # save metadata
+        # Camera settings 
+        self.setSharedAttr(self.detectorName, 'name', self.detector.name)
+        self.setSharedAttr(self.detectorName, 'exposure', self.detector.getExposure())
+        self.setSharedAttr(self.detectorName, 'exposure unit', 'us')
+
         stab = self.optWorker.signalStability.getStabilityTraces()
         self.setSharedAttr('scan', 'stability', stab)
         self.setSharedAttr('scan', 'timeReport',
@@ -661,13 +661,6 @@ class ScanControllerOpt(ImConWidgetController):
                 # ask for confirmation
                 if not self._widget.requestOptStepsConfirmation():
                     return
-
-            # TODO: request exposure time from the detector to set
-            # self.waitConst in self.workeropt
-
-            
-            # also save the value to shared attributes (including exposure)
-            self.setSharedAttr(self.detectorName, 'name', self.detector.name)
 
         self.setSharedAttr('scan', 'demo', self.optWorker.demoEnabled)
         self.optWorker.saveSubfolder = datetime.now().strftime("%Y_%m_%d-%H-%M-%S")

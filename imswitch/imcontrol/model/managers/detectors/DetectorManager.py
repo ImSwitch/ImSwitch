@@ -2,12 +2,25 @@ import traceback
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
+from enum import Enum
 
 import numpy as np
 
 from imswitch.imcommon.framework import Signal, SignalInterface
 from imswitch.imcommon.model import initLogger
 
+
+class ExposureTimeToUs(Enum):
+    """ Exposure time units to microseconds conversion factors. """
+    ns = 1e-3
+    us = 1
+    ms = 1e3
+    s = 1e6
+
+    @classmethod
+    def convert(cls, exposureTime: float, unit: str) -> float:
+        """ Convert exposure time to microseconds. """
+        return exposureTime * cls[unit].value
 
 @dataclass
 class DetectorAction:

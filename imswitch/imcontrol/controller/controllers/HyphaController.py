@@ -398,7 +398,7 @@ class HyphaController(LiveUpdatedController):
         mIntensity = config.intensity
         
         self.laserName = self._master.lasersManager.getAllDeviceNames()[mChannel]
-        self._master.lasersManager[self.laserName].setEnabled(True*bool(mIntensity)
+        self._master.lasersManager[self.laserName].setEnabled(True*bool(mIntensity))
         self._master.lasersManager[self.laserName].setValue(mIntensity)
         return "Set the illumination!"
 

@@ -114,11 +114,24 @@ class SIMController(ImConWidgetController):
         for iDevice in allLaserNames:
             if iDevice.lower().find("laser")>=0 or iDevice.lower().find("led"):
                 self.lasers.append(self._master.lasersManager[iDevice])
-
+        if len(self.lasers) == 0:
+            self._logger.error("No laser found")
+            # add a dummy laser
+            class dummyLaser():
+                def __init__(self, name, power):
+                    self.power = 0.0
+                    self.setEnabled = lambda x: x
+                    self.name = name
+                    self.power = power
+                def setPower(self,power):
+                    self.power = power
+                def setEnabled(self,enabled):
+                    self.enabled = enabled
+            for i in range(2):
+                self.lasers.append(dummyLaser("Laser"+str(i), 100))
         # select detectors
         allDetectorNames = self._master.detectorsManager.getAllDeviceNames()
         self.detector = self._master.detectorsManager[allDetectorNames[0]]
-
         if self.detector.model == "CameraPCO":
             # here we can use the buffer mode
             self.isPCO = True
@@ -127,7 +140,8 @@ class SIMController(ImConWidgetController):
             self.isPCO = False
 
         # select positioner
-        self.positioner = self._master.positionersManager['ESP32Stage']
+        self.positionerName = self._master.positionersManager.getAllDeviceNames()[0]
+        self.positioner = self._master.positionersManager[self.positionerName]
 
         # setup the SIM processors
         sim_parameters = SIMParameters()
@@ -447,7 +461,7 @@ class SIMController(ImConWidgetController):
                             time.sleep(mExposureTime) # make sure we take the next newest frame to avoid motion blur from the pattern change
 
                             # Todo: Need to ensure that we have the right pattern displayed and the buffer is free - this heavily depends on the exposure time..
-                            self.SIMStack = self.detector.getLatestFrame()
+                            self.SIMStack.append(self.detector.getLatestFrame())
                         if self.SIMStack is None:
                             self._logger.error("No image received")
                             continue

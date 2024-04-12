@@ -200,10 +200,7 @@ class DPCController(ImConWidgetController):
             for iPatternName in self.allDPCPatternNames:
                 if not self.active:
                     break
-<<<<<<< Updated upstream
-                
-=======
-<<<<<<< HEAD
+
                 self.ledMatrix.mLEDmatrix.setAll(0)
 
                 # 1. display the pattern
@@ -234,10 +231,7 @@ class DPCController(ImConWidgetController):
                 self.ledMatrix.mLEDmatrix.setAll(0)
                 time.sleep(self.tWait)
 
-=======
-                
->>>>>>> 059564faae39b6ef6d565300f761094b1fd7f96d
->>>>>>> Stashed changes
+
                 # 1. display the pattern
                 ledIDs = self.allDPCPatterns[iPatternName]
                 self._logger.debug("Showing pattern: "+iPatternName)

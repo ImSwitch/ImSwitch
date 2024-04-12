@@ -365,6 +365,7 @@ class ESP32StageManager(PositionerManager):
         elif self.homeXenabled:
             self._homeModule.home_x(speed=self.homeSpeedX, direction=self.homeDirectionX, endstoppolarity=self.homeEndstoppolarityX, endposrelease=self.homeEndposReleaseX, isBlocking=isBlocking, timeout=self.homeTimeoutX)
         else:
+            self.__logger.info("No homing parameters set for X axis or not enabled in settings.")
             return
         self.setPosition(axis="X", value=0)
 
@@ -374,6 +375,7 @@ class ESP32StageManager(PositionerManager):
         elif self.homeYenabled:
             self._homeModule.home_y(speed=self.homeSpeedY, direction=self.homeDirectionY, endstoppolarity=self.homeEndstoppolarityY, endposrelease=self.homeEndposReleaseY, isBlocking=isBlocking, timeout=self.homeTimeoutY)
         else:
+            self.__logger.info("No homing parameters set for X axis or not enabled in settings.")
             return
         self.setPosition(axis="Y", value=0)
 
@@ -383,6 +385,7 @@ class ESP32StageManager(PositionerManager):
         elif self.homeZenabled:
             self._homeModule.home_z(speed=self.homeSpeedZ, direction=self.homeDirectionZ, endstoppolarity=self.homeEndstoppolarityZ, endposrelease=self.homeEndposReleaseZ, isBlocking=isBlocking, timeout=self.homeTimeoutZ)
         else:
+            self.__logger.info("No homing parameters set for X axis or not enabled in settings.")
             return
         self.setPosition(axis="Z", value=0)
         
@@ -392,6 +395,7 @@ class ESP32StageManager(PositionerManager):
         elif self.homeAenabled:
             self._homeModule.home_a(speed=self.homeSpeedA, direction=self.homeDirectionA, endstoppolarity=self.homeEndstoppolarityA, endposrelease=self.homeEndposReleaseA, isBlocking=isBlocking, timeout=self.homeTimeoutA)
         else:
+            self.__logger.info("No homing parameters set for X axis or not enabled in settings.")
             return
         self.setPosition(axis="A", value=0)
 

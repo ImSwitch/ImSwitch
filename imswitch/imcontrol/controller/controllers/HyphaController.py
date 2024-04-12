@@ -56,12 +56,15 @@ class AsyncioThread(QThread):
     def __init__(self, loop):
         super().__init__()
         self.loop = loop
+        self.isRunning = False
 
     def run(self):
-        asyncio.set_event_loop(self.loop)
-        self.started.emit()
-        self.loop.run_forever()
-
+        if not self.isRunning:
+            self.isRunning = True
+            asyncio.set_event_loop(self.loop)
+            self.started.emit()
+            self.loop.run_forever()
+        
 class HyphaController(LiveUpdatedController):
     """ Linked to HyphaWidget."""
 
@@ -83,7 +86,8 @@ class HyphaController(LiveUpdatedController):
 
         # grab all necessary hardware elements
         self.stages = self._master.positionersManager[self._master.positionersManager.getAllDeviceNames()[0]]
-        self.lasers = self._master.lasersManager[self._master.lasersManager.getAllDeviceNames()[0]]
+        self.laserNames = self._master.lasersManager.getAllDeviceNames()
+        self.laser = self._master.lasersManager[self.laserNames[0]]
         try: self.ledMatrix = self._master.LEDMatrixsManager[self._master.LEDMatrixsManager.getAllDeviceNames()[0]]
         except: self.ledMatrix = None
 
@@ -97,8 +101,8 @@ class HyphaController(LiveUpdatedController):
     def _loginHypha(self):
         # start the service
         # TODO: Create ID based on user input
-        if self._isConnected:
-            return
+        #if self._isConnected:
+        #    return
         service_id = "UC2ImSwitch"
         server_url = "http://localhost:9000"
         server_url = "https://ai.imjoy.io/"        
@@ -380,8 +384,6 @@ class HyphaController(LiveUpdatedController):
             "set_illumination": SetIlluminationInput.schema(),
         }
 
-
-
     def home_stage(self, kwargs):
         config = HomeStage(**kwargs)
         return "Homed the stage!"
@@ -392,6 +394,12 @@ class HyphaController(LiveUpdatedController):
 
     def set_illumination(self, kwargs):
         config = SetIlluminationInput(**kwargs)
+        mChannel = config.channel
+        mIntensity = config.intensity
+        
+        self.laserName = self._master.lasersManager.getAllDeviceNames()[mChannel]
+        self._master.lasersManager[self.laserName].setEnabled(True*bool(mIntensity)
+        self._master.lasersManager[self.laserName].setValue(mIntensity)
         return "Set the illumination!"
 
     def getExtensionDefinition(self):
@@ -423,12 +431,11 @@ class SnapImageInput(BaseModel):
     """Snap an image from microscope."""
     exposure: int = Field(description="Set the microscope camera's exposure time. and the time unit is ms, so you need to input the time in miliseconds.")
     filepath: str = Field(description="The path to save the captured image. It will be a tif, so the extension does not need to be added. ")
-    imageProcessingFunction: str = Field(description="The Python function to use for processing the image. Default is empty. image is the 2D array from the detector Example: def processImage(image): return cv2.cvtColor(image, cv2.COLOR_BGR2GRAY")
-                                         
+    imageProcessingFunction: str = Field(description="The Python function to use for processing the image. Default is empty. image is the 2D array from the detector Example: def processImage(image): return cv2.cvtColor(image, cv2.COLOR_BGR2GRAY")                        
                                          
 class SetIlluminationInput(BaseModel):
     """Set the illumination of the microscope."""
-    channel: int = Field(description="Set the channel of the illumination. The value should choosed from this list: BF LED matrix full=0, Fluorescence 405 nm Ex=11, Fluorescence 488 nm Ex=12, Fluorescence 638 nm Ex=13, Fluorescence 561 nm Ex  =14, Fluorescence 730 nm Ex=15.")
+    channel: int = Field(description="Set the channel of the illumination. The value should choosed from this list: [0, 1, 2, 3] ")
     intensity: float = Field(description="Set the intensity of the illumination. The value should be between 0 and 100; ")
 
 class HomeStage(BaseModel):
@@ -444,9 +451,6 @@ class MoveToPositionInput(BaseModel):
     x: float = Field(description="Move the stage to the specified position along X axis.")
     y: float = Field(description="Move the stage to the specified position along Y axis.")
     z: float = Field(description="Move the stage to the specified position along Z axis.")
-
-
-
 
 class VideoTransformTrack(MediaStreamTrack):
     """

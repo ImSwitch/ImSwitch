@@ -103,7 +103,7 @@ class Positioner:
         if IS_NIP:
             self.psf = self.compute_psf(dz=0)
         else: 
-            self.psf = np.ones(self.mDimensions)
+            self.psf = None
 
     def move(self, x=None, y=None, z=None, a=None, is_absolute=False):
         with self.lock:
@@ -133,10 +133,11 @@ class Positioner:
             return self.position.copy()
 
     def compute_psf(self, dz):
+        dz = np.float32(dz)
+        print("Defocus:"+str(dz))
         if IS_NIP and dz != 0:
-            print("Defocus:"+str(dz))
             obj = nip.image(np.zeros(self.mDimensions))
-            obj.pixelsize = (10., 10.)
+            obj.pixelsize = (100., 100.)
             paraAbber = nip.PSF_PARAMS()
             #aber_map = nip.xx(obj.shape[-2:]).normalize(1)
             paraAbber.aberration_types = [paraAbber.aberration_zernikes.spheric]
@@ -146,7 +147,7 @@ class Positioner:
             del psf
             del obj
         else:
-            self.psf = np.ones(self.mDimensions).copy()
+            self.psf = None
 
         
     def get_psf(self):
@@ -160,7 +161,7 @@ class Illuminator:
         self.intensity = 0
         self.lock = threading.Lock()
 
-    def set_intensity(self, channel, intensity):
+    def set_intensity(self, channel=1, intensity=0):
         with self.lock:
             self.intensity = intensity/1024
 
@@ -180,7 +181,16 @@ class VirtualMicroscopy:
         pass
 
 
-
+if __name__ == "__main__":
+    import matplotlib.pyplot as plt
+    microscope = VirtualMicroscopy(filePath='/Users/bene/Dropbox/Dokumente/Promotion/PROJECTS/MicronController/ImSwitch/imswitch/_data/images/histoASHLARStitch.jpg')
+    microscope.illuminator.set_intensity(intensity=1000)
+        
+    for i in range(10):
+        microscope.positioner.move(x=i, y=i, z=i, is_absolute=True)
+        frame = microscope.camera.getLast()
+        plt.imsave(f"frame_{i}.png", frame)
+    cv2.destroyAllWindows()
 
 # Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.

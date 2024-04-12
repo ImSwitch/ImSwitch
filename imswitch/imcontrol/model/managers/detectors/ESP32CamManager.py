@@ -95,7 +95,6 @@ class ESP32CamManager(DetectorManager):
 
     def setBinning(self, binning):
         super().setBinning(binning) 
-        
 
     def getChunk(self):
         return self._camera.getLastChunk()

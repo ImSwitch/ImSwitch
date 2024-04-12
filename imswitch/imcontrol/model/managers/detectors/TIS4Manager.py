@@ -107,7 +107,6 @@ class TIS4Manager(DetectorManager):
         # No idea why.
         # For now parameter selector disabled, if never True
         if name == 'pixel_format':
-            self.__logger.info('Disabled, should not be here')
             self._camera.local_init(value)
         else:
             value = self._camera.setPropertyValue(name, value)

@@ -73,7 +73,7 @@ class DPCController(ImConWidgetController):
         self.NAi =  self._master.dpcManager.NAi
         self.n =  self._master.dpcManager.n
         
-        self.tWait = .3 # time to wait between turning on LED Matrix and frame acquisition
+        self.tWait = .2 # time to wait between turning on LED Matrix and frame acquisition
 
         # select LEDArray
         allLEDMatrixNames = self._master.LEDMatrixsManager.getAllDeviceNames()
@@ -194,12 +194,50 @@ class DPCController(ImConWidgetController):
             # initialize the processor 
             processor = self.DPCProcessor
             processor.setParameters(dpc_info_dict)
-            
+
+            '''
             # iterating over all illumination patterns
             for iPatternName in self.allDPCPatternNames:
                 if not self.active:
                     break
+<<<<<<< Updated upstream
                 
+=======
+<<<<<<< HEAD
+                self.ledMatrix.mLEDmatrix.setAll(0)
+
+                # 1. display the pattern
+                ledIDs = self.allDPCPatterns[iPatternName]
+                self._logger.debug("Showing pattern: "+iPatternName)
+                ledPattern = []
+                ledIntensity = (0,255,0)
+                
+                # no sparse update :( 
+                for iLED in range(self.nLEDs): 
+                    if iLED in ledIDs:
+                        ledPattern.append(ledIntensity)
+                    else:
+                        ledPattern.append((0,0,0))
+                self.ledMatrix.mLEDmatrix.send_LEDMatrix_array(np.array(ledPattern), getReturn = True)
+                print(ledPattern)
+                # wait a moment
+                time.sleep(self.tWait)
+                
+                # 2 grab a frame 
+                frame = self.detector.getLatestFrame()
+                processor.addFrameToStack(frame)
+                '''
+
+            for iPatternName in self.allDPCPatternNames:
+                if not self.active:
+                    break
+                self.ledMatrix.mLEDmatrix.setAll(0)
+                time.sleep(self.tWait)
+
+=======
+                
+>>>>>>> 059564faae39b6ef6d565300f761094b1fd7f96d
+>>>>>>> Stashed changes
                 # 1. display the pattern
                 ledIDs = self.allDPCPatterns[iPatternName]
                 self._logger.debug("Showing pattern: "+iPatternName)
@@ -219,7 +257,8 @@ class DPCController(ImConWidgetController):
                 # 2 grab a frame 
                 frame = self.detector.getLatestFrame()
                 processor.addFrameToStack(frame)
-                    
+            
+
             # We will collect N*M images and process them with the DPC processor
             # process the frames and display
             if not self.isReconstructing:

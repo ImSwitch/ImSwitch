@@ -8,7 +8,7 @@ import threading
 from datetime import datetime
 import tifffile as tif
 
-from imswitch.imcommon.model import dirtools, initLogger, APIExport
+from imswitch.imcommon.model import dirtools, initLogger, APIExport, ostools
 from ..basecontrollers import ImConWidgetController
 from imswitch.imcommon.framework import Signal, Thread, Worker, Mutex, Timer
 
@@ -147,6 +147,8 @@ class SIMController(ImConWidgetController):
         # read parameters from the widget
         self._widget.start_timelapse_button.clicked.connect(self.startTimelapse)
         self._widget.start_zstack_button.clicked.connect(self.startZstack)
+        self._widget.openFolderButton.clicked.connect(self.openFolder)
+        self.folder = self._widget.getRecFolder()
 
     def toggleRecording(self):
         self.isRecording = not self.isRecording
@@ -158,6 +160,12 @@ class SIMController(ImConWidgetController):
         if not self.isReconstruction:
             self.isActive = False
         
+    def openFolder(self):
+        """ Opens current folder in File Explorer. """
+        folder = self._widget.getRecFolder()
+        if not os.path.exists(folder):
+            os.makedirs(folder)
+        ostools.openFolderInOS(folder)
     
         
     def initFastAPISIM(self, params):
@@ -428,6 +436,8 @@ class SIMController(ImConWidgetController):
         
                     # store the raw SIM stack
                     if self.isRecording and self.lasers[iColour].power>0.0:
+                        date = datetime.now().strftime("%Y_%m_%d-%I-%M-%S_%p")
+                        processor.setDate(date)
                         mFilenameStack = f"{date}_SIM_Stack_{self.LaserWL}nm_{zPos+zPosInitially}mum.tif"
                         threading.Thread(target=self.saveImageInBackground, args=(self.SIMStack, mFilenameStack,), daemon=True).start()
                     # self.detector.stopAcquisition()
@@ -510,9 +520,10 @@ class SIMController(ImConWidgetController):
             
             # store the raw SIM stack
             if self.isRecording and self.lasers[iColour].power>0.0:
-                date = datetime. now(). strftime("%Y_%m_%d-%I-%M-%S_%p")
+                uniqueID = np.random.randint(0,1000)
+                date = datetime.now().strftime("%Y_%m_%d-%I-%M-%S_%p")
                 processor.setDate(date)
-                mFilenameStack = f"{date}_SIM_Stack_{self.LaserWL}nm.tif"
+                mFilenameStack = f"{date}_SIM_Stack_{self.LaserWL}nm_{uniqueID}.tif"
                 threading.Thread(target=self.saveImageInBackground, args=(self.SIMStack, mFilenameStack,), daemon=True).start()
             # self.detector.stopAcquisition()
             # We will collect N*M images and process them with the SIM processor
@@ -546,12 +557,19 @@ class SIMController(ImConWidgetController):
         mystack.append(self.detector.getLatestFrame())
         #print(np.shape(mystack))
         
-    @APIExport(runOnUIThread=True)
-    def saveImageInBackground(self, image, filename):
-        filename = os.path.join('C:\\Users\\admin\\Desktop\\Timelapse\\',filename) #FIXME: Remove hardcoded path
-        tif.imsave(filename, image)
-        self._logger.debug("Saving file: "+filename)
-
+   
+    def saveImageInBackground(self, image, filename = None):
+        if filename is None:
+            date = datetime.now().strftime("%Y_%m_%d-%I-%M-%S_%p")
+            filename = f"{date}_SIM_Stack.tif"
+        try:
+            self.folder = self._widget.getRecFolder()
+            self.filename = os.path.join(self.folder,filename) #FIXME: Remove hardcoded path
+            tif.imwrite(self.filename, image)
+            self._logger.debug("Saving file: "+self.filename)
+        except  Exception as e:
+            self._logger.error(e)
+        
     def getSIMParametersFromGUI(self):
         ''' retrieve parameters from the GUI '''
         sim_parameters = SIMParameters()
@@ -567,6 +585,7 @@ class SIMController(ImConWidgetController):
         sim_parameters.wavelength_1 = np.float32(self._widget.wavelength1_textedit.text())
         sim_parameters.wavelength_2 = np.float32(self._widget.wavelength2_textedit.text())
         sim_parameters.magnification = np.float32(self._widget.magnification_textedit.text())
+        sim_parameters.path = self._widget.path_edit.text()
         return sim_parameters
         
 
@@ -586,7 +605,8 @@ class SIMParameters(object):
     pixelsize = 6.5
     eta = 0.6
     alpha = 0.5
-    beta = 0.98
+    beta = 0.98#
+    path = 'C:\\Users\\admin\\Desktop\\Timelapse\\'
     
 '''#####################################
 # SIM PROCESSOR
@@ -854,13 +874,21 @@ class SIMProcessor(object):
 
         # save images eventually
         if self.isRecording:
-            date = datetime.now().strftime("%Y_%m_%d-%I-%M-%S_%p")
-            mFilenameRecon = f"{date}_SIM_Reconstruction_{self.LaserWL}nm.tif"                            
-            threading.Thread(target=SIMController.saveImageInBackground, args=(SIMReconstruction, mFilenameRecon,), daemon=True).start()
+            def saveImageInBackground(image, filename = None):
+                try:
+                    self.folder = SIMParameters.path
+                    self.filename = os.path.join(self.folder,filename) #FIXME: Remove hardcoded path
+                    tif.imwrite(self.filename, image)
+                    self._logger.debug("Saving file: "+self.filename)
+                except  Exception as e:
+                    self._logger.error(e)
+            mFilenameRecon = f"{self.date}_SIM_Reconstruction_{self.LaserWL}nm.tif"                            
+            threading.Thread(target=saveImageInBackground, args=(SIMReconstruction, mFilenameRecon,)).start()
             
         self.parent.sigSIMProcessorImageComputed.emit(np.array(SIMReconstruction), "SIM Reconstruction")
         self.isReconstructing = False
 
+            
     def reconstruct(self, currentImage):
         '''
         reconstruction

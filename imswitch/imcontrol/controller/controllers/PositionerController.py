@@ -6,6 +6,8 @@ from imswitch.imcommon.model import initLogger
 import threading
 from typing import Optional
 import time 
+from Pyro5.api import expose
+
 class PositionerController(ImConWidgetController):
     """ Linked to PositionerWidget."""
 
@@ -146,7 +148,7 @@ class PositionerController(ImConWidgetController):
         self.__logger.debug(f"Homing axis {axis}")
         self._master.positionersManager[positionerName].doHome(axis, isBlocking=isBlocking)
         self.updatePosition(positionerName, axis)
-
+        self._commChannel.sigUpdateMotorPosition.emit()
 
     def stopAxis(self, positionerName, axis):
         self.__logger.debug(f"Stopping axis {axis}")
@@ -207,6 +209,7 @@ class PositionerController(ImConWidgetController):
         self._widget.setStepSize(positionerName, stepSize)
 
     @APIExport(runOnUIThread=True)
+    @expose
     def movePositioner(self, positionerName: str, axis: str, dist: Optional[float] = None, isAbsolute: bool = False, isBlocking: bool=False, speed: float=None) -> None:
         """ Moves the specified positioner axis by the specified number of
         micrometers. """

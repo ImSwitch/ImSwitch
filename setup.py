@@ -73,8 +73,14 @@ setup(
         "imjoy_rpc",
         "imjoy",
         "aiortc >= 1.3.0",
-        "juliacall >= 0.17.0"
+        "juliacall",
+        "UC2-REST", 
+        "QtWebEngineWidgets >= 5.15.2",
     ],
+     extras_require={
+        'PyQt5': [
+            "PyQt5 >= 5.15.2",
+        ]},
     entry_points={
         "console_scripts": [
             "imswitch = imswitch.__main__:main",

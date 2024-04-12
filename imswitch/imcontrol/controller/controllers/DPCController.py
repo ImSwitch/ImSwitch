@@ -46,8 +46,9 @@ class DPCController(ImConWidgetController):
 
         # define patterns
         self.nPattern = 4
-        self.brightfieldPattern = {"0": [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23]}
-        self.allDPCPatternNames = ("left", "right", "top", "bottom")
+        #self.brightfieldPattern = {"0": [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23]}
+        self.brightfieldPattern = {"0": [1,2,4,5,6,7,8,9,10,11,13,14]}
+        self.allDPCPatternNames = ("top", "bottom", "right", "left")
         if False:
             self.allDPCPatterns = {self.allDPCPatternNames[0]: [0,1,2,7,8,9,10,11,12,21,22,23,24], 
                                     self.allDPCPatternNames[1]: [3,4,5,6,13,14,15,16,17,18,19,20,21,22], 
@@ -55,10 +56,10 @@ class DPCController(ImConWidgetController):
                                     self.allDPCPatternNames[3]: [1,2,3,4,9,10,11,12,14,15,16]}
             self.nLEDs = 25
         else:        
-            self.allDPCPatterns = {self.allDPCPatternNames[0]: [0,1,2,3,4,5,6,7], 
-                        self.allDPCPatternNames[1]: [8,9,10,11,12,13,14,15], 
-                        self.allDPCPatternNames[2]: [0,7,8,19,14,9,6,1], 
-                        self.allDPCPatternNames[3]: [3,4,11,12,2,9,10,13]}
+            self.allDPCPatterns = {self.allDPCPatternNames[0]: [8,9,10,11,13,14], 
+                        self.allDPCPatternNames[1]: [1,2,4,5,6,7], 
+                        self.allDPCPatternNames[2]: [2,4,5,11,10,13], 
+                        self.allDPCPatternNames[3]: [1,6,7,8,9,14]}
             self.nLEDs = 16
         #self._widget.applyChangesButton.clicked.connect(self.applyParams)
         self._widget.startDPCAcquisition.clicked.connect(self.startDPC)
@@ -72,7 +73,7 @@ class DPCController(ImConWidgetController):
         self.NAi =  self._master.dpcManager.NAi
         self.n =  self._master.dpcManager.n
         
-        self.tWait = .1 # time to wait between turning on LED Matrix and frame acquisition
+        self.tWait = .2 # time to wait between turning on LED Matrix and frame acquisition
 
         # select LEDArray
         allLEDMatrixNames = self._master.LEDMatrixsManager.getAllDeviceNames()
@@ -193,12 +194,50 @@ class DPCController(ImConWidgetController):
             # initialize the processor 
             processor = self.DPCProcessor
             processor.setParameters(dpc_info_dict)
-            
+
+            '''
             # iterating over all illumination patterns
             for iPatternName in self.allDPCPatternNames:
                 if not self.active:
                     break
+<<<<<<< Updated upstream
+                
+=======
+<<<<<<< HEAD
                 self.ledMatrix.mLEDmatrix.setAll(0)
+
+                # 1. display the pattern
+                ledIDs = self.allDPCPatterns[iPatternName]
+                self._logger.debug("Showing pattern: "+iPatternName)
+                ledPattern = []
+                ledIntensity = (0,255,0)
+                
+                # no sparse update :( 
+                for iLED in range(self.nLEDs): 
+                    if iLED in ledIDs:
+                        ledPattern.append(ledIntensity)
+                    else:
+                        ledPattern.append((0,0,0))
+                self.ledMatrix.mLEDmatrix.send_LEDMatrix_array(np.array(ledPattern), getReturn = True)
+                print(ledPattern)
+                # wait a moment
+                time.sleep(self.tWait)
+                
+                # 2 grab a frame 
+                frame = self.detector.getLatestFrame()
+                processor.addFrameToStack(frame)
+                '''
+
+            for iPatternName in self.allDPCPatternNames:
+                if not self.active:
+                    break
+                self.ledMatrix.mLEDmatrix.setAll(0)
+                time.sleep(self.tWait)
+
+=======
+                
+>>>>>>> 059564faae39b6ef6d565300f761094b1fd7f96d
+>>>>>>> Stashed changes
                 # 1. display the pattern
                 ledIDs = self.allDPCPatterns[iPatternName]
                 self._logger.debug("Showing pattern: "+iPatternName)
@@ -218,7 +257,8 @@ class DPCController(ImConWidgetController):
                 # 2 grab a frame 
                 frame = self.detector.getLatestFrame()
                 processor.addFrameToStack(frame)
-                    
+            
+
             # We will collect N*M images and process them with the DPC processor
             # process the frames and display
             if not self.isReconstructing:
@@ -315,28 +355,31 @@ class DPCProcessor(object):
     def reconstructThread(self, isRecording):
         # compute image
         # initialize the model
-        self._logger.debug("Processing frames")
-        qdpc_result = self.dpc_solver_obj.solve(dpc_imgs=self.stackToReconstruct)
+        try:
+            self._logger.debug("Processing frames")
+            qdpc_result = self.dpc_solver_obj.solve(dpc_imgs=self.stackToReconstruct)
 
-        # save images eventually
-        if isRecording:
-            date = datetime.now().strftime("%Y_%m_%d-%I-%M-%S_%p")
-            mFilenameRecon = f"{date}_DPC_Reconstruction.tif"   
-            tif.imsave(mFilenameRecon, qdpc_result)         
-        
-        # compute gradient images
-        dpc_result_1 = (self.stackToReconstruct[0]-self.stackToReconstruct[1])/(self.stackToReconstruct[0]+self.stackToReconstruct[1])
-        dpc_result_2 = (self.stackToReconstruct[2]-self.stackToReconstruct[3])/(self.stackToReconstruct[2]+self.stackToReconstruct[3])
+            # save images eventually
+            if isRecording:
+                date = datetime.now().strftime("%Y_%m_%d-%I-%M-%S_%p")
+                mFilenameRecon = f"{date}_DPC_Reconstruction.tif"   
+                tif.imsave(mFilenameRecon, qdpc_result)         
+            
+            # compute gradient images
+            dpc_result_1 = (self.stackToReconstruct[0]-self.stackToReconstruct[1])/(self.stackToReconstruct[0]+self.stackToReconstruct[1])
+            dpc_result_2 = (self.stackToReconstruct[2]-self.stackToReconstruct[3])/(self.stackToReconstruct[2]+self.stackToReconstruct[3])
 
-        # display images
-        self.parent.sigDPCProcessorImageComputed.emit(np.angle(np.array(qdpc_result)), "qDPC Reconstruction (Phase)")
-        self.parent.sigDPCProcessorImageComputed.emit(np.abs(np.array(qdpc_result)), "qDPC Reconstruction (Magnitude)")
-        self.parent.sigDPCProcessorImageComputed.emit(np.array(dpc_result_1), "DPC left/right")
-        self.parent.sigDPCProcessorImageComputed.emit(np.array(dpc_result_2), "DPC top/bottom")
-        self.parent.isReconstructing = False
-        return dpc_result_1, dpc_result_2, qdpc_result
-
-
+            # display images
+            self.parent.sigDPCProcessorImageComputed.emit(np.angle(np.array(qdpc_result)), "qDPC Reconstruction (Phase)")
+            self.parent.sigDPCProcessorImageComputed.emit(np.abs(np.array(qdpc_result)), "qDPC Reconstruction (Magnitude)")
+            self.parent.sigDPCProcessorImageComputed.emit(np.array(dpc_result_1), "DPC left/right")
+            self.parent.sigDPCProcessorImageComputed.emit(np.array(dpc_result_2), "DPC top/bottom")
+            self.parent.isReconstructing = False
+            return dpc_result_1, dpc_result_2, qdpc_result
+        except Exception as e:
+            self._logger.error(f"Error during reconstruction: {e}")
+            self.parent.isReconstructing = False
+            return None
 
 # (C) Wallerlab 2019
 # https://github.com/Waller-Lab/DPC/blob/master/python_code/dpc_algorithm.py

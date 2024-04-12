@@ -29,8 +29,8 @@ class VirtualMicroscopeManager:
             self._imagePath = rs232Info.managerProperties['imagePath']
         except:
             package_dir = os.path.dirname(os.path.abspath(imswitch.__file__))
-            self._imagePath = os.path.join(package_dir, "_data/images/WellplateAdapter3Slides.png")
-        
+            self._imagePath = os.path.join(package_dir, "_data/images/histoASHLARStitch.jpg")
+            
         self._virtualMicroscope = VirtualMicroscopy(self._imagePath)
         self._positioner = self._virtualMicroscope.positioner
         self._camera = self._virtualMicroscope.camera
@@ -46,7 +46,7 @@ class VirtualMicroscopeManager:
 
         cv2.destroyAllWindows()
         '''
-        
+
     def finalize(self):
         self._virtualMicroscope.stop()
     
@@ -60,22 +60,26 @@ class Camera:
         
         self.image /= np.max(self.image)
         self.lock = threading.Lock()
-        self.SensorWidth = self.image.shape[1]
-        self.SensorHeight = self.image.shape[0]
+        self.SensorWidth = 512 #self.image.shape[1]
+        self.SensorHeight = 512 #self.image.shape[0]
         self.model = "VirtualCamera"
         self.PixelSize = 1.0
+        self.isRGB = False
 
     def produce_frame(self, x_offset=0, y_offset=0, light_intensity=1.0, defocusPSF=None):
         """Generate a frame based on the current settings."""
         with self.lock:
             # add moise
             image = self.image.copy()
+            # Adjust image based on offsets
+            image = np.roll(np.roll(image, int(x_offset), axis=1), int(y_offset), axis=0)
+            image = nip.extract(image, (self.SensorWidth, self.SensorHeight))
+
+            # do all post-processing on cropped image
             if IS_NIP and defocusPSF is not None and not defocusPSF.shape == ():
                 image = np.array(np.real(nip.convolve(image, defocusPSF)))
             image = image/np.mean(image)
             image = np.random.randn(image.shape[0],image.shape[1])*.2+image
-            # Adjust image based on offsets
-            image = np.roll(np.roll(image, int(x_offset), axis=1), int(y_offset), axis=0)
             
             # Adjust illumination
             image = (image * light_intensity).astype(np.uint16)
@@ -94,11 +98,12 @@ class Positioner:
     def __init__(self, parent):
         self._parent = parent
         self.position = {'X': 0, 'Y': 0, 'Z': 0, 'A': 0}
+        self.mDimensions = (self._parent.camera.SensorWidth, self._parent.camera.SensorHeight)
         self.lock = threading.Lock()
         if IS_NIP:
             self.psf = self.compute_psf(dz=0)
         else: 
-            self.psf = np.ones(self._parent.camera.image.shape)
+            self.psf = None
 
     def move(self, x=None, y=None, z=None, a=None, is_absolute=False):
         with self.lock:
@@ -128,17 +133,21 @@ class Positioner:
             return self.position.copy()
 
     def compute_psf(self, dz):
-        if IS_NIP:
-            obj = nip.image(self._parent.camera.image)
-            obj.pixelsize = (10., 10.)
+        dz = np.float32(dz)
+        print("Defocus:"+str(dz))
+        if IS_NIP and dz != 0:
+            obj = nip.image(np.zeros(self.mDimensions))
+            obj.pixelsize = (100., 100.)
             paraAbber = nip.PSF_PARAMS()
-            aber_map = nip.xx(obj.shape[-2:]).normalize(1)
+            #aber_map = nip.xx(obj.shape[-2:]).normalize(1)
             paraAbber.aberration_types = [paraAbber.aberration_zernikes.spheric]
-            paraAbber.aberration_strength = [dz/100]
+            paraAbber.aberration_strength = [np.float32(dz)/10]
             psf = nip.psf(obj, paraAbber)
-            self.psf = psf
+            self.psf = psf.copy()
+            del psf
+            del obj
         else:
-            self.psf = np.ones(self._parent.camera.image.shape)
+            self.psf = None
 
         
     def get_psf(self):
@@ -149,12 +158,12 @@ class Positioner:
 class Illuminator:
     def __init__(self, parent):
         self._parent = parent
-        self.intensity = 1.0
+        self.intensity = 0
         self.lock = threading.Lock()
 
-    def set_intensity(self, channel, intensity):
+    def set_intensity(self, channel=1, intensity=0):
         with self.lock:
-            self.intensity = intensity
+            self.intensity = intensity/1024
 
     def get_intensity(self, channel):
         with self.lock:
@@ -172,7 +181,16 @@ class VirtualMicroscopy:
         pass
 
 
-
+if __name__ == "__main__":
+    import matplotlib.pyplot as plt
+    microscope = VirtualMicroscopy(filePath='/Users/bene/Dropbox/Dokumente/Promotion/PROJECTS/MicronController/ImSwitch/imswitch/_data/images/histoASHLARStitch.jpg')
+    microscope.illuminator.set_intensity(intensity=1000)
+        
+    for i in range(10):
+        microscope.positioner.move(x=i, y=i, z=i, is_absolute=True)
+        frame = microscope.camera.getLast()
+        plt.imsave(f"frame_{i}.png", frame)
+    cv2.destroyAllWindows()
 
 # Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.

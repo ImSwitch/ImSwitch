@@ -32,11 +32,14 @@ class MultiManager(ABC):
                 except Exception as e:
                     # try to import from the implugins
                     self.__logger.error(e)
-                    for entry_point in pkg_resources.iter_entry_points(f'imswitch.implugins.{subManagersPackage}'):
-                        manager = entry_point.load()
-                        self._subManagers[managedDeviceName] = manager(
-                            managedDeviceInfo, managedDeviceName, **lowLevelManagers)
-
+                    try:
+                        for entry_point in pkg_resources.iter_entry_points(f'imswitch.implugins.{subManagersPackage}'):
+                            manager = entry_point.load()
+                            self._subManagers[managedDeviceName] = manager(
+                                managedDeviceInfo, managedDeviceName, **lowLevelManagers)
+                    except Exception as e:
+                        self.__logger.error(e)
+                        
     def hasDevices(self):
         """ Returns whether this manager manages any devices. """
         return len(self._subManagers) > 0

@@ -27,7 +27,7 @@ class FFTController(LiveUpdatedController):
 
         # Connect CommunicationChannel signals
         self._commChannel.sigUpdateImage.connect(self.update)
-
+        
         # Connect FFTWidget signals
         self._widget.sigShowToggled.connect(self.setShowFFT)
         self._widget.sigPosToggled.connect(self.setShowPos)

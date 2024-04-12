@@ -18,6 +18,9 @@ class ESP32StageManager(PositionerManager):
         self._motor = self._rs232manager._esp32.motor
         self._homeModule = self._rs232manager._esp32.home
 
+        # get bootup position and write to GUI
+        self._position = self.getPosition()
+
         # Calibrated stepsizes in steps/µm
         self.stepsizeX = positionerInfo.managerProperties.get('stepsizeX', 1)
         self.stepsizeY = positionerInfo.managerProperties.get('stepsizeY', 1)
@@ -134,8 +137,6 @@ class ESP32StageManager(PositionerManager):
         if self.homeOnStartY: self.home_y()
         if self.homeOnStartZ: self.home_z()
 
-        # get bootup position and write to GUI
-        self._position = self.getPosition()
         
         # set speed for all axes
         self._speed = {"X": positionerInfo.managerProperties.get('speedX', 10000),
@@ -185,6 +186,17 @@ class ESP32StageManager(PositionerManager):
         self._motor.setup_motor(axis=axis, minPos=minPos, maxPos=maxPos, stepSize=stepSize, backlash=backlash)
 
     def move(self, value=0, axis="X", is_absolute=False, is_blocking=True, acceleration=None, speed=None, isEnable=None, timeout=gTIMEOUT):
+        '''
+        Move the motor to a new position
+        :param value: The new position
+        :param axis: The axis to move
+        :param is_absolute: If True, the motor will move to the absolute position given by value. If False, the motor will move by the amount given by value.
+        :param is_blocking: If True, the function will block until the motor has reached the new position. If False, the function will return immediately.
+        :param acceleration: The acceleration to use for the move. If None, the default acceleration for the axis will be used.
+        :param speed: The speed to use for the move. If None, the default speed for the axis will be used.
+        :param isEnable: If True, the motor will be enabled before the move. If False, the motor will be disabled before the move.
+        :param timeout: The maximum time to wait for the motor to reach the new position. If the motor has not reached the new position after this time, a TimeoutError will be raised.
+        '''
         #FIXME: for i, iaxis in enumerate(("A","X","Y","Z")):
         #    self._position[iaxis] = self._motor._position[i]
         if isEnable is None:
@@ -301,12 +313,11 @@ class ESP32StageManager(PositionerManager):
         # t,x,y,z
         try:
             allPositions = 1.*self._motor.get_position()
+            return {"X": allPositions[1], "Y": allPositions[2], "Z": allPositions[3], "A": allPositions[0]}
         except Exception as e:
             self.__logger.error(e)
-            allPositions = [0.,0.,0.,0.]
-        allPositionsDict={"X": allPositions[1], "Y": allPositions[2], "Z": allPositions[3], "A": allPositions[0]}
-
-        return allPositionsDict
+            return self._position
+        
 
     def forceStop(self, axis):
         if axis=="X":
@@ -354,6 +365,7 @@ class ESP32StageManager(PositionerManager):
         elif self.homeXenabled:
             self._homeModule.home_x(speed=self.homeSpeedX, direction=self.homeDirectionX, endstoppolarity=self.homeEndstoppolarityX, endposrelease=self.homeEndposReleaseX, isBlocking=isBlocking, timeout=self.homeTimeoutX)
         else:
+            self.__logger.info("No homing parameters set for X axis or not enabled in settings.")
             return
         self.setPosition(axis="X", value=0)
 
@@ -363,6 +375,7 @@ class ESP32StageManager(PositionerManager):
         elif self.homeYenabled:
             self._homeModule.home_y(speed=self.homeSpeedY, direction=self.homeDirectionY, endstoppolarity=self.homeEndstoppolarityY, endposrelease=self.homeEndposReleaseY, isBlocking=isBlocking, timeout=self.homeTimeoutY)
         else:
+            self.__logger.info("No homing parameters set for X axis or not enabled in settings.")
             return
         self.setPosition(axis="Y", value=0)
 
@@ -372,6 +385,7 @@ class ESP32StageManager(PositionerManager):
         elif self.homeZenabled:
             self._homeModule.home_z(speed=self.homeSpeedZ, direction=self.homeDirectionZ, endstoppolarity=self.homeEndstoppolarityZ, endposrelease=self.homeEndposReleaseZ, isBlocking=isBlocking, timeout=self.homeTimeoutZ)
         else:
+            self.__logger.info("No homing parameters set for X axis or not enabled in settings.")
             return
         self.setPosition(axis="Z", value=0)
         
@@ -381,6 +395,7 @@ class ESP32StageManager(PositionerManager):
         elif self.homeAenabled:
             self._homeModule.home_a(speed=self.homeSpeedA, direction=self.homeDirectionA, endstoppolarity=self.homeEndstoppolarityA, endposrelease=self.homeEndposReleaseA, isBlocking=isBlocking, timeout=self.homeTimeoutA)
         else:
+            self.__logger.info("No homing parameters set for X axis or not enabled in settings.")
             return
         self.setPosition(axis="A", value=0)
 

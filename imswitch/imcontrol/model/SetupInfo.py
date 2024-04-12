@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, make_dataclass
 from typing import Any, Dict, List, Optional, Union
 
 from dataclasses_json import dataclass_json, Undefined, CatchAll
@@ -262,6 +262,10 @@ class HistoScanInfo:
     pass
 
 @dataclass(frozen=True)
+class FlowStopInfo:
+    pass
+
+@dataclass(frozen=True)
 class FlatfieldInfo:
     pass
 
@@ -447,7 +451,7 @@ class NidaqInfo:
 class PyroServerInfo:
     name: Optional[str] = 'ImSwitchServer'
     host: Optional[
-        str] = '::'  # - listen to all addresses on v6 # '0.0.0.0'- listen to all IP addresses # 127.0.0.1 - only locally
+        str] = '0.0.0.0'  # - listen to all addresses on v6 # '0.0.0.0'- listen to all IP addresses # 127.0.0.1 - only locally
     port: Optional[int] = 54333
     active: Optional[bool] = False
 
@@ -519,6 +523,9 @@ class SetupInfo:
     HistoScan: Optional[HistoScanInfo] = field(default_factory=lambda: None)
     """ HistoScan settings. Required to be defined to use HistoScan functionality. """
 
+    FlowStop:  Optional[FlowStopInfo] = field(default_factory=lambda: None)
+    """ FlowStop settings. Required to be defined to use FlowStop functionality. """
+
     Flatfield: Optional[FlatfieldInfo] = field(default_factory=lambda: None)
     """ Flatfield settings. Required to be defined to use Flatfield functionality. """
     
@@ -557,8 +564,22 @@ class SetupInfo:
 
     pyroServerInfo: PyroServerInfo = field(default_factory=PyroServerInfo)
 
+
     _catchAll: CatchAll = None
 
+    def add_attribute(self, attr_name, attr_value):
+        # load all implugin-related setup infos and add them to the class
+        # try to get it from the plugins
+        # If there is a imswitch_sim_info, we want to add this as self.imswitch_sim_info to the 
+        # SetupInfo Class
+
+        import pkg_resources
+        for entry_point in pkg_resources.iter_entry_points('imswitch.implugins'):
+            if entry_point.name == attr_name+"_info":
+                ManagerClass = entry_point.load()
+                ManagerDataClass = make_dataclass(entry_point.name.split("_info")[0], [(entry_point.name, ManagerClass)])
+                setattr(self, entry_point.name.split("_info")[0], field(default_factory=ManagerDataClass))
+        
     def getDevice(self, deviceName):
         """ Returns the DeviceInfo for a specific device.
 

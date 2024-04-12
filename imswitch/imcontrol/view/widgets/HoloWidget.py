@@ -69,6 +69,12 @@ class HoloWidget(NapariHybridWidget):
         self.sliderOffAxisFocus.setTickInterval(tickInterval)
         self.sliderOffAxisFocus.setSingleStep(singleStep)
         self.sliderOffAxisFocus.setValue(0)
+        
+        self.btnSaveBackground = QtWidgets.QPushButton('Save Background')
+        self.btnSnapHolo = QtWidgets.QPushButton('Snap Holo')
+        self.textEditHoloFileName = QtWidgets.QLineEdit('holo')
+        self.labelHoloReconAlgorithm = QtWidgets.QLabel('Holo Reconstruction Algorithm')
+        self.pullDownHoloReconAlgorithm = QtWidgets.QComboBox()
 
         # Add elements to GridLayout
         grid = QtWidgets.QGridLayout()
@@ -83,6 +89,12 @@ class HoloWidget(NapariHybridWidget):
         grid.addWidget(self.labelOffAxisFocus, 3, 0, 1, 1)
         grid.addWidget(self.sliderOffAxisFocus, 3, 1, 1, 1)
 
+        grid.addWidget(self.btnSaveBackground, 4, 0, 1, 1)
+        grid.addWidget(self.btnSnapHolo, 4, 1, 1, 1)
+        grid.addWidget(self.textEditHoloFileName, 4, 2, 1, 1)
+        grid.addWidget(self.labelHoloReconAlgorithm, 5, 0, 1, 1)
+        grid.addWidget(self.pullDownHoloReconAlgorithm, 5, 1, 1, 1)
+        
         # Connect signals
         self.showCheckOffAxis.toggled.connect(self.sigShowOffAxisToggled)
         self.sliderOffAxisFocus.valueChanged.connect(

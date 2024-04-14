@@ -35,6 +35,8 @@ class VirtualMicroscopeManager:
         self._positioner = self._virtualMicroscope.positioner
         self._camera = self._virtualMicroscope.camera
         self._illuminator = self._virtualMicroscope.illuminator
+        
+
         '''
         # Test the functionality
         for i in range(10):
@@ -65,7 +67,9 @@ class Camera:
         self.model = "VirtualCamera"
         self.PixelSize = 1.0
         self.isRGB = False
-
+        # precompute noise so that we will save energy and trees
+        self.noiseStack = np.random.randn(self.SensorHeight,self.SensorWidth,100)*.2+1
+        
     def produce_frame(self, x_offset=0, y_offset=0, light_intensity=1.0, defocusPSF=None):
         """Generate a frame based on the current settings."""
         with self.lock:
@@ -79,8 +83,8 @@ class Camera:
             if IS_NIP and defocusPSF is not None and not defocusPSF.shape == ():
                 image = np.array(np.real(nip.convolve(image, defocusPSF)))
             image = image/np.mean(image)
-            image = np.random.randn(image.shape[0],image.shape[1])*.2+image
-            
+            image += self.noiseStack[:,:,np.random.randint(0,100)]
+                        
             # Adjust illumination
             image = (image * light_intensity).astype(np.uint16)
             return image

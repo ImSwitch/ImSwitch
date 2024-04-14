@@ -77,6 +77,9 @@ class DPCController(ImConWidgetController):
 
         # select LEDArray
         allLEDMatrixNames = self._master.LEDMatrixsManager.getAllDeviceNames()
+        if len(allLEDMatrixNames) == 0:
+            self._widget.replaceWithError('No LEDMatrix found in your setup file.')
+            return
         self.ledMatrix = self._master.LEDMatrixsManager[allLEDMatrixNames[0]]
         
         # select detectors

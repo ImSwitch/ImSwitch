@@ -83,6 +83,8 @@ class HyphaController(LiveUpdatedController):
 
         self.ssl_context = None
 
+        # storer for message dictionary
+        self.message_dict = {}
 
         # grab all necessary hardware elements
         self.stages = self._master.positionersManager[self._master.positionersManager.getAllDeviceNames()[0]]
@@ -142,196 +144,6 @@ class HyphaController(LiveUpdatedController):
             def on_ended():
                 self.__logger.debug(f"Track {track.kind} ended")
 
-
-    def setLaserActive(self, laserId=0, value=0, context=None):
-        """
-        Activates or deactivates a laser by setting its enabled state.
-
-        Args:
-            laserId (int, optional): The ID of the laser to activate or deactivate. Default is 0.
-            value (int, optional): The value to set for the laser's enabled state. Default is 0.
-
-        Returns:
-            None
-
-        Explanation:
-            This function allows you to activate or deactivate a laser for fluorescence imaging by setting its enabled state.
-            The laser to be controlled is specified by its laserId. By default, if no laserId is provided,
-            the function operates on the laser with ID 0.
-
-            The enabled state of the laser is determined by the value parameter. If value is set to 1, the laser is activated,
-            enabling it to emit light. If value is set to 0, the laser is deactivated, disabling its emission.
-
-            Please note that this function does not return any value.
-        """
-        self.lasers[laserId].setEnabled(value)
-
-    def setLaserValue(self, laserId=0, value=0, context=None):
-        """
-        Sets the value of a laser.
-
-        Args:
-            laserId (int, optional): The ID of the laser whose value is to be set. Default is 0.
-            value (int, optional): The value to set for the laser. Default is 0.
-
-        Returns:
-            None
-
-        Explanation:
-            This function allows you to set the value of a laser. The laser to be controlled is specified by its laserId.
-            By default, if no laserId is provided, the function operates on the laser with ID 0.
-
-            The specific meaning of the value parameter may vary depending on the laser system being used. In general, it
-            represents the desired output or intensity level of the laser. The interpretation of the value is specific to
-            the laser system and should be consulted in the system's documentation.
-
-            Please note that this function does not return any value.
-        """
-        self.lasers[laserId].setValue(value)
-
-    def setLEDValue(self, ledId=0, value=0, context=None):
-        """
-        Sets the value of an LED in an LED matrix.
-
-        Args:
-            ledId (int, optional): The ID of the LED in the matrix whose value is to be set. Default is 0.
-            value (int, optional): The value to set for the LED. Default is 0.
-
-        Returns:
-            None
-
-        Explanation:
-            This function allows you to set the value of an LED in an LED matrix. The LED to be controlled is specified by its
-            ledId. By default, if no ledId is provided, the function operates on the LED with ID 0.
-
-            The value parameter represents the desired state or intensity of the LED. The interpretation of the value is specific
-            to the LED matrix system being used and should be consulted in the system's documentation.
-
-            Please note that this function does not return any value.
-        """
-        self.ledMatrix[ledId].setValue(value)
-
-
-    def snap_image(self, kwargs):
-        '''
-        Captures a single image and processes it using a Python function provided as a string.
-        
-        Args:
-            kwags (dict): A dictionary containing the following key-value pairs:
-                exposure (int, optional): The exposure time for the image capture in milliseconds. Default is 100.
-                file (str, optional): The path to save the captured image. Default is "Default". No extension needed, files will be saved as ".tif".
-                pythonFunctionString (str, optional): The Python function to use for processing the image as a string. The function takes a 2D np.ndarray
-                                                        as an input and outputs either a 2D array or a string-convertable results (e.g. list of coordinates,
-                                                        gray values, probabilities). Default is "".
-            Example:
-                pythonFunctionString = """
-                def processImage(image):
-                    # Example processing: Convert to grayscale
-                    return cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-                """
-        
-                context (dict, optional): Context information containing user details.
-        
-        Returns:
-            str: the path to the saved image or the result of the processing function.
-        
-        Notes:
-            - The function captures a single image using the microscope's detector.
-            - The function that processes the image should follow the following pattern:
-                def processImage(image):
-                    # optinal imports of libraries
-                    processImage = fu(image)
-                    # process the image
-                    return processedImage
-                where image is the input image kept in memory as a 2D numpy array and processedImage is the output image.
-        '''
-        config = SnapImageInput(**kwargs)
-        mExposureTime = config.exposure = 100
-        mFilePath = config.filepath 
-        imageProcessingFunction = config.imageProcessingFunction 
-        
-        # Step 1: Capture Image
-        self._logger.debug("getProcessedImages - functionstring: "+imageProcessingFunction)
-        mImage = self.detector.getLatestFrame()
-        
-        # Step 2: Load and Execute Python Function from String
-        try:
-            if imageProcessingFunction and imageProcessingFunction !=  "":
-                # Define a default processImage function in case exec fails
-                def processImage(image):
-                    return image
-
-                # Execute the function string
-                exec(imageProcessingFunction, globals(), locals())
-
-                # Step 3: Process the Image
-                fctName = imageProcessingFunction.split("def ")[1].split("(")[0]
-                processedImage = locals()[fctName](mImage)
-            else:
-                processedImage = mImage
-
-            # Step 3: Save the Image
-            # check if processedImage is an image
-            if type(processedImage)==np.ndarray and len(processedImage.shape)>1:    
-                if not os.path.exists(os.path.dirname(mFilePath)):
-                    os.makedirs(os.path.dirname(mFilePath))
-                tif.imsave(mFilePath+".tif",processedImage)
-                self._commChannel.sigDisplayImageNapari.emit(mFilePath, processedImage, False) # layername, image, isRGB
-                return "Image saved at "+mFilePath+".tif"
-            else:
-                return str(processedImage)
-        except Exception as e:
-            return "Error processing image: "+str(e)
-
-    def move_stage_by_distance(self, kwargs):
-        config = MoveByDistanceInput(**kwargs)
-        if config.x: self.setPosition(value=config.x, axis="X", is_absolute=False, is_blocking=True)
-        if config.y: self.setPosition(value=config.y, axis="Y", is_absolute=False, is_blocking=True)
-        if config.z: self.setPosition(value=config.z, axis="Z", is_absolute=False, is_blocking=True)
-        return "Moved the stage a relative distance!"
-
-    def move_to_position(self, kwargs):
-        config = MoveToPositionInput(**kwargs)
-        if config.x: self.setPosition(value=config.x, axis="X", is_absolute=True, is_blocking=True)
-        if config.y: self.setPosition(value=config.y, axis="Y", is_absolute=True, is_blocking=True)
-        if config.z: self.setPosition(value=config.z, axis="Z", is_absolute=True, is_blocking=True)
-        return "Moved the stage to the specified position!"
-
-    def setPosition(self, value, axis, is_absolute=True, is_blocking=True, context=None):
-        """
-        Moves the microscope stage in the specified axis by a certain distance.
-
-        Args:
-            value (float): The physical distance to move the stage by.
-            axis (str): The axis along which the stage should be moved. Valid values are 'X', 'Y', 'Z', and 'A'.
-            is_absolute (bool, optional): Specifies whether the movement should be relative or absolute. Default is True (absolute).
-            is_blocking (bool, optional): Specifies whether the function should block until the stage has arrived at the destination. Default is True.
-            context (dict, optional): Context information containing user details.
-
-        Returns:
-            None
-
-        Example Use:
-            # Move the stage 10000 µm in the positive X direction in absolute coordinates and wait for the stage to arrive.
-            self.setPosition(value=10000, axis="X", is_absolute=True, is_blocking=True, context=context)
-
-            # move the stage 10000 µm in the negative Y direction in relative coordinates and return immediately.
-            self.setPosition(value=-10000, axis="Y", is_absolute=False, is_blocking=False, context=context)
-
-        Notes:
-            - Successful movement requires supported axis.
-            - Positive values move stage forward, negative values move it backward.
-            - `is_absolute=True` for absolute position, `is_absolute=False` for relative distance.
-            - `is_blocking=True` waits until stage arrives, `is_blocking=False` initiates and returns.
-
-        Explanation:
-            This function allows moving the microscope stage along the 'x', 'y', 'z', or 'a' axis by a certain distance. "\
-            "Use 'value' for the distance, 'is_absolute' for absolute or relative coordinates, and 'is_blocking' to control waiting behavior. "\
-            "Ensure valid axis values and stage support.
-        """
-        self._logger.debug(f"Moving stage to {value} along {axis}")
-        self.stages.move(value=value, axis=axis, is_absolute=is_absolute, is_blocking=is_blocking)
-
     def start_service(self, service_id, server_url="https://chat.bioimage.io", workspace=None, token=None):
         client_id = service_id + "-client"
         self.__logger.debug(f"Starting service...")
@@ -379,28 +191,224 @@ class HyphaController(LiveUpdatedController):
             "move_by_distance": MoveByDistanceInput.schema(),
             "snap_image": SnapImageInput.schema(),
             "home_stage": HomeStage.schema(),
-            "zero_stage": ZeroStage.schema(),
             "move_to_position": MoveToPositionInput.schema(),
             "set_illumination": SetIlluminationInput.schema(),
+            "set_message_dict": MessagingExchange.schema(),
+            "get_message_dict": MessagingExchange.schema(),
+            "script_executor": ScriptExecutor.schema()
         }
+
+    def move_stage_by_distance(self, kwargs):
+        '''move the stage by a specified distance, the unit of distance is micrometers, so you need to input the distance in millimeters.'''
+        config = MoveByDistanceInput(**kwargs)
+        if config.x: self.setPosition(value=config.x, axis="X", is_absolute=False, is_blocking=True)
+        if config.y: self.setPosition(value=config.y, axis="Y", is_absolute=False, is_blocking=True)
+        if config.z: self.setPosition(value=config.z, axis="Z", is_absolute=False, is_blocking=True)
+        return "Moved the stage a relative distance!"
+
+    def move_to_position(self, kwargs):
+        '''Move the stage to a specified position, the unit of distance is micrometers.'''
+        config = MoveToPositionInput(**kwargs)
+        x = config.x
+        y = config.y
+        z = config.z
+        return self.move_to_position_exec(x, y, z)
+
+    def move_to_position_exec(self, x, y, z):
+        if x: self.setPosition(value=x, axis="X", is_absolute=True, is_blocking=True)
+        if y: self.setPosition(value=y, axis="Y", is_absolute=True, is_blocking=True)
+        if z: self.setPosition(value=z, axis="Z", is_absolute=True, is_blocking=True)
+        return "Moved the stage to the specified position!"
 
     def home_stage(self, kwargs):
         config = HomeStage(**kwargs)
+        axis = config.axis
+        if axis == "X":
+            self._master.positionersManager[self._master.positionersManager.getAllDeviceNames()[0]].home_X()
+        elif axis == "Y":
+            self._master.positionersManager[self._master.positionersManager.getAllDeviceNames()[0]].home_Y()
+        elif axis == "Z":
+            self._master.positionersManager[self._master.positionersManager.getAllDeviceNames()[0]].home_Z()
+        elif axis == "A":
+            self._master.positionersManager[self._master.positionersManager.getAllDeviceNames()[0]].home_A()
+            
         return "Homed the stage!"
 
-    def zero_stage(self, kwargs):
-        config = ZeroStage(**kwargs)
-        return "Zeroed the stage!"
+    def setPosition(self, value, axis, is_absolute=True, is_blocking=True):
+        """
+        Moves the microscope stage in the specified axis by a certain distance.
+
+        Args:
+            value (float): The physical distance to move the stage by.
+            axis (str): The axis along which the stage should be moved. Valid values are 'X', 'Y', 'Z', and 'A'.
+            is_absolute (bool, optional): Specifies whether the movement should be relative or absolute. Default is True (absolute).
+            is_blocking (bool, optional): Specifies whether the function should block until the stage has arrived at the destination. Default is True.
+            context (dict, optional): Context information containing user details.
+
+        Returns:
+            None
+
+        Example Use:
+            # Move the stage 10000 µm in the positive X direction in absolute coordinates and wait for the stage to arrive.
+            self.setPosition(value=10000, axis="X", is_absolute=True, is_blocking=True)
+
+            # move the stage 10000 µm in the negative Y direction in relative coordinates and return immediately.
+            self.setPosition(value=-10000, axis="Y", is_absolute=False, is_blocking=False)
+
+        Notes:
+            - Successful movement requires supported axis.
+            - Positive values move stage forward, negative values move it backward.
+            - `is_absolute=True` for absolute position, `is_absolute=False` for relative distance.
+            - `is_blocking=True` waits until stage arrives, `is_blocking=False` initiates and returns.
+
+        Explanation:
+            This function allows moving the microscope stage along the 'x', 'y', 'z', or 'a' axis by a certain distance. "\
+            "Use 'value' for the distance, 'is_absolute' for absolute or relative coordinates, and 'is_blocking' to control waiting behavior. "\
+            "Ensure valid axis values and stage support.
+        """
+        self._logger.debug(f"Moving stage to {value} along {axis}")
+        self.stages.move(value=value, axis=axis, is_absolute=is_absolute, is_blocking=is_blocking)
+
+    def script_executor(self, kwargs):
+        """Execute a Python script that has access to the following methods inside the class HyphaController Class which is accessible through either the self attribute or the scope variable to control a microscope
+        The script can combine the different methods to create a more complex workflow using loops and conditions.
+        The script should be a safe Python code and should not contain any malicious code. It should not be able to move or delete local files or access the network for security reasons.
+        The script should be a string containing the Python code to execute. The microscope can be accessed using the following functions:
+        
+        - "move_to_position" with the MoveToPositionInput.schema() for the input parameters; - move the microscope stage in xyz in absolute or relative coordinates
+        - "set_illumination" with the SetIlluminationInput.schema() for the input parameters; - set the illumination of the microscope from 0..1023
+        - "snap_image" with the SnapImageInput.schema() for the input parameters; The function snaps an image and return it if no pythonFunctionString is provided or acquire and image and process it using a Python function
+        
+        The result of the script execution should be a variable named 'result' that will be feedbacked to the chatbot.
+        The script has access to the local variables and the methods of the HyphaController class as self or scope
+        
+        
+        """
+        scope = self
+        config = ScriptExecutor(**kwargs)
+        locals_dict = locals()
+        try:
+            exec(config.script, globals(), locals_dict)
+            # Access the result
+            result = locals_dict.get('result')            
+        except Exception as e:
+            print(f"Script execution failed: {e}")
+            result = f"Script execution failed: {e}"
+        return result
+        
 
     def set_illumination(self, kwargs):
+        '''
+        Set the illumination of the microscope
+        '''
         config = SetIlluminationInput(**kwargs)
         mChannel = config.channel
         mIntensity = config.intensity
+        return self.set_illuimination_exec(mChannel, mIntensity)
         
+    def set_illuimination_exec(self, mChannel, mIntensity):
+        '''
+        Set the illumination of the microscope without the schema.
+        '''
         self.laserName = self._master.lasersManager.getAllDeviceNames()[mChannel]
         self._master.lasersManager[self.laserName].setEnabled(True*bool(mIntensity))
         self._master.lasersManager[self.laserName].setValue(mIntensity)
         return "Set the illumination!"
+
+    def snap_image(self, kwargs):
+        '''
+        Captures a single image and processes it using a Python function provided as a string.
+        
+        Args:
+            kwags (dict): A dictionary containing the following key-value pairs:
+                exposure (int, optional): The exposure time for the image capture in milliseconds. Default is 100.
+                file (str, optional): The path to save the captured image. Default is "Default". No extension needed, files will be saved as ".tif".
+                pythonFunctionString (str, optional): The Python function to use for processing the image as a string. The function takes a 2D np.ndarray
+                                                        as an input and outputs either a 2D array or a string-convertable results (e.g. list of coordinates,
+                                                        gray values, probabilities). Default is "".
+            Example:
+                pythonFunctionString = """
+                def processImage(image):
+                    # Example processing: Convert to grayscale
+                    return cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+                """
+        
+                context (dict, optional): Context information containing user details.
+        
+        Returns:
+            str: the path to the saved image or the result of the processing function.
+        
+        Notes:
+            - The function captures a single image using the microscope's detector.
+            - The function that processes the image should follow the following pattern:
+                def processImage(image):
+                    # optinal imports of libraries
+                    processImage = fu(image)
+                    # process the image
+                    return processedImage
+                where image is the input image kept in memory as a 2D numpy array and processedImage is the output image.
+        '''
+        config = SnapImageInput(**kwargs)
+        mExposureTime = config.exposure = 100
+        mFilePath = config.filepath 
+        imageProcessingFunction = config.imageProcessingFunction 
+        
+        return self.snap_image_exec(mExposureTime, mFilePath, imageProcessingFunction)
+    
+    def snap_image_exec(self, mExposureTime:int=100, mFilePath:str="./", imageProcessingFunction:str=""):
+        '''
+        Captures a single image and processes it using a Python function provided as a string.
+        '''
+        # Step 1: Capture Image
+        self._logger.debug("getProcessedImages - functionstring: "+imageProcessingFunction)
+        mImage = self.detector.getLatestFrame()
+        
+        # Step 2: Load and Execute Python Function from String
+        try:
+            if imageProcessingFunction and imageProcessingFunction !=  "":
+                # Define a default processImage function in case exec fails
+                def processImage(image):
+                    return image
+
+                # TODO: We should check if the function is valid before executing it to avoid security issues
+                
+                # Execute the function string
+                exec(imageProcessingFunction, globals(), locals())
+
+                # Step 3: Process the Image
+                fctName = imageProcessingFunction.split("def ")[1].split("(")[0]
+                processedImage = locals()[fctName](mImage)
+            else:
+                processedImage = mImage
+
+            # Step 3: Save the Image
+            # check if processedImage is an image
+            if type(processedImage)==np.ndarray and len(processedImage.shape)>1:    
+                if config.returnAsNumpy:
+                    return processedImage
+                if not os.path.exists(os.path.dirname(mFilePath)):
+                    os.makedirs(os.path.dirname(mFilePath))
+                tif.imsave(mFilePath+".tif",processedImage)
+                self._commChannel.sigDisplayImageNapari.emit(mFilePath, processedImage, False) # layername, image, isRGB
+                return "Image saved at "+mFilePath+".tif"
+            else:
+                return str(processedImage)
+        except Exception as e:
+            return "Error processing image: "+str(e)
+
+    def set_message_dict(self, kwargs):
+        '''Store key and value pairs between consecutive message exchanges and chatbot sessions. Messages will be added to the 
+        message dictionary and will be stored accross chat entries and chatbot sessions.'''
+        config = MessagingExchange(**kwargs)
+        
+        # for all entries in the message dictionary config.message, add them to the message_dict
+        self.message_dict_entry.update(config.message)
+    
+        return "Set and update the message dictionary!"
+
+    def get_message_dict(self, kwargs):
+        '''Retrieve the message dictionary. The message dictionary stores key and value pairs between consecutive message exchanges and chatbot sessions.'''
+        return self.message_dict_entry
 
     def getExtensionDefinition(self):
             return {
@@ -408,18 +416,29 @@ class HyphaController(LiveUpdatedController):
             "type": "bioimageio-chatbot-extension",
             "id": "UC2_microscope",
             "name": "UC2 Microscope Control",
-            "description": "Control the microscope based on the user's request. Now you can move the microscope stage, and snap an image.",
+            "description": "Control the microscope based on the user's request. Now you can move the microscope stage, control the illumination, snap an image and process it.",
             "get_schema": self.get_schema,
             "tools": {
                 "move_by_distance": self.move_stage_by_distance,
                 "snap_image": self.snap_image,
                 "home_stage": self.home_stage,
-                "zero_stage": self.zero_stage,
                 "move_to_position": self.move_to_position,
                 "set_illumination": self.set_illumination,
+                "set_message_dict": self.set_message_dict,
+                "get_message_dict": self.get_message_dict,
+                "script_executor": self.script_executor
             }
         }
+            
+class ScriptExecutor(BaseModel):
+    """Execute a Python script."""
+    script: str = Field(description="The Python script to execute.")
+    context: dict = Field(description="Context information containing user details.")
 
+class MessagingExchange(BaseModel):
+    """Store key and value pairs between consecutive message exchanges and chatbot sessions."""
+    message: dict = Field(description="The message to store in the exchange with a key that will be stored accross chat entries and values that can be anything.")
+      
 
 class MoveByDistanceInput(BaseModel):
     """Move the stage by a specified distance, the unit of distance is millimeters, so you need to input the distance in millimeters."""
@@ -432,6 +451,7 @@ class SnapImageInput(BaseModel):
     exposure: int = Field(description="Set the microscope camera's exposure time. and the time unit is ms, so you need to input the time in miliseconds.")
     filepath: str = Field(description="The path to save the captured image. It will be a tif, so the extension does not need to be added. ")
     imageProcessingFunction: str = Field(description="The Python function to use for processing the image. Default is empty. image is the 2D array from the detector Example: def processImage(image): return cv2.cvtColor(image, cv2.COLOR_BGR2GRAY")                        
+    returnAsNumpy: bool = Field(description="Return the image as a numpy array. Default is False and the image will be saved under filepath.")
                                          
 class SetIlluminationInput(BaseModel):
     """Set the illumination of the microscope."""
@@ -440,12 +460,8 @@ class SetIlluminationInput(BaseModel):
 
 class HomeStage(BaseModel):
     """Home the stage."""
-    home: int = Field(description="Home the stage.")
-
-class ZeroStage(BaseModel):
-    """Move the stage to the zero position. Before putting sample on the stage, you also need to zero the stage."""
-    zero: bool = Field(description="Zero the stage.")
-
+    home: int = Field(description="Home the stage and set position to zero.")
+    axis: str = Field(description="The axis to home. Default is X. Available options are: X, Y, Z, A.")
 class MoveToPositionInput(BaseModel):
     """Move the stage to a specified position, the unit of distance is millimeters. The limit of """
     x: float = Field(description="Move the stage to the specified position along X axis.")

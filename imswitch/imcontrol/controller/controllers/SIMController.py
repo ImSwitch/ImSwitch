@@ -86,7 +86,7 @@ class SIMController(ImConWidgetController):
         self.LaserWL = 0
 
         self.simFrameVal = 0
-        self.nsimFrameSyncVal = 1
+        self.nsimFrameSyncVal = 3
 
         # Choose which laser will be recorded
         self.is488 = True
@@ -291,8 +291,9 @@ class SIMController(ImConWidgetController):
 
     def startTimelapse(self):
         self._commChannel.sigStopLiveAcquisition.emit(True)
-        self.detector.setParameter("trigger_source","External start")
-        self.detector.setParameter("buffer_size",9)
+        if self.isPCO:    
+            self.detector.setParameter("trigger_source","External start")
+            self.detector.setParameter("buffer_size",9)
         self.detector.flushBuffers()
 
         self.active = True
@@ -313,14 +314,16 @@ class SIMController(ImConWidgetController):
         self.active = False
         self.lasers[0].setEnabled(False)
         self.lasers[1].setEnabled(False)
-        self.detector.setParameter("trigger_source","Internal trigger")
-        self.detector.setParameter("buffer_size",-1)
+        if self.isPCO:    
+            self.detector.setParameter("trigger_source","Internal trigger")
+            self.detector.setParameter("buffer_size",-1)
         self.detector.flushBuffers()
 
     def startZstack(self):
         self._commChannel.sigStopLiveAcquisition.emit(True)
-        self.detector.setParameter("trigger_source","External start")
-        self.detector.setParameter("buffer_size",9)
+        if self.isPCO:
+            self.detector.setParameter("trigger_source","External start")
+            self.detector.setParameter("buffer_size",9)
         self.detector.flushBuffers()
 
         self.active = True
@@ -453,15 +456,35 @@ class SIMController(ImConWidgetController):
                         # we need to capture images and display patterns one-by-one
                         self.SIMStack = []
                         try:
-                            mExposureTime = self.detector.getParameter("exposure")/1000 # s^-1
+                            mExposureTime = self.detector.getParameter("exposure")/1e6 # s^-1
                         except:
                             mExposureTime = 0.1
                         for iPattern in range(9):
                             self.SIMClient.display_pattern(iPattern)
                             time.sleep(mExposureTime) # make sure we take the next newest frame to avoid motion blur from the pattern change
 
-                            # Todo: Need to ensure that we have the right pattern displayed and the buffer is free - this heavily depends on the exposure time..
-                            self.SIMStack.append(self.detector.getLatestFrame())
+                            # Todo: Need to ensure thatwe have the right pattern displayed and the buffer is free - this heavily depends on the exposure time..
+                            mFrame = None
+                            lastFrameNumber = -1
+                            timeoutFrameRequest = 3 # seconds
+                            cTime = time.time()
+                            frameRequestNumber = 0
+                            while(1):
+                                # something went wrong while capturing the frame
+                                if time.time()-cTime> timeoutFrameRequest:
+                                    break
+                                mFrame, currentFrameNumber = self.detector.getLatestFrame(returnFrameNumber=True)
+                                if currentFrameNumber <= lastFrameNumber:
+                                    time.sleep(0.05)
+                                    continue  
+                                frameRequestNumber += 1
+                                if frameRequestNumber > self.nsimFrameSyncVal:
+                                    print(f"Frame number used for stack: {currentFrameNumber}") 
+                                    break
+                                lastFrameNumber = currentFrameNumber
+                                
+                                #mFrame = self.detector.getLatestFrame() # get the next frame after the pattern has been updated
+                            self.SIMStack.append(mFrame)
                         if self.SIMStack is None:
                             self._logger.error("No image received")
                             continue
@@ -588,8 +611,9 @@ class SIMController(ImConWidgetController):
         self.active = False
         self.lasers[0].setEnabled(False)
         self.lasers[1].setEnabled(False)
-        self.detector.setParameter("trigger_source","Internal trigger")
-        self.detector.setParameter("buffer_size",-1)
+        if self.isPCO:
+            self.detector.setParameter("trigger_source","Internal trigger")
+            self.detector.setParameter("buffer_size",-1)
         self.detector.flushBuffers()
         self._logger.debug("Zstack finished")
 

@@ -97,7 +97,7 @@ class SIMWidget(NapariHybridWidget):
             "Enable Reconstruction", "Enable Record Reconstruction",
             "Enable Record RAW", "Enable Laser 488", "Enable Laser 635",
             "Enable TimeLapse", "Enable Z-stack", "Use GPU?",
-            "Selected Path", "C:\\Users\\admin\\Desktop\\Timelapse \\",
+            "Selected Path", "C:\\Users\\admin\\Desktop\\Timelapse\\",
             
         ]
         self.checkbox_reconstruction = QCheckBox(checkboxes[0])

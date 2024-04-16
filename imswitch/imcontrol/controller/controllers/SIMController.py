@@ -86,7 +86,7 @@ class SIMController(ImConWidgetController):
         self.LaserWL = 0
 
         self.simFrameVal = 0
-        self.nsimFrameSyncVal = 3
+        self.nsimFrameSyncVal = 2
 
         # Choose which laser will be recorded
         self.is488 = True
@@ -631,7 +631,7 @@ class SIMController(ImConWidgetController):
         try:
             self.folder = self._widget.getRecFolder()
             self.filename = os.path.join(self.folder,filename) #FIXME: Remove hardcoded path
-            tif.imwrite(self.filename, image)
+            tif.imwrite(self.filename, image, dtype='uint16')
             self._logger.debug("Saving file: "+self.filename)
         except  Exception as e:
             self._logger.error(e)

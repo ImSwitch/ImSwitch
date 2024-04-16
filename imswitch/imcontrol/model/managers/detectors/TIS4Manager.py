@@ -47,7 +47,7 @@ class TIS4Manager(DetectorManager):
             'exposure': DetectorNumberParameter(
                 group='Misc',
                 value=self._camera.getPropertyValue('exposure'),
-                valueUnits='ms',
+                valueUnits='us',
                 editable=True),
             'gain': DetectorNumberParameter(
                 group='Misc',

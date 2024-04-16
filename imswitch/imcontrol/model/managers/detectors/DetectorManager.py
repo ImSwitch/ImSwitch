@@ -18,9 +18,10 @@ class ExposureTimeToUs(Enum):
     s = 1e6
 
     @classmethod
-    def convert(cls, exposureTime: float, unit: str) -> float:
+    def convert(cls, exposureTime: float, unit: str) -> int:
         """ Convert exposure time to microseconds. """
-        return exposureTime * cls[unit].value
+        return int(exposureTime * cls[unit].value)
+
 
 @dataclass
 class DetectorAction:

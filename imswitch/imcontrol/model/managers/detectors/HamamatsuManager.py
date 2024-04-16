@@ -3,6 +3,9 @@ from .DetectorManager import (
     DetectorManager, DetectorNumberParameter, DetectorListParameter
 )
 
+# DP 240416: DCAMapi4 library also including python interface, should be implemented
+# https://www.hamamatsu.com/eu/en/product/cameras/software/driver-software/dcam-sdk4.html
+
 
 class HamamatsuManager(DetectorManager):
     """ DetectorManager that deals with the Hamamatsu parameters and frame
@@ -31,29 +34,44 @@ class HamamatsuManager(DetectorManager):
         model = self._camera.camera_model.decode('utf-8')
 
         # Prepare parameters
+        # hamamatsu api has everything in seconds, keeping it like that
         parameters = {
-            'Set exposure time': DetectorNumberParameter(group='Timings', value=0,
-                                                         valueUnits='s', editable=True),
-            'Real exposure time': DetectorNumberParameter(group='Timings', value=0,
-                                                          valueUnits='s', editable=False),
-            'Internal frame interval': DetectorNumberParameter(group='Timings', value=0,
-                                                               valueUnits='s', editable=False),
-            'Readout time': DetectorNumberParameter(group='Timings', value=0,
-                                                    valueUnits='s', editable=False),
-            'Internal frame rate': DetectorNumberParameter(group='Timings', value=0,
-                                                           valueUnits='fps', editable=False),
+            'Set exposure time': DetectorNumberParameter(group='Timings',
+                                                         value=0,
+                                                         valueUnits='s',
+                                                         editable=True),
+            'Real exposure time': DetectorNumberParameter(group='Timings',
+                                                          value=0,
+                                                          valueUnits='s',
+                                                          editable=False),
+            'Internal frame interval': DetectorNumberParameter(group='Timings',
+                                                               value=0,
+                                                               valueUnits='us',
+                                                               editable=False),
+            'Readout time': DetectorNumberParameter(group='Timings',
+                                                    value=0,
+                                                    valueUnits='s',
+                                                    editable=False),
+            'Internal frame rate': DetectorNumberParameter(group='Timings',
+                                                           value=0,
+                                                           valueUnits='fps',
+                                                           editable=False),
             'Trigger source': DetectorListParameter(group='Acquisition mode',
                                                     value='Internal trigger',
                                                     options=['Internal trigger',
                                                              'External "start-trigger"',
                                                              'External "frame-trigger"'],
                                                     editable=True),
-            'Camera pixel size': DetectorNumberParameter(group='Miscellaneous', value=0.1,
-                                                         valueUnits='µm', editable=True)
+            'Camera pixel size': DetectorNumberParameter(group='Miscellaneous',
+                                                         value=0.1,
+                                                         valueUnits='µm',
+                                                         editable=True)
         }
 
-        super().__init__(detectorInfo, name, fullShape=fullShape, supportedBinnings=[1, 2, 4],
-                         model=model, parameters=parameters, croppable=True)
+        super().__init__(detectorInfo, name, fullShape=fullShape,
+                         supportedBinnings=[1, 2, 4],
+                         model=model, parameters=parameters,
+                         croppable=True)
         self._updatePropertiesFromCamera()
         super().setParameter('Set exposure time', self.parameters['Real exposure time'].value)
 
@@ -162,10 +180,12 @@ class HamamatsuManager(DetectorManager):
             self.startAcquisition()
 
     def _updatePropertiesFromCamera(self):
-        self.setParameter('Real exposure time', self._camera.getPropertyValue('exposure_time')[0])
+        self.setParameter('Real exposure time',
+                          self._camera.getPropertyValue('exposure_time')[0])
         self.setParameter('Internal frame interval',
                           self._camera.getPropertyValue('internal_frame_interval')[0])
-        self.setParameter('Readout time', self._camera.getPropertyValue('timing_readout_time')[0])
+        self.setParameter('Readout time',
+                          self._camera.getPropertyValue('timing_readout_time')[0])
         self.setParameter('Internal frame rate',
                           self._camera.getPropertyValue('internal_frame_rate')[0])
 

@@ -101,7 +101,6 @@ class GXPIPYManager(DetectorManager):
         value = self._camera.getPropertyValue(name)
         return value
 
-
     def setTriggerSource(self, source):
         if source == 'Continous':
             self._performSafeCameraAction(

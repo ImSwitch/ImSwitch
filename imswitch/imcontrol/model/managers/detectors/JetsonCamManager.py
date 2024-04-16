@@ -1,7 +1,12 @@
 import numpy as np
 
 from imswitch.imcommon.model import initLogger
-from .DetectorManager import DetectorManager, DetectorAction, DetectorNumberParameter, DetectorListParameter
+from .DetectorManager import (
+    DetectorManager,
+    DetectorAction,
+    DetectorNumberParameter,
+    DetectorListParameter,
+)
 
 
 class JetsonCamManager(DetectorManager):
@@ -23,7 +28,6 @@ class JetsonCamManager(DetectorManager):
 
         model = self._camera.model
         self._running = False
-        
 
         for propertyName, propertyValue in detectorInfo.managerProperties['avcam'].items():
             self._camera.setPropertyValue(propertyName, propertyValue)

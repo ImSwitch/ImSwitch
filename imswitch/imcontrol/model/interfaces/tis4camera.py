@@ -150,8 +150,6 @@ class CameraTIS4:
             property_value = self.cam.device_property_map.get_value_float(
                                 ic4.PropId.GAIN)
         elif property_name == "exposure":
-            # property_value = int(self.cam.device_property_map.get_value_float(
-            #                     ic4.PropId.EXPOSURE_TIME) * self.exposure_conv_factor)
             property_value = ExposureTimeToUs.convert(
                                 self.cam.device_property_map.get_value_float(
                                     ic4.PropId.EXPOSURE_TIME),

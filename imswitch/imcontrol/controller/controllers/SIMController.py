@@ -466,13 +466,23 @@ class SIMController(ImConWidgetController):
                             # Todo: Need to ensure thatwe have the right pattern displayed and the buffer is free - this heavily depends on the exposure time..
                             mFrame = None
                             lastFrameNumber = -1
-                            for iFrame in range(self.nsimFrameSyncVal):
-                                mFrame, frameNumber = self.detector.getLatestFrame(returnFrameNumber=True)
-                                if frameNumber == lastFrameNumber:
+                            timeoutFrameRequest = 3 # seconds
+                            cTime = time.time()
+                            frameRequestNumber = 0
+                            while(1):
+                                # something went wrong while capturing the frame
+                                if time.time()-cTime> timeoutFrameRequest:
+                                    break
+                                mFrame, currentFrameNumber = self.detector.getLatestFrame(returnFrameNumber=True)
+                                if currentFrameNumber <= lastFrameNumber:
                                     time.sleep(0.05)
                                     continue  
-                                lastFrameNumber = frameNumber
-                                print(f"Frame number: {frameNumber}") 
+                                frameRequestNumber += 1
+                                if frameRequestNumber > self.nsimFrameSyncVal:
+                                    print(f"Frame number used for stack: {currentFrameNumber}") 
+                                    break
+                                lastFrameNumber = currentFrameNumber
+                                
                                 #mFrame = self.detector.getLatestFrame() # get the next frame after the pattern has been updated
                             self.SIMStack.append(mFrame)
                         if self.SIMStack is None:

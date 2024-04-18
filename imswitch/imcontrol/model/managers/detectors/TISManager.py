@@ -1,9 +1,10 @@
 import numpy as np
-import pdb
 
 from imswitch.imcommon.model import initLogger
-from .DetectorManager import (DetectorManager, DetectorAction,
-                              DetectorNumberParameter, DetectorListParameter)
+from .DetectorManager import (
+    DetectorManager, DetectorAction,
+    DetectorNumberParameter, DetectorListParameter,
+    ExposureTimeToUs)
 
 
 class TISManager(DetectorManager):
@@ -22,7 +23,7 @@ class TISManager(DetectorManager):
         self.__logger = initLogger(self, instanceName=name)
 
         self._camera = self._getTISObj(detectorInfo.managerProperties['cameraListIndex'])
-        
+
         self._running = False
         self._adjustingParameters = False
 
@@ -72,11 +73,27 @@ class TISManager(DetectorManager):
     @property
     def scale(self):
         return [1, 1]
-    
+
     def getExposure(self) -> int:
-        return self._camera.getPropertyValue('exposure')
+        """ Get camera exposure time in microseconds. This
+        manager uses milliseconds as the unit for exposure time.
+
+        Returns:
+            int: exposure time in microseconds
+        """
+        exposure = self._camera.getPropertyValue('exposure')
+        return ExposureTimeToUs.convert(exposure, 'ms')
 
     def getLatestFrame(self, is_save=False):
+        """
+        Retrieves the latest frame from the camera.
+
+        Args:
+            is_save (bool, optional): Indicates whether to save the frame. Defaults to False.
+
+        Returns:
+            numpy.ndarray: The latest frame captured by the camera.
+        """
         if not self._adjustingParameters:
             self.__image = self._camera.grabFrame()
         return self.__image

@@ -6,6 +6,7 @@ from .DetectorManager import (
     DetectorAction,
     DetectorNumberParameter,
     DetectorListParameter,
+    ExposureTimeToUs,
 )
 
 
@@ -37,17 +38,24 @@ class JetsonCamManager(DetectorManager):
 
         # Prepare parameters
         parameters = {
-            'exposure': DetectorNumberParameter(group='Misc', value=100, valueUnits='ms',
-                                                editable=True),
-            'gain': DetectorNumberParameter(group='Misc', value=1, valueUnits='arb.u.',
-                                            editable=True),
-            'blacklevel': DetectorNumberParameter(group='Misc', value=100, valueUnits='arb.u.',
-                                            editable=True),
-            'image_width': DetectorNumberParameter(group='Misc', value=fullShape[0], valueUnits='arb.u.',
-                        editable=False),
-            'image_height': DetectorNumberParameter(group='Misc', value=fullShape[1], valueUnits='arb.u.',
-                        editable=False),
-            'pixel_format': DetectorListParameter(group='Misc', value='Mono12', options=['Mono8','Mono12'], editable=True)
+            'exposure': DetectorNumberParameter(
+                group='Misc', value=100, valueUnits='ms',
+                editable=True),
+            'gain': DetectorNumberParameter(
+                group='Misc', value=1, valueUnits='arb.u.',
+                editable=True),
+            'blacklevel': DetectorNumberParameter(
+                group='Misc', value=100, valueUnits='arb.u.',
+                editable=True),
+            'image_width': DetectorNumberParameter(
+                group='Misc', value=fullShape[0], valueUnits='arb.u.',
+                editable=False),
+            'image_height': DetectorNumberParameter(
+                group='Misc', value=fullShape[1], valueUnits='arb.u.',
+                editable=False),
+            'pixel_format': DetectorListParameter(
+                group='Misc', value='Mono12',
+                options=['Mono8','Mono12'], editable=True)
             }            
 
         # Prepare actions
@@ -56,11 +64,20 @@ class JetsonCamManager(DetectorManager):
                                               func=self._camera.openPropertiesGUI)
         }
 
-        super().__init__(detectorInfo, name, fullShape=fullShape, supportedBinnings=[1],
-                         model=model, parameters=parameters, actions=actions, croppable=True)
-    
+        super().__init__(detectorInfo, name, fullShape=fullShape,
+                         supportedBinnings=[1], model=model,
+                         parameters=parameters, actions=actions,
+                         croppable=True)
+
     def getExposure(self) -> int:
-        return self._camera.getPropertyValue('exposure')
+        """ Get camera exposure time in microseconds. This
+        manager uses milliseconds as the unit for exposure time.
+
+        Returns:
+            int: exposure time in microseconds
+        """
+        exposure = self._camera.getPropertyValue('exposure')
+        return ExposureTimeToUs.convert(exposure, 'ms')
 
     def getLatestFrame(self, is_save=False):
         if is_save:

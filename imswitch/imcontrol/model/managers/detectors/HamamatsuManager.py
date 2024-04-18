@@ -1,6 +1,9 @@
 from imswitch.imcommon.model import initLogger
 from .DetectorManager import (
-    DetectorManager, DetectorNumberParameter, DetectorListParameter
+    DetectorManager,
+    DetectorNumberParameter,
+    DetectorListParameter,
+    ExposureTimeToUs,
 )
 
 # DP 240416: DCAMapi4 library also including python interface, should be implemented
@@ -36,36 +39,43 @@ class HamamatsuManager(DetectorManager):
         # Prepare parameters
         # hamamatsu api has everything in seconds, keeping it like that
         parameters = {
-            'Set exposure time': DetectorNumberParameter(group='Timings',
-                                                         value=0,
-                                                         valueUnits='s',
-                                                         editable=True),
-            'Real exposure time': DetectorNumberParameter(group='Timings',
-                                                          value=0,
-                                                          valueUnits='s',
-                                                          editable=False),
-            'Internal frame interval': DetectorNumberParameter(group='Timings',
-                                                               value=0,
-                                                               valueUnits='us',
-                                                               editable=False),
-            'Readout time': DetectorNumberParameter(group='Timings',
-                                                    value=0,
-                                                    valueUnits='s',
-                                                    editable=False),
-            'Internal frame rate': DetectorNumberParameter(group='Timings',
-                                                           value=0,
-                                                           valueUnits='fps',
-                                                           editable=False),
-            'Trigger source': DetectorListParameter(group='Acquisition mode',
-                                                    value='Internal trigger',
-                                                    options=['Internal trigger',
-                                                             'External "start-trigger"',
-                                                             'External "frame-trigger"'],
-                                                    editable=True),
-            'Camera pixel size': DetectorNumberParameter(group='Miscellaneous',
-                                                         value=0.1,
-                                                         valueUnits='µm',
-                                                         editable=True)
+            'Set exposure time': DetectorNumberParameter(
+                group='Timings',
+                value=0,
+                valueUnits='s',
+                editable=True),
+            'Real exposure time': DetectorNumberParameter(
+                group='Timings',
+                value=0,
+                valueUnits='s',
+                editable=False),
+            'Internal frame interval': DetectorNumberParameter(
+                group='Timings',
+                value=0,
+                valueUnits='us',
+                editable=False),
+            'Readout time': DetectorNumberParameter(
+                group='Timings',
+                value=0,
+                valueUnits='s',
+                editable=False),
+            'Internal frame rate': DetectorNumberParameter(
+                group='Timings',
+                value=0,
+                valueUnits='fps',
+                editable=False),
+            'Trigger source': DetectorListParameter(
+                group='Acquisition mode',
+                value='Internal trigger',
+                options=['Internal trigger',
+                         'External "start-trigger"',
+                         'External "frame-trigger"'],
+                editable=True),
+            'Camera pixel size': DetectorNumberParameter(
+                group='Miscellaneous',
+                value=0.1,
+                valueUnits='µm',
+                editable=True)
         }
 
         super().__init__(detectorInfo, name, fullShape=fullShape,
@@ -79,9 +89,16 @@ class HamamatsuManager(DetectorManager):
     def pixelSizeUm(self):
         umxpx = self.parameters['Camera pixel size'].value
         return [1, umxpx, umxpx]
-    
+
     def getExposure(self) -> int:
-        return self._camera.getPropertyValue('exposure_time')[0]
+        """ Get camera exposure time in microseconds. This
+        manager uses seconds as the unit for exposure time.
+
+        Returns:
+            int: exposure time in microseconds
+        """
+        exposure = self._camera.getPropertyValue('exposure_time')[0]
+        return ExposureTimeToUs.convert(exposure, 's')
 
     def getLatestFrame(self, is_save=True):
         return self._camera.getLast()

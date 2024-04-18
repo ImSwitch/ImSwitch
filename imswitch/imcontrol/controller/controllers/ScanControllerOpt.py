@@ -35,8 +35,8 @@ class ScanExecutionMonitor:
         self.outputReport = {}
         self.report = defaultdict(lambda: [])
 
-    def reinit(self) -> None:
-        """ Reinit empty containers before experiment """
+    def reinitContainers(self) -> None:
+        """ Reinit empty reporting containers before experiment """
         self.outputReport = {}
         self.report = defaultdict(lambda: [])
 
@@ -110,7 +110,8 @@ class ScanExecutionMonitor:
 
 
 class ScanOPTWorker(Worker):
-    """ OPT scan worker. The worker operates on a separate thread
+    """
+    OPT scan worker. The worker operates on a separate thread
     from the main application thread. It is responsible for the execution
     of the OPT scan (moving the rotator, acquiring an image, updating plots
     light intensity stability). The worker is also responsible for
@@ -156,7 +157,8 @@ class ScanOPTWorker(Worker):
         self.sinogram: np.ndarray = None    # Demo sinogram; default to None
 
     def preStart(self, resolution: int = 128) -> None:
-        """ Utility method to be called before the start of the OPT scan.
+        """
+        Utility method to be called before the start of the OPT scan.
         Generates the the sinogram for the demo experiment, if the demo mode is enabled,
         and updates the UI progress bar.
 
@@ -195,7 +197,8 @@ class ScanOPTWorker(Worker):
         self.startOPTScan()
 
     def startOPTScan(self):
-        """ Performs the first step of the OPT scan, triggering an asynchronous
+        """
+        Performs the first step of the OPT scan, triggering an asynchronous
         loop with the rotator. After the first motor step is finished,
         the rotator emits the signal `sigPositionUpdated`,
         which is handled by `postRotatorStep`.
@@ -212,7 +215,6 @@ class ScanOPTWorker(Worker):
         self.master.detectorsManager[self.detectorName].startAcquisition()
 
         # mock is caught in the prepareOPTScan in controller
-        # TDOO: make sure that the waitConst is set correctly for all submanagers
         self.waitConst = self.master.detectorsManager[self.detectorName].getExposure()
         self.__logger.info(f'Wait constant equals exposure time: {self.waitConst} us.')
 
@@ -231,7 +233,8 @@ class ScanOPTWorker(Worker):
                                         inSteps=True)
 
     def postRotatorStep(self):
-        """ Triggered after emission of the `sigPositionUpdated` signal from
+        """
+        Triggered after emission of the `sigPositionUpdated` signal from
         the rotator. If only a rotational step was requested, returns.
         Otherwise, the method performs the following steps:
 
@@ -281,7 +284,8 @@ class ScanOPTWorker(Worker):
         return self.master.detectorsManager[self.detectorName].getLatestFrame()
 
     def getFrameFromSino(self) -> np.ndarray:
-        """In case of demo experiment, frame is retrived
+        """
+        In case of demo experiment, frame is retrived
         from the synthetic synogram.
 
         Returns:
@@ -307,7 +311,8 @@ class ScanOPTWorker(Worker):
         return frame
 
     def processFrame(self, frame: np.ndarray) -> None:
-        """Appends frame to the stack (unless noRAM option), displays
+        """
+        Appends frame to the stack (unless noRAM option), displays
         the last frame, or the full stack
 
         Args:
@@ -339,7 +344,8 @@ class ScanOPTWorker(Worker):
         self.timeMonitor.addStamp('snap', self.currentStep, 'end')
 
     def processFrameStability(self, frame: np.ndarray, step: int) -> None:
-        """ Processes the light stability of the incoming frame;
+        """
+        Processes the light stability of the incoming frame;
         the computed traces are then emitted to the main thread for display.
 
         Args:
@@ -350,7 +356,8 @@ class ScanOPTWorker(Worker):
         self.sigNewStabilityTrace.emit(stepsList, intensityDict)
 
     def saveCurrentFrame(self, frame: np.ndarray) -> None:
-        """Save current camera frame if saving required. Only tiff
+        """
+        Save current camera frame if saving required. Only tiff
         format enabled, and this is a duplicate of the scan controller
         method
 
@@ -390,7 +397,8 @@ class ScanOPTWorker(Worker):
         self.sigScanDone.emit()
 
     def computeLiveReconstruction(self, frame: np.ndarray):
-        """Updates current live reconstruction object, which
+        """
+        Updates current live reconstruction object, which
         is FBPliveRecon class. In the first step, create new Recon object.
         Also ensures that the reconstruction index is within the limits
         of number of lines of the camera frame.
@@ -414,7 +422,8 @@ class ScanOPTWorker(Worker):
                 )
 
     def validateReconIdx(self, frame: np.ndarray) -> None:
-        """Check if reconstruction index is within the 
+        """
+        Check if reconstruction index is within the 
         limits of frame lines. If not, change the index to
         middle line of the frame, and trigger update of the 
         displayed number in the controller.
@@ -515,8 +524,8 @@ class ScanControllerOpt(ImConWidgetController):
         # rotators list
         self.rotatorsList = self._master.rotatorsManager.getAllDeviceNames()
         self.rotator = None         # from rotatorsManager by rotatorName
-        self.rotatorName = None   # from rotatorsManager
-        self.stepsPerTurn = 0
+        self.rotatorName = None     # from rotatorsManager
+        self.stepsPerTurn = 0       # rotator steps per turn (maximum steps for the OPT)
 
         self._widget.scanPar['Rotator'].currentIndexChanged.connect(self.updateRotator)
         self.updateRotator()
@@ -546,7 +555,7 @@ class ScanControllerOpt(ImConWidgetController):
         self.optWorker.moveToThread(self.optThread)
         self.updateLiveReconFlag()  # has to be after optWorker init
 
-        # live recon, needs to be after worker init (not so elegant to put all
+        # live recon, needs to be after worker init (DP: not so elegant to put all
         # flags to the worker no?)
         self._widget.scanPar['LiveReconIdxEdit'].valueChanged.connect(self.getLiveReconIdx)
 
@@ -560,7 +569,6 @@ class ScanControllerOpt(ImConWidgetController):
 
         # Communication channel signals connection
         # sigRotatorPositionUpdated carries the name of the current rotator
-        # that updated its position; we drop it because we control it via the UI
         self._commChannel.sigRotatorPositionUpdated.connect(
             lambda _: self.optWorker.postRotatorStep(),
             )
@@ -673,7 +681,7 @@ class ScanControllerOpt(ImConWidgetController):
                                               ).astype(np.int_)
         # tolist() because of the int32 conversion
         self.setSharedAttr('scan', 'absSteps', self.optWorker.optSteps.tolist())
-        self.optWorker.timeMonitor.reinit()
+        self.optWorker.timeMonitor.reinitContainers()
 
         # live reconstruction
         self.setSharedAttr('scan', 'liveRecon', self.optWorker.isLiveRecon)

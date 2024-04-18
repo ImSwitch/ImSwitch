@@ -87,6 +87,15 @@ class TIS4Manager(DetectorManager):
         return [1, 1]
 
     def getLatestFrame(self, is_save=False):
+        """
+        Retrieves the latest frame from the camera.
+
+        Args:
+            is_save (bool, optional): Indicates whether to save the frame. Defaults to False.
+
+        Returns:
+            numpy.ndarray: The latest frame captured by the camera.
+        """
         if not self._adjustingParameters:
             self.__image = self._camera.grabFrame()
         return self.__image
@@ -113,6 +122,13 @@ class TIS4Manager(DetectorManager):
         return value
 
     def getExposure(self) -> int:
+        """ Get camera exposure time in microseconds. This
+        manager uses microseconds so no conversion is performed.
+        TODO: what if somebody changes units of the manager? No checks established
+
+        Returns:
+            int: exposure time in microseconds
+        """
         return self._camera.getPropertyValue('exposure')
 
     def getParameter(self, name):

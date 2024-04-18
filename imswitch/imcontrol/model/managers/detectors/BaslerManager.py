@@ -1,7 +1,12 @@
 import numpy as np
 
 from imswitch.imcommon.model import initLogger
-from .DetectorManager import DetectorManager, DetectorAction, DetectorNumberParameter
+from .DetectorManager import (
+    DetectorManager,
+    DetectorAction,
+    DetectorNumberParameter,
+    ExposureTimeToUs,
+)
 
 
 class BaslerManager(DetectorManager):
@@ -68,7 +73,14 @@ class BaslerManager(DetectorManager):
                          model=model, parameters=parameters, actions=actions, croppable=True)
 
     def getExposure(self) -> int:
-        return self._camera.getPropertyValue('exposure')
+        """ Get camera exposure time in microseconds. This
+        manager uses milliseconds as the unit for exposure time.
+
+        Returns:
+            int: exposure time in microseconds
+        """
+        exposure = self._camera.getPropertyValue('exposure')
+        return ExposureTimeToUs.convert(exposure, 'ms')
 
     def getLatestFrame(self, is_save=False):
         if is_save:

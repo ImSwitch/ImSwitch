@@ -1,6 +1,3 @@
-from scipy.fftpack import fft, ifft
-from scipy.interpolate import interp1d
-import tifffile as tif
 import os
 import time
 import json
@@ -9,12 +6,16 @@ from collections import defaultdict
 from functools import partial
 import numpy as np
 
+from scipy.fftpack import fft, ifft
+from scipy.interpolate import interp1d
+import tifffile as tif
+from skimage.transform import radon
+
 from imswitch.imcontrol.view import guitools as guitools
 from typing import Tuple, List, Callable, Dict
 from ..basecontrollers import ImConWidgetController
 from imswitch.imcommon.model import initLogger, dirtools
 from imswitch.imcommon.framework import Signal, Thread, Worker
-from skimage.transform import radon
 
 __author__ = "David Palecek", "Jacopo Abramo"
 __credits__ = []
@@ -23,7 +24,8 @@ __email__ = "david@stanka.de"
 
 
 class ScanExecutionMonitor:
-    """ Helper class dedicated to monitor the execution time of an OPT scan.
+    """
+    Helper class dedicated to monitor the execution time of an OPT scan.
     It can be used to generate an experiment report with timing informations
     relative to each step of the scan execution. It is also saved in the
     metadata file of the experiment.
@@ -589,52 +591,6 @@ class ScanControllerOpt(ImConWidgetController):
         self._widget.updateCurrentStep(0)
         self.enableWidget(True)
 
-    def setSharedAttr(self, HWName: str, attr: str, value) -> None:
-        """Setting one shared attribute key, value pair. Key is a tuple of
-        identifiers
-
-        Args:
-            HWName (str): hardware part
-            attr (str): attribute name
-            value (_type_): value of the attribute
-        """
-        self._commChannel.sharedAttrs[(_attrCategory, HWName, attr)] = value
-
-    def requestInterruption(self):
-        """ Request interruption of the OPT scan. """
-        self.optWorker.isInterruptionRequested = True
-
-    def saveMetadata(self) -> None:
-        """ Get metadata and save them as json file to the experimental
-        folder as metadata.json.
-        """
-        metadata = self._commChannel.sharedAttrs.getJSON()
-        path = self.getSaveFilePath(self.optWorker.saveSubfolder,
-                                    'metadata', 'json')
-        with open(path, "w") as outfile:
-            json.dump(metadata, outfile)
-
-    def postScanEnd(self):
-        """ Triggered after the end of the OPT scan. """
-        # save metadata
-        # Camera settings 
-        self.setSharedAttr(self.detectorName, 'name', self.detector.name)
-        self.setSharedAttr(self.detectorName, 'exposure', self.detector.getExposure())
-        self.setSharedAttr(self.detectorName, 'exposure unit', 'us')
-
-        stab = self.optWorker.signalStability.getStabilityTraces()
-        self.setSharedAttr('scan', 'stability', stab)
-        self.setSharedAttr('scan', 'timeReport',
-                           self.optWorker.timeMonitor.outputReport)
-        self.saveMetadata()
-
-        self._logger.info('OPT scan finished.')
-        self.optWorker.isInterruptionRequested = False  # reset interruption flag
-        self.optThread.quit()  # stop the worker thread
-        self.optWorker.waitConst = None  # reset wait constant
-        self._widget.updateCurrentStep(0)
-        self.enableWidget(True)
-
     #################
     # Main OPT scan #
     #################
@@ -692,18 +648,30 @@ class ScanControllerOpt(ImConWidgetController):
         self.enableWidget(False)
         self.optThread.start()
 
-    def checkSinogramProgress(self, step: int) -> None:
-        """ Update the progress bar of the sinogram generation. """
-        if step == self.optSteps - 1:
-            self._widget.setProgressBarValue(0)
-            self._widget.setProgressBarVisible(False)
-        else:
-            self._widget.setProgressBarValue(step)
+    def postScanEnd(self):
+        """ Triggered after the end of the OPT scan. """
+        # save metadata
+        # Camera settings 
+        self.setSharedAttr(self.detectorName, 'name', self.detector.name)
+        self.setSharedAttr(self.detectorName, 'exposure', self.detector.getExposure())
+        self.setSharedAttr(self.detectorName, 'exposure unit', 'us')
 
-    def plotReport(self):
-        """Display an extra time monitor report plot in a separate widget.
-        """
-        self._widget.plotReport(self.optWorker.timeMonitor.getReport())
+        stab = self.optWorker.signalStability.getStabilityTraces()
+        self.setSharedAttr('scan', 'stability', stab)
+        self.setSharedAttr('scan', 'timeReport',
+                           self.optWorker.timeMonitor.outputReport)
+        self.saveMetadata()
+
+        self._logger.info('OPT scan finished.')
+        self.optWorker.isInterruptionRequested = False  # reset interruption flag
+        self.optThread.quit()  # stop the worker thread
+        self.optWorker.waitConst = None  # reset wait constant
+        self._widget.updateCurrentStep(0)
+        self.enableWidget(True)
+
+    def requestInterruption(self):
+        """ Request interruption of the OPT scan. """
+        self.optWorker.isInterruptionRequested = True
 
     ##################
     # Image handling #
@@ -795,6 +763,9 @@ class ScanControllerOpt(ImConWidgetController):
 
         return newPath
 
+    ################
+    # Plot methods #
+    ################
     def updateLiveReconPlot(self, image, step):
         """
         Dispaly current live reconstruction image.
@@ -806,9 +777,44 @@ class ScanControllerOpt(ImConWidgetController):
         self._widget.liveReconPlot.setImage(image)
         self._widget.updateCurrentReconStep(step + 1)
 
+    def plotReport(self):
+        """Display an extra time monitor report plot in a separate widget.
+        """
+        self._widget.plotReport(self.optWorker.timeMonitor.getReport())
+
     ##################
     # Helper methods #
     ##################
+    def checkSinogramProgress(self, step: int) -> None:
+        """ Update the progress bar of the sinogram generation. """
+        if step == self.optSteps - 1:
+            self._widget.setProgressBarValue(0)
+            self._widget.setProgressBarVisible(False)
+        else:
+            self._widget.setProgressBarValue(step)
+
+    def setSharedAttr(self, HWName: str, attr: str, value) -> None:
+        """
+        Setting one shared attribute key, value pair. Key is a tuple of
+        identifiers
+
+        Args:
+            HWName (str): hardware part
+            attr (str): attribute name
+            value (_type_): value of the attribute
+        """
+        self._commChannel.sharedAttrs[(_attrCategory, HWName, attr)] = value
+
+    def saveMetadata(self) -> None:
+        """ Get metadata and save them as json file to the experimental
+        folder as metadata.json.
+        """
+        metadata = self._commChannel.sharedAttrs.getJSON()
+        path = self.getSaveFilePath(self.optWorker.saveSubfolder,
+                                    'metadata', 'json')
+        with open(path, "w") as outfile:
+            json.dump(metadata, outfile)
+
     def enableWidget(self, value: bool) -> None:
         """ Upon starting/stopping the OPT, widget
         editable fields get enabled from the bool value.
@@ -983,6 +989,9 @@ class ScanControllerOpt(ImConWidgetController):
                                          "Confirm Flat-field acquisition.",
                                          " ".join(text.split()))
 
+    ##########################
+    # Correction acquisition #
+    ##########################
     def acquireCorrection(self, corr_type, n):
         self.sigImageReceived.connect(self.displayImage)
         self.nFrames.connect(partial(self._continue, corr_type=corr_type))
@@ -1094,6 +1103,8 @@ _attrCategory = 'OPT'
 class Stability:
     """ Helper container class to monitor and display the stability traces
     of the intensity of the 4 corners of the OPT stack.
+    The size of the rectangle is defined by the n_pixels parameter,
+    (optional, defaults to 50 pxs)
 
     iUL -> upper left
     iUR -> upper right
@@ -1130,8 +1141,9 @@ class Stability:
             step (`int`): current OPT scan step index
 
         Returns:
-            Tuple[list, Dict[str, list]]: list of presently executed OPT scan steps
-                and dictionary of intensity traces for the four corners
+            Tuple[list, Dict[str, list]]: list of presently executed OPT
+                scan steps and dictionary of intensity traces
+                for the four corners
         """
         mean_corners = [
             np.mean(frame[:self.n_pixels, :self.n_pixels]),    # UL
@@ -1190,12 +1202,27 @@ class FBPliveRecon():
                                       :self.recon_dim] - self.radius
 
         self.x = np.arange(self.radon_img_shape) - self.radon_img_shape // 2
+
+        # convert to radians
         self.theta = np.deg2rad(
                         np.linspace(0., 360., self.n_steps, endpoint=False)
                         )
         self.update_recon(self.line, 0)
 
-    def update_recon(self, line_in, step, interp_mode='linear'):
+    def update_recon(self, line_in: np.ndarray, step: int, interp_mode='linear') -> None:
+        """
+        Updates the reconstruction by adding a new line of data which is
+        getting projected by inverse radon.
+
+        Args:
+            line_in (np.ndarray): The input line data.
+            step (int): The current step in the reconstruction process.
+            interp_mode (str, optional): The interpolation mode.
+                Defaults to 'linear'.
+
+        Returns:
+            None
+        """
         self.line = line_in
         self.step = step
         fourier_filter = self._get_fourier_filter(self.projection_size_padded)
@@ -1210,6 +1237,7 @@ class FBPliveRecon():
         projection = fft(line) * fourier_filter
         radon_filtered = np.real(ifft(projection)[:self.radon_img_shape])
 
+        # rotational transformation fo the projections
         t = (self.ypr * np.cos(self.theta[step]) -
              self.xpr * np.sin(self.theta[step]))
 
@@ -1220,9 +1248,11 @@ class FBPliveRecon():
         else:  # default interpolation is linear
             interpolant = interp1d(self.x, radon_filtered, kind='linear',
                                    bounds_error=False, fill_value=0)
+
+        # superimposing onto previous projections
         self.recon += interpolant(t) * (np.pi/(2*self.n_steps))
 
-    def _get_fourier_filter(self, size):
+    def _get_fourier_filter(self, size: int) -> np.ndarray:
         """ size needs to be even. Only ramp filter implemented """
         n = np.concatenate((np.arange(1, size / 2 + 1, 2, dtype=int),
                             np.arange(size / 2 - 1, 0, -2, dtype=int)))
@@ -1236,7 +1266,17 @@ class FBPliveRecon():
         fourier_filter = 2 * np.real(fft(f))         # ramp filter
         return fourier_filter
 
-    def _sinogram_circle_to_square(self, sinogram):
+    def _sinogram_circle_to_square(self, sinogram: np.ndarray) -> np.ndarray:
+        """
+        Converts a sinogram from circular to square shape.
+
+        Parameters:
+        sinogram (ndarray): The input sinogram in circular shape.
+
+        Returns:
+        ndarray: The sinogram in square shape.
+
+        """
         diagonal = int(np.ceil(np.sqrt(2) * sinogram.shape[0]))
         pad = diagonal - sinogram.shape[0]
         old_center = sinogram.shape[0] // 2

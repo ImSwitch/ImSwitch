@@ -145,6 +145,10 @@ The pulses will be directly handled by the National Instruments card and our TTL
 
 Optical Projection Tomography (OPT) using rotator stepping 
 ----------------------------------------------------------
+contact:
+
+* `David Palecek (CCMAR, Portugal) <mailto:dpalecek@ualg.pt>`_
+* `Teresa Correia (CCMAR, Portugal) <mailto:tmcorreia@ualg.pt>`_
 
 .. .. image:: ./images/OPT_GUI.png
 ..     :width: 600px
@@ -155,15 +159,48 @@ in medical imaging. Imswitch implementation aims to provide user-friendly access
 pipeline for the OPT, which consist of indispensible steps described below.
 
 Hardware control
-^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^
 
 The setup consists of collimated light-source, diffuser, sample mounted on a rotational stage,
 in the refractive index matched medium and infinity corrected objective imaging the
-2D projections onto the CMOS camera. All elements are aligned to the camera optical axis.
+2D projections onto the CMOS camera. All elements are aligned on the camera optical axis.
+
+Camera control
+~~~~~~~~~~~~~~~~
+Camera is software-triggered in the snapping mode. The exposure time is set in the settings
+widget on the left. Wait constant is set equal to exposure time in order to avoid blurring of
+images for long exposure times, since snad retrieves last frame in the queue, therefore the request
+is delayed by the wait time.
+
+
+
+Please help us improve and open issues or ask help to implement your own hardware. Or report to us successful
+implementations of the hardware you have used to report it here.
+
+Rotational stage control
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+The rotational stage is a stepper motor, which can be 2 phase or 4 phase. The number of steps per revolution
+needs to be provided in the json configuration file. The motor is controlled by the `Big Easy Driver <https://www.sparkfun.com/products/12859>`_ and Arduino.
+Library used was `telemetrix <https://mryslab.github.io/telemetrix/>`_, which is python interface based on accellStepper library.
+
+Tested HW
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Cameras:
+
+* `TIS DMK 37BUX252` (USB industrial grade camera, ``TISManager``, ``TIS4Manager``)
+
+Rotational stages:
+
+* `Simple stepper 28BYJ-48` (comes with Arduino UNO, ``TelemetrixRotatorManager``), 2048 steps (not precise, because the gears are TODO). It has a magnetic shaft, which is convenient for sample mounting, however the motor is quite useless for OPT due to the low precision and shaft crookedness.
+* `Nanotec ST4118M1804-L <https://en.nanotec.com/products/1271-st4118m1804-a>`_ (4 phase stepper motor, ``TelemetrixRotatorManager``), 3200 steps, good quality, backlash free, but requires a driver, we used Easy driver.
+
 Rotational axis of the sample needs to be as close to perpendicular to the optical axis as possible.
+Even though the center of rotation (COR) is always corrected for in the reconstruction, for depth of field
+and resolution reasons it is better to have the sample as close to the center of the camera as possible.
+Therefor we provide an alignment widget to help with this task.
 
 Alingment widget
-^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. .. image:: ./images/alignment_GUI.png
 ..     :width: 600px
@@ -171,10 +208,35 @@ Alingment widget
 
 Rotational axis of the sample needs to be perpendicular to the optical axis and aligned as close to
 the center column of the camera as possible. The alignment procedure allows to acquire 2 projections
-at 0 and 180 degrees, which for mirror images to each other. Flipping one 
+at 0 and 180 degrees, which for mirror images to each other. Flipping one of them and merging them, if
+the mirror axis is exactly at the center column, the merged image will show a single step function and
+single cross-sectional profile matching exactly the one which is acquired at 0 degrees.
 
 The widget shows the overlays and matching via whole image, camera horizontal lines cuts
-and crosscorrelation function. 
+and crosscorrelation function.
+
+The x-shift allows to shift the image in the horizontal direction, which is useful for getting an idea
+how far from the center you currently are. x-shift is in pixels so once you find the best overlay, 
+you are `x-shift * pixel_size` away from the vertical axis of the chip.
+
+First align the shaft in respect to the camera field of view without the sample:
+
+#. Align the motor shaft that it spans the whole camera vertical field of view.
+#. Follow the procedure above to get it centered.
+#. Select rows close to the bottom and top of your camera field of view.
+#. Plot the slices, if they are shifted in respect to each other, and you see double step function in one of them, your motor shaft is tilted sideways.
+#. Adjust the motor shaft tilt until the slices are perfectly aligned. For that we have the motor mounted on `Kinematic Platform Base <https://www.thorlabs.com/thorproduct.cfm?partnumber=KM200B/M>`_.
+
+#. You can approximately check the tilt along the optical axis. Attach a `rigid flange <https://www.amazon.com/Rigid-Flange-Coupling-Coupler-Connector/dp/B06Y6MSYCS?th=1>`_ to the motor shaft.
+#. Adjust the height of the flange so that the top edge is close to the central line of the camera.
+#. Change focusing to the front and back edge of the flange.
+#. If the shaft is tilted away from the camera, the flange ruther from the camera will be clearly visible in the image.
+#. On the other hand, if the shaft is tilted towards the camera, the far away flange will never be visible.
+#. Adjust the tilt, that the close and far edge of the flange are align in height, and perfectly shadowing each other.
+
+Now the motor is perfectly align, however after mounting the sample, the sample needs to be
+centered in respect to the shaft and the camera chip. 
+
 
 * Example
     
@@ -186,17 +248,50 @@ and crosscorrelation function.
     Tilt of the shaft is visible as two horizontal
     cuts through the camera row 100 (red) and row 1600 (blue), which need to match perfectly
 
+
+
+OPT acquisition
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+Corrections
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 Demo experiment
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^
 
 Even without a hardware, OPT widget allows to simulate and experiment on the Shepp-Logan
 phantom.
 
-OPT acquisition
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Napari OPT preprocessing module
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Download  `OPT preprocessing`  napari pluging from. This allows you to preprocess the OPT data
+before final reconstruction step. So far it provides following functionalities which are documented
+in the plugin documentation:
+
+* ROI selection
+* Binning
+* Hot pixel correction
+* Dark-field correction
+* Bright-field correction
+* -log transformation (for tranmission or visualization purposes)
+
+In case you `did not` select ``noRam`` acquisition, the plugin is designed to process the 
+acquired OPT stack with the corrections which are either in separate layers, or cna be loaded separately.
+
 
 Napari deep learning reconstruction
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+For the reconstruction of the OPT data, we provide a deep learning reconstruction plugin for Napari, which
+includes also standard Filter Back Projection (FBP) reconstruction. The plugin is available at
+`napari-hub <https://www.napari-hub.org/plugins/napari-tomodl>`_. The plugin preprocessing steps
+partially overlap
+
+* COR axis alignment
+* Volume reshaping (binning)
+* Removing circular edge from the acquisition
+* filtering
+* Reconstruction method (with and without GPU support)
+
+

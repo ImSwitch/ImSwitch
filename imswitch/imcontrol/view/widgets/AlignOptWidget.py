@@ -16,9 +16,20 @@ class AlignOptWidget(Widget):
         self.scanPar = {}
 
     def initControls(self):
+        """ Initializes the controls for the widget. """
         self.widgetLayout()
 
-    def plotCounterProj(self, img):
+    def plotCounterProj(self, img: np.ndarray) -> None:
+        """
+        This method plots the counter projection image,
+        which is a merge of the given image.
+
+        Parameters:
+        img (np.ndarray): The image to be plotted.
+
+        Returns:
+        None
+        """
         self.plotMerge.setImage(img)
 
     def getHorCutsIdxList(self):
@@ -26,23 +37,31 @@ class AlignOptWidget(Widget):
         return self.scanPar['LineIdxsEdit'].text()
 
     def getRotatorIdx(self):
-        """Returns currently selected rotator for the OPT
-        """
+        """Returns currently selected rotator for the OPT """
         return self.scanPar['Rotator'].currentIndex()
 
-    def execPlotHorCuts(self, idxList, cor):
+    def execPlotHorCuts(self, idxList: list[int], cor: object) -> None:
+        """
+        Plot horizontal cuts and normalized cross-correlation.
+
+        Args:
+            idxList (list[int]): List of indices.
+            cor (object): Object containing horizontal cuts and
+                cross-correlation data.
+        """
         self.plotHorCuts.clear()  # clear plotWidget first
         self.plotHorCuts.addLegend()
         self.plotHorCuts.setTitle('Horizontal cuts', color='b')
+
         for i, px in enumerate(idxList):
             self.plotHorCuts.plot(
-                    self.normalize(cor.horCuts[i][0], '01'),
-                    name=f'single {px}',
-                    pen=pg.mkPen('r'))
+                self.normalize(cor.horCuts[i][0], '01'),
+                name=f'single {px}',
+                pen=pg.mkPen('r'))
             self.plotHorCuts.plot(
-                    self.normalize(cor.horCuts[i][1], '01'),
-                    name=f'merge {px}',
-                    pen=pg.mkPen('b'))
+                self.normalize(cor.horCuts[i][1], '01'),
+                name=f'merge {px}',
+                pen=pg.mkPen('b'))
 
         # plot CC
         self.plotCC.clear()  # clear plotWidget first
@@ -52,15 +71,15 @@ class AlignOptWidget(Widget):
         for i, px in enumerate(idxList):
             # I plot it normalized
             self.plotCC.plot(
-                    cor.crossCorr[i]/np.amax(cor.crossCorr[i]),
-                    name=f'{px}',
-                    )
+                cor.crossCorr[i]/np.amax(cor.crossCorr[i]),
+                name=f'{px}',
+            )
         # plot center Hor line
         self.plotCC.addItem(
             pg.InfiniteLine(cor.center_px,
                             angle=90,
                             pen=pg.mkPen(width=2, color='r'))
-            )
+        )
 
     def normalize(self, data: np.array, mode: str = '01') -> np.array:
         """this works for positive cuts and images, negative
@@ -85,12 +104,14 @@ class AlignOptWidget(Widget):
             raise ValueError('Unknown mode of normalization')
 
     def widgetLayout(self):
+        """ Layout of the widget """
         self.scanPar['StartButton'] = guitools.BetterPushButton('Acquire')
         self.scanPar['StartButton'].setToolTip(
-            'Acquires 0 and 180 deg projections to compare and autocorrelate \
-horizontal cuts to allow for COR alignment.'
+            'Acquires 0 and 180 deg projections to compare and autocorrelate'
+            ' horizontal cuts to allow for COR alignment.'
         )
         self.scanPar['StopButton'] = guitools.BetterPushButton('Stop')
+        # tool tip
         self.scanPar['StopButton'].setToolTip('Interupt scan')
         self.scanPar['Rotator'] = QtWidgets.QComboBox()
         self.scanPar['Rotator'].setToolTip('Select rotator for the scan')
@@ -101,13 +122,43 @@ horizontal cuts to allow for COR alignment.'
         self.plotCC = pg.PlotWidget()
 
         self.scanPar['LineIdxsEdit'] = QtWidgets.QLineEdit('100 50')
+        # tool tip
+        self.scanPar['LineIdxsEdit'].setToolTip(
+            'List of indeces for horizontal cuts, separated by space.'
+            ' E.g. "100 50" will plot horizontal cuts at row 100 and 50.'
+        )
         self.scanPar['xShift'] = QtWidgets.QSpinBox()
         self.scanPar['xShift'].setValue(0)
-        self.scanPar['xShift'].setRange(-50, 50)
+        self.scanPar['xShift'].setRange(-70, 70)
         self.scanPar['xShift'].setSingleStep(1)
+        self.scanPar['xShift'].setToolTip(
+            'Shift the horizontal mirrored cut by this amount of pixels.'
+            ' This provides idea how far off your COR is'
+        )
 
         self.scanPar['xShiftLabel'] = QtWidgets.QLabel('x-Shift')
         self.scanPar['PlotHorCuts'] = guitools.BetterPushButton('Plot')
+        self.scanPar['PlotHorCuts'].setToolTip(
+            'Plot horizontal cuts and cross-correlation'
+        )
+
+        self.tabs = QtWidgets.QTabWidget()
+
+        # first tab of horizontal cuts
+        self.tabHorCuts = QtWidgets.QWidget()
+        self.grid2 = QtWidgets.QGridLayout()
+        self.tabHorCuts.setLayout(self.grid2)
+        self.grid2.addWidget(self.plotHorCuts, 0, 0)
+        # add tab to tabs
+        self.tabs.addTab(self.tabHorCuts, 'Horizontal cuts')
+
+        # second tab of cross-correlation
+        self.tabCorr = QtWidgets.QWidget()
+        self.grid3 = QtWidgets.QGridLayout()
+        self.tabCorr.setLayout(self.grid3)
+        self.grid3.addWidget(self.plotCC, 0, 0)
+        # add tab to tabs
+        self.tabs.addTab(self.tabCorr, 'Cross-correlation')
 
         currentRow = 0
         self.grid.addWidget(self.scanPar['StartButton'], currentRow, 0)
@@ -130,10 +181,7 @@ horizontal cuts to allow for COR alignment.'
         self.grid.addWidget(self.scanPar['xShift'], currentRow, 1)
 
         currentRow += 1
-        self.grid.addWidget(self.plotHorCuts, currentRow, 0, 1, -1)
-
-        currentRow += 1
-        self.grid.addWidget(self.plotCC, currentRow, 0, 1, -1)
+        self.grid.addWidget(self.tabs, currentRow, 0, 1, -1)
 
 
 # Copyright (C) 2020-2022 ImSwitch developers

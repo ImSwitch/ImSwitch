@@ -1,15 +1,15 @@
-from qtpy import QtCore, QtWidgets
 import numpy as np
 import pyqtgraph as pg
+from qtpy import QtCore, QtWidgets
+import matplotlib as mpl
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_qt5agg import (
+    FigureCanvasQTAgg as FigureCanvas
+)
 
 from imswitch.imcontrol.view import guitools as guitools
 from .basewidgets import NapariHybridWidget
 from typing import Dict, Tuple
-import matplotlib as mpl
-from matplotlib.backends.backend_qt5agg import (
-    FigureCanvasQTAgg as FigureCanvas
-)
-from matplotlib.figure import Figure
 
 __author__ = "David Palecek", "Jacopo Abramo"
 __credits__ = []
@@ -20,7 +20,6 @@ __email__ = "david@stanka.de"
 class ScanWidgetOpt(NapariHybridWidget):
     """ Widget controlling OPT experiments where a rotation stage is triggered
     """
-
     sigRotStepDone = QtCore.Signal()
     sigRunScanClicked = QtCore.Signal()
 
@@ -29,195 +28,17 @@ class ScanWidgetOpt(NapariHybridWidget):
         self.grid = QtWidgets.QGridLayout()
         self.setLayout(self.grid)
         self.scanPar = {}
+
+        # widget layout
+        self.widgetLayout()
         self.enabled = True
         self.layer = None
 
-        self.scanPar['GetHotPixels'] = guitools.BetterPushButton('Hot Pixels')
-
-        self.scanPar['HotPixelsStdEdit'] = QtWidgets.QDoubleSpinBox()
-        self.scanPar['HotPixelsStdEdit'].setRange(1, 100)  # step 1 by default
-        self.scanPar['HotPixelsStdEdit'].setValue(5)
-        self.scanPar['HotPixelsStdEdit'].setDecimals(1)
-        self.scanPar['HotPixelsStdEdit'].setToolTip(
-            'Hot pixel is identified as counts > mean + STD.',
-            )
-        self.scanPar['HotPixelsStdLabel'] = QtWidgets.QLabel('STD cutoff')
-
-        self.scanPar['AveragesEdit'] = QtWidgets.QSpinBox()
-        self.scanPar['AveragesEdit'].setRange(1, 1000)  # step is 1 by default
-        self.scanPar['AveragesEdit'].setValue(30)
-        self.scanPar['AveragesEdit'].setToolTip(
-            'Average N frames for Hot pixels aquistion.',
-            )
-        self.scanPar['AveragesLabel'] = QtWidgets.QLabel('Averages')
-
-        self.scanPar['HotPixelCount'] = QtWidgets.QLabel(f'Count: {0:d}')
-        self.scanPar['HotPixelMean'] = QtWidgets.QLabel(f'Hot mean: {0:.2f}')
-        self.scanPar['NonHotPixelMean'] = QtWidgets.QLabel(
-            f'Non-hot mean: {0:.2f}',
-            )
-
-        # darkfield
-        self.scanPar['GetDark'] = guitools.BetterPushButton('Dark-field')
-        self.scanPar['DarkMean'] = QtWidgets.QLabel(f'Dark mean: {0:.2f}')
-        self.scanPar['DarkStd'] = QtWidgets.QLabel(f'Dark STD: {0:.2f}')
-
-        # brightfield
-        self.scanPar['GetFlat'] = guitools.BetterPushButton('Bright-field')
-        self.scanPar['FlatMean'] = QtWidgets.QLabel(f'Flat mean: {0:.2f}')
-        self.scanPar['FlatStd'] = QtWidgets.QLabel(f'Flat STD: {0:.2f}')
-
-        # OPT
-        self.scanPar['RotStepsLabel'] = QtWidgets.QLabel('OPT rot. steps')
-        self.scanPar['OptStepsEdit'] = QtWidgets.QSpinBox()
-        self.scanPar['OptStepsEdit'].setRange(2, 10000)  # step is 1 by default
-        self.scanPar['OptStepsEdit'].setValue(200)
-        self.scanPar['OptStepsEdit'].setToolTip(
-            'Steps taken per revolution of OPT scan',
-            )
-        self.scanPar['CurrentStepLabel'] = QtWidgets.QLabel(
-            f'Current Step: -/{self.getOptSteps()}')
-
-        self.scanPar['Rotator'] = QtWidgets.QComboBox()
-        self.scanPar['RotatorLabel'] = QtWidgets.QLabel('Rotator')
-        self.scanPar['StepsPerRevLabel'] = QtWidgets.QLabel(f'{0:d} steps/rev')
-
-        self.scanPar['Detector'] = QtWidgets.QComboBox()
-        self.scanPar['DetectorLabel'] = QtWidgets.QLabel('Detector')
-
-        self.scanPar['LiveReconButton'] = QtWidgets.QCheckBox(
-            'Live reconstruction',
-            )
-        self.scanPar['LiveReconButton'].setCheckable(True)
-        self.scanPar['LiveReconIdxEdit'] = QtWidgets.QSpinBox()
-        self.scanPar['LiveReconIdxEdit'].setRange(0, 10000)  # dflt step 1
-        self.scanPar['LiveReconIdxEdit'].setValue(200)
-        self.scanPar['LiveReconIdxEdit'].setToolTip(
-            'Line px of the camera to reconstruct live via FBP',
-            )
-        self.scanPar['LiveReconIdxLabel'] = QtWidgets.QLabel('Recon Idx')
-        self.scanPar['CurrentReconStepLabel'] = QtWidgets.QLabel(
-            f'Current Recon: -/{self.getOptSteps()}',
-            )
-
-        self.scanPar['MockOpt'] = QtWidgets.QCheckBox(
-            'Demo experiment',
-            )
-        self.scanPar['MockOpt'].setCheckable(True)
-
-        # Start and Stop buttons
-        self.scanPar['StartButton'] = QtWidgets.QPushButton('Start')
-        self.scanPar['StopButton'] = QtWidgets.QPushButton('Stop')
-        self.scanPar['PlotReportButton'] = QtWidgets.QPushButton('Report')
-        self.scanPar['SaveButton'] = QtWidgets.QCheckBox('Save')
-        self.scanPar['SaveButton'].setCheckable(True)
-        self.scanPar['noRamButton'] = QtWidgets.QCheckBox('no RAM')
-        self.scanPar['noRamButton'].setCheckable(True)
-
-        self.liveReconPlot = pg.ImageView()
-        self.intensityPlot = pg.PlotWidget()
-
-        # tab for plots
-        self.tabs = QtWidgets.QTabWidget()
-        self.tabRecon = QtWidgets.QWidget()
-        self.grid2 = QtWidgets.QGridLayout()
-        self.tabRecon.setLayout(self.grid2)
-        self.grid2.addWidget(self.liveReconPlot, 0, 0)
-
-        self.tabInt = QtWidgets.QWidget()
-        self.grid3 = QtWidgets.QGridLayout()
-        self.tabInt.setLayout(self.grid3)
-        self.grid3.addWidget(self.intensityPlot)
-
-        # Add tabs
-        self.tabs.addTab(self.tabRecon, "Recon")
-        self.tabs.addTab(self.tabInt, "Intensity")
-
-        currentRow = 0
-        # corrections
-        self.grid.addWidget(QtWidgets.QLabel('<strong>Corrections:</strong>'),
-                            currentRow, 0)
-        self.grid.addWidget(self.scanPar['AveragesEdit'], currentRow, 1)
-        self.grid.addWidget(self.scanPar['AveragesLabel'], currentRow, 2)
-
-        currentRow += 1
-
-        self.grid.addWidget(self.scanPar['GetHotPixels'], currentRow, 0)
-        self.grid.addWidget(self.scanPar['HotPixelsStdEdit'], currentRow, 1)
-        self.grid.addWidget(self.scanPar['HotPixelsStdLabel'], currentRow, 2)
-
-        currentRow += 1
-
-        self.grid.addWidget(self.scanPar['HotPixelCount'], currentRow, 0)
-        self.grid.addWidget(self.scanPar['HotPixelMean'], currentRow, 1)
-        self.grid.addWidget(self.scanPar['NonHotPixelMean'], currentRow, 2)
-
-        currentRow += 1
-
-        self.grid.addWidget(self.scanPar['GetDark'], currentRow, 0)
-        self.grid.addWidget(self.scanPar['DarkMean'], currentRow, 1)
-        self.grid.addWidget(self.scanPar['DarkStd'], currentRow, 2)
-
-        currentRow += 1
-
-        self.grid.addWidget(self.scanPar['GetFlat'], currentRow, 0)
-        self.grid.addWidget(self.scanPar['FlatMean'], currentRow, 1)
-        self.grid.addWidget(self.scanPar['FlatStd'], currentRow, 2)
-
-        # OPT settings
-        currentRow += 1
-        self.grid.addWidget(self.scanPar['RotatorLabel'], currentRow, 0)
-        self.grid.addWidget(self.scanPar['Rotator'], currentRow, 1)
-        self.grid.addWidget(self.scanPar['StepsPerRevLabel'], currentRow, 2)
-
-        currentRow += 1
-        self.grid.addWidget(self.scanPar['DetectorLabel'], currentRow, 0)
-        self.grid.addWidget(self.scanPar['Detector'], currentRow, 1)
-
-        currentRow += 1
-
-        self.grid.addWidget(self.scanPar['RotStepsLabel'], currentRow, 0)
-        self.grid.addWidget(self.scanPar['OptStepsEdit'], currentRow, 1)
-        self.grid.addWidget(self.scanPar['MockOpt'], currentRow, 2)
-
-        currentRow += 1
-
-        self.grid.addWidget(self.scanPar['LiveReconButton'], currentRow, 0)
-        self.grid.addWidget(self.scanPar['LiveReconIdxEdit'], currentRow, 1)
-        self.grid.addWidget(self.scanPar['LiveReconIdxLabel'], currentRow, 2)
-
-        currentRow += 1
-
-        self.grid.addWidget(self.scanPar['CurrentStepLabel'], currentRow, 0)
-        self.grid.addWidget(self.scanPar['SaveButton'], currentRow, 1)
-        self.grid.addWidget(self.scanPar['noRamButton'], currentRow, 2)
-
-        currentRow += 1
-
-        # Start and Stop buttons
-        self.grid.addWidget(self.scanPar['StartButton'], currentRow, 0)
-        self.grid.addWidget(self.scanPar['StopButton'], currentRow, 1)
-        self.grid.addWidget(self.scanPar['PlotReportButton'], currentRow, 2)
-
-        # Progress bar for synthetic data generation;
-        # not visible by default, shown only when mock experiment is requested
-        self.sinogramProgressBar = QtWidgets.QProgressBar(self)
-        self.sinogramProgressBar.setValue(0)
-        self.sinogramProgressBar.setFormat('Sinogram point: %v')
-        self.sinogramProgressBar.setAlignment(QtCore.Qt.AlignCenter)
-        self.sinogramProgressBar.setTextVisible(True)
-        self.sinogramProgressBar.setVisible(False)
-
-        self.grid.addWidget(self.sinogramProgressBar, currentRow, 0, 1, -1)
-
-        currentRow += 1
-        self.grid.addWidget(self.tabs, currentRow, 0, 1, -1)
-
-    def getRotatorIdx(self):
+    def getRotatorIdx(self) -> int:
         """Returns currently selected rotator for the OPT """
         return self.scanPar['Rotator'].currentIndex()
 
-    def getDetectorIdx(self):
+    def getDetectorIdx(self) -> int:
         """Returns currently selected detector for the OPT """
         return self.scanPar['Detector'].currentIndex()
 
@@ -413,7 +234,7 @@ class ScanWidgetOpt(NapariHybridWidget):
         """ Removes lines from the stability plot before updating the plot. """
         self.intensityPlot.clear()
 
-    def updateStabilityPlot(self, steps: list, intensity: Dict[str, list]):
+    def updateStabilityPlot(self, steps: list, intensity: Dict[str, list]) -> None:
         """Updates widget plot with new stability line plots.
 
         Args:
@@ -445,7 +266,9 @@ class ScanWidgetOpt(NapariHybridWidget):
         self.plotDialog.resize(1500, 700)
         self.plotDialog.show()
 
-    def requestOptStepsConfirmation(self):
+    def requestOptStepsConfirmation(self) -> bool:
+        """Request confirmation from the user if proceed with acquisition
+        since the step size is not integer."""
         text = "Steps per/rev should be divisable by number of OPT steps. \
                 You can continue by casting the steps on integers and risk \
                 imprecise measured angles. Cast on integers and proceed (Yes) \
@@ -454,16 +277,263 @@ class ScanWidgetOpt(NapariHybridWidget):
                                          "Motor steps not integer values.",
                                          " ".join(text.split()))
 
-    def requestMockConfirmation(self):
+    def requestMockConfirmation(self) -> bool:
+        """ Request confirmation from the user if proceed with mock experiment.
+        """
         text = "A mock experiment with synthetic generated data has been \
                 requested. Confirm?"
         return guitools.askYesNoQuestion(self,
                                          "Mock OPT is about to run.",
                                          " ".join(text.split()))
 
+    def widgetLayout(self):
+        """Define widget layout. """
+        self.scanPar['GetHotPixels'] = guitools.BetterPushButton('Hot Pixels')
+        # tool tip
+        self.scanPar['GetHotPixels'].setToolTip(
+            'Acquire hot pixels for the current detector. Long exposure'
+            ' is desirable.'
+            )
+
+        self.scanPar['HotPixelsStdEdit'] = QtWidgets.QDoubleSpinBox()
+        self.scanPar['HotPixelsStdEdit'].setRange(1, 100)  # step 1 by default
+        self.scanPar['HotPixelsStdEdit'].setValue(5)
+        self.scanPar['HotPixelsStdEdit'].setDecimals(1)
+        self.scanPar['HotPixelsStdEdit'].setToolTip(
+            'Hot pixel is identified as intensity > mean + cutoff * STD.',
+            )
+        self.scanPar['HotPixelsStdLabel'] = QtWidgets.QLabel('STD cutoff')
+
+        self.scanPar['AveragesEdit'] = QtWidgets.QSpinBox()
+        self.scanPar['AveragesEdit'].setRange(1, 1000)  # step is 1 by default
+        self.scanPar['AveragesEdit'].setValue(30)
+        self.scanPar['AveragesEdit'].setToolTip(
+            'Average N frames for Hot pixels aquistion.',
+            )
+        self.scanPar['AveragesLabel'] = QtWidgets.QLabel('Averages')
+
+        self.scanPar['HotPixelCount'] = QtWidgets.QLabel(f'Count: {0:d}')
+        self.scanPar['HotPixelMean'] = QtWidgets.QLabel(f'Hot mean: {0:.2f}')
+        self.scanPar['NonHotPixelMean'] = QtWidgets.QLabel(
+            f'Non-hot mean: {0:.2f}',
+            )
+
+        # darkfield
+        self.scanPar['GetDark'] = guitools.BetterPushButton('Dark-field')
+        # tool tip
+        self.scanPar['GetDark'].setToolTip(
+            'Acquire dark field for the current detector. Same exposure'
+            ' as used in the experiment is strongly recommended.'
+            )
+        self.scanPar['DarkMean'] = QtWidgets.QLabel(f'Dark mean: {0:.2f}')
+        self.scanPar['DarkStd'] = QtWidgets.QLabel(f'Dark STD: {0:.2f}')
+
+        # brightfield
+        self.scanPar['GetFlat'] = guitools.BetterPushButton('Bright-field')
+        # tool tip
+        self.scanPar['GetFlat'].setToolTip(
+            'Acquire bright field for the current detector. Same exposure'
+            ' as used in the experiment is strongly recommended.'
+            )
+        self.scanPar['FlatMean'] = QtWidgets.QLabel(f'Flat mean: {0:.2f}')
+        self.scanPar['FlatStd'] = QtWidgets.QLabel(f'Flat STD: {0:.2f}')
+
+        # OPT
+        self.scanPar['RotStepsLabel'] = QtWidgets.QLabel('OPT rot. steps')
+        self.scanPar['OptStepsEdit'] = QtWidgets.QSpinBox()
+        self.scanPar['OptStepsEdit'].setRange(2, 10000)  # step is 1 by default
+        self.scanPar['OptStepsEdit'].setValue(200)
+        self.scanPar['OptStepsEdit'].setToolTip(
+            'Steps taken per revolution of OPT scan',
+            )
+        self.scanPar['CurrentStepLabel'] = QtWidgets.QLabel(
+            f'Current Step: -/{self.getOptSteps()}')
+
+        self.scanPar['Rotator'] = QtWidgets.QComboBox()
+        self.scanPar['RotatorLabel'] = QtWidgets.QLabel('Rotator')
+        self.scanPar['StepsPerRevLabel'] = QtWidgets.QLabel(f'{0:d} steps/rev')
+
+        self.scanPar['Detector'] = QtWidgets.QComboBox()
+        self.scanPar['DetectorLabel'] = QtWidgets.QLabel('Detector')
+
+        self.scanPar['LiveReconButton'] = QtWidgets.QCheckBox(
+            'Live reconstruction',
+            )
+        self.scanPar['LiveReconButton'].setCheckable(True)
+        # tool tip
+        self.scanPar['LiveReconButton'].setToolTip(
+            'Reconstruct live the line of the camera frame. The line index'
+            ' is set by the LiveReconIdxEdit. None of this is saved or'
+            ' interferes with saving the data.'
+            )
+        self.scanPar['LiveReconIdxEdit'] = QtWidgets.QSpinBox()
+        self.scanPar['LiveReconIdxEdit'].setRange(0, 10000)  # dflt step 1
+        self.scanPar['LiveReconIdxEdit'].setValue(200)
+        self.scanPar['LiveReconIdxEdit'].setToolTip(
+            'Line px of the camera to reconstruct live via FBP',
+            )
+        self.scanPar['LiveReconIdxLabel'] = QtWidgets.QLabel('Recon Idx')
+        self.scanPar['CurrentReconStepLabel'] = QtWidgets.QLabel(
+            f'Current Recon: -/{self.getOptSteps()}',
+            )
+
+        self.scanPar['MockOpt'] = QtWidgets.QCheckBox(
+            'Demo experiment',
+            )
+        self.scanPar['MockOpt'].setCheckable(True)
+        # tool tip
+        self.scanPar['MockOpt'].setToolTip(
+            'Run a mock experiment with synthetic generated data. The'
+            ' data is can be saved and processed for demonstration'
+            ' purposes.'
+            )
+
+        # Start and Stop buttons
+        self.scanPar['StartButton'] = QtWidgets.QPushButton('Start')
+        # tool tip
+        self.scanPar['StartButton'].setToolTip('Start the OPT scan.')
+        self.scanPar['StopButton'] = QtWidgets.QPushButton('Stop')
+        # tool tip
+        self.scanPar['StopButton'].setToolTip('Stop the OPT scan.'
+                                              ' Metadata still saved')
+        self.scanPar['PlotReportButton'] = QtWidgets.QPushButton('Report')
+        # tool tip
+        self.scanPar['PlotReportButton'].setToolTip('Show timing report of the'
+                                                    ' last experiemnt.')
+        self.scanPar['SaveButton'] = QtWidgets.QCheckBox('Save')
+        self.scanPar['SaveButton'].setCheckable(True)
+        # tool tip
+        self.scanPar['SaveButton'].setToolTip(
+            'Save the data to the disk. Data folder per scan is created.'
+            ' Metadata saved in the same folder.'
+            )
+        self.scanPar['noRamButton'] = QtWidgets.QCheckBox('no RAM')
+        self.scanPar['noRamButton'].setCheckable(True)
+        # tool tip
+        self.scanPar['noRamButton'].setToolTip(
+            'Save the data to the disk without storing in the RAM.'
+            ' Useful for large datasets, viewer will show only'
+            ' the last acquired'
+            ' projection. Does not affect the saving option selected.'
+            )
+
+        self.liveReconPlot = pg.ImageView()
+        self.intensityPlot = pg.PlotWidget()
+
+        # tab for plots
+        self.tabsPlots = QtWidgets.QTabWidget()
+        self.tabRecon = QtWidgets.QWidget()
+        self.grid2 = QtWidgets.QGridLayout()
+        self.tabRecon.setLayout(self.grid2)
+        self.grid2.addWidget(self.liveReconPlot, 0, 0)
+
+        self.tabInt = QtWidgets.QWidget()
+        self.grid3 = QtWidgets.QGridLayout()
+        self.tabInt.setLayout(self.grid3)
+        self.grid3.addWidget(self.intensityPlot)
+
+        # two more grids and tabs
+        self.tabsAcq = QtWidgets.QTabWidget()
+        self.tabCorr = QtWidgets.QWidget()
+        self.grid4 = QtWidgets.QGridLayout()
+        self.tabCorr.setLayout(self.grid4)
+
+        self.tabAcq = QtWidgets.QWidget()
+        self.grid5 = QtWidgets.QGridLayout()
+        self.tabAcq.setLayout(self.grid5)
+
+        # Add tabs
+        self.tabsPlots.addTab(self.tabRecon, "Recon")
+        self.tabsPlots.addTab(self.tabInt, "Intensity")
+        self.tabsAcq.addTab(self.tabCorr, "Corrections")
+        self.tabsAcq.addTab(self.tabAcq, "OPT acquisition")
+
+        currentRow = 0
+        # corrections
+        self.grid4.addWidget(QtWidgets.QLabel('<strong>Corrections:</strong>'),
+                             currentRow, 0)
+        self.grid4.addWidget(self.scanPar['AveragesEdit'], currentRow, 1)
+        self.grid4.addWidget(self.scanPar['AveragesLabel'], currentRow, 2)
+
+        currentRow += 1
+
+        self.grid4.addWidget(self.scanPar['GetHotPixels'], currentRow, 0)
+        self.grid4.addWidget(self.scanPar['HotPixelsStdEdit'], currentRow, 1)
+        self.grid4.addWidget(self.scanPar['HotPixelsStdLabel'], currentRow, 2)
+
+        currentRow += 1
+
+        self.grid4.addWidget(self.scanPar['HotPixelCount'], currentRow, 0)
+        self.grid4.addWidget(self.scanPar['HotPixelMean'], currentRow, 1)
+        self.grid4.addWidget(self.scanPar['NonHotPixelMean'], currentRow, 2)
+
+        currentRow += 1
+
+        self.grid4.addWidget(self.scanPar['GetDark'], currentRow, 0)
+        self.grid4.addWidget(self.scanPar['DarkMean'], currentRow, 1)
+        self.grid4.addWidget(self.scanPar['DarkStd'], currentRow, 2)
+
+        currentRow += 1
+
+        self.grid4.addWidget(self.scanPar['GetFlat'], currentRow, 0)
+        self.grid4.addWidget(self.scanPar['FlatMean'], currentRow, 1)
+        self.grid4.addWidget(self.scanPar['FlatStd'], currentRow, 2)
+
+        # OPT settings
+        currentRow += 1
+        self.grid5.addWidget(self.scanPar['RotatorLabel'], currentRow, 0)
+        self.grid5.addWidget(self.scanPar['Rotator'], currentRow, 1)
+        self.grid5.addWidget(self.scanPar['StepsPerRevLabel'], currentRow, 2)
+
+        currentRow += 1
+        self.grid5.addWidget(self.scanPar['DetectorLabel'], currentRow, 0)
+        self.grid5.addWidget(self.scanPar['Detector'], currentRow, 1)
+
+        currentRow += 1
+
+        self.grid5.addWidget(self.scanPar['RotStepsLabel'], currentRow, 0)
+        self.grid5.addWidget(self.scanPar['OptStepsEdit'], currentRow, 1)
+        self.grid5.addWidget(self.scanPar['MockOpt'], currentRow, 2)
+
+        currentRow += 1
+
+        self.grid5.addWidget(self.scanPar['LiveReconButton'], currentRow, 0)
+        self.grid5.addWidget(self.scanPar['LiveReconIdxEdit'], currentRow, 1)
+        self.grid5.addWidget(self.scanPar['LiveReconIdxLabel'], currentRow, 2)
+
+        currentRow += 1
+
+        self.grid5.addWidget(self.scanPar['CurrentStepLabel'], currentRow, 0)
+        self.grid5.addWidget(self.scanPar['SaveButton'], currentRow, 1)
+        self.grid5.addWidget(self.scanPar['noRamButton'], currentRow, 2)
+
+        currentRow += 1
+
+        # Start and Stop buttons
+        self.grid5.addWidget(self.scanPar['StartButton'], currentRow, 0)
+        self.grid5.addWidget(self.scanPar['StopButton'], currentRow, 1)
+        self.grid5.addWidget(self.scanPar['PlotReportButton'], currentRow, 2)
+
+        # Progress bar for synthetic data generation;
+        # not visible by default, shown only when mock experiment is requested
+        self.sinogramProgressBar = QtWidgets.QProgressBar(self)
+        self.sinogramProgressBar.setValue(0)
+        self.sinogramProgressBar.setFormat('Sinogram point: %v')
+        self.sinogramProgressBar.setAlignment(QtCore.Qt.AlignCenter)
+        self.sinogramProgressBar.setTextVisible(True)
+        self.sinogramProgressBar.setVisible(False)
+
+        self.grid5.addWidget(self.sinogramProgressBar, currentRow, 0, 1, -1)
+
+        currentRow += 1
+        self.grid.addWidget(self.tabsAcq, currentRow, 0, 1, -1)
+        currentRow += 1
+        self.grid.addWidget(self.tabsPlots, currentRow, 0, 1, -1)
+
 
 class PlotDialog(QtWidgets.QDialog):
-    """Create a pop-up widget with the OPT time execution
+    """
+    Create a pop-up widget with the OPT time execution
     statistical plots. Timings are collected during the last run
     OPT scan. The plots show the relevant statistics spent
     on particular tasks during the overall experiment,

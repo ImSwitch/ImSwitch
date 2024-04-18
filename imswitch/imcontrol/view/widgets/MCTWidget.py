@@ -78,7 +78,7 @@ class MCTWidget(NapariHybridWidget):
         
         # Laser 1
         valueDecimalsLaser = 1
-        valueRangeLaser = (0,2**15)
+        valueRangeLaser = (0,1023)# (0,2**15)
         tickIntervalLaser = 1
         singleStepLaser = 1
         
@@ -237,12 +237,14 @@ class MCTWidget(NapariHybridWidget):
             return self.img.image
         
     def setImage(self, im, colormap="gray", name="", pixelsize=(1,1,1), translation=(0,0,0)):
+        contrast_limits = np.percentile(im, [0.5, 99.5])
         if len(im.shape) == 2:
             translation = (translation[0], translation[1])
         if self.layer is None or name not in self.viewer.layers:
             self.layer = self.viewer.add_image(im, rgb=False, colormap=colormap, 
                                                scale=pixelsize,translate=translation,
-                                               name=name, blending='additive')
+                                               name=name, blending='additive', 
+                                               contrast_limits=contrast_limits)
         self.layer.data = im
         
         

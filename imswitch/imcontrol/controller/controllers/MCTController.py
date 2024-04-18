@@ -24,9 +24,8 @@ import numpy as np
 
 class MCTController(ImConWidgetController):
     """Linked to MCTWidget."""
-
-    sigImageReceived = Signal()
-
+    sigImageReceived = Signal(np.ndarray, str)
+    
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._logger = initLogger(self)
@@ -77,14 +76,20 @@ class MCTController(ImConWidgetController):
         
         # select lasers
         allIlluNames = self._master.lasersManager.getAllDeviceNames()+ self._master.LEDMatrixsManager.getAllDeviceNames()
-        for iDevice in allIlluNames:
+        for index, iDevice in enumerate(allIlluNames):
             try:
-                # laser maanger
+                # laser maanger 
                 self.availableIlliminations.append(self._master.lasersManager[iDevice])
             except:
                 # lexmatrix manager
                 self.availableIlliminations.append(self._master.LEDMatrixsManager[iDevice])
-              
+            # TODO: Not really nice 
+            if index == 0:
+                self._widget.sliderIllu1.setRange(self._master.lasersManager[iDevice].valueRangeMin,self._master.lasersManager[iDevice].valueRangeMax)
+            elif index == 1:
+                self._widget.sliderIllu2.setRange(self._master.lasersManager[iDevice].valueRangeMin,self._master.lasersManager[iDevice].valueRangeMax)
+            elif index == 2:
+                self._widget.sliderIllu3.setRange(self._master.lasersManager[iDevice].valueRangeMin,self._master.lasersManager[iDevice].valueRangeMax)
         # select stage
         try:
             self.positioner = self._master.positionersManager[self._master.positionersManager.getAllDeviceNames()[0]]
@@ -460,14 +465,22 @@ class MCTController(ImConWidgetController):
                     elif mIllumination.name==self.availableIlliminations[2].name:
                         illuValue = self.Illu3Value
                     
+                    # switch on illumination
                     mIllumination.setValue(illuValue)
                     mIllumination.setEnabled(True, getReturn=True)
                     time.sleep(self.tWait)
-                    allChannelFrames.append(self.detector.getLatestFrame().copy())
+                    mFrame = self.forceGetNewFrame()
+                    if mFrame is None:
+                        continue
+                    allChannelFrames.append(mFrame.copy())
                     
                     # store positions
                     mPositions = self.positioner.getPosition()
                     allPositions.append((mPositions["X"], mPositions["Y"], mPositions["Z"]))
+
+
+                    # switch off illumination
+                    mIllumination.setEnabled(False, getReturn=True)
                     '''
                     elif mIllumination=="LEDMatrix":
                         self.illu.setAll(1, (self.Illu3Value,self.Illu3Value,self.Illu3Value))
@@ -477,7 +490,10 @@ class MCTController(ImConWidgetController):
                     '''
                 allZStackFrames.append(allChannelFrames)
             
-            
+            # diplay image in Napari
+            self.tiledImage = np.array(allZStackFrames)
+            self.sigImageReceived.emit(np.array(self.tiledImage),"MCT Stack")
+
             # ensure all illus are off
             self.switchOffIllumination()
             
@@ -494,28 +510,6 @@ class MCTController(ImConWidgetController):
             if self.zStackEnabled and self.positioner is not None:
                 self.positioner.move(value=(self.initialPositionZ), axis="Z", is_absolute=True, is_blocking=True)
 
-            if self.xyScanEnabled:
-                # lets try to visualize each slice in napari
-                # def setImage(self, im, colormap="gray", name="", pixelsize=(1,1,1)):
-                # construct the tiled image
-                iX = int(np.floor((iXYPos[0]-self.xScanMin) // self.xScanStep))
-                iY = int(np.floor((iXYPos[1]-self.yScanMin) // self.yScanStep))
-                # handle rgb => turn to mono for now
-                ''' FIXME: This is currently not working
-                if len(lastFrame.shape)>2:
-                    lastFrame = np.uint16(np.mean(lastFrame, 0))
-                # add tile to large canvas
-                lastFrameScaled = cv2.resize(lastFrame, None, fx = 1/downScaleFactor, fy = 1/downScaleFactor, interpolation = cv2.INTER_NEAREST)
-                try:
-                    self.tiledImage[int(iY*imageDimensionsDownscaled[1]):int(iY*imageDimensionsDownscaled[1]+imageDimensionsDownscaled[1]),
-                        int(iX*imageDimensionsDownscaled[0]):int(iX*imageDimensionsDownscaled[0]+imageDimensionsDownscaled[0])] = lastFrameScaled
-                except Exception as e:
-                    self._logger.error(e)
-                    self._logger.error("Failed to parse a frame into the tiledImage array")
-                '''
-                self.sigImageReceived.emit() # => displays image
-
-
         # initialize xy coordinates
         if self.xyScanEnabled and self.positioner is not None:
             self.positioner.move(value=(self.initialPosition[0], self.initialPosition[1]), axis="XY", is_absolute=True, is_blocking=True)
@@ -526,6 +520,24 @@ class MCTController(ImConWidgetController):
         # disable motors to prevent overheating
         if self.positioner is not None:
             self.positioner.enalbeMotors(enable=self.positioner.is_enabled)
+
+    def forceGetNewFrame(self, nextNewestFrame = 1, timeoutFrameRequest=1):
+        cTime = time.time()
+        frameRequestNumber = 0
+        lastFrameNumber = -1
+        while(1):
+            # something went wrong while capturing the frame
+            if time.time()-cTime> timeoutFrameRequest:
+                return None
+            mFrame, currentFrameNumber = self.detector.getLatestFrame(returnFrameNumber=True)
+            if currentFrameNumber <= lastFrameNumber:
+                time.sleep(0.01)
+                continue  
+            frameRequestNumber += 1
+            if frameRequestNumber > nextNewestFrame:
+                print(f"Frame number used for stack: {currentFrameNumber}") 
+                return mFrame
+            lastFrameNumber = currentFrameNumber
 
     def switchOffIllumination(self):
         # switch off all illu sources
@@ -549,7 +561,7 @@ class MCTController(ImConWidgetController):
     def valueIllu1Changed(self, value):
         # turn on current illumination based on slider value
         currIllu = 0
-        self.Illu1Value = value
+        self.Illu1Value = value*10 # FIXME: Hardcoded but WHY?!?!?!?!
         self._widget.mctLabelIllu1.setText('Intensity (Laser 1):'+str(value))
         self.changeValueIlluSlider(currIllu, value)        
         
@@ -583,9 +595,12 @@ class MCTController(ImConWidgetController):
         # this is set by the AutofocusController once the AF is finished/initiated
         self.isAutofocusRunning = isRunning
 
-    def displayImage(self):
+    def displayImage(self, stack=None, name=None):
         # a bit weird, but we cannot update outside the main thread
-        name = "tilescanning"
+        if stack is None:
+            stack = self.tiledImage
+        if name is None:
+            name = "imageStack"
         self._widget.setImage(np.uint16(self.tiledImage), colormap="gray", name=name, pixelsize=(1,1), translation=(0,0))
 
 

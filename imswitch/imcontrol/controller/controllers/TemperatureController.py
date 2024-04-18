@@ -28,7 +28,7 @@ class TemperatureController(ImConWidgetController):
         self.startTime = time.time()
 
         # settings for the controller
-        self.controlTarget = 37
+        self.controlTarget = 0
 
         # Hard-coded PID values..
         self.Kp = 100
@@ -114,7 +114,7 @@ class TemperatureController(ImConWidgetController):
                                 Kp=self.Kp, Ki=self.Ki, Kd=self.Kd, target=self.controlTarget)
         
     @APIExport(runOnUIThread=False)
-    def set_temperature(self, active, Kp=None, Ki=None, Kd=None, target=None):
+    def set_temperature(self, active, Kp=None, Ki=None, Kd=None, target=None, sensorOffset = 3):
         """ Set the temperature. """
         if Kp is not None:
             self.Kp = Kp
@@ -125,8 +125,10 @@ class TemperatureController(ImConWidgetController):
         if target is not None:
             self.controlTarget = target
 
+        
+
         self.temperatureController.set_temperature(active=active
-            , Kp=self.Kp, Ki=self.Ki, Kd=self.Kd, target=self.controlTarget)
+            , Kp=self.Kp, Ki=self.Ki, Kd=self.Kd, target=self.controlTarget+sensorOffset)
 
     def updateSetPointData(self):
         if self.currPoint < self.nBuffer:

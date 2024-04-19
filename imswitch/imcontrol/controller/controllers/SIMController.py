@@ -262,9 +262,10 @@ class SIMController(ImConWidgetController):
         self.simThread.join()
         self.lasers[0].setEnabled(False)
         self.lasers[1].setEnabled(False)
-        self.detector.setParameter("trigger_source","Internal trigger")
-        self.detector.setParameter("buffer_size",-1)
-        self.detector.flushBuffers()
+        if self.isPCO:
+            self.detector.setParameter("trigger_source","Internal trigger")
+            self.detector.setParameter("buffer_size",-1)
+            self.detector.flushBuffers()
 
 
     def startSIM(self):
@@ -290,11 +291,11 @@ class SIMController(ImConWidgetController):
     # for timelapse and zstack, check running is still needed also stop
 
     def startTimelapse(self):
-        self._commChannel.sigStopLiveAcquisition.emit(True)
         if self.isPCO:    
+            self._commChannel.sigStopLiveAcquisition.emit(True)
             self.detector.setParameter("trigger_source","External start")
             self.detector.setParameter("buffer_size",9)
-        self.detector.flushBuffers()
+            self.detector.flushBuffers()
 
         self.active = True
         sim_parameters = self.getSIMParametersFromGUI()
@@ -320,11 +321,12 @@ class SIMController(ImConWidgetController):
         self.detector.flushBuffers()
 
     def startZstack(self):
-        self._commChannel.sigStopLiveAcquisition.emit(True)
+        
         if self.isPCO:
+            self._commChannel.sigStopLiveAcquisition.emit(True)
             self.detector.setParameter("trigger_source","External start")
             self.detector.setParameter("buffer_size",9)
-        self.detector.flushBuffers()
+            self.detector.flushBuffers()
 
         self.active = True
         sim_parameters = self.getSIMParametersFromGUI()

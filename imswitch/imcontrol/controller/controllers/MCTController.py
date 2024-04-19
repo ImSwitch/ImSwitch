@@ -535,7 +535,7 @@ class MCTController(ImConWidgetController):
                 continue  
             frameRequestNumber += 1
             if frameRequestNumber > nextNewestFrame:
-                print(f"Frame number used for stack: {currentFrameNumber}") 
+                #print(f"Frame number used for stack: {currentFrameNumber}") 
                 return mFrame
             lastFrameNumber = currentFrameNumber
 
@@ -643,31 +643,34 @@ class HDF5File(object):
             meta_group = file.create_group('Metadata')
 
     def append_data(self, timepoint, frame_data, xyz_coordinates):
-        with h5py.File(self.filename, 'a') as file:
-            dset = file['ImageData']
-            meta_group = file['Metadata']
-            
-            # Resize the dataset to accommodate the new timepoint
-            current_size = dset.shape[0]
-            dset.resize(current_size + 1, axis=0)
-            
-            # Add the new frame data
-            try:
-                if self.isRGB:
-                    dset[current_size, :, :, :, :, :] = np.uint16(frame_data)
-                else:
-                    dset[current_size, :, :, :, :] = np.uint16(frame_data)
-            except:
-                # in case X/Y are swapped 
-                if self.isRGB:
-                    dset[current_size, :, :, :, :, :] = np.transpose(np.uint16(frame_data), (0,1,2,4,3))
-                else:
-                    dset[current_size, :, :, :, :] = np.transpose(np.uint16(frame_data), (0,1,3,2))
-                            
-            # Add metadata for the new frame
-            for channel, xyz in enumerate(xyz_coordinates):
-                meta_group.create_dataset(f'Time_{timepoint}_Channel_{channel}', data=np.float32(xyz))
-
+        try:
+            with h5py.File(self.filename, 'a') as file:
+                dset = file['ImageData']
+                meta_group = file['Metadata']
+                
+                # Resize the dataset to accommodate the new timepoint
+                current_size = dset.shape[0]
+                dset.resize(current_size + 1, axis=0)
+                
+                # Add the new frame data
+                try:
+                    if self.isRGB:
+                        dset[current_size, :, :, :, :, :] = np.uint16(frame_data)
+                    else:
+                        dset[current_size, :, :, :, :] = np.uint16(frame_data)
+                except:
+                    # in case X/Y are swapped 
+                    if self.isRGB:
+                        dset[current_size, :, :, :, :, :] = np.transpose(np.uint16(frame_data), (0,1,2,4,3))
+                    else:
+                        dset[current_size, :, :, :, :] = np.transpose(np.uint16(frame_data), (0,1,3,2))
+                                
+                # Add metadata for the new frame
+                for channel, xyz in enumerate(xyz_coordinates):
+                    meta_group.create_dataset(f'Time_{timepoint}_Channel_{channel}', data=np.float32(xyz))
+        except Exception as e:
+            print(e)
+            print("Error saving to HDF5 file.")
 
 
 '''

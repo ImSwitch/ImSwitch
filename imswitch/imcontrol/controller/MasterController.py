@@ -112,14 +112,15 @@ class MasterController:
     def closeEvent(self):
         # recordingManager and pycroManagerAcquisition are mutually exclusive objects;
         # only one can exists at a time in an ImSwitch instance
-        try:
-            if self.recordingManager is not None:
-                self.recordingManager.endRecording(emitSignal=False, wait=True)
-            else:
-                self.pycroManagerAcquisition.endRecording()
-        except Exception:
-            self.__logger.error(f"Error while closing RecordingManager or PycroManagerAcquisitionManager")
-            self.__logger.error(traceback.format_exc())
+        if self.recordingManager is not None or self.pycroManagerAcquisition is not None:
+            try:
+                if self.recordingManager is not None:
+                    self.recordingManager.endRecording(emitSignal=False, wait=True)
+                else:
+                    self.pycroManagerAcquisition.endRecording()
+            except Exception:
+                self.__logger.error(f"Error while closing RecordingManager or PycroManagerAcquisitionManager")
+                self.__logger.error(traceback.format_exc())
 
         for attrName in dir(self):
             attr = getattr(self, attrName)

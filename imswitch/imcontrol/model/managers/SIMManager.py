@@ -27,7 +27,6 @@ class SIMManager(SignalInterface):
         self.__angleMount = self.__simInfo.angleMount
         self.__simSize = (self.__simInfo.width, self.__simInfo.height)
         self.__patternsDir = self.__simInfo.patternsDir
-        self.isSimulation = self.__simInfo.isSimulation
         self.nRotations = self.__simInfo.nRotations
         self.nPhases = self.__simInfo.nPhases
         self.simMagnefication = self.__simInfo.nPhases
@@ -36,10 +35,6 @@ class SIMManager(SignalInterface):
         self.simNA = self.__simInfo.simNA
         self.simN = self.__simInfo.simN # refr
         self.simETA = self.__simInfo.simETA
-
-
-
-        self.isHamamatsuSLM = self.__simInfo.isHamamatsuSLM
 
         # Load all patterns
         if type(self.__patternsDir) is not list:

@@ -149,7 +149,7 @@ class HyphaController(LiveUpdatedController):
         self.__logger.debug(f"Starting service...")
         def autoLogin(message):
             # automatically open default browser 
-            webbrowser.open(message['login_url'])
+            webbrowser.open(message['login_url']) # TODO: pass login token to qtwebview
             print(f"Please open your browser and login at: {message['login_url']}")
         token = login({"server_url": server_url, 
                        "login_callback": autoLogin})
@@ -162,7 +162,7 @@ class HyphaController(LiveUpdatedController):
         self.hyphaURL = f"https://bioimage.io/chat?server={server_url}&extension={svc.id}"
         try:
             webbrowser.open(self.hyphaURL)
-            self._widget.setChatURL(url=self.hyphaURL)
+            self._widget.setChatURL(url=f"https://bioimage.io/chat?token={token}")
             self._isConnected = True
         except:
             pass
@@ -238,16 +238,6 @@ class HyphaController(LiveUpdatedController):
         """
         Moves the microscope stage in the specified axis by a certain distance.
 
-        Args:
-            value (float): The physical distance to move the stage by.
-            axis (str): The axis along which the stage should be moved. Valid values are 'X', 'Y', 'Z', and 'A'.
-            is_absolute (bool, optional): Specifies whether the movement should be relative or absolute. Default is True (absolute).
-            is_blocking (bool, optional): Specifies whether the function should block until the stage has arrived at the destination. Default is True.
-            context (dict, optional): Context information containing user details.
-
-        Returns:
-            None
-
         Example Use:
             # Move the stage 10000 µm in the positive X direction in absolute coordinates and wait for the stage to arrive.
             self.setPosition(value=10000, axis="X", is_absolute=True, is_blocking=True)
@@ -270,19 +260,8 @@ class HyphaController(LiveUpdatedController):
         self.stages.move(value=value, axis=axis, is_absolute=is_absolute, is_blocking=is_blocking)
 
     def script_executor(self, kwargs):
-        """Execute a Python script that has access to the following methods inside the class HyphaController Class which is accessible through either the self attribute or the scope variable to control a microscope
-        The script can combine the different methods to create a more complex workflow using loops and conditions.
-        The script should be a safe Python code and should not contain any malicious code. It should not be able to move or delete local files or access the network for security reasons.
-        The script should be a string containing the Python code to execute. The microscope can be accessed using the following functions:
-        
-        - "move_to_position" with the MoveToPositionInput.schema() for the input parameters; - move the microscope stage in xyz in absolute or relative coordinates
-        - "set_illumination" with the SetIlluminationInput.schema() for the input parameters; - set the illumination of the microscope from 0..1023
-        - "snap_image" with the SnapImageInput.schema() for the input parameters; The function snaps an image and return it if no pythonFunctionString is provided or acquire and image and process it using a Python function
-        
-        The result of the script execution should be a variable named 'result' that will be feedbacked to the chatbot.
-        The script has access to the local variables and the methods of the HyphaController class as self or scope
-        
-        
+        """
+
         """
         scope = self
         config = ScriptExecutor(**kwargs)
@@ -317,36 +296,6 @@ class HyphaController(LiveUpdatedController):
 
     def snap_image(self, kwargs):
         '''
-        Captures a single image and processes it using a Python function provided as a string.
-        
-        Args:
-            kwags (dict): A dictionary containing the following key-value pairs:
-                exposure (int, optional): The exposure time for the image capture in milliseconds. Default is 100.
-                file (str, optional): The path to save the captured image. Default is "Default". No extension needed, files will be saved as ".tif".
-                pythonFunctionString (str, optional): The Python function to use for processing the image as a string. The function takes a 2D np.ndarray
-                                                        as an input and outputs either a 2D array or a string-convertable results (e.g. list of coordinates,
-                                                        gray values, probabilities). Default is "".
-            Example:
-                pythonFunctionString = """
-                def processImage(image):
-                    # Example processing: Convert to grayscale
-                    return cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-                """
-        
-                context (dict, optional): Context information containing user details.
-        
-        Returns:
-            str: the path to the saved image or the result of the processing function.
-        
-        Notes:
-            - The function captures a single image using the microscope's detector.
-            - The function that processes the image should follow the following pattern:
-                def processImage(image):
-                    # optinal imports of libraries
-                    processImage = fu(image)
-                    # process the image
-                    return processedImage
-                where image is the input image kept in memory as a 2D numpy array and processedImage is the output image.
         '''
         config = SnapImageInput(**kwargs)
         mExposureTime = config.exposure = 100
@@ -362,6 +311,9 @@ class HyphaController(LiveUpdatedController):
         # Step 1: Capture Image
         self._logger.debug("getProcessedImages - functionstring: "+imageProcessingFunction)
         mImage = self.detector.getLatestFrame()
+        
+        
+        # TODO: Generate thumbnail and send to datastorage
         
         # Step 2: Load and Execute Python Function from String
         try:
@@ -430,15 +382,29 @@ class HyphaController(LiveUpdatedController):
             }
         }
             
-class ScriptExecutor(BaseModel):
-    """Execute a Python script."""
-    script: str = Field(description="The Python script to execute.")
-    context: dict = Field(description="Context information containing user details.")
+
 
 class MessagingExchange(BaseModel):
+    # TODO: make this more generic
+    '''
+    self.dataStore = {}
+    self.dataStore["image_1"] = np.ones((100,100))
+    '''
     """Store key and value pairs between consecutive message exchanges and chatbot sessions."""
     message: dict = Field(description="The message to store in the exchange with a key that will be stored accross chat entries and values that can be anything.")
       
+class ScriptExecutor(BaseModel):
+    """
+    Executes a Python script within the HyphaController class to control a microscope, accessible via 'self' or 'scope'. Scripts can orchestrate complex workflows using methods provided for microscope manipulation, incorporating loops and conditions. The script, a string of safe Python code, must not contain malicious elements, manipulate local files, or access the network. Key methods include:
+    - "move_to_position" using MoveToPositionInput.schema() for xyz movement in absolute or relative terms.
+    - "set_illumination" using SetIlluminationInput.schema() to adjust illumination between 0 and 1023.
+    - "snap_image" using SnapImageInput.schema() to capture or process images. 
+    Execution results are stored in a 'result' variable for feedback to the chatbot. Scripts have access to HyphaController's methods and local variables.
+    The script must be safe to execute!
+    """   
+    script: str = Field(description="The Python script to execute.")
+    context: dict = Field(description="Context information containing user details.")
+
 
 class MoveByDistanceInput(BaseModel):
     """Move the stage by a specified distance, the unit of distance is millimeters, so you need to input the distance in millimeters."""
@@ -447,7 +413,33 @@ class MoveByDistanceInput(BaseModel):
     z: float = Field(description="Move the stage along Z axis.")
 
 class SnapImageInput(BaseModel):
-    """Snap an image from microscope."""
+    #TODO: Docstring should be below 4000 characters
+    #TODO: individual elements should be below 1024
+    #TODO: in case we need additional information >= create a read-the-docs function
+    #TODO: Don't define the arguments -> already in schema; only describe what the function is doing
+    #TODO: Keep the examples!
+    '''
+    Snap an image from the microscope and process it using a provided Python function.
+
+    Example:
+        pythonFunctionString = """
+        def processImage(image):
+            # Convert to grayscale as an example
+            return cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        """
+
+        context (dict, optional): Contains user details.
+
+    Notes:
+        - Captures a single image with the microscope's detector.
+        - The processing function should have the following structure:
+            def processImage(image):
+                # Optional library imports
+                processedImage = fu(image)
+                # Image processing code
+                return processedImage
+            where 'image' is a 2D numpy array input and 'processedImage' is the output.
+    '''
     exposure: int = Field(description="Set the microscope camera's exposure time. and the time unit is ms, so you need to input the time in miliseconds.")
     filepath: str = Field(description="The path to save the captured image. It will be a tif, so the extension does not need to be added. ")
     imageProcessingFunction: str = Field(description="The Python function to use for processing the image. Default is empty. image is the 2D array from the detector Example: def processImage(image): return cv2.cvtColor(image, cv2.COLOR_BGR2GRAY")                        

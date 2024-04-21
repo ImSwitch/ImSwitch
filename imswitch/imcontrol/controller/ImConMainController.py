@@ -91,12 +91,17 @@ class ImConMainController(MainController):
 
         self.__logger.debug("Start ImSwitch Server")
         self._serverWorker = ImSwitchServer(self.__api, setupInfo)
-        self.__logger.debug(self.__api)
-        self._thread = Thread()
-        self._serverWorker.moveToThread(self._thread)
-        self._thread.started.connect(self._serverWorker.run)
-        self._thread.finished.connect(self._serverWorker.stop)
-        self._thread.start()
+        if False:
+            self.__logger.debug(self.__api)
+            self._thread = Thread()
+            self._serverWorker.moveToThread(self._thread)
+            self._thread.started.connect(self._serverWorker.run)
+            self._thread.finished.connect(self._serverWorker.stop)
+            self._thread.start()
+        else:
+            import threading
+            mThread = threading.Thread(target=self._serverWorker.run)
+            mThread.start()
 
     @property
     def api(self):

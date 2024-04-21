@@ -92,7 +92,7 @@ class ESP32StageManager(PositionerManager):
         # homing steps without endstop
         self.homeStepsX = positionerInfo.managerProperties.get('homeStepsX', 0)
         self.homeStepsY = positionerInfo.managerProperties.get('homeStepsY', 0)
-        self.homeStepsZ = positionerInfo.managerProperties.get('homeStepsZ', 0)
+        self.homeStepsZ = positionerInfo.managerProperties.get('homeStepsZ', 0) 
         self.homeStepsA = positionerInfo.managerProperties.get('homeStepsA', 0)
 
         # Limiting is actually enabled - can we go smaller than 0?
@@ -259,7 +259,7 @@ class ESP32StageManager(PositionerManager):
                 if not is_absolute: self._position[iaxis] = self._position[iaxis] + value[i]
                 else: self._position[iaxis] = value[i]
         else:
-            self.__logger.error('Wrong axis, has to be "X" "Y" or "Z".')
+            self.__logger.error('Wrong axis, has to be "A", "X" "Y" or "Z" and speed has to be >0')
 
 
     def measure(self, sensorID=0, NAvg=100):
@@ -361,7 +361,10 @@ class ESP32StageManager(PositionerManager):
 
     def home_x(self, isBlocking=False):
         if abs(self.homeStepsX)>0:
-            self.move(value=self.homeStepsX, axis="X", is_absolute=False, is_blocking=isBlocking)
+            self.move(value=self.homeStepsX, speed=self.homeSpeedX, axis="X", is_absolute=False, is_blocking=True)
+            self.move(value=-np.sign(self.homeStepsX)*np.abs(self.homeEndposReleaseX), speed=self.homeSpeedX, axis="X", is_absolute=False, is_blocking=True)
+            self.setPosition(axis="X", value=0)
+            self.setPositionOnDevice(value=0, axis="X")
         elif self.homeXenabled:
             self._homeModule.home_x(speed=self.homeSpeedX, direction=self.homeDirectionX, endstoppolarity=self.homeEndstoppolarityX, endposrelease=self.homeEndposReleaseX, isBlocking=isBlocking, timeout=self.homeTimeoutX)
         else:
@@ -371,7 +374,10 @@ class ESP32StageManager(PositionerManager):
 
     def home_y(self,isBlocking=False):
         if abs(self.homeStepsY)>0:
-            self.move(value=self.homeStepsY, axis="Y", is_absolute=False, is_blocking=isBlocking)
+            self.move(value=self.homeStepsY, speed=self.homeSpeedY, axis="Y", is_absolute=False, is_blocking=True)
+            self.move(value=-np.sign(self.homeStepsY)*np.abs(self.homeEndposReleaseY), speed=self.homeSpeedY, axis="Y", is_absolute=False, is_blocking=True)
+            self.setPosition(axis="Y", value=0)
+            self.setPositionOnDevice(value=0, axis="Y")
         elif self.homeYenabled:
             self._homeModule.home_y(speed=self.homeSpeedY, direction=self.homeDirectionY, endstoppolarity=self.homeEndstoppolarityY, endposrelease=self.homeEndposReleaseY, isBlocking=isBlocking, timeout=self.homeTimeoutY)
         else:
@@ -380,8 +386,11 @@ class ESP32StageManager(PositionerManager):
         self.setPosition(axis="Y", value=0)
 
     def home_z(self,isBlocking=False):
-        if abs(self.homeStepsZ)>0:
-            self.move(value=self.homeStepsZ, axis="Z", is_absolute=False, is_blocking=isBlocking)
+        if abs(self.homeStepsZ)>0:            
+            self.move(value=self.homeStepsZ, speed=self.homeSpeedZ, axis="Z", is_absolute=False, is_blocking=True)
+            self.move(value=-np.sign(self.homeStepsZ)*np.abs(self.homeEndposReleaseZ), speed=self.homeSpeedZ, axis="Z", is_absolute=False, is_blocking=True)
+            self.setPosition(axis="Z", value=0)
+            self.setPositionOnDevice(value=0, axis="Z")
         elif self.homeZenabled:
             self._homeModule.home_z(speed=self.homeSpeedZ, direction=self.homeDirectionZ, endstoppolarity=self.homeEndstoppolarityZ, endposrelease=self.homeEndposReleaseZ, isBlocking=isBlocking, timeout=self.homeTimeoutZ)
         else:
@@ -391,7 +400,10 @@ class ESP32StageManager(PositionerManager):
         
     def home_a(self,isBlocking=False):
         if abs(self.homeStepsA)>0:
-            self.move(value=self.homeStepsA, axis="A", is_absolute=False, is_blocking=isBlocking)
+            self.move(value=self.homeStepsA, speed=self.homeSpeedA, axis="A", is_absolute=False, is_blocking=True)
+            self.move(value=-np.sign(self.homeStepsA)*np.abs(self.homeEndposReleaseA), speed=self.homeSpeedA, axis="A", is_absolute=False, is_blocking=True)
+            self.setPosition(axis="A", value=0)
+            self.setPositionOnDevice(value=0, axis="A")
         elif self.homeAenabled:
             self._homeModule.home_a(speed=self.homeSpeedA, direction=self.homeDirectionA, endstoppolarity=self.homeEndstoppolarityA, endposrelease=self.homeEndposReleaseA, isBlocking=isBlocking, timeout=self.homeTimeoutA)
         else:

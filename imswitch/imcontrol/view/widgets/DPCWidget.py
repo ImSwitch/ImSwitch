@@ -9,32 +9,13 @@ from .basewidgets import NapariHybridWidget
 class DPCWidget(NapariHybridWidget):
     """ Widget containing dpc interface. """
 
-    sigDPCDisplayToggled = QtCore.Signal(bool)  # (enabled)
-    sigDPCMonitorChanged = QtCore.Signal(int)  # (monitor)
-    sigPatternID = QtCore.Signal(int)  # (display pattern id)
-
     def __post_init__(self):
         #super().__init__(*args, **kwargs)
 
-        self.dpcDisplay = None
-
         self.dpcFrame = pg.GraphicsLayoutWidget()
-
-        # Button for showing DPC display and spinbox for monitor selection
-        self.dpcDisplayLayout = QtWidgets.QHBoxLayout()
-
-
-        self.dpcMonitorBox = QtWidgets.QSpinBox()
-        #self.dpcMonitorBox.valueChanged.connect(self.sigDPCMonitorChanged)
-        #self.dpcDisplayLayout.addWidget(self.dpcMonitorBox)
-
         self.startDPCAcquisition = guitools.BetterPushButton('Start')
         self.isRecordingButton = guitools.BetterPushButton("Start Recording")
 
-        #Enter the frames to wait for frame-sync
-        self.dpcFrameSyncLabel  = QtWidgets.QLabel('N-Framesync (e.g. 1):')        
-        self.dpcFrameSyncVal = QtWidgets.QLineEdit('1')
-        
 
         # parameter tree for DPC reconstruction paramters
         self.DPCParameterTree = ParameterTree()
@@ -120,13 +101,11 @@ class DPCWidget(NapariHybridWidget):
         if self.layer is not None:
             return self.img.image
         
-    def setImage(self, im, name):
-        if not name in self.layers:
-            self.layers[name] = self.viewer.add_image(im, rgb=False, name=name, blending='additive')
-        self.layers[name].data = im
-        
-    def getFrameSyncVal(self):
-        return abs(int(self.dpcFrameSyncVal.text()))
+    def setImage(self, im, name="DPC"):
+        if name not in self.viewer.layers:
+            self.viewer.add_image(im, rgb=False, name=name, blending='additive')
+        else:
+            self.viewer.layers[name].data = im
         
 
 # Copyright (C) 2020-2023 ImSwitch developers

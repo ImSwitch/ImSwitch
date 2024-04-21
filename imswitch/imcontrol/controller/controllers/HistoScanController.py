@@ -18,12 +18,14 @@ from PyQt5.QtGui import QImage, QPixmap
 
 import datetime 
 from itertools import product
+'''
 try:
     from ashlar import fileseries, thumbnail, reg
     IS_ASHLAR = True
 except:
     print("Ashlar not installed")
     IS_ASHLAR = False
+'''
 import numpy as np
 
 from imswitch.imcommon.model import dirtools, initLogger, APIExport

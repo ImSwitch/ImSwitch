@@ -6,6 +6,8 @@ from imswitch.imcommon.model import initLogger
 import threading
 from typing import Optional
 import time 
+from Pyro5.api import expose
+
 class PositionerController(ImConWidgetController):
     """ Linked to PositionerWidget."""
 
@@ -28,7 +30,11 @@ class PositionerController(ImConWidgetController):
             for axis in pManager.axes:
                 self.setSharedAttr(pName, axis, _positionAttr, pManager.position[axis])
                 if hasSpeed:
-                    self.setSharedAttr(pName, axis, _speedAttr, pManager.speed[axis])
+                    if pManager.speed[axis]== 0:
+                        mSpeed = 10000
+                    else:
+                        mSpeed = pManager.speed[axis]
+                    self.setSharedAttr(pName, axis, _speedAttr, mSpeed)
                 if hasHome:
                     self.setSharedAttr(pName, axis, _homeAttr, pManager.home[axis])
                 if hasStop:
@@ -142,7 +148,7 @@ class PositionerController(ImConWidgetController):
         self.__logger.debug(f"Homing axis {axis}")
         self._master.positionersManager[positionerName].doHome(axis, isBlocking=isBlocking)
         self.updatePosition(positionerName, axis)
-
+        self._commChannel.sigUpdateMotorPosition.emit()
 
     def stopAxis(self, positionerName, axis):
         self.__logger.debug(f"Stopping axis {axis}")
@@ -203,6 +209,7 @@ class PositionerController(ImConWidgetController):
         self._widget.setStepSize(positionerName, stepSize)
 
     @APIExport(runOnUIThread=True)
+    @expose
     def movePositioner(self, positionerName: str, axis: str, dist: Optional[float] = None, isAbsolute: bool = False, isBlocking: bool=False, speed: float=None) -> None:
         """ Moves the specified positioner axis by the specified number of
         micrometers. """

@@ -18,10 +18,6 @@ from .ObjectiveRevolverWidget import ObjectiveRevolverWidget
 from .TemperatureWidget import TemperatureWidget
 from .LEDMatrixWidget import LEDMatrixWidget
 from .WellPlateWidget import WellPlateWidget
-from .DeckWidget import DeckWidget
-from .DeckScanWidget import DeckScanWidget
-from .OpentronsDeckWidget import OpentronsDeckWidget
-from .OpentronsDeckScanWidget import OpentronsDeckScanWidget
 from .FocusLockWidget import FocusLockWidget
 from .FOVLockWidget import FOVLockWidget
 from .ImageWidget import ImageWidget

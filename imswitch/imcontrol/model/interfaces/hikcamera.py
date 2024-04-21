@@ -200,11 +200,21 @@ class CameraHIK:
         ret = self.camera.MV_CC_CloseDevice()
         ret = self.camera.MV_CC_DestroyHandle()
     
-
     def set_exposure_time(self,exposure_time):
         self.exposure_time = exposure_time
         self.camera.MV_CC_SetFloatValue("ExposureTime", self.exposure_time*1000)
         
+    def set_exposure_mode(self, exposure_mode="manual"):
+        if exposure_mode == "manual":
+            self.camera.MV_CC_SetEnumValue("ExposureAuto", MV_EXPOSURE_AUTO_MODE_OFF)
+        elif exposure_mode == "auto":
+            self.camera.MV_CC_SetEnumValue("ExposureAuto", MV_EXPOSURE_AUTO_MODE_CONTINUOUS)
+        elif exposure_mode == "once":
+            self.camera.MV_CC_SetEnumValue("ExposureAuto", MV_EXPOSURE_AUTO_MODE_ONCE)
+        else:
+            self.__logger.warning("Exposure mode not recognized")
+                    
+            
     def set_gain(self,gain):
         self.gain = gain
         self.camera.MV_CC_SetFloatValue("Gain", self.gain)
@@ -243,11 +253,14 @@ class CameraHIK:
         # self.camera.BinningVertical.set(binning)
         self.binning = binning
 
-    def getLast(self, is_resize=True):
+    def getLast(self, is_resize=True, timeout=10):
         # get frame and save
         # only return fresh frames
+        t0 = time.time()
         while(self.lastFrameId == self.frameNumber or self.frame is None):
             time.sleep(.01) # wait for fresh frame
+            if time.time()-t0>timeout:
+                return
         self.lastFrameId = self.frameNumber
         
         if self.isFlatfielding and self.flatfieldImage is not None:
@@ -318,6 +331,8 @@ class CameraHIK:
             self.set_gain(property_value)
         elif property_name == "exposure":
             self.set_exposure_time(property_value)
+        elif property_name == "exposure_mode":
+            self.set_exposure_mode(property_value)
         elif property_name == "blacklevel":
             self.set_blacklevel(property_value)
         elif property_name == "roi_size":
@@ -339,6 +354,8 @@ class CameraHIK:
             property_value = self.camera.Gain.get()
         elif property_name == "exposure":
             property_value = self.camera.ExposureTime.get()
+        elif property_name == "exposure_mode":
+            property_value = self.camera.ExposureAuto.get()
         elif property_name == "blacklevel":
             property_value = self.camera.BlackLevel.get()            
         elif property_name == "image_width":

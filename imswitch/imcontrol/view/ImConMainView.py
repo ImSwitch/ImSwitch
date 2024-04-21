@@ -112,8 +112,6 @@ class ImConMainView(QtWidgets.QMainWindow):
             'WellPlate': _DockInfo(name='Wellplate Tool', yPosition=1),
             'Deck': _DockInfo(name="Deck Tool", yPosition=1),
             'DeckScan': _DockInfo(name="Deck Scanner", yPosition=1),
-            'OpentronsDeck': _DockInfo(name="OpentronsDeck Tool", yPosition=1),
-            'OpentronsDeckScan': _DockInfo(name="OpentronsDeck Scanner", yPosition=1),
             'LEDMatrix': _DockInfo(name='LEDMatrix Tool', yPosition=0),
             'Watcher': _DockInfo(name='File Watcher', yPosition=3),
             'Tiling': _DockInfo(name='Tiling', yPosition=3)
@@ -221,12 +219,15 @@ class ImConMainView(QtWidgets.QMainWindow):
                 )
             except Exception as e:
                 # try to get it from the plugins
-                self.__logger.error(f"Could not load widget {widgetKey} from imswitch.imcontrol.view.widgets", e)
+                foundPluginController = False
                 for entry_point in pkg_resources.iter_entry_points(f'imswitch.implugins'):
                     if entry_point.name == f'{widgetKey}_widget':
                         packageWidget = entry_point.load()
                         self.widgets[widgetKey] = self.factory.createWidget(packageWidget)
+                        foundPluginController = True
                         break
+                if not foundPluginController:
+                    self.__logger.error(f"Could not load widget {widgetKey} from imswitch.imcontrol.view.widgets", e)
             self.docks[widgetKey] = Dock(dockInfo.name, size=(1, 1))
             try:self.docks[widgetKey].addWidget(self.widgets[widgetKey])
             except:

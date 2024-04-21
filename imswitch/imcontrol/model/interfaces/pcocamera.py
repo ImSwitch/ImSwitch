@@ -5,7 +5,7 @@ import cv2
 import collections
 
 from imswitch.imcommon.model import initLogger
-
+import threading
 try:
     import pco
     from pco import sdk
@@ -15,12 +15,12 @@ except:
 
 
 class TriggerMode:
-    SOFTWARE = 'Software Trigger'
-    HARDWARE = 'Hardware Trigger'
-    CONTINUOUS = 'Continuous Acqusition'
+    SOFTWARE = 'software trigger'
+    HARDWARE = 'external exposure start & software trigger'
+    CONTINUOUS = 'auto sequence'
 
 class CameraPCO:
-    def __init__(self,cameraNo=None, exposure_time = 10000, gain = 0, frame_rate=-1, blacklevel=100, binning=1):
+    def __init__(self,cameraNo=None, exposure_time = 10000, gain = 0, frame_rate=10, blacklevel=100, binning=1):
         super().__init__()
         self.__logger = initLogger(self, tryInheritParent=True)
 
@@ -29,7 +29,6 @@ class CameraPCO:
         self.shape = (0, 0)
         
         self.is_connected = False
-        self.is_streaming = False
 
         # unload CPU? 
         self.downsamplepreview = 1
@@ -38,18 +37,16 @@ class CameraPCO:
         self.exposure_time = exposure_time
         self.preview_width = 600
         self.preview_height = 600
-
-        # reserve some space for the framebuffer
-        self.NBuffer = 10
-        self.frame_buffer = collections.deque(maxlen=self.NBuffer)
-        self.frameid_buffer = collections.deque(maxlen=self.NBuffer)
-
-
-
-        #%% starting the camera thread
+        self.defaultBufferSize = 5
+        # dict for different trigger mode
+        self.trigger_type = ['software trigger', 
+                             'auto sequence',
+                             'external exposure start & software trigger',
+                             'external exposure control'
+                             ]
+        self.current_trigger_type = self.trigger_type[0]
+        self.frameID = -1
         self.camera = None
-
-        # binning 
         self.binning = binning
 
         try:
@@ -58,37 +55,57 @@ class CameraPCO:
             self.__logger.error(e)
             raise("Camera not found")
             
+            
     def _init_cam(self):
         # start camera
         self.is_connected = True
         
         # open the first device
         self.camera = pco.Camera()
+        #☺pco.Camera(debuglevel='verbose', timestamp='on')
 
         # set exposure
         # self.camera.set_exposure_time(self.exposure_time*1e-6)
 
         # get dummy frame
-        self.camera.record()
-        frame = self.camera.image()[0]
+        self.start_live()
+        t0 = time.time()
+        while 1:
+            if time.time()-t0>1:
+                raise("No Frame ")
+            try:
+                frame = self.camera.image()[0]
+            except:
+                time.sleep(0.1)
+                continue
+            break
+
         # get framesize 
         self.SensorHeight = frame.shape[0] #self.camera._Camera__roi['x1']//self.binning
         self.SensorWidth = frame.shape[0] #self.camera._Camera__roi['y1']//self.binning
         
-        
-    def start_live(self):
-        if not self.is_streaming:
-            # start data acquisition
-            self.camera.record(number_of_images=self.NBuffer,mode='ring buffer')
-            self.camera.wait_for_first_image()
-            self.is_streaming = True
+
+    def start_live(self, waitForFirstImage=True, nFrameBuffer=None):
+        if not self.camera.is_recording:
+            if nFrameBuffer is None:
+                nFrameBuffer = self.defaultBufferSize
+            # start data acquisition    
+            try:
+                self.camera.record(number_of_images=nFrameBuffer,mode='ring buffer')
+            except Exception as e:
+                print(e)
+                self.camera.stop()
+                self.camera.record(number_of_images=nFrameBuffer,mode='ring buffer')
+            if  0 and waitForFirstImage: # TODO: this is not working
+                try: 
+                    self.camera.wait_for_first_image(timeout=1)
+                except Exception as e:
+                    self.__logger.error(e)
 
     def stop_live(self):
-        if self.is_streaming:
-            # start data acquisition
+        if self.camera.is_recording:
             self.camera.stop()
-            self.is_streaming = False
-
+            
     def suspend_live(self):
         pass
         
@@ -101,7 +118,8 @@ class CameraPCO:
     def set_exposure_time(self,exposure_time):
         self.exposure_time = exposure_time
         try:
-            self.camera.set_exposure_time(self.exposure_time*1e-3)
+            self.camera.exposure_time = self.exposure_time*1e-3
+            #self.camera.sdk.set_frame_rate(274, int(self.exposure_time*1e3))
         except:
             self.__logger.error("Not possible to set exposure time now...(PCO)")
 
@@ -113,36 +131,62 @@ class CameraPCO:
 
     def getLast(self, is_resize=True):
         # Display in the liveview
-        # get frame and save
-#        frame_norm = cv2.normalize(self.frame, None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8U)       
-        #TODO: Napari only displays 8Bit?
-        #images, metadatas = self.camera.images()
-        #self.frame = images[-1]
-        self.frame = self.camera.image(image_number=0)[0]
+        # ensure that only fresh frames are being returned
+        if self.camera.configuration['trigger'] in [self.trigger_type[3], self.trigger_type[2]]:
+            # in that case we want to return the last frame of the buffer ?
+            if self.frames is not None and len(self.frames)>0:
+                return self.frames[-1]
+            else: 
+                return None
+        else:
+            self.frame_raw_metadata = self.camera.image(image_index=-1)
+            #time.sleep(0.001)
+            self.frame = self.frame_raw_metadata[0]
+            self.frameID = self.frame_raw_metadata[1]["recorder image number"]
+            return self.frame
         
-        return self.frame
+    
+    def getLastFrameId(self):
+        return self.frameID
 
     def flushBuffer(self):
-        self.frameid_buffer.clear()
-        self.frame_buffer.clear()
+        pass
         
-    def getLastChunk(self):
+    def getLastChunk(self, timeout=2):
         # save on disk
-        images, metadatas = self.camera.images()[0]
-        chunk = np.array(images).mean()
-        self.__logger.debug("Buffer: "+str(chunk.shape))
-        return chunk
+        self.frames = None
+        if self.camera.is_recording:
+            # Create a thread to run the call_images function
+            def retreiveChunkInBackground():
+                # TODO: if we are in triggered mode this can be a blocking function :(
+                self.frames, metadatas = self.camera.images() 
+                self.frame = self.camera.images()[0] # FIXME: Sneaky but should at least update the viewer if it's called from the main loop
+                self.frameID = metadatas[0]["recorder image number"]
+            thread = threading.Thread(target=retreiveChunkInBackground)
+
+            # Start the thread             # Wait for the thread to complete or timeout
+            thread.start()
+            thread.join(timeout)
+
+            if thread.is_alive():
+                print("The images function call has timed out and will continue running in its thread.")
+            else:
+                print("The images function call completed successfully.")
+        return self.frames
     
     def setROI(self,hpos=None,vpos=None,hsize=None,vsize=None):
         return hpos,vpos,hsize,vsize
 
-
     def setPropertyValue(self, property_name, property_value):
         # Check if the property exists.
         if property_name == "exposure":
-            self.set_exposure_time(property_value)
+            self.camera.exposure_time = property_value*1e-3
+        elif property_name == 'trigger_source':
+            self.setTriggerSource(property_value)
+        elif property_name == "buffer_size":
+            self.setFrameBuffer(property_value)
         elif property_name == "roi_size":
-            self.roi_size = property_value
+            self.camera.skd.set_roi(0,0,property_value)
         else:
             self.__logger.warning(f'Property {property_name} does not exist')
             return False
@@ -150,14 +194,17 @@ class CameraPCO:
 
     def getPropertyValue(self, property_name):
         # Check if the property exists.
-        if property_name == "exposure":
-            property_value = self.camera.ExposureTime.get()
-        elif property_name == "image_width":
+        #if property_name == "exposure":
+            #property_value = self.camera.exposure_time * 1e3
+        if property_name == "image_width":
             property_value = self.camera.Width.get()//self.binning         
         elif property_name == "image_height":
             property_value = self.camera.Height.get()//self.binning
         elif property_name == "roi_size":
             property_value = self.roi_size 
+        elif property_name == "framerate":
+            property_value = format(1 / self.camera.exposure_time, '.1f')
+             #property_value = self.camera.sdk.get_frame_rate() 
         else:
             self.__logger.warning(f'Property {property_name} does not exist')
             return False
@@ -165,26 +212,37 @@ class CameraPCO:
 
     def openPropertiesGUI(self):
         pass
-    
-    def set_frame(self, user_param, frame):
-        if frame is None:
-            self.__logger.error("Getting image failed.")
+
+    def setTriggerSource(self, source):
+        wasRunning = self.camera.is_recording
+        if wasRunning: self.stop_live()
+        if source == 'Continous':
+            self.camera.configuration = {'trigger': self.trigger_type[0]}
+        elif source == 'Internal trigger':
+            self.camera.configuration = {'trigger': self.trigger_type[1]}
+        elif source == 'External start':
+            self.camera.configuration = {'trigger': self.trigger_type[2]}
+            if wasRunning: 
+                self.start_live(waitForFirstImage=False)
             return
-        if frame.get_status() != 0:
-            self.__logger.error("Got an incomplete frame")
-            return
-        numpy_image = frame.get_numpy_array()
-        if numpy_image is None:
-            return
-        self.frame = numpy_image
-        self.frame_id = frame.get_frame_id()
-        self.timestamp = time.time()
+        elif source == 'External control':
+            self.camera.configuration = {'trigger': self.trigger_type[3]}
+            if wasRunning: 
+                self.start_live(waitForFirstImage=False)
+            return            
+        else:
+            raise ValueError(f'Invalid trigger source "{source}"')
+        self.start_live()
         
-        if self.binning > 1:
-            numpy_image = cv2.resize(numpy_image, dsize=None, fx=1/self.binning, fy=1/self.binning, interpolation=cv2.INTER_AREA)
-    
-        self.frame_buffer.append(numpy_image)
-        self.frameid_buffer.append(self.frame_id)
+    def setFrameBuffer(self, nFrameBuffer=10, waitForFirstImage=False):
+        wasRunning = self.camera.is_recording
+        if wasRunning:
+            self.stop_live()
+        if nFrameBuffer == -1:
+            nFrameBuffer = self.defaultBufferSize
+        self.start_live(waitForFirstImage=waitForFirstImage, nFrameBuffer=nFrameBuffer)
+            
+
     
 
 # Copyright (C) ImSwitch developers 2021

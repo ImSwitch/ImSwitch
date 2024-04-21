@@ -37,6 +37,7 @@ def initLogger(obj, *, instanceName=None, tryInheritParent=False):
     class, object or string. """
 
     logger = None
+
     if tryInheritParent:
         # Use logger from first parent in stack that has one
         for frameInfo in inspect.stack():

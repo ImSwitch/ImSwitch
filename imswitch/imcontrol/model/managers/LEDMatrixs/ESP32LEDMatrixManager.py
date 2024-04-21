@@ -27,8 +27,8 @@ class ESP32LEDMatrixManager(LEDMatrixManager):
             self.Nx = LEDMatrixInfo.managerProperties['Nx']
             self.Ny = LEDMatrixInfo.managerProperties['Ny']
         except:
-            self.Nx = 8
-            self.Ny = 8
+            self.Nx = 4
+            self.Ny = 4
 
         # extract the special patterns from the user defined file
         try:
@@ -53,10 +53,10 @@ class ESP32LEDMatrixManager(LEDMatrixManager):
         r = self.mLEDmatrix.send_LEDMatrix_array(pattern, getReturn = getReturn)
         return r
 
-    def setAll(self, state=(0,0,0), intensity=None):
+    def setAll(self, state=(0,0,0), intensity=None, getReturn=True):
         # dealing with on or off,
         # intensity is adjjusting the global value
-        self.mLEDmatrix.setAll(state, intensity)
+        self.mLEDmatrix.setAll(state=state, intensity=intensity, getReturn=getReturn)
 
     def setPattern(self, pattern):
         self.mLEDmatrix.pattern(pattern)

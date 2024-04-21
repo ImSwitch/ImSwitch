@@ -136,7 +136,8 @@ class DetectorManager(SignalInterface):
         except Exception:
             self.__logger.error(traceback.format_exc())
         else:
-            self.sigImageUpdated.emit(self.__image, init, self.scale)
+            if self.__image is not None:
+                self.sigImageUpdated.emit(self.__image, init, self.scale)
 
     def setParameter(self, name: str, value: Any) -> Dict[str, DetectorParameter]:
         """ Sets a parameter value and returns the updated list of parameters.

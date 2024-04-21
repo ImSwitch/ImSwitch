@@ -5,15 +5,8 @@ from .DetectorManager import DetectorManager, DetectorAction, DetectorNumberPara
 
 
 class VirtualCameraManager(DetectorManager):
-    """ DetectorManager that deals with TheImagingSource cameras and the
+    """ DetectorManager that deals with a virtual camera and the
     parameters for frame extraction from them.
-
-    Manager properties:
-
-    - ``cameraListIndex`` -- the camera's index in the Allied Vision camera list (list
-      indexing starts at 0); set this string to an invalid value, e.g. the
-      string "mock" to load a mocker
-    - ``av`` -- dictionary of Allied Vision camera properties
     """
 
     def __init__(self, detectorInfo, name, **_lowLevelManagers):
@@ -26,7 +19,7 @@ class VirtualCameraManager(DetectorManager):
         
         # assign the camera from the Virtual Microscope
         self._camera = self.VirtualMicroscope._camera
-
+        
         # get the pixel size from the camera
         fullShape = (self._camera.SensorWidth,
                 self._camera.SensorHeight)

@@ -1,13 +1,13 @@
 import numpy as np
 import datetime
+import tifffile as tif
 try:
     import NanoImagingPack as nip
     isNIP = True
 except:
     isNIP = False
 import time
-import threading
-import collections
+import os
 from imswitch.imcommon.model import dirtools, modulesconfigtools, ostools, APIExport
 from imswitch.imcommon.framework import Signal, Worker, Mutex, Timer
 from imswitch.imcontrol.view import guitools
@@ -15,7 +15,7 @@ from imswitch.imcommon.model import initLogger
 from ..basecontrollers import LiveUpdatedController
 import imswitch
 from threading import Thread
-
+from imswitch.imcontrol.model import RecMode, SaveMode, SaveFormat
 
 class FlowStopController(LiveUpdatedController):
     """ Linked to FlowStopWidget."""
@@ -25,17 +25,37 @@ class FlowStopController(LiveUpdatedController):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._logger = initLogger(self, tryInheritParent=False)
-
+        
+        # load from config file in User/Documents/ImSwitchConfig
+        self.wasRunning = self._master.FlowStopManager.defaultConfig["wasRunning"]
+        self.defaultFlowRate = self._master.FlowStopManager.defaultConfig["defaultFlowRate"]
+        self.defaultNumberOfFrames = self._master.FlowStopManager.defaultConfig["defaultNumberOfFrames"]
+        self.defaultExperimentName = self._master.FlowStopManager.defaultConfig["defaultExperimentName"]
+        self.defaultFrameRate = self._master.FlowStopManager.defaultConfig["defaultFrameRate"]
+        self.defaultSavePath = self._master.FlowStopManager.defaultConfig["defaultSavePath"]
+        self.pumpAxis = self._master.FlowStopManager.defaultConfig["defaultAxisFlow"]
+        self.focusAxis = self._master.FlowStopManager.defaultConfig["defaultAxisFocus"]
+        self.defaultDelayTimeAfterRestart = self._master.FlowStopManager.defaultConfig["defaultDelayTimeAfterRestart"]
+        self.tSettle = 0.05
+        
         # select detectors
         allDetectorNames = self._master.detectorsManager.getAllDeviceNames()
-        self.detectorFlowCam = allDetectorNames[0]
+        self.detectorFlowCam = self._master.detectorsManager[allDetectorNames[0]]
+        
         self.is_measure = False
+        
+        # select light source and activate
+        allIlluNames = self._master.lasersManager.getAllDeviceNames()
+        ledSource = self._master.lasersManager[allIlluNames[0]]
+        ledSource.setValue(1023)
+        ledSource.setEnabled(1)
         # connect camera and stage
         self.positionerName = self._master.positionersManager.getAllDeviceNames()[0]
         self.positioner = self._master.positionersManager[self.positionerName]
-        # self.imageComputationWorker.setPositioner(self.positioner)
-        self.pumpAxis = 'Y'
-        self.focusAxis = 'Z'
+
+        # start live and adjust camera settings to auto exposure
+        self.changeAutoExposureTime('auto')
+        
         # Connect FlowStopWidget signals
         if not imswitch.IS_HEADLESS:
             # Connect CommunicationChannel signals
@@ -47,14 +67,28 @@ class FlowStopController(LiveUpdatedController):
             self._widget.sigGainChanged.connect(self.changeGain)
             self._widget.sigPumpDirectionToggled.connect(self.changePumpDirection)
 
-
             # Connect buttons
             self._widget.buttonStart.clicked.connect(self.startFlowStopExperimentByButton)
             self._widget.buttonStop.clicked.connect(self.stopFlowStopExperimentByButton)
             self._widget.pumpMovePosButton.clicked.connect(self.movePumpPos)
             self._widget.pumpMoveNegButton.clicked.connect(self.movePumpNeg)
-            # start measurment thread (pressure)
-
+            
+        # start thread if it was funning 
+        if self.wasRunning:
+            timeStamp = datetime.datetime.now().strftime("%Y_%m_%d-%I-%M-%S_%p")
+            experimentName = self.defaultExperimentName
+            experimentDescription = ""
+            uniqueId = np.random.randint(0, 2**16)
+            numImages = self.defaultNumberOfFrames
+            volumePerImage = self.defaultFlowRate
+            timeToStabilize = self.tSettle
+            delayToStart = self.defaultDelayTimeAfterRestart
+            frameRate = self.defaultFrameRate
+            filePath = self.defaultSavePath
+            self.startFlowStopExperiment(timeStamp, experimentName, experimentDescription, 
+                                         uniqueId, numImages, volumePerImage, timeToStabilize, delayToStart, 
+                                         frameRate, filePath)
+            
     def startFlowStopExperimentByButton(self):
         """ Start FlowStop experiment. """
         self.is_measure=True
@@ -88,9 +122,15 @@ class FlowStopController(LiveUpdatedController):
         return self.is_measure, self.imagesTaken
 
     @APIExport(runOnUIThread=True)
-    def startFlowStopExperiment(self, timeStamp: str, experimentName: str, experimentDescription: str, uniqueId: str, numImages: int, volumePerImage: float, timeToStabilize: float):
+    def startFlowStopExperiment(self, timeStamp: str, experimentName: str, experimentDescription: str, 
+                                uniqueId: str, numImages: int, volumePerImage: float, timeToStabilize: float, 
+                                delayToStart: float=1, frameRate: float=1, filePath: str="./"):
         """ Start FlowStop experiment. """
-        self.thread = Thread(target=self.flowExperimentThread, name="FlowStopExperiment", args=(timeStamp, experimentName, experimentDescription, uniqueId, numImages, volumePerImage, timeToStabilize))
+        self.thread = Thread(target=self.flowExperimentThread, 
+                             name="FlowStopExperiment", 
+                             args=(timeStamp, experimentName, experimentDescription, 
+                                   uniqueId, numImages, volumePerImage, timeToStabilize,
+                                   delayToStart, frameRate, filePath))
         self.thread.start()
 
     def stopFlowStopExperimentByButton(self):
@@ -110,8 +150,11 @@ class FlowStopController(LiveUpdatedController):
             self._widget.buttonStop.setStyleSheet("background-color: grey")
             self._widget.buttonStart.setStyleSheet("background-color: green")
 
-
-    def flowExperimentThread(self, timeStamp: str, experimentName: str, experimentDescription: str, uniqueId: str, numImages: int, volumePerImage: float, timeToStabilize: float):
+    def flowExperimentThread(self, timeStamp: str, experimentName: str, 
+                             experimentDescription: str, uniqueId: str, 
+                             numImages: int, volumePerImage: float, 
+                             timeToStabilize: float, delayToStart: float=0, 
+                             frameRate: float=1, filePath:str="./"):
         ''' FlowStop experiment thread.
         The device captures images periodically by moving the pump at n-steps / ml, waits for a certain time
         and then moves on to the next step. The experiment is stopped when the user presses the stop button or
@@ -120,8 +163,19 @@ class FlowStopController(LiveUpdatedController):
         User supplied parameters:
 
         '''
+        self._logger.debug("Starting the FlowStop experiment thread in {delayToStart} seconds.")
+        time.sleep(delayToStart)
+        self._commChannel.sigStartLiveAcquistion.emit(True)
         self.is_measure = True
-        for i in range(numImages):
+        if numImages < 0: numImages = np.inf
+        self.imagesTaken = 0
+        dirPath  = os.path.join(dirtools.UserFileDirs.Root, 'recordings', timeStamp)
+        if not os.path.exists(dirPath):
+            os.makedirs(dirPath)
+        while True:
+            currentTime = time.time()
+            self.imagesTaken += 1
+            if self.imagesTaken > numImages: break
             if self.is_measure:
                 stepsToMove = volumePerImage
                 self.positioner.move(value=stepsToMove, speed=1000, axis=self.pumpAxis, is_absolute=False, is_blocking=True)
@@ -136,13 +190,18 @@ class FlowStopController(LiveUpdatedController):
                     'timeToStabilize': timeToStabilize,
                 }
                 self.setSharedAttr('FlowStop', _metaDataAttr, metaData)
-                mFileName = f'{timeStamp}_{experimentName}_{uniqueId}_{i}'
-                self.snapImageFlowCam(mFileName, metaData)
-                time.sleep(timeToStabilize)
-                self.imagesTaken = i
+                
 
+                # save image                    
+                mFileName = f'{timeStamp}_{experimentName}_{uniqueId}_{self.imagesTaken}'
+                mFilePath = os.path.join(dirPath, mFileName)
+                self.snapImageFlowCam(mFilePath, metaData)
+                
+                # maintain framerate
+                while (time.time()-currentTime)<(1/frameRate):
+                    time.sleep(0.05)
                 if not imswitch.IS_HEADLESS:
-                    self._widget.labelStatusValue.setText(f'Running: {i+1}/{numImages}')
+                    self._widget.labelStatusValue.setText(f'Running: {self.imagesTaken+1}/{numImages}')
             else:
                 break
 
@@ -155,17 +214,22 @@ class FlowStopController(LiveUpdatedController):
         finally:
             self.settingAttr = False
 
-
     @APIExport(runOnUIThread=True)
     def snapImageFlowCam(self, fileName=None, metaData={}):
         """ Snap image. """
         if fileName is None or not fileName:
             fileName = datetime.datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
 
-        from imswitch.imcontrol.model import RecMode, SaveMode, SaveFormat
-        pngFormat = SaveFormat.PNG
-        saveMode = SaveMode.Disk
-        self._master.recordingManager.snap([self.detectorFlowCam], saveMode=saveMode, saveFormat=pngFormat, savename=fileName, attrs=metaData)
+        if 1:
+            mFrame = self.detectorFlowCam.getLatestFrame()  
+            if mFrame is None:
+                self._logger.warning("No frame received from the camera.")
+                return
+            tif.imsave(fileName, mFrame, append=False)
+        else:
+            pngFormat = SaveFormat.PNG
+            saveMode = SaveMode.Disk
+            self._master.recordingManager.snap([self.detectorFlowCam], saveMode=saveMode, saveFormat=pngFormat, savename=fileName, attrs=metaData)
 
     def movePumpPos(self):
         self.positioner.moveRelative((0,0,1*self.directionPump))
@@ -182,10 +246,16 @@ class FlowStopController(LiveUpdatedController):
         self.speedPump = value
         self.positioner.moveForever(speed=(self.speedPump,self.speedRotation,0),is_stop=False)
 
+    @APIExport(runOnUIThread=True)
     def changeExposureTime(self, value):
         """ Change exposure time. """
-        self.detectorFlowCam.setExposureTime(value)
-
+        self.detector.setParameter(name="exposure", value=value)
+    
+    @APIExport(runOnUIThread=True)
+    def changeAutoExposureTime(self, value):
+        """ Change auto exposure time. """
+        self.detectorFlowCam.setParameter(name="exposure_mode", value=value)
+        
     def changeGain(self, value):
         """ Change gain. """
         self.detectorFlowCam.setGain(value)

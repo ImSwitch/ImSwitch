@@ -22,7 +22,7 @@ class LEDMatrixWidget(Widget):
         self.__logger = initLogger(self, instanceName="LEDMatrixWidget")
 
 
-    def add_matrix_view(self, nLedsX = 4, nLedsY=6):
+    def add_matrix_view(self, nLedsX = 4, nLedsY=4):
         """Create matrix Layout Interface"""
 
         # Create dictionary to hold buttons
@@ -34,8 +34,8 @@ class LEDMatrixWidget(Widget):
         buttons = {}
         for ix in range(nLedsX):
             for iy in range(nLedsY):
-                buttons[str(nLedsX*iy+ix)]=(ix,iy)
-
+                buttons[str(nLedsX*iy+ix)]=(iy,ix)
+        
         # Create leds (buttons) and add them to the grid layout
         for corrds, pos in buttons.items():
             self.leds[corrds] = guitools.BetterPushButton(corrds)

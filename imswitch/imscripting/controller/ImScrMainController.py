@@ -50,7 +50,7 @@ class ImScrMainController(MainController):
             )
         })
         scope.update(getActionsScope(scope.copy()))
-
+        
         return scope
 
     def closeEvent(self):

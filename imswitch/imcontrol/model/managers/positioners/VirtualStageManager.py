@@ -36,6 +36,9 @@ class VirtualStageManager(PositionerManager):
         #FIXME: for i, iaxis in enumerate(("A","X","Y","Z")):
         #    self._position[iaxis] = self._motor._position[i]
 
+    def moveForever(self, speed=(0, 0, 0, 0), is_stop=False):
+        pass
+
     def setSpeed(self, speed, axis=None):
         pass
     
@@ -46,7 +49,6 @@ class VirtualStageManager(PositionerManager):
         # load position from device
         # t,x,y,z
         allPositionsDict = self._positioner.get_position()
-
         return allPositionsDict
 
     def forceStop(self, axis):

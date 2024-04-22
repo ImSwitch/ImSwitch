@@ -82,7 +82,7 @@ class CameraTIS4:
     def grabFrame(self):
         # self.exposure is always us, but the camera needs ms -> factor 1000
         # the constant 30 is found experimentally for short exposure times
-        print(np.ceil(30 + 2.2 * self.exposure/1000).astype(int))
+        # print(np.ceil(30 + 2.2 * self.exposure/1000).astype(int))
         image = self.snapSink.snap_single(np.ceil(300 + 2.2 * self.exposure/1000).astype(int))
         frame = image.numpy_copy()[:, :, 0]
 

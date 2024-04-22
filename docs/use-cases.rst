@@ -14,8 +14,8 @@ Parallelized confocal and RESOLFT (MoNaLISA)
 Here we explain how we implemented ImSwitch for `MoNaLISA <https://www.nature.com/articles/s41467-018-05799-w>`_. In the article, you will find more information
 about the setup and how the data is reconstructed.
 
-Configuration file and hardware specifications
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Configuration file and MoNaLISA hardware specifications
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 For this microscope use case, we created the JSON file ``example_monalisa.json``, located at ``/imswitch/_data/user_defaults/imcontrol_setups/example_monalisa.json``
 
 We chose a National Instruments Data Acquisition (NIDAQ) card for managing the synchronization of the devices.
@@ -67,8 +67,8 @@ Point-scanning confocal and STED
 ----------------------------------
 Here we explain how we implemented ImSwitch for a `custom-built STED setup <https://doi.org/10.1088/1361-6463/ab4c13>`_ in the lab, previously controlled by a combination of closed-source software (image acquisition) and purpose-built software (hardware control). In the article, you will find more information about the setup, what hardware it contains, and the type of image acquisition we want to perform.
 
-Configuration file and hardware specifications
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Configuration file and STED hardware specifications
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 For this microscope use case, we created the JSON file ``example_sted.json``, located at ``/imswitch/_data/user_defaults/imcontrol_setups/example_sted.json``
 
 We chose a National Instruments Data Acquisition (NIDAQ) card for managing the synchronization of the devices and image acquisition.
@@ -150,122 +150,211 @@ contact:
 * `David Palecek (CCMAR, Portugal) <mailto:dpalecek@ualg.pt>`_
 * `Teresa Correia (CCMAR, Portugal) <mailto:tmcorreia@ualg.pt>`_
 
-.. .. image:: ./images/OPT_GUI.png
-..     :width: 600px
-..     :align: center
+.. image:: ./images/opt-scan-controller.png
+    :width: 600px
+    :align: center
 
-Optical Projection Tomography (OPT) is an optical analogue of a X-ray computer tomography used
-in medical imaging. Imswitch implementation aims to provide user-friendly access to end-to-end
-pipeline for the OPT, which consist of indispensible steps described below.
+Optical Projection Tomography (OPT) is an optical analogue of X-ray computer tomography used
+in medical imaging. OPT can be performed leveraging any microscopy contrast, most widespread
+used ones are transmission, fluorescence or polarizaiton.Imswitch implementation aims to provide
+user-friendly access to end-to-end pipeline for the OPT, which consist of these indispensible steps:
+
+#. Hardware control and data acquisition
+#. Data preprocessing
+#. Tomography volume reconstruction (CPU and GPU, FBP and deep learning)
+
+All of them can be performed within imswitch, since step 2. and 3. are implemented as napari plugins, 
+and napari is an integral part of imswitch.
 
 Hardware control
 ^^^^^^^^^^^^^^^^^^^^^^^^
-
 The setup consists of collimated light-source, diffuser, sample mounted on a rotational stage,
 in the refractive index matched medium and infinity corrected objective imaging the
 2D projections onto the CMOS camera. All elements are aligned on the camera optical axis.
 
+Configuration file and OPT hardware specifications
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+For this microscope use case, we created the JSON file ``example_OPTFull4Wire.json``, located at ``/imswitch/_data/user_defaults/imcontrol_setups/example_OPTFull4Wire.json``.
+
+In the JSON file, one detector is specified for the imaging: DMK 37BUX252 is controlled by ``TIS4Manager`` set for
+gray-scale 12bit frame acquisition. The exposure time is upon startup is defined in `us` for ``TIS4Manager``, however
+many other managers use `ms`.
+
+The rotational stage is controlled via ``TelemetrixRotatorManager``, which controls the Arduino board.
+Configure your pin connections via ``piConfig`` in the configuration file. The number of steps per revolution of the
+motor is set by ``stepsPerTurn`` parameter.
+
+Scan widget type is set to ``OPT`` and the rest of the parameters are not important. ``optInfo`` serves the purpose of
+specifying hardware, which is to be used for OPT, in case many cameras and rotators are connected.
+
+
 Camera control
 ~~~~~~~~~~~~~~~~
 Camera is software-triggered in the snapping mode. The exposure time is set in the settings
-widget on the left. Wait constant is set equal to exposure time in order to avoid blurring of
-images for long exposure times, since snad retrieves last frame in the queue, therefore the request
-is delayed by the wait time.
+widget on the left. 
 
-
-
-Please help us improve and open issues or ask help to implement your own hardware. Or report to us successful
-implementations of the hardware you have used to report it here.
+`Technical note`: Wait constant is set equal to exposure time in order to avoid blurring of
+images for long exposure times, since snap retrieves last frame in the queue, therefore the request
+is delayed by the wait time. It can be changed only in the source code at the moment in ``ScanOPTWorker``
+class.
 
 Rotational stage control
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-The rotational stage is a stepper motor, which can be 2 phase or 4 phase. The number of steps per revolution
-needs to be provided in the json configuration file. The motor is controlled by the `Big Easy Driver <https://www.sparkfun.com/products/12859>`_ and Arduino.
-Library used was `telemetrix <https://mryslab.github.io/telemetrix/>`_, which is python interface based on accellStepper library.
+The rotational stage is a stepper motor, which can be 2 phase or 4 phase. The number of steps per
+revolution needs to be provided in the json configuration file. The motor is controlled by the
+`Big Easy Driver <https://www.sparkfun.com/products/12859>`_ and Arduino.
+Library used was `telemetrix <https://mryslab.github.io/telemetrix/>`_, which is python interface
+based on accellStepper library.
+
+Great resources for the Arduino stepper motor control and wiring can be found for example here:
+
+* `28BYJ-48 Stepper Motor <https://lastminuteengineers.com/28byj48-stepper-motor-arduino-tutorial/>`_.
+* `NEMA 17 motors <https://howtomechatronics.com/tutorials/arduino/stepper-motors-and-arduino-the-ultimate-guide/>`_.
 
 Tested HW
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Cameras:
 
-* `TIS DMK 37BUX252` (USB industrial grade camera, ``TISManager``, ``TIS4Manager``)
+* `TIS DMK 37BUX252` (USB industrial grade camera, ``TISManager``, ``TIS4Manager``), ``TISManager`` uses older ic3.5 API, while ``TIS4Manager`` implements the newest ic4 API, which should support most of the `TIS cameras <https://www.theimagingsource.com/en-us/product/software/icimagingcontrol/>`_.
 
 Rotational stages:
 
-* `Simple stepper 28BYJ-48` (comes with Arduino UNO, ``TelemetrixRotatorManager``), 2048 steps (not precise, because the gears are TODO). It has a magnetic shaft, which is convenient for sample mounting, however the motor is quite useless for OPT due to the low precision and shaft crookedness.
-* `Nanotec ST4118M1804-L <https://en.nanotec.com/products/1271-st4118m1804-a>`_ (4 phase stepper motor, ``TelemetrixRotatorManager``), 3200 steps, good quality, backlash free, but requires a driver, we used Easy driver.
+* `Simple stepper 28BYJ-48 <https://lastminuteengineers.com/28byj48-stepper-motor-arduino-tutorial/>`_ (comes with Arduino UNO, ``TelemetrixRotatorManager``), 2048 steps (beware, the gears might be `off <https://forum.arduino.cc/t/28byj-48-steps-per-revolution/876716>`_). It has a magnetic shaft, which is convenient for sample mounting, however the motor is quite useless for OPT due to the low precision and shaft crookedness.
+* `Nanotec ST4118M1804-L <https://en.nanotec.com/products/1271-st4118m1804-a>`_ (4 phase stepper motor, ``TelemetrixRotatorManager``), 3200 steps, good quality, backlash free, but requires a driver, we used `BigEasy <https://www.sparkfun.com/products/12859>`_` driver.
 
-Rotational axis of the sample needs to be as close to perpendicular to the optical axis as possible.
-Even though the center of rotation (COR) is always corrected for in the reconstruction, for depth of field
-and resolution reasons it is better to have the sample as close to the center of the camera as possible.
-Therefor we provide an alignment widget to help with this task.
+Please help us improve and open issues or ask help to implement your own hardware. Or report to us successful
+implementations of your hardware combination to report it here.
 
 Alingment widget
 ^^^^^^^^^^^^^^^^^^^^^^^^
+Rotational axis of the sample needs to be as close to perpendicular to the optical axis as possible, while
+also aligned on the central column ot the camera chip.
+Even though the center of rotation (COR) is always corrected for in the reconstruction, for depth of field
+and resolution reasons it is better to have the sample as close to the center of the camera as possible.
+Therefore we provide an alignment widget to help with this task. 
 
-.. .. image:: ./images/alignment_GUI.png
-..     :width: 600px
-..     :align: center
-
-Rotational axis of the sample needs to be perpendicular to the optical axis and aligned as close to
-the center column of the camera as possible. The alignment procedure allows to acquire 2 projections
-at 0 and 180 degrees, which for mirror images to each other. Flipping one of them and merging them, if
-the mirror axis is exactly at the center column, the merged image will show a single step function and
+The alignment procedure allows to acquire 2 projections
+at 0 and 180 degrees, which are mirror images to each other. After Flipping one of them and
+calculating mean of the two, if
+the motor axis is perfectly centered, the merged image will show a single step function and
 single cross-sectional profile matching exactly the one which is acquired at 0 degrees.
 
-The widget shows the overlays and matching via whole image, camera horizontal lines cuts
-and crosscorrelation function.
+The widget shows enables to compare merge as image, camera horizontal cuts (H-cuts)
+and cross-correlation of the H-cuts.
 
-The x-shift allows to shift the image in the horizontal direction, which is useful for getting an idea
-how far from the center you currently are. x-shift is in pixels so once you find the best overlay, 
-you are `x-shift * pixel_size` away from the vertical axis of the chip.
-
+Full Example
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 First align the shaft in respect to the camera field of view without the sample:
 
-#. Align the motor shaft that it spans the whole camera vertical field of view.
-#. Follow the procedure above to get it centered.
-#. Select rows close to the bottom and top of your camera field of view.
-#. Plot the slices, if they are shifted in respect to each other, and you see double step function in one of them, your motor shaft is tilted sideways.
-#. Adjust the motor shaft tilt until the slices are perfectly aligned. For that we have the motor mounted on `Kinematic Platform Base <https://www.thorlabs.com/thorproduct.cfm?partnumber=KM200B/M>`_.
+.. image:: ./images/opt-alignment-shaft01.png
+    :width: 600px
+    :align: center
 
-#. You can approximately check the tilt along the optical axis. Attach a `rigid flange <https://www.amazon.com/Rigid-Flange-Coupling-Coupler-Connector/dp/B06Y6MSYCS?th=1>`_ to the motor shaft.
+#. Make the shaft span vertically most of the camera chip.
+#. Acquire the 0 and 180 degree projections by pressing ``Acquire`` button in the ``OPT Alignment`` widget.
+#. Select a row Plot the slices, if you see a step function in the `merge`, the shaft is off the chip center.
+#. The x-shift allows to shift one of the image in the horizontal direction, which is useful for getting an idea how far from the center you currently are. x-shift is in pixels so once you find the best overlay, you are `x-shift * pixel_size` away from the vertical axis of the chip.
+#. Adjust (and re-acquire) the motor shaft horizontal position until the images/slices are perfectly aligned.
+
+#. For the tilt correction, the motor mounted on `Kinematic Platform Base <https://www.thorlabs.com/thorproduct.cfm?partnumber=KM200B/M>`_, which allows for independent alignment of a shaft tilt along the optical axis and perpendicularly to it.
+#. For sideways tilt, select two H-cuts, which are close to the bottom and top of your camera field of view.
+#. Since the shaft is already centered, the H-cuts show single step function. However, if they are not perfectly on top of each other, the shaft is tilted sideways. Adjust the tilr, and re-acquire until match is achieved.
+
+.. image:: ./images/opt-alignment-shaft02.png
+    :width: 600px
+    :align: center
+
+#. You can approximately check the tilt along the optical axis too. Attach a `rigid flange <https://www.amazon.com/Rigid-Flange-Coupling-Coupler-Connector/dp/B06Y6MSYCS?th=1>`_ to the motor shaft.
 #. Adjust the height of the flange so that the top edge is close to the central line of the camera.
 #. Change focusing to the front and back edge of the flange.
-#. If the shaft is tilted away from the camera, the flange ruther from the camera will be clearly visible in the image.
-#. On the other hand, if the shaft is tilted towards the camera, the far away flange will never be visible.
-#. Adjust the tilt, that the close and far edge of the flange are align in height, and perfectly shadowing each other.
+#. If the shaft is tilted away from the camera, the flange further from the camera will be clearly visible in the image.
+#. On the other hand, if the shaft is tilted towards the camera, the far-away flange will never be visible.
+#. Adjust the tilt, that the close and far edge of the flange are aligned in height, and perfectly shadowing each other.
 
 Now the motor is perfectly align, however after mounting the sample, the sample needs to be
-centered in respect to the shaft and the camera chip. 
+centered in respect to both the motor shaft in an analogous procedure as described above.
 
-
-* Example
-    
-    Consider motor shaft being imaged on the camera. If rotational axis of the shaft is not
-    at the center column pixel, the merged overlay of projection at 0 degrees and mirrored projection
-    at 180 degrees will show a double step function instead of single step from background light to
-    dark shaft shadow.
-
-    Tilt of the shaft is visible as two horizontal
-    cuts through the camera row 100 (red) and row 1600 (blue), which need to match perfectly
-
-
+.. image:: ./images/opt-alignment-fish.png
+    :width: 600px
+    :align: center
 
 OPT acquisition
 ^^^^^^^^^^^^^^^^^^^^^^^^
+Supposing the motor shaft is aligned in respect to the camera chip, align the mounted sample in respect to
+the motor shaft in an analogous way as described above. After the alignment, the acquisition itself is trivial.
+Define number
+of OPT steps you want to acquire. `Note:` If the number of steps does not divide the number of motor steps per revolution without
+remaider, confirmation will be requested whether to proceed with the acquisition. If yes, you introduce certain rounding error
+casting the requested steps (real numbers) to the ones of the motor (integer numbers). Ee have not tested experimentally, how big
+of an effect this has on the resulting reconstruction.
+
+For live reconstruction, define the row index, which will be reconstructed in real time. If the index
+is out of range, central row of the camera will be reconstructed.
+
+.. image:: ./images/opt-acq01.png
+    :width: 600px
+    :align: center
+
+Select whether to save the data (to the ``recordings`` folder), the folder name is a datetime string.
+By default all projections will be also kept in RAM for postprocessing and napari viewer will display all
+acquired projections so far in a 3D stack. This can be disabled by checking the ``noRAM`` option, which
+results in faster acquisition, but only last projection will be displayed in the viewer during the OPT
+acquisition.
+
+At this time, only tiff format is supported for saving the data. Metadata are saved in ``metadata.json`` for every
+OPT acquisition scan. The metadata contains all the information about the acquisition, as well as hardware settings, with
+the exception of optics/sample description.
+
+OPT experiment begins after pressing ``Start`` button.. 
+
+You can check the time per acquisiiton operation in the report, looking similar to the one below, which is also saved
+in the metadata file.
+
+.. image:: ./images/opt-acq02.png
+    :width: 600px
+    :align: center
 
 Corrections
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Correction are saved always in the ``recordings/corrections/`` folder. All corrections are subjected to averaging set by the ``Averages`` parameter.
+
+The hot pixel correction can be used to identify both hot pixels (relevant for fluorescence acquisitions with
+long exposures), as well as dead pixels (relevant for brightfield acquisitions with short exposures). For hot
+pixel correction, use as long exposure as possible, to make the hot pixels visible. The STD cutoff is used just
+to provide illustrative information on how many hot pixels are detected. None of that information is saved or is binding
+
+Dark-field correction is used to correct for the background light, which is detected even without
+any light source. To facilitate subtraction, the dark-field acquisition should have the same exposure time as the
+acquisition of the experiment.
+
+Bright-field correction is used to correct for the uneven illumination of the field of, i.e. sample. In principle it is relevant
+mostly for transmission measurements, however, reflection/scatter of the excitation and leakage through the emission filter or very low emissive
+sample might result in need of bright-field correction for the fluorescence too (should be avoided however, because the major reflector
+and scattrer is the sample itself, and therefore precise bright-field is difficult to get). The bright-field acquisition
+should have the same exposure time as the acquisition of the experiment.
+
+Intensity correction for fluctuating light source intensity is applied separately in the preprocessing widget
+and essentially tracks intensity of corners of the camera along the volume acquisiiton.
+
+Practical notes
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+* For short exposure times on the order of 10s of ms, the motor stepping is the limiting factor in the speed of the acquisition. For longer exposure times, necessary for fluorescence imaging, the camera snap time will dominate the scan time. 
+* If you want to acquire same datasets at different conditions, do not set zero on the rotator, and do NOT run the continuous rotation. Both will result in losing your rotator 0 posision.
+* Use preferably the ``noRAM`` option, because it speeds up the acquisiiton, as the time to update the viewer with the 3D volume is linearly increasing (O(n)) and can be significant for big volumes.
 
 Demo experiment
-^^^^^^^^^^^^^^^^^^^^^^^^
-
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Even without a hardware, OPT widget allows to simulate and experiment on the Shepp-Logan
-phantom.
+phantom. Check the ``demo`` checkbox and the widget will simulate the acquisition of the phantom.
+Phantom size is defined by ``opt steps`` parameter, and the full Phantom volume will be sized as
+`opt steps` x `opt steps` x `opt steps`. The big cubes might take some time to generate. 
+If the rotator is connected, it will move in correct steps.
+Live reconstruction is also available, which will show the reconstructed slice progress in real time.
 
 
-Napari OPT preprocessing module
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Download  `OPT preprocessing`  napari pluging from. This allows you to preprocess the OPT data
+Napari OPT preprocessing module (Not yet implemented)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Download  `OPT preprocessing`  napari pluging from XX. This allows you to preprocess the OPT data
 before final reconstruction step. So far it provides following functionalities which are documented
 in the plugin documentation:
 
@@ -274,24 +363,25 @@ in the plugin documentation:
 * Hot pixel correction
 * Dark-field correction
 * Bright-field correction
+* Intensity correction
 * -log transformation (for tranmission or visualization purposes)
 
 In case you `did not` select ``noRam`` acquisition, the plugin is designed to process the 
-acquired OPT stack with the corrections which are either in separate layers, or cna be loaded separately.
+acquired OPT stack with the corrections which are either in separate layers, or caa be loaded separately.
+
+Please open feature requests or issues on the plugin github page XX.
 
 
-Napari deep learning reconstruction
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
+Napari deep learning reconstruction (Not yet implemented)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 For the reconstruction of the OPT data, we provide a deep learning reconstruction plugin for Napari, which
 includes also standard Filter Back Projection (FBP) reconstruction. The plugin is available at
 `napari-hub <https://www.napari-hub.org/plugins/napari-tomodl>`_. The plugin preprocessing steps
-partially overlap
+partially overlap with the OPT preprocessing plugin, but the reconstruction reconstruction is the
+main focus of this plugin. Please open issues or feature requests on the plugin github page XX.
 
 * COR axis alignment
 * Volume reshaping (binning)
 * Removing circular edge from the acquisition
 * filtering
 * Reconstruction method (with and without GPU support)
-
-

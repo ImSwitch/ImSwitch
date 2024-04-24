@@ -87,6 +87,7 @@ class Camera:
                         
             # Adjust illumination
             image = (image * light_intensity).astype(np.uint16)
+            time.sleep(0.1)
             return image
         
     def getLast(self):

@@ -1,20 +1,16 @@
 import rpyc
-from rpyc.utils.server import ThreadedServer
+import numpy as np
+from rpyc.utils.server import OneShotServer
 
-class ArithmeticService(rpyc.Service):
-    """ A simple arithmetic service """
-    def exposed_add(self, x, y):
-        """ Returns the sum of x and y """
-        return x + y
 
-    def exposed_subtract(self, x, y):
-        """ Returns the difference of x and y """
-        return x - y
+class HelloService(rpyc.Service):
+    def get(self):
+        return np.random.rand(3, 3)
 
-def start_server():
-    # Create a threaded server on localhost port 18812
-    t = ThreadedServer(ArithmeticService, port=18812, auto_register=False)
-    t.start()
+    def remote_np(self):
+        return np
 
 if __name__ == "__main__":
-    start_server()
+    rpyc.lib.setup_logger()
+    server = OneShotServer(HelloService, port=8122, protocol_config={'allow_public_attrs': True, 'allow_pickle': True})
+    server.start()

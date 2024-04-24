@@ -19,8 +19,12 @@ from functools import wraps
 import os
 import socket 
 import time
-import zeroconf
-from zeroconf import ServiceInfo, Zeroconf
+try:
+    import zeroconf
+    from zeroconf import ServiceInfo, Zeroconf
+    IS_ZEROCONF = True
+except:
+    IS_ZEROCONF = False
 import socket
 from fastapi.middleware.cors import CORSMiddleware
 from http.server import HTTPServer, BaseHTTPRequestHandler
@@ -28,7 +32,7 @@ import os
 import threading
 try:
     from rpyc import Service
-    from rpyc.utils.server import ThreadedServer
+    from rpyc.utils.server import ThreadedServer, OneShotServer
     IS_RPYC = True
 except:
     IS_RPYC = False
@@ -105,14 +109,28 @@ class ImSwitchServer(Worker):
             # Registrieren Sie den Dienst bei RPyC
             def run_rpyc_server():
                 # print all methods inside the self.mRPYCService object
+                # https://github.com/tomerfiliba-org/rpyc/issues/350#issuecomment-539218873
                 print("Exposed methods:")
                 print(self.mRPYCService.__dict__)
+                
+                session_path = '/tmp/rpycsession'
+                if os.path.exists(session_path):
+                    os.remove(session_path)
+
                 for method in dir(self.mRPYCService):
                     #if not method.startswith("_"):
                         print(method)
-                t = ThreadedServer(self.mRPYCService, port=18861, auto_register=False)
+                server = OneShotServer(self.mRPYCService, port=18861, protocol_config={'allow_public_attrs': True, 'allow_pickle': True})                        
+                '''
+                server = ThreadedServer(self.mRPYCService, 
+                                   #port=18861,
+                                   socket_path=session_path,
+                                   auto_register=False,
+                                    protocol_config={ "allow_pickle": True, 
+                                                     'allow_public_attrs': True})
+                '''
                 self.__logger.debug("Starting RPyC server")
-                t.start()
+                server.start()
                 
             rpyc_thread = threading.Thread(target=run_rpyc_server)
             rpyc_thread.start()
@@ -144,8 +162,9 @@ class ImSwitchServer(Worker):
         self.__logger.debug("Stopping ImSwitchServer")
         self._daemon.shutdown()
         print("Unregistering...")
-        zeroconf.unregister_service(self.info)
-        zeroconf.close()
+        if IS_ZEROCONF:
+            zeroconf.unregister_service(self.info)
+            zeroconf.close()
 
 
     def get_ip(self):
@@ -172,14 +191,14 @@ class ImSwitchServer(Worker):
             port=server_port,
             properties={},
         )
-
-        zeroconf = Zeroconf()
-        print(f"Registering service {service_name}, type {service_type}, at {server_ip}:{server_port}")
-        try:
-            zeroconf.register_service(self.info)
-        except Exception as e:
-            print(f"Failed to register service: {e}")
-        
+        if not IS_ZEROCONF:
+            zeroconf = Zeroconf()
+            print(f"Registering service {service_name}, type {service_type}, at {server_ip}:{server_port}")
+            try:
+                zeroconf.register_service(self.info)
+            except Exception as e:
+                print(f"Failed to register service: {e}")
+            
 
     #@expose
     def testMethod(self):

@@ -75,6 +75,7 @@ setup(
         "aiortc >= 1.3.0",
         "juliacall",
         "UC2-REST", 
+        "rpyc" 
         
     ],
      extras_require={

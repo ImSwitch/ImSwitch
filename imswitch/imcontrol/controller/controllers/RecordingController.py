@@ -499,7 +499,7 @@ class RecordingController(ImConWidgetController):
             if toList:
                 return numpy_array.tolist()  # Convert the numpy array to a list
             else:
-                return numpy_array
+                return np.array(numpy_array)
         else:
             self.snap()
 

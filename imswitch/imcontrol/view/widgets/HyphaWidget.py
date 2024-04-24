@@ -96,7 +96,7 @@ class HyphaWidget(Widget):
         self._chatURLTextEdit.setText(url)
         self._chatURL = url
         try:
-            self.webView.load(QtCore.QUrl(self._chatURL))
+            self.webView.load(QtCore.QUrl(self._chatURL)) # TODO: check if the URL is valid for the login screen (don't use webbrowser!)
             # set tab active to chat
             self.tabWidget.setCurrentIndex(1)
             

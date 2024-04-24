@@ -172,43 +172,40 @@ class SIMInfo:
     pixelSize: float
     """ Pixel size or pixel pitch of the SLM, in millimetres. """
 
-    angleMount: float
+    angleMount: float = 0.0
     """ The angle of incidence and reflection of the laser line that is shaped
     by the SLM, in radians. For adding a blazed grating to create off-axis
     holography. """
 
-    patternsDir: str
+    patternsDir: str = ""
     """ Directory of .bmp images provided by Hamamatsu for flatness correction
     at various wavelengths. A combination will be chosen based on the
     wavelength. """
 
-    isSimulation: bool
 
-    isHamamatsuSLM: bool
+    fastAPISIM_host: str = "192.168.xxx.xxx"
 
-    fastAPISIM_host: str
+    fastAPISIM_port: str = "8000"
 
-    fastAPISIM_port: str
+    isFastAPISIM: bool = False
 
-    isFastAPISIM: bool
+    nRotations: int = 3
 
-    nRotations: int
+    nPhases: int = 3
 
-    nPhases: int
-
-    simMagnefication: float
+    simMagnefication: float = 1.0
     
-    isFastAPISIM: bool
+    isFastAPISIM: bool = False
 
-    simPixelsize: float
+    simPixelsize: float = 1.0
 
-    simNA: float
+    simNA: float = 1.0
 
-    simETA: float
+    simETA: float = 1.0
 
-    simN: float
+    simN: float = 1.0
     
-    tWaitSequence: float
+    tWaitSequence: float = 0.0
 
 
 @dataclass(frozen=True)

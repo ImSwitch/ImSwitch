@@ -222,7 +222,6 @@ class PositionerController(ImConWidgetController):
     @APIExport(runOnUIThread=True)
     def movePositionerForever(self, speed=(0, 0, 0, 0), is_stop=False):
         self.move_forever(speed=speed, is_stop=is_stop)
-   
 
     @APIExport(runOnUIThread=True)
     def setPositioner(self, positionerName: str, axis: str, position: float) -> None:

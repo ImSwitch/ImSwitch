@@ -1,6 +1,7 @@
 import imswitch
 from pyqtgraph.dockarea import Dock, DockArea
 from qtpy import QtCore, QtWidgets
+from imswitch.imcommon.model import dirtools
 
 from PyQt5.QtCore import pyqtSlot, QSettings, QTimer, QUrl, Qt
 from PyQt5.QtGui import QCloseEvent
@@ -58,10 +59,9 @@ class ImScrMainView(QtWidgets.QMainWindow):
         log("Setting home directory...")
         directory = None
         file = None
-
-        directory = QDir.homePath()
-        log("Setting up GUI")
-
+        directory =  os.path.join(dirtools.UserFileDirs.Root, "imnotebook")
+        if not os.path.exists(directory):
+            os.makedirs(directory)
         # setup webview
         self.view = MainWindow(None, None)
         self.view.setWindowTitle("JupyterQt: %s" % directory)

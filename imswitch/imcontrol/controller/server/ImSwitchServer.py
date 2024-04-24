@@ -26,6 +26,23 @@ from fastapi.middleware.cors import CORSMiddleware
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import os
 import threading
+try:
+    from rpyc import Service
+    from rpyc.utils.server import ThreadedServer
+    IS_RPYC = True
+except:
+    IS_RPYC = False
+    
+import logging
+
+class RPYCService(Service):
+    def on_connect(self, conn):
+        logging.info("Connection established")
+
+    def on_disconnect(self, conn):
+        logging.info("Connection closed")
+
+    pass  # Additional methods will be added based on the @APIExport decorator
 
 app = FastAPI()
 app.add_middleware(HTTPSRedirectMiddleware)
@@ -49,6 +66,9 @@ class ImSwitchServer(Worker):
 
     def __init__(self, api, setupInfo):
         super().__init__()
+        import debugpy
+        debugpy.debug_this_thread()
+        
         
         self._api = api
         self._name = setupInfo.pyroServerInfo.name
@@ -64,6 +84,9 @@ class ImSwitchServer(Worker):
         self.startmdns()
 
     def run(self):
+        # Erstellen Sie eine Instanz des Dienstes
+        self.mRPYCService = RPYCService()
+
         # serve the fastapi
         self.createAPI()
         
@@ -75,9 +98,24 @@ class ImSwitchServer(Worker):
         
         def run_server():
             uvicorn.run(app, host="0.0.0.0", port=8001, ssl_keyfile=os.path.join(_baseDataFilesDir,"ssl", "key.pem"), ssl_certfile=os.path.join(_baseDataFilesDir,"ssl", "cert.pem"))
-
         server_thread = threading.Thread(target=run_server)
         server_thread.start()
+        
+        if IS_RPYC:
+            # Registrieren Sie den Dienst bei RPyC
+            def run_rpyc_server():
+                # print all methods inside the self.mRPYCService object
+                print("Exposed methods:")
+                print(self.mRPYCService.__dict__)
+                for method in dir(self.mRPYCService):
+                    #if not method.startswith("_"):
+                        print(method)
+                t = ThreadedServer(self.mRPYCService, port=18861, auto_register=False)
+                self.__logger.debug("Starting RPyC server")
+                t.start()
+                
+            rpyc_thread = threading.Thread(target=run_rpyc_server)
+            rpyc_thread.start()
         
         self.__logger.debug("Started server with URI -> PYRO:" + self._name + "@" + self._host + ":" + str(self._port))
         try:
@@ -172,6 +210,10 @@ class ImSwitchServer(Worker):
             else:
                 module = func.__module__.split('.')[-1]
             self.func = includePyro(includeAPI("/"+module+"/"+f, func))
+            
+            # Add the function to the RPYC service
+            setattr(self.mRPYCService, "exposed_" + f, func)
+
 
 # Dynamically add functions to the exposed object
 #https://chat.openai.com/c/40db1be0-b85c-4043-8f1a-074dcb70bc09
@@ -180,7 +222,7 @@ for func_name in dir(my_module):
     if not func_name.startswith("_"):  # Filter out magic methods or private methods
         func = getattr(my_module, func_name)
         if callable(func):
-            setattr(MyService.exposed_MyExposedObject, 'exposed_' + func_name, staticmethod(func))
+            setattr(RPYCService.exposed_MyExposedObject, 'exposed_' + func_name, staticmethod(func))
 '''
 # Copyright (C) 2020-2024 ImSwitch developers
 # This file is part of ImSwitch.

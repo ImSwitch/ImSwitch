@@ -8,30 +8,29 @@
                 "cameraListIndex": 0,  
                 "tis": {
                     "pixel_format": "12bit",
-                    "exposure": 1,
+                    "exposure": 1000,
                     "gain": 0,
                     "image_width": 2048,
                     "image_height": 1536,
                     "rotate_frame": "90"
                 }
             },
-            "forAcquisition": true
+            "forAcquisition": true,
+            "forOpt": true
         }
     },
     "rotators": {
         "ArduinoStepper": {
             "managerName": "TelemetrixRotatorManager",
             "managerProperties": {
-                "startSpeed": 100,
+                "startSpeed": 400,
                 "stepsPerTurn": 3200,
                 "maximumSpeed": 900,
                 "acceleration": 200,
-                "interface": "FULL4WIRE",
+                "interface": "StepperDriver",
                 "pinConfig" : {
-                    "pin1": 8,
-                    "pin2": 10,
-                    "pin3": 9,
-                    "pin4": 11
+                    "pin1": 2,
+                    "pin2": 3
                 }
             }
         }
@@ -45,6 +44,10 @@
         "TTLCycleDesigner": "BetaTTLCycleDesigner",
         "TTLCycleDesignerParams": {},
         "sampleRate": 100000
+    },
+    "optInfo": {
+        "detectors": ["DMK"],
+        "rotator": "ArduinoStepper"
     },
     "rois": {
       "Full chip": {

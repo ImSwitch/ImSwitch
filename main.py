@@ -7,3 +7,6 @@ if imswitch.IS_HEADLESS:
 
 from imswitch.__main__ import main
 main()
+
+
+ 

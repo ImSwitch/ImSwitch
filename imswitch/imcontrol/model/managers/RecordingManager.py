@@ -3,9 +3,6 @@ import os
 import time
 from io import BytesIO
 from typing import Dict, Optional, Type, List
-
-import debugpy
-
 import h5py
 try:
     import zarr

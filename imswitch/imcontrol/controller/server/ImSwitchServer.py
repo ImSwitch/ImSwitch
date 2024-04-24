@@ -36,6 +36,8 @@ try:
     IS_RPYC = True
 except:
     IS_RPYC = False
+    class Service:
+        pass
     
 import logging
 
@@ -70,9 +72,6 @@ class ImSwitchServer(Worker):
 
     def __init__(self, api, setupInfo):
         super().__init__()
-        import debugpy
-        debugpy.debug_this_thread()
-        
         
         self._api = api
         self._name = setupInfo.pyroServerInfo.name

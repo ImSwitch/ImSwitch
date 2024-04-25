@@ -19,13 +19,36 @@ from functools import wraps
 import os
 import socket 
 import time
-import zeroconf
-from zeroconf import ServiceInfo, Zeroconf
+try:
+    import zeroconf
+    from zeroconf import ServiceInfo, Zeroconf
+    IS_ZEROCONF = True
+except:
+    IS_ZEROCONF = False
 import socket
 from fastapi.middleware.cors import CORSMiddleware
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import os
 import threading
+try:
+    from rpyc import Service
+    from rpyc.utils.server import ThreadedServer, OneShotServer
+    IS_RPYC = True
+except:
+    IS_RPYC = False
+    class Service:
+        pass
+    
+import logging
+
+class RPYCService(Service):
+    def on_connect(self, conn):
+        logging.info("Connection established")
+
+    def on_disconnect(self, conn):
+        logging.info("Connection closed")
+
+    pass  # Additional methods will be added based on the @APIExport decorator
 
 app = FastAPI()
 app.add_middleware(HTTPSRedirectMiddleware)
@@ -64,6 +87,9 @@ class ImSwitchServer(Worker):
         self.startmdns()
 
     def run(self):
+        # Erstellen Sie eine Instanz des Dienstes
+        self.mRPYCService = RPYCService()
+
         # serve the fastapi
         self.createAPI()
         
@@ -75,9 +101,38 @@ class ImSwitchServer(Worker):
         
         def run_server():
             uvicorn.run(app, host="0.0.0.0", port=8001, ssl_keyfile=os.path.join(_baseDataFilesDir,"ssl", "key.pem"), ssl_certfile=os.path.join(_baseDataFilesDir,"ssl", "cert.pem"))
-
         server_thread = threading.Thread(target=run_server)
         server_thread.start()
+        
+        if IS_RPYC:
+            # Registrieren Sie den Dienst bei RPyC
+            def run_rpyc_server():
+                # print all methods inside the self.mRPYCService object
+                # https://github.com/tomerfiliba-org/rpyc/issues/350#issuecomment-539218873
+                print("Exposed methods:")
+                print(self.mRPYCService.__dict__)
+                
+                session_path = '/tmp/rpycsession'
+                if os.path.exists(session_path):
+                    os.remove(session_path)
+
+                for method in dir(self.mRPYCService):
+                    #if not method.startswith("_"):
+                        print(method)
+                server = OneShotServer(self.mRPYCService, port=18861, protocol_config={'allow_public_attrs': True, 'allow_pickle': True})                        
+                '''
+                server = ThreadedServer(self.mRPYCService, 
+                                   #port=18861,
+                                   socket_path=session_path,
+                                   auto_register=False,
+                                    protocol_config={ "allow_pickle": True, 
+                                                     'allow_public_attrs': True})
+                '''
+                self.__logger.debug("Starting RPyC server")
+                server.start()
+                
+            rpyc_thread = threading.Thread(target=run_rpyc_server)
+            rpyc_thread.start()
         
         self.__logger.debug("Started server with URI -> PYRO:" + self._name + "@" + self._host + ":" + str(self._port))
         try:
@@ -106,8 +161,9 @@ class ImSwitchServer(Worker):
         self.__logger.debug("Stopping ImSwitchServer")
         self._daemon.shutdown()
         print("Unregistering...")
-        zeroconf.unregister_service(self.info)
-        zeroconf.close()
+        if IS_ZEROCONF:
+            zeroconf.unregister_service(self.info)
+            zeroconf.close()
 
 
     def get_ip(self):
@@ -134,10 +190,14 @@ class ImSwitchServer(Worker):
             port=server_port,
             properties={},
         )
-
-        zeroconf = Zeroconf()
-        print(f"Registering service {service_name}, type {service_type}, at {server_ip}:{server_port}")
-        zeroconf.register_service(self.info)
+        if not IS_ZEROCONF:
+            zeroconf = Zeroconf()
+            print(f"Registering service {service_name}, type {service_type}, at {server_ip}:{server_port}")
+            try:
+                zeroconf.register_service(self.info)
+            except Exception as e:
+                print(f"Failed to register service: {e}")
+            
 
     #@expose
     def testMethod(self):
@@ -168,6 +228,10 @@ class ImSwitchServer(Worker):
             else:
                 module = func.__module__.split('.')[-1]
             self.func = includePyro(includeAPI("/"+module+"/"+f, func))
+            
+            # Add the function to the RPYC service
+            setattr(self.mRPYCService, "exposed_" + f, func)
+
 
 # Dynamically add functions to the exposed object
 #https://chat.openai.com/c/40db1be0-b85c-4043-8f1a-074dcb70bc09
@@ -176,7 +240,7 @@ for func_name in dir(my_module):
     if not func_name.startswith("_"):  # Filter out magic methods or private methods
         func = getattr(my_module, func_name)
         if callable(func):
-            setattr(MyService.exposed_MyExposedObject, 'exposed_' + func_name, staticmethod(func))
+            setattr(RPYCService.exposed_MyExposedObject, 'exposed_' + func_name, staticmethod(func))
 '''
 # Copyright (C) 2020-2024 ImSwitch developers
 # This file is part of ImSwitch.

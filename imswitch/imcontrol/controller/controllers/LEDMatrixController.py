@@ -42,8 +42,8 @@ class LEDMatrixController(ImConWidgetController):
         
 
     @APIExport()
-    def setAllLEDOn(self):
-        self.setAllLED(state=(1,1,1))
+    def setAllLEDOn(self, getReturn=True):
+        self.setAllLED(state=(1,1,1), getReturn=getReturn)
 
     def setSpecial1(self):
         SpecialPattern1 = self._master.LEDMatrixsManager._subManagers['ESP32 LEDMatrix'].SpecialPattern1.copy()
@@ -57,7 +57,7 @@ class LEDMatrixController(ImConWidgetController):
                 
     @APIExport()
     def setSpecial(self, pattern, intensity = 255, getReturn=False):
-        self.setAllLEDOff()
+        #self.setAllLEDOff()
         
         # set intensity in case it was changed
         for idLED in range(len(pattern)):
@@ -72,14 +72,14 @@ class LEDMatrixController(ImConWidgetController):
 
         
     @APIExport()
-    def setAllLEDOff(self):
-        self.setAllLED(state=(0,0,0))
+    def setAllLEDOff(self, getReturn=True):
+        self.setAllLED(state=(0,0,0),getReturn=getReturn)
 
     @APIExport()
-    def setAllLED(self, state=None, intensity=None):
+    def setAllLED(self, state=None, intensity=None, getReturn=True):
         if intensity is not None:
             self.setIntensity(intensity=intensity)
-        self.ledMatrix.setAll(state=state)
+        self.ledMatrix.setAll(state=state,getReturn=getReturn)
         for coords, btn in self._widget.leds.items():
             if isinstance(btn, guitools.BetterPushButton):
                 btn.setChecked(np.sum(state)>0)

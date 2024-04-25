@@ -74,11 +74,14 @@ setup(
         "imjoy",
         "aiortc >= 1.3.0",
         "juliacall",
-        "UC2-REST"
+        "UC2-REST", 
+        "rpyc" 
+        
     ],
      extras_require={
         'PyQt5': [
             "PyQt5 >= 5.15.2",
+            "QtWebEngineWidgets >= 5.15.2"
         ]},
     entry_points={
         "console_scripts": [

@@ -1,13 +1,19 @@
 import imswitch
 from pyqtgraph.dockarea import Dock, DockArea
 from qtpy import QtCore, QtWidgets
+from imswitch.imcommon.model import dirtools
 
 from PyQt5.QtCore import pyqtSlot, QSettings, QTimer, QUrl, Qt
 from PyQt5.QtGui import QCloseEvent
 from PyQt5.QtWidgets import QMainWindow, QMessageBox, QDockWidget, QPlainTextEdit, QTabWidget
-from PyQt5.QtWebEngineWidgets import QWebEngineView as QWebView, QWebEnginePage as QWebPage
-from PyQt5.QtWebEngineCore import QWebEngineUrlRequestInterceptor
-from PyQt5.QtWebEngineWidgets import QWebEngineProfile
+try:
+    from PyQt5.QtWebEngineWidgets import QWebEngineView as QWebView, QWebEnginePage as QWebPage
+    from PyQt5.QtWebEngineWidgets import QWebEngineView as QWebView, QWebEnginePage as QWebPage
+    from PyQt5.QtWebEngineCore import QWebEngineUrlRequestInterceptor
+    from PyQt5.QtWebEngineWidgets import QWebEngineProfile
+    IS_QTWEBENGINE = True
+except:
+    IS_QTWEBENGINE = False
 from PyQt5.QtCore import QSettings, QDir, QObject, pyqtSignal, QUrl
 from PyQt5.QtWidgets import QFileDialog, QMessageBox, QApplication
 
@@ -30,6 +36,7 @@ class ImScrMainView(QtWidgets.QMainWindow):
     sigClosing = QtCore.Signal()
     
     def __init__(self, *args, **kwargs):
+        if not IS_QTWEBENGINE: return
         super().__init__(*args, **kwargs)
         self.setWindowTitle('Notebook')
         
@@ -58,10 +65,9 @@ class ImScrMainView(QtWidgets.QMainWindow):
         log("Setting home directory...")
         directory = None
         file = None
-
-        directory = QDir.homePath()
-        log("Setting up GUI")
-
+        directory =  os.path.join(dirtools.UserFileDirs.Root, "imnotebook")
+        if not os.path.exists(directory):
+            os.makedirs(directory)
         # setup webview
         self.view = MainWindow(None, None)
         self.view.setWindowTitle("JupyterQt: %s" % directory)

@@ -95,10 +95,30 @@ class HyphaWidget(Widget):
             url = self._chatURLTextEdit.text()
         self._chatURLTextEdit.setText(url)
         self._chatURL = url
+        
+        
+
         try:
-            self.webView.load(QtCore.QUrl(self._chatURL))
+            self.webView.load(QtCore.QUrl(self._chatURL)) # TODO: check if the URL is valid for the login screen (don't use webbrowser!)
             # set tab active to chat
             self.tabWidget.setCurrentIndex(1)
+            
+            if 0:
+                class WebEnginePage(QtWebEngineWidgets.QWebEnginePage):
+                    def javaScriptConsoleMessage(self, level, msg, line, sourceID):
+                        print("JS: ", msg)         
+                
+                page = WebEnginePage(self.webView)
+                self.webView.setPage(page)
+                self.webView.load(QtCore.QUrl(self._chatURL)) # TODO: check if the URL is valid for the login screen (don't use webbrowser!)
+                self.webView.show()
+                
+                devtools_page = WebEnginePage(self.webView)
+                devtools_view = QtWebEngineWidgets.QWebEngineView()
+                devtools_view.setPage(devtools_page)
+                page.setDevToolsPage(devtools_page)
+                devtools_view.show()
+
             
         except Exception as e:
             self.__logger.error(f"Could not load URL {url}: {e}")

@@ -12,7 +12,7 @@ from imswitch.imcontrol.view import guitools
 from imswitch.imcommon.model import initLogger
 from ..basecontrollers import LiveUpdatedController
 import threading
-import time 
+import time
 import imswitch
 
 '''
@@ -34,7 +34,7 @@ class HoloController(LiveUpdatedController):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        
+
         self.updateRate = 10
         self.it = 0
         self.init = False
@@ -44,7 +44,7 @@ class HoloController(LiveUpdatedController):
         #TODO: Make parameters adaptable from Plugin
         self.valueRangeMin=0
         self.valueRangeMax=0
-        self.pixelsize = 3.45*1e-6   
+        self.pixelsize = 3.45*1e-6
         self.mWavelength = 488*1e-9
         self.NA=.3
         self.k0 = 2*np.pi/(self.mWavelength)
@@ -65,7 +65,7 @@ class HoloController(LiveUpdatedController):
         self.imageComputationWorker.set_dz(self.dz)
         self.imageComputationWorker.set_PSFpara(self.PSFpara)
         self.imageComputationWorker.sigHoloImageComputed.connect(self.displayImage)
-   
+
         self.imageComputationThread = Thread()
         self.imageComputationWorker.moveToThread(self.imageComputationThread)
         #self.sigImageReceived.connect(self.imageComputationWorker.computeHoloImage)
@@ -76,7 +76,7 @@ class HoloController(LiveUpdatedController):
 
         if imswitch.IS_HEADLESS:
             return
-        # Connect HoloWidget signals 
+        # Connect HoloWidget signals
         self._widget.sigShowInLineToggled.connect(self.setShowInLineHolo)
         self._widget.sigShowOffAxisToggled.connect(self.setShowOffAxisHolo)
         self._widget.sigUpdateRateChanged.connect(self.changeRate)
@@ -90,16 +90,27 @@ class HoloController(LiveUpdatedController):
         self._widget.textEditCCCenterY.textChanged.connect(self.updateCCCenter)
         self._widget.textEditCCRadius.textChanged.connect(self.updateCCRadius)
 
+        try:
+            import julia
+            from julia.api import Julia
+            jl = Julia(compiled_modules=False)
+
+            julia.install()
+            from julia import Base
+            from julia import Main
+        except:
+            pass
+
     def updateCCCenter(self):
         centerX = int(self._widget.textEditCCCenterX.text())
         centerY = int(self._widget.textEditCCCenterY.text())
         self.CCCenter = (centerX, centerY)
         self.imageComputationWorker.set_CCCenter(self.CCCenter)
-        
+
     def updateCCRadius(self):
         self.CCRadius = int(self._widget.textEditCCRadius.text())
         self.imageComputationWorker.set_CCRadius(self.CCRadius)
-        
+
     def selectCCCenter(self):
         # get the center of the cross correlation
         self.CCCenter = self._widget.getCCCenterFromNapari()
@@ -112,7 +123,7 @@ class HoloController(LiveUpdatedController):
     def offAxisValueChanged(self, magnitude):
         self.dz = magnitude*1e-4
         self.imageComputationWorker.set_dz(self.dz)
-    
+
     def inLineValueChanged(self, magnitude):
         """ Change magnitude. """
         self.dz = magnitude*1e-3
@@ -135,12 +146,12 @@ class HoloController(LiveUpdatedController):
         self.reconstructionMode = self.availableReconstructionModes[1]
         self.imageComputationWorker.setReconstructionMode(self.reconstructionMode)
         self.imageComputationWorker.setActive(enabled)
-        
+
         # change visibility of detector layer
         allDetectorNames = self._master.detectorsManager.getAllDeviceNames()
         for detectorName in allDetectorNames:
             self._widget.silenceLayer(detectorName, not enabled)
-        
+
     def setShowOffAxisHolo(self, enabled):
         """ Show or hide Holo. """
         self.pixelsize = self._widget.getPixelSize()
@@ -156,10 +167,10 @@ class HoloController(LiveUpdatedController):
         allDetectorNames = self._master.detectorsManager.getAllDeviceNames()
         for detectorName in allDetectorNames:
             self._widget.silenceLayer("Live: "+detectorName, not enabled)
-        
+
     def update(self, detectorName, im, init, scale, isCurrentDetector):
         """ Update with new detector frame. """
-        
+
         if  not self.active or not isNIP:# or not isCurrentDetector:
             return
 
@@ -199,7 +210,7 @@ class HoloController(LiveUpdatedController):
 
         def __init__(self):
             super().__init__()
-            
+
             self._logger = initLogger(self, tryInheritParent=False)
             self.PSFpara = None
             self.pixelsize = 1
@@ -209,16 +220,16 @@ class HoloController(LiveUpdatedController):
             self.CCCenter = None
             self.CCRadius = 100
             self.isBusy = False
-            
+
         def set_CCCenter(self, CCCenter):
             self.CCCenter = CCCenter
-            
+
         def set_CCRadius(self, CCRadius):
             self.CCRadius = CCRadius
-            
+
         def setActive(self, active):
             self.active = active
-            
+
         def setReconstructionMode(self, mode):
             self.reconstructionMode = mode
 
@@ -232,7 +243,7 @@ class HoloController(LiveUpdatedController):
                 mimage = np.sqrt(nip.image(mimage.copy()))  # get e-field
                 mpupil = nip.ft(mimage.copy())             # bring to FT space
                 mpupil = nip.extract(mpupil, ROIsize=(int(self.CCRadius),int(self.CCRadius)), centerpos=(int(self.CCCenter[0]), int(self.CCCenter[1])), checkComplex=False) # cut out CC-term
-                
+
                 mimage = np.squeeze(nip.ift(mpupil))        # this is still complex
                 if self.dz != 0:
                     mimage.pixelsize=(pixelsize, pixelsize)
@@ -248,7 +259,7 @@ class HoloController(LiveUpdatedController):
                     mimage = nip.image(np.sqrt(mimage.copy()))
                     mimage = nip.extract(mimage, [N_subroi,N_subroi], checkComplex=False)
                     mimage.pixelsize=(pixelsize, pixelsize)
-                    mpupil = nip.ft(mimage)         
+                    mpupil = nip.ft(mimage)
                     #nip.__make_propagator__(mpupil, PSFpara, doDampPupil=True, shape=mpupil.shape, distZ=dz)
                     cos_alpha, sin_alpha = nip.cosSinAlpha(mimage, PSFpara)
                     defocus = self.dz #  defocus factor
@@ -259,22 +270,22 @@ class HoloController(LiveUpdatedController):
                     return np.squeeze(mimage)
             else:
                 return np.squeeze(np.zeros_like(mimage))
-            
+
         def reconHoloAaron(self, mimage, PSFpara, N_subroi=1024, pixelsize=1e-3, dz=50e-3):
             # do some calculation based on the mimage and return something
             # adlsfkjadsölfkjadsölfkja
             return np.squeeze(np.zeros_like(mimage))
-                
+
         def computeHoloImage(self, mHologram):
             """ Compute Holo of an image. """
             self.isBusy = True
             try:
                 if 0:
                     holorecon = np.flip(self.reconholo(mHologram, PSFpara=self.PSFpara, N_subroi=1024, pixelsize=self.pixelsize, dz=self.dz),1)
-                else: 
+                else:
                     # here comes Aarons code
                     holorecon = self.reconHoloAaron(mHologram, PSFpara=self.PSFpara, N_subroi=1024, pixelsize=self.pixelsize, dz=self.dz)
-                
+
                 self.sigHoloImageComputed.emit(np.array(holorecon), "Hologram")
                 if self.reconstructionMode == "offaxis":
                     mFT = nip.ft2d(mHologram)
@@ -282,7 +293,7 @@ class HoloController(LiveUpdatedController):
             except Exception as e:
                 self._logger.error(f"Error in computeHoloImage: {e}")
             self.isBusy = False
-                
+
         def prepareForNewImage(self, image):
             """ Must always be called before the worker receives a new image. """
             self._image = image
@@ -290,11 +301,11 @@ class HoloController(LiveUpdatedController):
                 self.isBusy = True
                 mThread = threading.Thread(target=self.computeHoloImage, args=(self._image,))
                 mThread.start()
-                
+
 
         def set_dz(self, dz):
             self.dz = dz
-        
+
         def set_PSFpara(self, PSFpara):
             self.PSFpara = PSFpara
 

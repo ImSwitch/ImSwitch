@@ -197,15 +197,17 @@ class CameraGXIPY:
         self.camera.BinningVertical.set(binning)
         self.binning = binning
 
-    def getLast(self, is_resize=True):
+    def getLast(self, is_resize=True, returnFrameNumber=False):
         # get frame and save
         # only return fresh frames
-        while(self.lastFrameId == self.frameNumber and self.frame is None):
+        # print(self.lastFrameId, self.frameNumber)
+        while(self.lastFrameId >= self.frameNumber and self.frame is None):
             time.sleep(.01) # wait for fresh frame
         if self.isFlatfielding and self.flatfieldImage is not None:
             self.frame = self.frame/self.flatfieldImage
-        #print(self.lastFrameId)
         self.lastFrameId = self.frameNumber
+        if returnFrameNumber:
+            return self.frame, self.frameNumber
         return self.frame
 
     def flushBuffer(self):
@@ -389,7 +391,7 @@ class CameraGXIPY:
         if numpy_image is None:
             self.__logger.error("Got a None frame")
             return
-        self.frame = numpy_image
+        self.frame = numpy_image.copy()
         self.frameNumber = frame.get_frame_id()
         self.timestamp = time.time()
 

@@ -27,7 +27,7 @@ def prepareApp():
     QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_ShareOpenGLContexts)  # Fixes Napari issues
     QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_DisableHighDpiScaling, True) # proper scaling on Mac?
     #QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_UseHighDpiPixmaps, True)
-    app = QtWidgets.QApplication([])
+    app = QtWidgets.QApplication(['', '--no-sandbox']) # https://stackoverflow.com/questions/72131093/pyqt5-qwebengineview-doesnt-load-url
     app.setWindowIcon(QtGui.QIcon(os.path.join(dirtools.DataFileDirs.Root, 'icon.png')))
     app.setStyleSheet(getBaseStyleSheet())
     return app

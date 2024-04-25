@@ -35,6 +35,8 @@ class VirtualMicroscopeManager:
         self._positioner = self._virtualMicroscope.positioner
         self._camera = self._virtualMicroscope.camera
         self._illuminator = self._virtualMicroscope.illuminator
+        
+
         '''
         # Test the functionality
         for i in range(10):
@@ -65,7 +67,9 @@ class Camera:
         self.model = "VirtualCamera"
         self.PixelSize = 1.0
         self.isRGB = False
-
+        # precompute noise so that we will save energy and trees
+        self.noiseStack = np.random.randn(self.SensorHeight,self.SensorWidth,100)*.2+1
+        
     def produce_frame(self, x_offset=0, y_offset=0, light_intensity=1.0, defocusPSF=None):
         """Generate a frame based on the current settings."""
         with self.lock:
@@ -79,10 +83,11 @@ class Camera:
             if IS_NIP and defocusPSF is not None and not defocusPSF.shape == ():
                 image = np.array(np.real(nip.convolve(image, defocusPSF)))
             image = image/np.mean(image)
-            image = np.random.randn(image.shape[0],image.shape[1])*.2+image
-            
+            image += self.noiseStack[:,:,np.random.randint(0,100)]
+                        
             # Adjust illumination
             image = (image * light_intensity).astype(np.uint16)
+            time.sleep(0.1)
             return image
         
     def getLast(self):
@@ -103,7 +108,7 @@ class Positioner:
         if IS_NIP:
             self.psf = self.compute_psf(dz=0)
         else: 
-            self.psf = np.ones(self.mDimensions)
+            self.psf = None
 
     def move(self, x=None, y=None, z=None, a=None, is_absolute=False):
         with self.lock:
@@ -133,10 +138,11 @@ class Positioner:
             return self.position.copy()
 
     def compute_psf(self, dz):
+        dz = np.float32(dz)
+        print("Defocus:"+str(dz))
         if IS_NIP and dz != 0:
-            print("Defocus:"+str(dz))
             obj = nip.image(np.zeros(self.mDimensions))
-            obj.pixelsize = (10., 10.)
+            obj.pixelsize = (100., 100.)
             paraAbber = nip.PSF_PARAMS()
             #aber_map = nip.xx(obj.shape[-2:]).normalize(1)
             paraAbber.aberration_types = [paraAbber.aberration_zernikes.spheric]
@@ -146,7 +152,7 @@ class Positioner:
             del psf
             del obj
         else:
-            self.psf = np.ones(self._parent.camera.image.shape)
+            self.psf = None
 
         
     def get_psf(self):
@@ -157,12 +163,12 @@ class Positioner:
 class Illuminator:
     def __init__(self, parent):
         self._parent = parent
-        self.intensity = 1.0
+        self.intensity = 0
         self.lock = threading.Lock()
 
-    def set_intensity(self, channel, intensity):
+    def set_intensity(self, channel=1, intensity=0):
         with self.lock:
-            self.intensity = intensity
+            self.intensity = intensity/1024
 
     def get_intensity(self, channel):
         with self.lock:
@@ -180,7 +186,16 @@ class VirtualMicroscopy:
         pass
 
 
-
+if __name__ == "__main__":
+    import matplotlib.pyplot as plt
+    microscope = VirtualMicroscopy(filePath='/Users/bene/Dropbox/Dokumente/Promotion/PROJECTS/MicronController/ImSwitch/imswitch/_data/images/histoASHLARStitch.jpg')
+    microscope.illuminator.set_intensity(intensity=1000)
+        
+    for i in range(10):
+        microscope.positioner.move(x=i, y=i, z=i, is_absolute=True)
+        frame = microscope.camera.getLast()
+        plt.imsave(f"frame_{i}.png", frame)
+    cv2.destroyAllWindows()
 
 # Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.

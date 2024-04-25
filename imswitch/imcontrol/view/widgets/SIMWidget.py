@@ -97,14 +97,22 @@ class SIMWidget(NapariHybridWidget):
             "Enable Reconstruction", "Enable Record Reconstruction",
             "Enable Record RAW", "Enable Laser 488", "Enable Laser 635",
             "Enable TimeLapse", "Enable Z-stack", "Use GPU?",
+            "Selected Path", "C:\\Users\\admin\\Desktop\\Timelapse\\",
             
         ]
         self.checkbox_reconstruction = QCheckBox(checkboxes[0])
         self.checkbox_record_reconstruction = QCheckBox(checkboxes[1])
         self.checkbox_record_raw = QCheckBox(checkboxes[2])
+        self.path_label = QLabel(checkboxes[8])
+        self.path_edit = QLineEdit(checkboxes[9])
+        self.openFolderButton = guitools.BetterPushButton('Open')
         layout.addWidget(self.checkbox_reconstruction)
         layout.addWidget(self.checkbox_record_reconstruction)
         layout.addWidget(self.checkbox_record_raw)
+        layout.addWidget(self.path_label)
+        layout.addWidget(self.path_edit)        
+        layout.addWidget(self.openFolderButton)
+
         
         tab.setLayout(layout)
         return tab
@@ -115,10 +123,10 @@ class SIMWidget(NapariHybridWidget):
 
         # Label/textedit pairs
         params = [
-            ("Wavelength 1", "488"), ("Wavelength 2", "635"), ("NA", "1.4"),
-            ("n", "1."),
-            ("Pixelsize (eff)", "1"), ("Alpha", "0.5"), ("Beta", "0.5"),
-            ("w", "1"), ("eta", "2")
+            ("Wavelength 1", "0.52"), ("Wavelength 2", "0.66"), ("NA", "1.4"),
+            ("n", "1.52"),
+            ("Pixelsize", "6.5"), ("Alpha", "0.5"), ("Beta", "0.98"),
+            ("w", "1"), ("eta", "0.6"), ("Magnification", "90")
         ]
         
         # create widget per label
@@ -128,18 +136,20 @@ class SIMWidget(NapariHybridWidget):
         self.wavelength2_textedit = QLineEdit(params[1][1])
         self.NA_label = QLabel(params[2][0])
         self.NA_textedit = QLineEdit(params[2][1])
-        self.pixelsize_label = QLabel(params[3][0])
-        self.pixelsize_textedit = QLineEdit(params[3][1])
-        self.alpha_label = QLabel(params[4][0])
-        self.alpha_textedit = QLineEdit(params[4][1])
-        self.beta_label = QLabel(params[5][0])
-        self.beta_textedit = QLineEdit(params[5][1])
-        self.w_label = QLabel(params[6][0])
-        self.w_textedit = QLineEdit(params[6][1])
-        self.eta_label = QLabel(params[7][0])
-        self.eta_textedit = QLineEdit(params[7][1])
-        self.n_label = QLabel(params[8][0])
-        self.n_textedit = QLineEdit(params[8][1])
+        self.n_label = QLabel(params[3][0])
+        self.n_textedit = QLineEdit(params[3][1])
+        self.pixelsize_label = QLabel(params[4][0])
+        self.pixelsize_textedit = QLineEdit(params[4][1])
+        self.alpha_label = QLabel(params[5][0])
+        self.alpha_textedit = QLineEdit(params[5][1])
+        self.beta_label = QLabel(params[6][0])
+        self.beta_textedit = QLineEdit(params[6][1])
+        self.w_label = QLabel(params[7][0])
+        self.w_textedit = QLineEdit(params[7][1])
+        self.eta_label = QLabel(params[8][0])
+        self.eta_textedit = QLineEdit(params[8][1])
+        self.magnification_label = QLabel(params[9][0])
+        self.magnification_textedit = QLineEdit(params[9][1])
         row_layout_1 = QHBoxLayout()
         row_layout_1.addWidget(self.wavelength1_label)
         row_layout_1.addWidget(self.wavelength1_textedit)
@@ -167,6 +177,9 @@ class SIMWidget(NapariHybridWidget):
         row_layout_9 = QHBoxLayout()
         row_layout_9.addWidget(self.n_label)
         row_layout_9.addWidget(self.n_textedit)
+        row_layout_10 = QHBoxLayout()
+        row_layout_10.addWidget(self.magnification_label)
+        row_layout_10.addWidget(self.magnification_textedit)
         
         layout.addLayout(row_layout_1)
         layout.addLayout(row_layout_2)
@@ -177,6 +190,7 @@ class SIMWidget(NapariHybridWidget):
         layout.addLayout(row_layout_7)
         layout.addLayout(row_layout_8)
         layout.addLayout(row_layout_9)
+        layout.addLayout(row_layout_10)
         
 
         tab.setLayout(layout)
@@ -188,7 +202,7 @@ class SIMWidget(NapariHybridWidget):
 
         # Label/textedit pairs
         settings = [
-            ("Period", "60"), ("Number of frames", "10")
+            ("Period", "0"), ("Number of frames", "10")
         ]
         
         # create widget per label
@@ -270,6 +284,8 @@ class SIMWidget(NapariHybridWidget):
     def getTimelapseParameters(self):
         return (np.float32(self.period_textedit.text()), np.float32(self.frames_textedit.text()))
     
+    def getRecFolder(self):
+        return self.path_edit.text()
 
 # Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.

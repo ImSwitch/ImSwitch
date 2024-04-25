@@ -134,8 +134,11 @@ class ESP32StageManager(PositionerManager):
 
         # optional: hom on startup:
         if self.homeOnStartX: self.home_x()
+        time.sleep(0.5)
         if self.homeOnStartY: self.home_y()
+        time.sleep(0.5)
         if self.homeOnStartZ: self.home_z()
+        time.sleep(0.5)
 
         
         # set speed for all axes

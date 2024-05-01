@@ -146,12 +146,12 @@ class FlowStopController(LiveUpdatedController):
         self.positioner.stop()
 
     @APIExport(runOnUIThread=True)
-    def movePump(self, value):
-        self.positioner.move(value=np.float32(value), speed=10000, axis=self.pumpAxis, is_absolute=False, is_blocking=True)
+    def movePump(self, value: float = 0.0):
+        self.positioner.move(value=value, speed=10000, axis=self.pumpAxis, is_absolute=False, is_blocking=True)
     
     @APIExport(runOnUIThread=True)
-    def moveFocus(self, value):
-        self.positioner.move(value=np.float32(value), speed=10000, axis=self.focusAxis, is_absolute=False, is_blocking=True)
+    def moveFocus(self, value: float = 0.0):
+        self.positioner.move(value=value, speed=10000, axis=self.focusAxis, is_absolute=False, is_blocking=True)
         
     @APIExport(runOnUIThread=True)
     def stopFocus(self):
@@ -162,8 +162,8 @@ class FlowStopController(LiveUpdatedController):
         return self.imagesTaken
     
     @APIExport(runOnUIThread=True)
-    def setIlluIntensity(self, value):
-        self.ledSource.setEnabled(bool(value))
+    def setIlluIntensity(self, value: float = 0.0):
+        self.ledSource.setEnabled(value>0)
         self.ledSource.setValue(value)
 
     @APIExport(runOnUIThread=True)

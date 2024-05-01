@@ -123,6 +123,10 @@ class UC2ConfigController(ImConWidgetController):
         mThread.start()
     
     @APIExport(runOnUIThread=True)
+    def is_connected(self):
+        return self._master.UC2ConfigManager.isConnected()
+    
+    @APIExport(runOnUIThread=True)
     def btpairing(self):
         self._logger.debug('Pairing BT device.')
         mThread = threading.Thread(target=self._master.UC2ConfigManager.pairBT)

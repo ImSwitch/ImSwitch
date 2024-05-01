@@ -81,6 +81,7 @@ class Camera:
 
             # do all post-processing on cropped image
             if IS_NIP and defocusPSF is not None and not defocusPSF.shape == ():
+                print("Defocus:"+str(defocusPSF.shape))
                 image = np.array(np.real(nip.convolve(image, defocusPSF)))
             image = image/np.mean(image)
             image += self.noiseStack[:,:,np.random.randint(0,100)]
@@ -88,7 +89,7 @@ class Camera:
             # Adjust illumination
             image = (image * light_intensity).astype(np.uint16)
             time.sleep(0.1)
-            return image
+            return np.array(image)
         
     def getLast(self):
         position = self._parent.positioner.get_position()

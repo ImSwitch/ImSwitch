@@ -1,7 +1,7 @@
 import h5py
 import numpy as np
 import cv2
-
+import matplotlib.pyplot as plt 
 class HDF5Reader:
     def __init__(self, filename):
         """
@@ -26,12 +26,16 @@ class HDF5Reader:
         Returns:
         np.ndarray: The sliced data.
         """
+        if z_slice is None: z_slice = slice(None)
+        if y_slice is None: y_slice = slice(None)
+        if x_slice is None: x_slice = slice(None)
+        if channel_idx is None: channel_idx = slice(None)
         with h5py.File(self.filename, 'r') as file:
             dset = file['ImageData']
             if channel_idx is None:
-                return dset[time_idx, :, z_slice, y_slice, x_slice]
+                return dset[time_idx, :, z_slice, y_slice, x_slice].copy()
             else:
-                return dset[time_idx, channel_idx, z_slice, y_slice, x_slice]
+                return dset[time_idx, channel_idx, z_slice, y_slice, x_slice].copy()
 
     def read_metadata(self, time_idx, channel_idx):
         """
@@ -71,24 +75,36 @@ def create_video_from_hdf5(reader, output_video='output.mp4', reduction_factor=4
     frame_rate (float): Frame rate of the output video.
     """
     # Assume that the first dimension is time, and retrieve the first frame to get dimensions
-    first_frame = reader.read_slice(time_idx=0)
-    height, width = first_frame.shape[0] // reduction_factor, first_frame.shape[1] // reduction_factor
+    first_frame = reader.read_slice(time_idx=1, channel_idx=1, z_slice=slice(1), y_slice=slice(None), x_slice=slice(None))
+    height, width = first_frame.shape[2] // reduction_factor, first_frame.shape[1] // reduction_factor
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # Define the codec and create VideoWriter object
-    out = cv2.VideoWriter(output_video, fourcc, frame_rate, (width, height), isColor=False)
+    out = cv2.VideoWriter(output_video, fourcc, frame_rate, (width, height*3), isColor=False)
 
     # Get the total number of frames from the dataset dimensions
     num_frames = reader.get_num_dimensions()  # This should be adjusted if get_num_dimensions() does not return the number of frames
 
     # Loop through the dataset and process each frame
-    for i in range(num_frames):
-        # Read image, assuming the reader returns a 2D numpy array for each frame
-        img = reader.read_slice(time_idx=i)
-
-        # Resize the image
-        resized_img = cv2.resize(img, (width, height), interpolation=cv2.INTER_AREA)
+    for iFrame in range(1,num_frames):
+        mChannels = np.zeros((int(height), int(width*3)))
+        for iChannel in range(3):
+    
+            # Read image, assuming the reader returns a 2D numpy array for each frame
+            img = reader.read_slice(time_idx=iFrame, channel_idx=iChannel)
+            img = np.std(img, axis=0)  # Compute standard deviation along z axis
+            # change size of image
+            img = cv2.resize(img.copy(), dsize = None, fx = 1/reduction_factor, fy=1/reduction_factor, interpolation=cv2.INTER_AREA)
+            
+            mChannels[:, width*iChannel:width*(iChannel+1)] = np.uint8(img.T*255)
+        print("added frame: "+str(iFrame))
 
         # Write to video, convert to 3 channels as OpenCV expects color images for color video
-        out.write(cv2.cvtColor(resized_img, cv2.COLOR_GRAY2BGR))
+        
+        if mChannels is not None and out.isOpened():
+            # convert frame to rgb
+            out.write(cv2.cvtColor(np.uint8(mChannels), cv2.COLOR_GRAY2BGR))
+        else:
+            print("mChannels ist leer oder die Ausgabedatei ist nicht geöffnet.")
+        
 
     # Release everything when done
     out.release()
@@ -96,14 +112,15 @@ def create_video_from_hdf5(reader, output_video='output.mp4', reduction_factor=4
     print(f"Video created successfully: {output_video}")
 
 # Example usage
-from your_module import HDF5Reader  # Assuming HDF5Reader is in 'your_module.py'
-reader = HDF5Reader('path_to_your_hdf5_file.h5')
-create_video_from_hdf5(reader)
 
 
 # Example of using the HDF5Reader with dimensionality query
 mFilename = 'C:\\Users\\user\\Documents\\ImSwitchConfig\\recordings\\2024_04_18-02-05-01_PM\\2024_04_18-02-05-01_PM_MCT.h5'
+mFilename = '/Users/bene/Downloads/2024_04_16-01-50-08_PM_MCT.h5'
 reader = HDF5Reader(mFilename)
+
+create_video_from_hdf5(reader)
+
 
 # Getting the number of dimensions of the dataset
 num_dimensions = reader.get_num_dimensions()

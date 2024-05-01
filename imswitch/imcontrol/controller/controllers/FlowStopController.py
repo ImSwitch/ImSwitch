@@ -47,7 +47,7 @@ class FlowStopController(LiveUpdatedController):
         # select light source and activate
         allIlluNames = self._master.lasersManager.getAllDeviceNames()
         self.ledSource = self._master.lasersManager[allIlluNames[0]]
-        self.ledSource.setValue(1023)
+        #self.ledSource.setValue(1023)
         self.ledSource.setEnabled(1)
         # connect camera and stage
         self.positionerName = self._master.positionersManager.getAllDeviceNames()[0]
@@ -163,7 +163,6 @@ class FlowStopController(LiveUpdatedController):
     
     @APIExport(runOnUIThread=True)
     def setIlluIntensity(self, value: float = 0.0):
-        self.ledSource.setEnabled(value>0)
         self.ledSource.setValue(value)
 
     @APIExport(runOnUIThread=True)

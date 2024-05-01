@@ -143,7 +143,7 @@ class FlowStopController(LiveUpdatedController):
 
     @APIExport(runOnUIThread=True)
     def stopPump(self):
-        self.positioner.stop()
+        self.positioner.stopAll()
 
     @APIExport(runOnUIThread=True)
     def movePump(self, value: float = 0.0, speed: float = 10000.0):
@@ -155,7 +155,7 @@ class FlowStopController(LiveUpdatedController):
         
     @APIExport(runOnUIThread=True)
     def stopFocus(self):
-        self.positioner.stop()
+        self.positioner.stopAll()
         
     @APIExport(runOnUIThread=True)
     def getCurrentFrameNumber(self):

@@ -38,7 +38,9 @@ except:
     IS_RPYC = False
     class Service:
         pass
-    
+IS_RPYC = False
+
+
 import logging
 
 class RPYCService(Service):
@@ -152,8 +154,8 @@ class ImSwitchServer(Worker):
                 port=self._port,
             )
 
-        except:
-            self.__loger.error("Couldn't start server.")
+        except Exception as e:
+            self.__logger.error("Couldn't start server.")
         self.__logger.debug("Loop Finished")
 
 

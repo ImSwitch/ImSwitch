@@ -189,7 +189,10 @@ class VirtualMicroscopy:
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
-    microscope = VirtualMicroscopy(filePath='/Users/bene/Dropbox/Dokumente/Promotion/PROJECTS/MicronController/ImSwitch/imswitch/_data/images/histoASHLARStitch.jpg')
+    # Read the image locally
+    mFWD = os.path.dirname(os.path.realpath(__file__)).split("imswitch")[0]
+    imagePath = mFWD+"imswitch/_data/images/histoASHLARStitch.jpg"
+    microscope = VirtualMicroscopy(filePath=imagePath)
     microscope.illuminator.set_intensity(intensity=1000)
         
     for i in range(10):

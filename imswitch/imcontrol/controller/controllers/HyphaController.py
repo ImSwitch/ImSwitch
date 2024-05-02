@@ -152,7 +152,8 @@ class HyphaController(LiveUpdatedController):
             webbrowser.open(message['login_url']) # TODO: pass login token to qtwebview
             print(f"Please open your browser and login at: {message['login_url']}")
         token = login({"server_url": server_url, 
-                       "login_callback": autoLogin})
+                       "login_callback": autoLogin, 
+                       "timeout": 10})
         server = connect_to_server(
             {
             "server_url": server_url,

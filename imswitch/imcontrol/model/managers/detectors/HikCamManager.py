@@ -96,10 +96,10 @@ class HikCamManager(DetectorManager):
 
     def setFlatfieldImage(self, flatfieldImage, isFlatfielding):
         self._camera.setFlatfieldImage(flatfieldImage, isFlatfielding)
-    
-    def getLatestFrame(self, is_save=False):
-        return self._camera.getLast()
 
+    def getLatestFrame(self, is_resize=True, returnFrameNumber=False):
+        return self._camera.getLast(returnFrameNumber=returnFrameNumber)
+        
     def setParameter(self, name, value):
         """Sets a parameter value and returns the value.
         If the parameter doesn't exist, i.e. the parameters field doesn't

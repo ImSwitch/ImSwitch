@@ -113,7 +113,6 @@ class LightsheetController(ImConWidgetController):
         iFrame = 0
         allFrames = []
         while self.isLightsheetRunning:
-            frame = self.detector.getLatestFrame()
             '''
             from juliacall import Main as jl 
             jl.seval('import Pkg; Pkg.add("FourierTools")')
@@ -124,8 +123,26 @@ class LightsheetController(ImConWidgetController):
             print(fftImage) 
             jl.println("hello from Julia")
             '''
-            if frame.shape[0] != 0:
-                allFrames.append(frame)
+            # Todo: Need to ensure thatwe have the right pattern displayed and the buffer is free - this heavily depends on the exposure time..
+            mFrame = None
+            lastFrameNumber = -1
+            timeoutFrameRequest = .3 # seconds
+            cTime = time.time()
+            
+            while(1):
+                # something went wrong while capturing the frame
+                if time.time()-cTime> timeoutFrameRequest:
+                    break
+                mFrame, currentFrameNumber = self.detector.getLatestFrame(returnFrameNumber=True)
+                if currentFrameNumber <= lastFrameNumber:
+                    time.sleep(0.01)
+                    continue  
+                print(f"Frame number used for stack: {currentFrameNumber}") 
+                lastFrameNumber = currentFrameNumber
+                break
+                            
+            if mFrame is not None and mFrame.shape[0] != 0:
+                allFrames.append(mFrame.copy())
             if controller.is_target_reached():
                 break 
             

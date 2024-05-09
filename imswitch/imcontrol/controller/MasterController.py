@@ -34,6 +34,7 @@ class MasterController:
         self.lasersManager = LasersManager(self.__setupInfo.lasers,
                                            **lowLevelManagers)
         self.positionersManager = PositionersManager(self.__setupInfo.positioners,
+                                                     self.__commChannel,
                                                      **lowLevelManagers)
         self.LEDMatrixsManager = LEDMatrixsManager(self.__setupInfo.LEDMatrixs,
                                            **lowLevelManagers)

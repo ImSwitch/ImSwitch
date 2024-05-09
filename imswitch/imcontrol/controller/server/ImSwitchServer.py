@@ -102,7 +102,7 @@ class ImSwitchServer(Worker):
         print(os.path.join(_baseDataFilesDir,"ssl", "key.cert"))
         
         def run_server():
-            uvicorn.run(app, host="0.0.0.0", port=8001, ssl_keyfile=os.path.join(_baseDataFilesDir,"ssl", "key.pem"), ssl_certfile=os.path.join(_baseDataFilesDir,"ssl", "cert.pem"))
+                uvicorn.run(app, host="0.0.0.0", port=8002, ssl_keyfile=os.path.join(_baseDataFilesDir,"ssl", "key.pem"), ssl_certfile=os.path.join(_baseDataFilesDir,"ssl", "cert.pem"))
         server_thread = threading.Thread(target=run_server)
         server_thread.start()
         
@@ -137,6 +137,7 @@ class ImSwitchServer(Worker):
             rpyc_thread.start()
         
         self.__logger.debug("Started server with URI -> PYRO:" + self._name + "@" + self._host + ":" + str(self._port))
+        return 
         try:
             Pyro5.config.SERIALIZER = "msgpack"
 

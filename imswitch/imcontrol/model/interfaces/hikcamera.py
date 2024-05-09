@@ -538,7 +538,7 @@ class CameraHIK:
                 self.timestamp = time.time()
                 self.frame_buffer.append(self.frame)
                 self.frameid_buffer.append(self.lastFrameId)
-                print(self.frameNumber)
+                
                 if self.g_bExit == True:
                     break
 

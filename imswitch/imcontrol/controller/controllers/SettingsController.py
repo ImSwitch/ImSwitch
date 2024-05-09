@@ -310,9 +310,13 @@ class SettingsController(ImConWidgetController):
 
     def updateBinning(self):
         """ Update a new binning to the detector. """
-        self.getDetectorManagerFrameExecFunc()(
-            lambda c: c.setBinning(int(self.allParams[c.name].binning.value()))
-        )
+        def set_binning(c):
+            if type(self.allParams[c.name].binning.value())!=int:
+                c.setBinning(1)
+            else:
+                c.setBinning(int(self.allParams[c.name].binning.value()))
+
+        self.getDetectorManagerFrameExecFunc()(set_binning)        
         self.updateSharedAttrs()
 
     def updateParamsFromDetector(self, *, detector):

@@ -75,23 +75,15 @@ class LightsheetController(ImConWidgetController):
 
     # Event handler methods
     def onButtonScanStart(self):
-        mScanParameters = self._widget.get_scan_parameters()
+        mScanParams = self._widget.get_scan_parameters()
         # returns => (self.scan_x_min[1].value(), self.scan_x_max[1].value(), self.scan_y_min[1].value(), self.scan_y_max[1].value(), 
         # self.scan_z_min[1].value(), self.scan_z_max[1].value(), self.scan_overlap[1].value())
-        mScanParams = {}
-        mScanParams['x_min']
-        mScanParams['x_max']
-        mScanParams['y_min']
-        mScanParams['y_max']
-        mScanParams['z_min']
-        mScanParams['z_max']
-        mScanParams['overlap']
                 
         # compute the spacing between xy tiles 
-        nPixels = self.detector.Width
-        pixelSize = self.detector.pixelSize
-        scanOverlap = mScanParams['overlap']
-        
+        nPixels = self.detector.shape[0]
+        pixelSize = self.detector.pixelSizeUm[-1]
+        scanOverlap = mScanParams['overlap']*0.01
+
         # compute the number of pixels to move in x and y direction
         xrange = mScanParams['x_max']-mScanParams['x_min']
         yrange = mScanParams['y_max']-mScanParams['y_min']
@@ -106,17 +98,17 @@ class LightsheetController(ImConWidgetController):
             for j in range(nTilesY):
                 xPosition = mScanParams['x_min']+i*xSpacing
                 yPosition = mScanParams['y_min']+j*ySpacing
-                xyPositions.append((xPosition, yPosition))
+                xyPositions.append((int(xPosition), int(yPosition)))
         
         # perform the scanning in the background
         def performScanning(xyPositions, zMin, zMax, speed, axis, illuSource, illuValue):
-            self.isLightsheetRunning = True
-            for x, y in xyPositions:
-                if not self.isLightsheetRunning:
-                    break
-                self.lightsheetThread(zMin, zMax, x, y, speed, axis, illuSource, illuValue)
+            if not self.isLightsheetRunning:
+                self.isLightsheetRunning = True
+                for x, y in xyPositions:
+                    self.lightsheetThread(zMin, zMax, x, y, speed, axis, illuSource, illuValue)
+                self.isLightsheetRunning = False
         self._logger.info("Scan started")
-        mThread = threading.Thread(target=performScanning, args=(xyPositions, mScanParams['z_min'], mScanParams['z_max'], mScanParameters['speed'], mScanParameters['stage_axis'], mScanParameters['illu_source'], mScanParameters['illu_value']))
+        mThread = threading.Thread(target=performScanning, args=(xyPositions, mScanParams['z_min'], mScanParams['z_max'], mScanParams['speed'], mScanParams['stage_axis'], mScanParams['illu_source'], mScanParams['illu_value']))
         mThread.start()
         
 
@@ -313,11 +305,14 @@ class LightsheetController(ImConWidgetController):
         
         # do something with the frames 
         def displayAndSaveImageStack(isSave):
+            if len(allFrames) == 0:
+                self._logger.error("No frames captured.")
+                return
             self.lightsheetStack = np.array(allFrames).copy()
             self.sigImageReceived.emit()
             # retreive positions and store the data if necessary
             pixelSizeZ = (maxPosZ-minPosZ)/len(allFrames)
-            pixelSizeXY = self.detector.pixelSize
+            pixelSizeXY = self.detector.pixelSizeUm[-1]
             allPositions = self.stages.getPosition()
             posX = allPositions["X"]
             posY = allPositions["Y"]

@@ -102,7 +102,7 @@ class ImSwitchServer(Worker):
         print(os.path.join(_baseDataFilesDir,"ssl", "key.cert"))
         
         def run_server():
-                uvicorn.run(app, host="0.0.0.0", port=8002, ssl_keyfile=os.path.join(_baseDataFilesDir,"ssl", "key.pem"), ssl_certfile=os.path.join(_baseDataFilesDir,"ssl", "cert.pem"))
+                uvicorn.run(app, host="0.0.0.0", port=8001, ssl_keyfile=os.path.join(_baseDataFilesDir,"ssl", "key.pem"), ssl_certfile=os.path.join(_baseDataFilesDir,"ssl", "cert.pem"))
         server_thread = threading.Thread(target=run_server)
         server_thread.start()
         

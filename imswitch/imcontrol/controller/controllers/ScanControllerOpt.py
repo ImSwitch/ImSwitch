@@ -1166,13 +1166,13 @@ class Stability:
 
 
 class FBPliveRecon():
-    def __init__(self, line, steps: int) -> None:
+    def __init__(self, line: np.ndarray, steps: int) -> None:
         """Init function already called with the first projection (line)
         which will be reconstructed. This is because many preallocation
         methods depend on the knowledge of line dimension.
 
         Args:
-            line (np.array): single projection, i.e. slice of the sinogram.
+            line (np.ndarray): single projection, i.e. slice of the sinogram.
             steps (int): number of total OPT steps. Crucial because angles
                 has to be known in advance.
 
@@ -1180,15 +1180,21 @@ class FBPliveRecon():
             ValueError: liveRecon class can handle only siblge slice projection
                 therefore input has to be 1D array
         """
-        self.line = line        # experimental slice of single projection
+        if not isinstance(line, np.ndarray):
+            try:
+                self.line = np.array(line)
+            except:
+                raise TypeError(f"{type(line)} cannot be converted to NumPy array")
+        else:
+            self.line = line        # experimental slice of single projection
         self.n_steps = steps    # total OPT steps
         self.step = 0           # counter of steps, emitted for update plot
-        if line.ndim > 1:       # 3D reconstruction
+        if self.line.ndim > 1:       # 3D reconstruction
             raise ValueError('Input data can be only 1D array')
 
         # preallocation
-        self.sinogram = np.zeros((len(line), steps))
-        self.recon_dim = len(line)
+        self.sinogram = np.zeros((len(self.line), steps))
+        self.recon_dim = len(self.line)
         self.recon = np.zeros((self.recon_dim, self.recon_dim))
 
         self.radon_img = self._sinogram_circle_to_square(self.sinogram)

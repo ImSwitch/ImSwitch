@@ -22,13 +22,13 @@ class TIS4Manager(DetectorManager):
         # I want to initialize with the correct depth
         try:
             self._camera = self._getTISObj(
-                                detectorInfo.managerProperties['cameraListIndex'],
-                                detectorInfo.managerProperties['tis']['pixel_format'])
+                detectorInfo.managerProperties['cameraListIndex'],
+                detectorInfo.managerProperties['tis']['pixel_format'])
         except KeyError as e:  # default is 8bit
             self.__logger.debug(e)
             self._camera = self._getTISObj(
-                                detectorInfo.managerProperties['cameraListIndex'],
-                                '8bit')
+                detectorInfo.managerProperties['cameraListIndex'],
+                '8bit')
 
         self._running = False
         self._adjustingParameters = False
@@ -49,6 +49,11 @@ class TIS4Manager(DetectorManager):
                 value=self._camera.getPropertyValue('exposure'),
                 valueUnits='us',
                 editable=True),
+            'frame_rate': DetectorNumberParameter(
+                group='Misc',
+                value=self._camera.getPropertyValue('frame_rate'),
+                valueUnits='fps',
+                editable=False),
             'gain': DetectorNumberParameter(
                 group='Misc',
                 value=self._camera.getPropertyValue('gain'),
@@ -73,8 +78,9 @@ class TIS4Manager(DetectorManager):
 
         # Prepare actions
         actions = {
-            'More properties': DetectorAction(group='Misc',
-                                              func=self._camera.openPropertiesGUI),
+            'More properties': DetectorAction(
+                group='Misc',
+                func=self._camera.openPropertiesGUI),
         }
 
         super().__init__(detectorInfo, name, fullShape=fullShape,
@@ -91,13 +97,15 @@ class TIS4Manager(DetectorManager):
         Retrieves the latest frame from the camera.
 
         Args:
-            is_save (bool, optional): Indicates whether to save the frame. Defaults to False.
+            is_save (bool, optional): Indicates whether to save the frame.
+                Defaults to False.
 
         Returns:
             numpy.ndarray: The latest frame captured by the camera.
         """
+        frame_rate = self.getParameter('frame_rate')
         if not self._adjustingParameters:
-            self.__image = self._camera.grabFrame()
+            self.__image = self._camera.grabFrame(frame_rate)
         return self.__image
 
     def setParameter(self, name, value):
@@ -124,7 +132,8 @@ class TIS4Manager(DetectorManager):
     def getExposure(self) -> int:
         """ Get camera exposure time in microseconds. This
         manager uses microseconds so no conversion is performed.
-        TODO: what if somebody changes units of the manager? No checks established
+        TODO: what if somebody changes units of the manager?
+            No checks established
 
         Returns:
             int: exposure time in microseconds
@@ -145,7 +154,8 @@ class TIS4Manager(DetectorManager):
         super().setBinning(binning)
 
     def getChunk(self):
-        return self._camera.grabFrame()[np.newaxis, :, :]
+        frame_rate = self.getParameter('frame_rate')
+        return self._camera.grabFrame(frame_rate)[np.newaxis, :, :]
 
     def flushBuffers(self):
         pass

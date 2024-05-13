@@ -30,7 +30,18 @@ class CameraTIS4:
 
         self.local_init(pixel_format)
 
-    def local_init(self, value):
+    def local_init(self, px_format_value: str) -> None:
+        """
+        Initializes the camera device and sets various properties. This is
+        important for the reinitialization due to the change of pixel format.
+
+        Args:
+            px_format_value (str): The value to set for the
+                'pixel_format' property.
+
+        Returns:
+            None
+        """
         if self.cam.is_device_open:
             reinit = True  # flag if pixel format needs to be set
             self.__logger.info('this is a RE-init')
@@ -41,7 +52,9 @@ class CameraTIS4:
         self.cam.device_open(self.model)
 
         # query exposure_time internal unit from the camera
-        self.exposureUnit = self.cam.device_property_map.find_float(ic4.PropId.EXPOSURE_TIME).unit
+        self.exposureUnit = self.cam.device_property_map.find_float(
+            ic4.PropId.EXPOSURE_TIME,
+            ).unit
 
         # convert exposure time to us using the ExposureTimeToUs class
         self.exposure = ExposureTimeToUs.convert(
@@ -54,19 +67,33 @@ class CameraTIS4:
 
         # set pixel format, not needed because it gets set in the manager
         if reinit:
-            self.setPropertyValue('pixel_format', value)
+            self.setPropertyValue('pixel_format', px_format_value)
         # set auto gain off
         self.cam.device_property_map.set_value(
-            ic4.PropId.GAIN_AUTO, False
+            ic4.PropId.GAIN_AUTO,
+            False,
         )
         # set exposure time AUTO false
         self.cam.device_property_map.set_value(
-            ic4.PropId.EXPOSURE_AUTO, False
+            ic4.PropId.EXPOSURE_AUTO,
+            False,
         )
 
     def start_live(self):
+        """ Starts the live video stream from the camera.
+
+        This method starts the live video stream from the camera.
+        If the camera stream is already set, it calls the `acquisition_start`
+        method to resume the acquisition. Otherwise, it sets up the
+        stream using the `stream_setup` method and starts the acquisition.
+
+        Note:
+            The camera must be connected and initialized before calling
+            this method.
+        """
         self.__logger.debug('start live method called')
-        # Defer acquisition means that, self.cam.start_acquisition needs to be called
+        # Defer acquisition means that, self.cam.start_acquisition
+        # needs to be called
         if self.cam.is_streaming:
             self.cam.acquisition_start()
         else:
@@ -76,14 +103,32 @@ class CameraTIS4:
             )
 
     def stop_live(self):
+        """
+        Stops the live imaging.
+
+        This method stops the live imaging by calling the `acquisition_stop`
+        method of the camera object.
+
+        Returns:
+            None
+        """
         self.__logger.debug('stop live method called')
         self.cam.acquisition_stop()  # stop imaging
 
-    def grabFrame(self):
-        # self.exposure is always us, but the camera needs ms -> factor 1000
-        # the constant 30 is found experimentally for short exposure times
-        # print(int(np.ceil(3 + 2.2 * self.exposure/1000)))
-        image = self.snapSink.snap_single(int(np.ceil(300 + 2.2 * self.exposure/1000)))
+    def grabFrame(self, frame_rate: float) -> np.ndarray:
+        """
+        Grabs a single frame from the camera. In case of 12-bit pixel format,
+        the bits are shifted to the right by 4. The frame is rotated if
+        the `rotate_frame` property is set to a value other than 'No'.
+
+        Args:
+            frame_rate (float): The desired frame rate in frames per second.
+
+        Returns:
+            np.ndarray: The grabbed frame as a NumPy array.
+        """
+        # timeout in ms linked to the frame rate, not exposure.
+        image = self.snapSink.snap_single(int(np.ceil((3/frame_rate) * 1000)))
         frame = image.numpy_copy()[:, :, 0]
 
         # shift bits if necessary, works
@@ -95,7 +140,17 @@ class CameraTIS4:
             frame = self.rotate(frame)
         return frame
 
-    def rotate(self, arr):
+    def rotate(self, arr: np.ndarray) -> np.ndarray:
+        """
+        Rotate the input array based on the specified rotation value.
+
+        Parameters:
+        arr (numpy.ndarray): The input array to be rotated.
+
+        Returns:
+        numpy.ndarray: The rotated array.
+
+        """
         if self.rotate_frame == '90':
             return np.rot90(arr, k=1)
         elif self.rotate_frame == '180':
@@ -111,7 +166,19 @@ class CameraTIS4:
         vsize = max(vsize, 24)  # minimum ROI size
         pass
 
-    def setPropertyValue(self, property_name, property_value):
+    def setPropertyValue(self, property_name: str, property_value):
+        """
+        Sets the value of a camera property. Valid properties are 'gain',
+        'exposure', 'image_height', 'image_width', 'pixel_format', and
+        'rotate_frame'.
+
+        Args:
+            property_name (str): The name of the property to set.
+            property_value: The value to set for the property.
+
+        Returns:
+            The value that was set for the property.
+        """
         # Check if the property exists.
         if property_name == "gain":
             self.cam.device_property_map.set_value(
@@ -123,7 +190,10 @@ class CameraTIS4:
                 ic4.PropId.EXPOSURE_TIME,
                 ExposureTimeToUs.convert(property_value, self.exposureUnit),
                 )
-            self.exposure = ExposureTimeToUs.convert(property_value, self.exposureUnit)
+            self.exposure = ExposureTimeToUs.convert(
+                property_value,
+                self.exposureUnit,
+                )
         elif property_name == 'image_height':
             self.cam.device_property_map.set_value(
                                 ic4.PropId.HEIGHT,
@@ -145,7 +215,18 @@ class CameraTIS4:
             return False
         return property_value
 
-    def getPropertyValue(self, property_name):
+    def getPropertyValue(self, property_name: str):
+        """
+        Get the value of a camera property. Valid properties are 'gain',
+        'exposure', 'frame_rate', 'image_height', 'image_width',
+        'pixel_format', and 'rotate_frame'.
+
+        Args:
+            property_name (str): The name of the property to retrieve.
+
+        Returns:
+            The value of the specified property.
+        """
         # Check if the property exists.
         if property_name == "gain":
             property_value = self.cam.device_property_map.get_value_float(
@@ -156,6 +237,10 @@ class CameraTIS4:
                                     ic4.PropId.EXPOSURE_TIME),
                                 self.exposureUnit,
                                 )
+        # get frame rate, this does not have setter
+        elif property_name == 'frame_rate':
+            property_value = self.cam.device_property_map.get_value_float(
+                                ic4.PropId.ACQUISITION_FRAME_RATE)
         elif property_name == "image_width":
             property_value = self.cam.device_property_map.get_value_int(
                                 ic4.PropId.WIDTH)
@@ -172,6 +257,7 @@ class CameraTIS4:
         return property_value
 
     def openPropertiesGUI(self):
+        """ Opens ic4 device settings dialog. """
         ic4.Dialogs.grabber_device_properties(self.cam, 43)
 
 

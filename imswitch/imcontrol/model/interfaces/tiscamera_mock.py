@@ -49,8 +49,10 @@ class MockCameraTIS:
         mocktype = "random_peak"
         if mocktype == "focus_lock":
             img = np.zeros((500, 600))
-            beamCenter = [int(np.random.randn() * 1 + 250), int(np.random.randn() * 30 + 300)]
-            img[beamCenter[0] - 10:beamCenter[0] + 10, beamCenter[1] - 10:beamCenter[1] + 10] = 1
+            beamCenter = [int(np.random.randn() * 1 + 250),
+                          int(np.random.randn() * 30 + 300)]
+            img[beamCenter[0] - 10:beamCenter[0] + 10,
+                beamCenter[1] - 10:beamCenter[1] + 10] = 1
         elif mocktype == "random_peak":
             imgsize = (800, 800)
             peakmax = 60
@@ -59,7 +61,8 @@ class MockCameraTIS:
             img = np.zeros(imgsize)
             # add a random gaussian peak sometimes
             if np.random.rand() > 0.8:
-                x, y = np.meshgrid(np.linspace(0, imgsize[1], imgsize[1]), np.linspace(0,imgsize[0],imgsize[0]))
+                x, y = np.meshgrid(np.linspace(0, imgsize[1], imgsize[1]),
+                                   np.linspace(0, imgsize[0], imgsize[0]))
                 pos = np.dstack((x, y))
                 xc = (np.random.rand()*2-1)*imgsize[0]/2 + imgsize[0]/2
                 yc = (np.random.rand()*2-1)*imgsize[1]/2 + imgsize[1]/2
@@ -70,24 +73,26 @@ class MockCameraTIS:
             img = img + np.random.poisson(lam=noisemean, size=imgsize)
         else:
             img = np.zeros((500, 600))
-            beamCenter = [int(np.random.randn() * 30 + 250), int(np.random.randn() * 30 + 300)]
-            img[beamCenter[0] - 10:beamCenter[0] + 10, beamCenter[1] - 10:beamCenter[1] + 10] = 1
+            beamCenter = [int(np.random.randn() * 30 + 250),
+                          int(np.random.randn() * 30 + 300)]
+            img[beamCenter[0] - 10:beamCenter[0] + 10,
+                beamCenter[1] - 10:beamCenter[1] + 10] = 1
             img = np.random.randn(img.shape[0], img.shape[1])
         return img
 
     def getLast(self, is_resize=False):
         return self.grabFrame()
-    
+
     def getLastChunk(self):
-        return np.expand_dims(self.grabFrame(),0)
-    
+        return np.expand_dims(self.grabFrame(), 0)
+
     def setPropertyValue(self, property_name, property_value):
         return property_value
 
     def getPropertyValue(self, property_name):
         try:
             return self.properties[property_name]
-        except Exception as e:
+        except Exception:
             return 0
 
     def openPropertiesGUI(self):

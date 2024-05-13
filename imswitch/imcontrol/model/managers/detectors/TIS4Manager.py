@@ -103,9 +103,8 @@ class TIS4Manager(DetectorManager):
         Returns:
             numpy.ndarray: The latest frame captured by the camera.
         """
-        frame_rate = self.getParameter('frame_rate')
         if not self._adjustingParameters:
-            self.__image = self._camera.grabFrame(frame_rate)
+            self.__image = self._camera.grabFrame()
         return self.__image
 
     def setParameter(self, name, value):
@@ -125,6 +124,9 @@ class TIS4Manager(DetectorManager):
         # For now parameter selector disabled, if never True
         if name == 'pixel_format':
             self._camera.local_init(value)
+        elif name == 'exposure':
+            value = self._camera.setPropertyValue(name, value)
+            super().setParameter('frame_rate', self.getParameter('frame_rate'))
         else:
             value = self._camera.setPropertyValue(name, value)
         return value
@@ -154,8 +156,7 @@ class TIS4Manager(DetectorManager):
         super().setBinning(binning)
 
     def getChunk(self):
-        frame_rate = self.getParameter('frame_rate')
-        return self._camera.grabFrame(frame_rate)[np.newaxis, :, :]
+        return self._camera.grabFrame()[np.newaxis, :, :]
 
     def flushBuffers(self):
         pass

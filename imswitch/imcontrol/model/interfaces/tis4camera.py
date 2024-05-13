@@ -79,6 +79,11 @@ class CameraTIS4:
             False,
         )
 
+        # get properties of frame rate
+        self.frame_rate = self.cam.device_property_map.find_float(
+            ic4.PropId.ACQUISITION_FRAME_RATE,
+        )
+
     def start_live(self):
         """ Starts the live video stream from the camera.
 
@@ -115,20 +120,19 @@ class CameraTIS4:
         self.__logger.debug('stop live method called')
         self.cam.acquisition_stop()  # stop imaging
 
-    def grabFrame(self, frame_rate: float) -> np.ndarray:
+    def grabFrame(self) -> np.ndarray:
         """
         Grabs a single frame from the camera. In case of 12-bit pixel format,
         the bits are shifted to the right by 4. The frame is rotated if
         the `rotate_frame` property is set to a value other than 'No'.
 
-        Args:
-            frame_rate (float): The desired frame rate in frames per second.
-
         Returns:
             np.ndarray: The grabbed frame as a NumPy array.
         """
-        # timeout in ms linked to the frame rate, not exposure.
-        image = self.snapSink.snap_single(int(np.ceil((3/frame_rate) * 1000)))
+        image = self.snapSink.snap_single(max(int(2.3 * self.exposure/1000),
+                                              int(2300/self.frame_rate.minimum),
+                                              ),
+                                          )
         frame = image.numpy_copy()[:, :, 0]
 
         # shift bits if necessary, works

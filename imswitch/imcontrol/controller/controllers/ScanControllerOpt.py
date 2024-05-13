@@ -536,12 +536,11 @@ class ScanControllerOpt(ImConWidgetController):
             self._widget.scanPar['Rotator'].addItem(rotator)
 
         # Connect widget signals
-        self._widget.scanPar['GetHotPixels'].clicked.connect(self.execHotPixelCorrection)
-        self._widget.scanPar['GetDark'].clicked.connect(self.execDarkFieldCorrection)
-        self._widget.scanPar['GetFlat'].clicked.connect(self.execFlatFieldCorrection)
-        self._widget.scanPar['LiveReconButton'].clicked.connect(self.updateLiveReconFlag)
-
-        self._widget.scanPar['OptStepsEdit'].valueChanged.connect(self.updateOptSteps)
+        self._widget.scanPar['GetHotPixels'].clicked.connect(self.execHotPixelCorrection) # noqa
+        self._widget.scanPar['GetDark'].clicked.connect(self.execDarkFieldCorrection)  # noqa
+        self._widget.scanPar['GetFlat'].clicked.connect(self.execFlatFieldCorrection) # noqa
+        self._widget.scanPar['LiveReconButton'].clicked.connect(self.updateLiveReconFlag) # noqa
+        self._widget.scanPar['OptStepsEdit'].valueChanged.connect(self.updateOptSteps) # noqa
 
         # Scan loop control
         self._widget.scanPar['StartButton'].clicked.connect(self.prepareOPTScan)
@@ -1184,7 +1183,9 @@ class FBPliveRecon():
             try:
                 self.line = np.array(line)
             except:
-                raise TypeError(f"{type(line)} cannot be converted to NumPy array")
+                raise TypeError(
+                    f"{type(line)} cannot be converted to NumPy array",
+                    )
         else:
             self.line = line        # experimental slice of single projection
         self.n_steps = steps    # total OPT steps
@@ -1215,7 +1216,10 @@ class FBPliveRecon():
                         )
         self.update_recon(self.line, 0)
 
-    def update_recon(self, line_in: np.ndarray, step: int, interp_mode='linear') -> None:
+    def update_recon(self, line_in: np.ndarray,
+                     step: int,
+                     interp_mode='linear',
+                     ) -> None:
         """
         Updates the reconstruction by adding a new line of data which is
         getting projected by inverse radon.

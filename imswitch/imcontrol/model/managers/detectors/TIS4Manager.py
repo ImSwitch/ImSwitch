@@ -33,8 +33,8 @@ class TIS4Manager(DetectorManager):
         self._running = False
         self._adjustingParameters = False
 
-        for propertyName, propertyValue in detectorInfo.managerProperties['tis'].items():
-            self._camera.setPropertyValue(propertyName, propertyValue)
+        for propName, propValue in detectorInfo.managerProperties['tis'].items():  # noqa
+            self._camera.setPropertyValue(propName, propValue)
 
         fullShape = (self._camera.getPropertyValue('image_width'),
                      self._camera.getPropertyValue('image_height'))
@@ -206,19 +206,23 @@ class TIS4Manager(DetectorManager):
 
     def _getTISObj(self, cameraId, pixel_format):
         try:
-            from imswitch.imcontrol.model.interfaces.tis4camera import CameraTIS4
+            from imswitch.imcontrol.model.interfaces.tis4camera import (
+                CameraTIS4)
             camera = CameraTIS4(cameraId, pixel_format)
         except Exception:
-            self.__logger.warning(f'Failed to initialize TIS camera {cameraId}, loading mocker')
-            from imswitch.imcontrol.model.interfaces.tiscamera_mock import MockCameraTIS
+            self.__logger.warning(
+                f'Failed to initialize TIS camera {cameraId}, loading mocker')
+            from imswitch.imcontrol.model.interfaces.tiscamera_mock import (
+                MockCameraTIS)
             camera = MockCameraTIS()
 
         self.__logger.info(f'Initialized camera, model: {camera.model}')
         return camera
 
     def close(self):
-        self.__logger.info(f'Shutting down camera, model: {self._camera.model}')
-        pass
+        self.__logger.info(
+            f'Shutting down camera, model: {self._camera.model}',
+            )
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

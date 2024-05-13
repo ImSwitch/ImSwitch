@@ -234,7 +234,8 @@ class ScanWidgetOpt(NapariHybridWidget):
         """ Removes lines from the stability plot before updating the plot. """
         self.intensityPlot.clear()
 
-    def updateStabilityPlot(self, steps: list, intensity: Dict[str, list]) -> None:
+    def updateStabilityPlot(self, steps: list, intensity: Dict[str, list],
+                            ) -> None:
         """Updates widget plot with new stability line plots.
 
         Args:

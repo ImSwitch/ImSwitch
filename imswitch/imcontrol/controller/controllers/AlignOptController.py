@@ -38,16 +38,23 @@ class AlignOptController(ImConWidgetController):
         self.rotator = None       # from rotatorsManager by rotatorName
         self.rotatorName = None   # from rotatorsManager
 
-        self._widget.scanPar['Rotator'].currentIndexChanged.connect(self.updateRotator)
+        self._widget.scanPar['Rotator'].currentIndexChanged.connect(
+            self.updateRotator)
         self.updateRotator()
 
         for rotator in self.rotatorsList:
             self._widget.scanPar['Rotator'].addItem(rotator)
 
         # Scan loop control
-        self._widget.scanPar['StartButton'].clicked.connect(self.prepareOPTScan)
-        self._widget.scanPar['StopButton'].clicked.connect(self.requestInterruption)
-        self._widget.scanPar['PlotHorCuts'].clicked.connect(self.plotHorCuts)
+        self._widget.scanPar['StartButton'].clicked.connect(
+            self.prepareOPTScan,
+            )
+        self._widget.scanPar['StopButton'].clicked.connect(
+            self.requestInterruption,
+            )
+        self._widget.scanPar['PlotHorCuts'].clicked.connect(
+            self.plotHorCuts,
+            )
 
         # cross projection x-shift parameter
         self._widget.scanPar['xShift'].valueChanged.connect(self.replotAll)
@@ -97,7 +104,9 @@ class AlignOptController(ImConWidgetController):
         self.allFrames = []
 
         # equidistant steps for the OPT scan in absolute values.
-        curPos = self._master.rotatorsManager[self.rotatorName].get_position()[0]
+        curPos = self._master.rotatorsManager[
+                                self.rotatorName
+                                ].get_position()[0]
         counterPos = (curPos + self.stepsPerTurn//2) % self.stepsPerTurn
         self.optWorker.optSteps = [curPos, counterPos]
         self.optSteps = 2

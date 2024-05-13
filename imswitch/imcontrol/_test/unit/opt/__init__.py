@@ -1,4 +1,5 @@
 from imswitch.imcontrol.model import DetectorInfo
+from imswitch.imcontrol.view import ViewSetupInfo
 
 
 detectorInfosNonSquare = {
@@ -43,3 +44,74 @@ rotator = {
         }
     }
 }
+
+setupInfoOPTBasic = ViewSetupInfo.from_json("""
+{
+    "detectors": {
+        "DMK": {
+            "analogChannel": null,
+            "digitalLine": null,
+            "managerName": "TIS4Manager",
+            "managerProperties": {
+                "cameraListIndex": 0,  
+                "tis": {
+                    "pixel_format": "12bit",
+                    "exposure": 1000,
+                    "gain": 0,
+                    "image_width": 2048,
+                    "image_height": 1536,
+                    "rotate_frame": "90"
+                }
+            },
+            "forAcquisition": true,
+            "forOpt": true
+        }
+    },
+    "rotators": {
+        "ArduinoStepper": {
+            "managerName": "TelemetrixRotatorManager",
+            "managerProperties": {
+                "startSpeed": 400,
+                "stepsPerTurn": 3200,
+                "maximumSpeed": 900,
+                "acceleration": 200,
+                "interface": "StepperDriver",
+                "pinConfig" : {
+                    "pin1": 2,
+                    "pin2": 3
+                }
+            }
+        }
+    },
+    "scan": {
+        "scanWidgetType": "Opt",
+        "scanDesigner": "BetaScanDesigner",
+        "scanDesignerParams": {
+            "return_time": 0.01
+        },
+        "TTLCycleDesigner": "BetaTTLCycleDesigner",
+        "TTLCycleDesignerParams": {},
+        "sampleRate": 100000
+    },
+    "optInfo": {
+        "detectors": ["DMK"],
+        "rotator": "ArduinoStepper"
+    },
+    "rois": {
+      "Full chip": {
+        "x": 0,
+        "y": 0,
+        "w": 2048,
+        "h": 1536
+      }
+    },
+    "availableWidgets": [
+        "Settings",
+        "View",
+        "Recording",
+        "Image",
+        "Rotator",
+        "Scan"
+    ]
+}
+""", infer_missing=True)

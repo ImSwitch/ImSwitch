@@ -32,9 +32,9 @@ class VirtualStageManager(PositionerManager):
             self._positioner.move(x=value[0], y=value[1], z=value[2], is_absolute=is_absolute)
         if axis == "XY":
             self._positioner.move(x=value[0], y=value[1], is_absolute=is_absolute)
-
-        #FIXME: for i, iaxis in enumerate(("A","X","Y","Z")):
-        #    self._position[iaxis] = self._motor._position[i]
+        for axes in ["A","X","Y","Z"]:
+            self._position[axes] = self._positioner.position[axes]
+        
 
     def moveForever(self, speed=(0, 0, 0, 0), is_stop=False):
         pass

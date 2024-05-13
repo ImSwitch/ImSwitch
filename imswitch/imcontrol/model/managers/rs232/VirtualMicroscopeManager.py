@@ -68,7 +68,7 @@ class Camera:
         self.PixelSize = 1.0
         self.isRGB = False
         # precompute noise so that we will save energy and trees
-        self.noiseStack = np.random.randn(self.SensorHeight,self.SensorWidth,100)*.2+1
+        self.noiseStack = np.random.randn(self.SensorHeight,self.SensorWidth,100)*.15
         
     def produce_frame(self, x_offset=0, y_offset=0, light_intensity=1.0, defocusPSF=None):
         """Generate a frame based on the current settings."""
@@ -83,11 +83,11 @@ class Camera:
             if IS_NIP and defocusPSF is not None and not defocusPSF.shape == ():
                 print("Defocus:"+str(defocusPSF.shape))
                 image = np.array(np.real(nip.convolve(image, defocusPSF)))
-            image = image/np.mean(image)
+            image = np.float32(image)/np.max(image) * np.float32(light_intensity)
             image += self.noiseStack[:,:,np.random.randint(0,100)]
                         
             # Adjust illumination
-            image = (image * light_intensity).astype(np.uint16)
+            image = image.astype(np.uint16)
             time.sleep(0.1)
             return np.array(image)
         
@@ -169,7 +169,7 @@ class Illuminator:
 
     def set_intensity(self, channel=1, intensity=0):
         with self.lock:
-            self.intensity = intensity/1024
+            self.intensity = intensity
 
     def get_intensity(self, channel):
         with self.lock:

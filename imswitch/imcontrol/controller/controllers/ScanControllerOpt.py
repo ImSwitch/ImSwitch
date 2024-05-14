@@ -66,8 +66,8 @@ class ScanExecutionMonitor:
                               self.report['start']).total_seconds()
         except KeyError:
             # TODO: ??? why should there be an exception?
-            # if the class is reused, and addStart() is not called before addFinish,
-            # try will fail.
+            # if the class is reused, and addStart() is not called
+            # before addFinish, try will fail.
             print('Not possible to calculate total experimental time.')
 
     def getReport(self) -> dict:

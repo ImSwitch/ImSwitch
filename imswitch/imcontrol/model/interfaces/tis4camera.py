@@ -3,15 +3,19 @@ import imagingcontrol4 as ic4
 from imswitch.imcontrol.model.managers.detectors.DetectorManager import (
     ExposureTimeToUs
 )
-
 from imswitch.imcommon.model import initLogger
+
+DEBUG = False
 
 
 class CameraTIS4:
     def __init__(self, cameraNo, pixel_format):
         super().__init__()
         self.__logger = initLogger(self, tryInheritParent=True)
-        ic4.Library.init(api_log_level=5, log_targets=1)
+        if DEBUG:
+            ic4.Library.init(api_log_level=5, log_targets=1)
+        else:
+            ic4.Library.init()
         self.pixel_formats = {'8bit': ic4.PixelFormat.Mono8,
                               '12bit': ic4.PixelFormat.Mono16,
                               '16bit': ic4.PixelFormat.Mono16}
@@ -129,10 +133,13 @@ class CameraTIS4:
         Returns:
             np.ndarray: The grabbed frame as a NumPy array.
         """
-        image = self.snapSink.snap_single(max(int(2.3 * self.exposure/1000),
-                                              int(2300/self.frame_rate.minimum),
-                                              ),
-                                          )
+        timeout = max(int(2.3 * self.exposure/1000),
+                      int(2300/self.frame_rate.minimum),
+                      )
+        print('timeout:', timeout,
+              'fr:', self.frame_rate.value,
+              'exp:', self.exposure)
+        image = self.snapSink.snap_single(timeout_ms=timeout)
         frame = image.numpy_copy()[:, :, 0]
 
         # shift bits if necessary, works
@@ -176,6 +183,10 @@ class CameraTIS4:
         'exposure', 'image_height', 'image_width', 'pixel_format', and
         'rotate_frame'.
 
+        Exceptions (raise IC4Exception) are passed because they
+        are dealt upstream in the TIS4Manager.
+        TODO: raise the exception and handle it in the manager instead.
+
         Args:
             property_name (str): The name of the property to set.
             property_value: The value to set for the property.
@@ -186,37 +197,74 @@ class CameraTIS4:
         # Check if the property exists.
         if property_name == "gain":
             self.cam.device_property_map.set_value(
-                                ic4.PropId.GAIN,
-                                property_value)
+                ic4.PropId.GAIN,
+                property_value,
+                )
+
         elif property_name == "exposure":
             # GUI sends exposure in us, no conversion needed
-            self.cam.device_property_map.set_value(
-                ic4.PropId.EXPOSURE_TIME,
-                ExposureTimeToUs.convert(property_value, self.exposureUnit),
-                )
-            self.exposure = ExposureTimeToUs.convert(
-                property_value,
-                self.exposureUnit,
-                )
+            try:
+                self.cam.device_property_map.set_value(
+                    ic4.PropId.EXPOSURE_TIME,
+                    ExposureTimeToUs.convert(
+                        property_value,
+                        self.exposureUnit,
+                        ),
+                    )
+                self.exposure = ExposureTimeToUs.convert(
+                    property_value,
+                    self.exposureUnit,
+                    )
+            except Exception as e:
+                self.__logger.error(f'Exposure setting failed: {e}')
+
+        elif property_name == 'frame_rate':
+            try:
+                self.cam.device_property_map.set_value(
+                                    ic4.PropId.ACQUISITION_FRAME_RATE,
+                                    property_value)
+                self.frame_rate = self.cam.device_property_map.find_float(
+                                    ic4.PropId.ACQUISITION_FRAME_RATE,
+                                    )
+            except Exception as e:
+                self.__logger.error(f'Frame rate setting failed: {e}')
+
         elif property_name == 'image_height':
-            self.cam.device_property_map.set_value(
-                                ic4.PropId.HEIGHT,
-                                property_value)
+            try:
+                self.cam.device_property_map.set_value(
+                    ic4.PropId.HEIGHT,
+                    property_value,
+                    )
+            except Exception as e:
+                self.__logger.error(f'Image height setting failed: {e}')
+
         elif property_name == 'image_width':
-            self.cam.device_property_map.set_value(
-                                ic4.PropId.WIDTH,
-                                property_value)
+            try:
+                self.cam.device_property_map.set_value(
+                    ic4.PropId.WIDTH,
+                    property_value,
+                    )
+            except Exception as e:
+                self.__logger.error(f'Image width setting failed: {e}')
+
         elif property_name == 'pixel_format':
-            self.cam.device_property_map.set_value(
-                            ic4.PropId.PIXEL_FORMAT,
-                            self.pixel_formats[property_value])
-            self.pixel_format = property_value
-            self.__logger.debug(f'pixel format set: {self.pixel_format}')
+            try:
+                self.cam.device_property_map.set_value(
+                    ic4.PropId.PIXEL_FORMAT,
+                    self.pixel_formats[property_value],
+                    )
+                self.pixel_format = property_value
+                self.__logger.debug(f'pixel format set: {self.pixel_format}')
+            except Exception as e:
+                self.__logger.error(f'Pixel format setting failed: {e}')
+
         elif property_name == 'rotate_frame':
             self.rotate_frame = property_value
+
         else:
             self.__logger.warning(f'Property {property_name} does not exist')
             return False
+
         return property_value
 
     def getPropertyValue(self, property_name: str):
@@ -234,7 +282,8 @@ class CameraTIS4:
         # Check if the property exists.
         if property_name == "gain":
             property_value = self.cam.device_property_map.get_value_float(
-                                ic4.PropId.GAIN)
+                                ic4.PropId.GAIN,
+                                )
         elif property_name == "exposure":
             property_value = ExposureTimeToUs.convert(
                                 self.cam.device_property_map.get_value_float(
@@ -244,20 +293,27 @@ class CameraTIS4:
         # get frame rate, this does not have setter
         elif property_name == 'frame_rate':
             property_value = self.cam.device_property_map.get_value_float(
-                                ic4.PropId.ACQUISITION_FRAME_RATE)
+                                ic4.PropId.ACQUISITION_FRAME_RATE,
+                                )
         elif property_name == "image_width":
             property_value = self.cam.device_property_map.get_value_int(
-                                ic4.PropId.WIDTH)
+                                ic4.PropId.WIDTH,
+                                )
         elif property_name == "image_height":
             property_value = self.cam.device_property_map.get_value_int(
-                                ic4.PropId.HEIGHT)
+                                ic4.PropId.HEIGHT,
+                                )
+
         elif property_name == 'pixel_format':
             return self.pixel_format
+
         elif property_name == 'rotate_frame':
             return self.rotate_frame
+
         else:
             self.__logger.warning(f'Property {property_name} does not exist')
-            return False
+            return None
+
         return property_value
 
     def openPropertiesGUI(self):

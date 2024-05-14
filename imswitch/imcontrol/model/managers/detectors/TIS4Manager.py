@@ -53,7 +53,7 @@ class TIS4Manager(DetectorManager):
                 group='Misc',
                 value=self._camera.getPropertyValue('frame_rate'),
                 valueUnits='fps',
-                editable=False),
+                editable=True),
             'gain': DetectorNumberParameter(
                 group='Misc',
                 value=self._camera.getPropertyValue('gain'),
@@ -108,28 +108,32 @@ class TIS4Manager(DetectorManager):
         return self.__image
 
     def setParameter(self, name, value):
-        """Sets a parameter value and returns the value.
+        """ Sets a parameter value and returns the value.
         If the parameter doesn't exist, i.e. the parameters field doesn't
         contain a key with the specified parameter name, an error will be
-        raised."""
+        raised.
 
-        super().setParameter(name, value)
+        Setting might not work on the HW side, so the value is checked and
+        returned from the HW.
+        """
         if name not in self._DetectorManager__parameters:
             raise AttributeError(f'Non-existent parameter "{name}" specified')
-        # trying to solve bit depth change issues
-        # this closes and reopens the camera, sink and stream
-        # snapping after works, but liveview crashes without
-        # any error exactly after grabbing three frames.
-        # No idea why.
-        # For now parameter selector disabled, if never True
         if name == 'pixel_format':
             self._camera.local_init(value)
-        elif name == 'exposure':
-            value = self._camera.setPropertyValue(name, value)
-            super().setParameter('frame_rate', self.getParameter('frame_rate'))
         else:
             value = self._camera.setPropertyValue(name, value)
-        return value
+
+        # problem is that if value is out of bounds, it will not be set
+        # call getParameter(name) will return the correct value
+        if name == 'pixel_format':
+            # update all parameters
+            for par_name in self._DetectorManager__parameters:
+                par_value = self.getParameter(par_name)
+                super().setParameter(par_name, par_value)
+
+        hw_value = self.getParameter(name)
+        super().setParameter(name, hw_value)
+        return hw_value
 
     def getExposure(self) -> int:
         """ Get camera exposure time in microseconds. This

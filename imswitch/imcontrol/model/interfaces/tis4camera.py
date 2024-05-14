@@ -50,7 +50,6 @@ class CameraTIS4:
             reinit = True  # flag if pixel format needs to be set
             self.__logger.info('this is a RE-init')
             self.cam.device_close()
-            print('reinit, is sink attached:', self.snapSink.is_attached)
         else:
             reinit = False
         self.cam.device_open(self.model)
@@ -67,7 +66,6 @@ class CameraTIS4:
                                         ),
                                 self.exposureUnit,
                                 )
-        print('exposure in localInit:', self.exposure)
 
         # set pixel format, not needed because it gets set in the manager
         if reinit:
@@ -136,9 +134,10 @@ class CameraTIS4:
         timeout = max(int(2.3 * self.exposure/1000),
                       int(2300/self.frame_rate.minimum),
                       )
-        print('timeout:', timeout,
-              'fr:', self.frame_rate.value,
-              'exp:', self.exposure)
+        # if DEBUG:
+        #     print('timeout:', timeout,
+        #         'fr:', self.frame_rate.value,
+        #         'exp:', self.exposure)
         image = self.snapSink.snap_single(timeout_ms=timeout)
         frame = image.numpy_copy()[:, :, 0]
 

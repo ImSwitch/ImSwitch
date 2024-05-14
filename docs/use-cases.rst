@@ -143,28 +143,26 @@ of a RS232 connection, such as:
 
 The pulses will be directly handled by the National Instruments card and our TTLDesigner.
 
-Optical Projection Tomography (OPT) using rotator stepping 
-----------------------------------------------------------
-contact:
+Optical Projection Tomography (OPT) using rotator stepping
+--------------------------------------------------------------------
+contact: `David Palecek (CCMAR, Portugal) <mailto:dpalecek@ualg.pt>`_, `Teresa Correia (CCMAR, Portugal) <mailto:tmcorreia@ualg.pt>`_
 
-* `David Palecek (CCMAR, Portugal) <mailto:dpalecek@ualg.pt>`_
-* `Teresa Correia (CCMAR, Portugal) <mailto:tmcorreia@ualg.pt>`_
-
-.. image:: ./images/opt-scan-controller.png
+.. figure:: ./images/opt-scan-controller.png
     :width: 600px
     :align: center
 
+    OPT in imswitch in action using `example_OPTFull4Wire.json` configuration file.
+
 Optical Projection Tomography (OPT) is an optical analogue of X-ray computer tomography used
 in medical imaging. OPT can be performed leveraging any microscopy contrast, most widespread
-used ones are transmission, fluorescence or polarizaiton.Imswitch implementation aims to provide
+used ones are transmission, fluorescence or polarizaiton. Imswitch implementation aims to provide
 user-friendly access to end-to-end pipeline for the OPT, which consist of these indispensible steps:
 
 #. Hardware control and data acquisition
 #. Data preprocessing
-#. Tomography volume reconstruction (CPU and GPU, FBP and deep learning)
+#. Tomography volume reconstruction (CPU and GPU, FBP and Deep Learning)
 
-All of them can be performed within imswitch, since step 2. and 3. are implemented as napari plugins, 
-and napari is an integral part of imswitch.
+All of them can be performed within imswitch, since step 2. and 3. are implemented as napari plugins.
 
 Hardware control
 ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -177,8 +175,8 @@ Configuration file and OPT hardware specifications
 For this microscope use case, we created the JSON file ``example_OPTFull4Wire.json``, located at ``/imswitch/_data/user_defaults/imcontrol_setups/example_OPTFull4Wire.json``.
 
 In the JSON file, one detector is specified for the imaging: DMK 37BUX252 is controlled by ``TIS4Manager`` set for
-gray-scale 12bit frame acquisition. The exposure time is upon startup is defined in `us` for ``TIS4Manager``, however
-many other managers use `ms`.
+gray-scale 12bit frame acquisition. The exposure time is defined in `us` for ``TIS4Manager``, however
+many other managers might use `ms`.
 
 The rotational stage is controlled via ``TelemetrixRotatorManager``, which controls the Arduino board.
 Configure your pin connections via ``piConfig`` in the configuration file. The number of steps per revolution of the
@@ -193,9 +191,9 @@ Camera control
 Camera is software-triggered in the snapping mode. The exposure time is set in the settings
 widget on the left. 
 
-`Technical note`: Wait constant is set equal to exposure time in order to avoid blurring of
+`Technical note`: Wait constant before image snap is set equal to exposure time in order to avoid blurring of
 images for long exposure times, since snap retrieves last frame in the queue, therefore the request
-is delayed by the wait time. It can be changed only in the source code at the moment in ``ScanOPTWorker``
+is delayed by the `waitConst` attribute value. It can be changed only in the source code at the moment in ``ScanOPTWorker``
 class.
 
 Rotational stage control
@@ -215,15 +213,15 @@ Tested HW
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Cameras:
 
-* `TIS DMK 37BUX252` (USB industrial grade camera, ``TISManager``, ``TIS4Manager``), ``TISManager`` uses older ic3.5 API, while ``TIS4Manager`` implements the newest ic4 API, which should support most of the `TIS cameras <https://www.theimagingsource.com/en-us/product/software/icimagingcontrol/>`_.
+* `TIS DMK 37BUX252` (USB industrial grade camera, ``TISManager``, ``TIS4Manager``), ``TISManager`` uses older ic3.5 API, while ``TIS4Manager`` implements the newest ic4 API (`Programmer's guide <https://www.theimagingsource.com/en-us/documentation/ic4python/programmers-guide.html>`_), which should support most of the `TIS cameras <https://www.theimagingsource.com/en-us/product/software/icimagingcontrol/>`_.
 
 Rotational stages:
 
 * `Simple stepper 28BYJ-48 <https://lastminuteengineers.com/28byj48-stepper-motor-arduino-tutorial/>`_ (comes with Arduino UNO, ``TelemetrixRotatorManager``), 2048 steps (beware, the gears might be `off <https://forum.arduino.cc/t/28byj-48-steps-per-revolution/876716>`_). It has a magnetic shaft, which is convenient for sample mounting, however the motor is quite useless for OPT due to the low precision and shaft crookedness.
-* `Nanotec ST4118M1804-L <https://en.nanotec.com/products/1271-st4118m1804-a>`_ (4 phase stepper motor, ``TelemetrixRotatorManager``), 3200 steps, good quality, backlash free, but requires a driver, we used `BigEasy <https://www.sparkfun.com/products/12859>`_` driver.
+* `Nanotec ST4118M1804-L <https://en.nanotec.com/products/1271-st4118m1804-a>`_ (4 phase stepper motor, ``TelemetrixRotatorManager``), 3200 steps, good quality, backlash free, but requires a driver, we used `BigEasy <https://www.sparkfun.com/products/12859>`_ driver.
 
 Please help us improve and open issues or ask help to implement your own hardware. Or report to us successful
-implementations of your hardware combination to report it here.
+implementations of your hardware to share it here.
 
 Alingment widget
 ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -246,9 +244,11 @@ Full Example
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 First align the shaft in respect to the camera field of view without the sample:
 
-.. image:: ./images/opt-alignment-shaft01.png
+.. figure:: ./images/opt-alignment-shaft01.png
     :width: 600px
     :align: center
+
+    OPT alignment widget with the shaft alignment in progress.
 
 #. Make the shaft span vertically most of the camera chip.
 #. Acquire the 0 and 180 degree projections by pressing ``Acquire`` button in the ``OPT Alignment`` widget.
@@ -260,9 +260,11 @@ First align the shaft in respect to the camera field of view without the sample:
 #. For sideways tilt, select two H-cuts, which are close to the bottom and top of your camera field of view.
 #. Since the shaft is already centered, the H-cuts show single step function. However, if they are not perfectly on top of each other, the shaft is tilted sideways. Adjust the tilr, and re-acquire until match is achieved.
 
-.. image:: ./images/opt-alignment-shaft02.png
+.. figure:: ./images/opt-alignment-shaft02.png
     :width: 600px
     :align: center
+
+    Shaft alignment in respect to tile along the optical axis.
 
 #. You can approximately check the tilt along the optical axis too. Attach a `rigid flange <https://www.amazon.com/Rigid-Flange-Coupling-Coupler-Connector/dp/B06Y6MSYCS?th=1>`_ to the motor shaft.
 #. Adjust the height of the flange so that the top edge is close to the central line of the camera.
@@ -274,9 +276,11 @@ First align the shaft in respect to the camera field of view without the sample:
 Now the motor is perfectly align, however after mounting the sample, the sample needs to be
 centered in respect to both the motor shaft in an analogous procedure as described above.
 
-.. image:: ./images/opt-alignment-fish.png
+.. figure:: ./images/opt-alignment-fish.png
     :width: 600px
     :align: center
+
+    Sample alignment in respect to the motor shaft and the camera chip.
 
 OPT acquisition
 ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -291,9 +295,11 @@ of an effect this has on the resulting reconstruction.
 For live reconstruction, define the row index, which will be reconstructed in real time. If the index
 is out of range, central row of the camera will be reconstructed.
 
-.. image:: ./images/opt-acq01.png
+.. figure:: ./images/opt-acq01.png
     :width: 600px
     :align: center
+    
+    OTP acquisition widget with live reconstruction in progress.
 
 Select whether to save the data (to the ``recordings`` folder), the folder name is a datetime string.
 By default all projections will be also kept in RAM for postprocessing and napari viewer will display all
@@ -301,18 +307,20 @@ acquired projections so far in a 3D stack. This can be disabled by checking the 
 results in faster acquisition, but only last projection will be displayed in the viewer during the OPT
 acquisition.
 
-At this time, only tiff format is supported for saving the data. Metadata are saved in ``metadata.json`` for every
+At this time, only `tiff`` format is supported for saving the data. Metadata are saved in ``metadata.json`` for every
 OPT acquisition scan. The metadata contains all the information about the acquisition, as well as hardware settings, with
-the exception of optics/sample description.
+the exception of optics/sample description. Metadata file is saved in the same folder as the images in the recordings folder.
 
-OPT experiment begins after pressing ``Start`` button.. 
+OPT experiment begins after pressing ``Start`` button.
 
 You can check the time per acquisiiton operation in the report, looking similar to the one below, which is also saved
 in the metadata file.
 
-.. image:: ./images/opt-acq02.png
+.. figure:: ./images/opt-acq02.png
     :width: 600px
     :align: center
+
+    Acquisition time tracking report.
 
 Corrections
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -352,19 +360,20 @@ If the rotator is connected, it will move in correct steps.
 Live reconstruction is also available, which will show the reconstructed slice progress in real time.
 
 
-Napari OPT preprocessing module (Not yet implemented)
+Napari OPT preprocessing module (Comming soon)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Download  `OPT preprocessing`  napari pluging from XX. This allows you to preprocess the OPT data
 before final reconstruction step. So far it provides following functionalities which are documented
 in the plugin documentation:
 
+* Dark-field correction
+* Bright-field correction
+* data inversion for tranmission acquisition
 * ROI selection
 * Binning
 * Hot pixel correction
-* Dark-field correction
-* Bright-field correction
 * Intensity correction
-* -log transformation (for tranmission or visualization purposes)
+* log transformation (for tranmission or visualization purposes)
 
 In case you `did not` select ``noRam`` acquisition, the plugin is designed to process the 
 acquired OPT stack with the corrections which are either in separate layers, or caa be loaded separately.
@@ -372,13 +381,15 @@ acquired OPT stack with the corrections which are either in separate layers, or 
 Please open feature requests or issues on the plugin github page XX.
 
 
-Napari deep learning reconstruction (Not yet implemented)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Napari deep learning reconstruction (`ToMoDL <https://pypi.org/project/napari-tomodl/>`_)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+contact: `Marcos Obando <mailto: Marcos.Obando@cwi.nl>`_, `Teresa Correia (CCMAR, Portugal) <mailto:tmcorreia@ualg.pt>`_
+
 For the reconstruction of the OPT data, we provide a deep learning reconstruction plugin for Napari, which
 includes also standard Filter Back Projection (FBP) reconstruction. The plugin is available at
 `napari-hub <https://www.napari-hub.org/plugins/napari-tomodl>`_. The plugin preprocessing steps
 partially overlap with the OPT preprocessing plugin, but the reconstruction reconstruction is the
-main focus of this plugin. Please open issues or feature requests on the plugin github page XX.
+main focus of this plugin. Please open issues or feature requests on the `ToMoDL github repo <https://github.com/obandomarcos/ToMoDL>`_.
 
 * COR axis alignment
 * Volume reshaping (binning)

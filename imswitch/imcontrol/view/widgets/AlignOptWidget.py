@@ -1,6 +1,7 @@
 from qtpy import QtWidgets
 import pyqtgraph as pg
 import numpy as np
+from typing import List
 
 from imswitch.imcontrol.view import guitools as guitools
 from .basewidgets import Widget
@@ -40,7 +41,7 @@ class AlignOptWidget(Widget):
         """Returns currently selected rotator for the OPT """
         return self.scanPar['Rotator'].currentIndex()
 
-    def execPlotHorCuts(self, idxList: list[int], cor: object) -> None:
+    def execPlotHorCuts(self, idxList: List[int], cor: object) -> None:
         """
         Plot horizontal cuts and normalized cross-correlation.
 

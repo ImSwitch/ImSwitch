@@ -84,7 +84,7 @@ class Camera:
                 print("Defocus:"+str(defocusPSF.shape))
                 image = np.array(np.real(nip.convolve(image, defocusPSF)))
             image = np.float32(image)/np.max(image) * np.float32(light_intensity)
-            image += self.noiseStack[:,:,np.random.randint(0,100)]
+            #image += self.noiseStack[:,:,np.random.randint(0,100)]
                         
             # Adjust illumination
             image = image.astype(np.uint16)

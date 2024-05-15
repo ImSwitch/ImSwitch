@@ -16,6 +16,8 @@ from collections import deque
 from PyQt5.QtCore import QTimer
 from PyQt5.QtGui import QImage, QPixmap
 
+# todo: better have it relative?
+from  imswitch.imcontrol.controller.controllers.camera_stage_mapping import OFMStageMapping
 import datetime 
 from itertools import product
 '''
@@ -32,11 +34,9 @@ from imswitch.imcommon.model import dirtools, initLogger, APIExport
 from ..basecontrollers import ImConWidgetController
 from imswitch.imcommon.framework import Signal, Thread, Worker, Mutex, Timer
 import time
-
 from ..basecontrollers import LiveUpdatedController
 
-
-# import NanoImagingPack as nip
+# TODO: Move this to a plugin!
 
 class HistoScanController(LiveUpdatedController):
     """Linked to HistoScanWidget."""
@@ -308,6 +308,24 @@ class HistoScanController(LiveUpdatedController):
         nTilesY = int((maxPosY-minPosY)/(img_height*mOverlap))
         self._widget.setCameraScanParameters(nTilesX, nTilesY, minPosX, maxPosX, minPosY, maxPosY)
         
+    @APIExport(runOnUIThread=False)
+    def startStageMapping(self) -> str:
+        pixelSize = self.microscopeDetector.pixelSizeUm[-1] # µm
+        mumPerStep = 1 # µm
+        calibFilePath = "calibFile.json"
+        mStageMapper = OFMStageMapping.OFMStageScanClass(self, calibration_file_path=calibFilePath, effPixelsize=pixelSize, stageStepSize=mumPerStep,
+                                                         IS_CLIENT=False, mDetector=self.microscopeDetector, mStage=self.stages)
+        mData = mStageMapper.calibrate_xy(return_backlash_data=0 )
+        result = mData
+        print(f"Calibration result:")
+        for k, v in result.items():
+            print(f"    {k}:")
+            for l, w in v.items():
+                if len(str(w)) < 50:
+                    print(f"        {l}: {w}")
+                else:
+                    print(f"        {l}: too long to print")
+        return str(result)
         
     def starthistoscanCamerabased(self):
         '''

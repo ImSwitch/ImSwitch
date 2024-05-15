@@ -9,6 +9,7 @@ pybullet.resetSimulation()
 pybullet.setAdditionalSearchPath(pybullet_data.getDataPath())
 plane = pybullet.loadURDF("plane.urdf")
 #%%
+#robot = pybullet.loadURDF("/Users/bene/Downloads/dornaai_pybullet/Dorna_2/Dorna_2.urdf",[0, 0, 0], useFixedBase=1)  # use a fixed base!
 robot = pybullet.loadURDF("/Users/bene/Downloads/kuka_experimental/kuka_kr210_support/urdf/kr210l150.urdf", [0, 0, 0], useFixedBase=1)
 position, orientation = pybullet.getBasePositionAndOrientation(robot)
 print(orientation)
@@ -39,9 +40,10 @@ for _ in range(10000):
 # %%
 pybullet.resetSimulation()
 plane = pybullet.loadURDF("plane.urdf")
-robot = pybullet.loadURDF("kuka_experimental/kuka_kr210_support/urdf/kr210l150.urdf",
-                          [0, 0, 0], useFixedBase=1)  # use a fixed base!
+#robot = pybullet.loadURDF("/Users/bene/Downloads/kuka_experimental/kuka_kr210_support/urdf/kr210l150.urdf",[0, 0, 0], useFixedBase=1)  # use a fixed base!
+robot = pybullet.loadURDF("/Users/bene/Downloads/dornaai_pybullet/Dorna_2/Dorna_2.urdf",[0, 0, 0], useFixedBase=1)  # use a fixed base!
 pybullet.setGravity(0, 0, -9.81)
 pybullet.setTimeStep(0.0001)
 pybullet.setRealTimeSimulation(0)
 # %%
+input()

@@ -1,0 +1,60 @@
+{
+  "detectors": {
+    "WidefieldCamera": {
+      "analogChannel": null,
+      "digitalLine": null,
+      "managerName": "LUCIDManager_test",
+      "managerProperties": {
+        "cameraListIndex": 65,
+        "lucid": {
+          "exposure": 8000.0,
+          "gain": 0.0,
+          "brightness": 1.0,
+          "image_width": 2048,
+          "image_height": 2048
+        }
+      },
+      "forAcquisition": true
+    }
+}, 
+  "lasers": {
+      "488AOTF": {
+          "analogChannel": null,
+          "digitalLine": null,
+          "managerName": "AAAOTFLaserManager",
+          "managerProperties": {
+            "rs232device": "aaaotf",
+            "channel": 2
+          },
+          "wavelength": 488,
+          "valueRangeMin": 0,
+          "valueRangeMax": 1023,
+          "valueRangeStep": 10
+          }
+        
+    },
+
+  "rs232devices": {
+    "aaaotf": {
+      "managerName": "RS232Manager",
+      "managerProperties": {
+        "port": "ASRLCOM9",
+        "encoding": "ascii",
+        "recv_termination": "\n\r",
+        "send_termination": "\r",
+        "baudrate": 19200,
+        "bytesize": 8,
+        "parity": "none",
+        "stopbits": 1,
+        "rtscts": "false",
+        "dsrdtr": "false",
+        "xonxoff": "false"
+        }
+    }
+    },
+  "availableWidgets": [
+      "Laser",
+      "View",
+      "Image"
+    ]
+}

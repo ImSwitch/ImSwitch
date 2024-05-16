@@ -1,0 +1,40 @@
+{
+  "lasers": {
+      "488AOTF": {
+          "analogChannel": null,
+          "digitalLine": null,
+          "managerName": "AAAOTFLaserManager",
+          "managerProperties": {
+            "rs232device": "aaaotf",
+            "channel": 2
+          },
+          "wavelength": 488,
+          "valueRangeMin": 0,
+          "valueRangeMax": 1023,
+          "valueRangeStep": 1
+          }
+        
+    },
+
+  "rs232devices": {
+    "aaaotf": {
+      "managerName": "RS232Manager",
+      "managerProperties": {
+        "port": "ASRLCOM7",
+        "encoding": "ascii",
+        "recv_termination": "\n\r",
+        "send_termination": "\r",
+        "baudrate": 19200,
+        "bytesize": 8,
+        "parity": "none",
+        "stopbits": 1,
+        "rtscts": "false",
+        "dsrdtr": "false",
+        "xonxoff": "false"
+        }
+    }
+    },
+  "availableWidgets": [
+      "Laser"
+    ]
+}

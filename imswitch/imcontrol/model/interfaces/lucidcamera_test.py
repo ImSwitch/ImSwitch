@@ -13,7 +13,6 @@ from arena_api.enums import PixelFormat
 from arena_api.__future__.save import Writer
 from datetime import datetime
 
-# Branch testing
 class CameraTIS:
     def __init__(self, cameraNo):
         super().__init__()

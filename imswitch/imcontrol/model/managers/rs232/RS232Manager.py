@@ -48,6 +48,9 @@ class RS232Manager:
             DriverClass = generateDriverClass(settings)
             rs232port = DriverClass(port)
             rs232port.initialize()
+            import time
+            time.sleep(1)
+
             return rs232port
         except Exception:
             self.__logger.warning('Initializing mock RS232 port')

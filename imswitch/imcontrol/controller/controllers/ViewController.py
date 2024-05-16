@@ -15,15 +15,22 @@ class ViewController(ImConWidgetController):
         self._widget.sigGridToggled.connect(self.gridToggle)
         self._widget.sigCrosshairToggled.connect(self.crosshairToggle)
         self._widget.sigLiveviewToggled.connect(self.liveview)
+        self._widget.sigAcquireSetToggled.connect(self.acquireSet)
+        
 
     def liveview(self, enabled):
         """ Start liveview and activate detector acquisition. """
+        
         if enabled and self._acqHandle is None:
             self._acqHandle = self._master.detectorsManager.startAcquisition(liveView=True)
             self._widget.setViewToolsEnabled(True)
         elif not enabled and self._acqHandle is not None:
             self._master.detectorsManager.stopAcquisition(self._acqHandle, liveView=True)
             self._acqHandle = None
+            
+    def acquireSet(self):
+        """ Start liveview and activate detector acquisition. """
+        self._master.detectorsManager.runAcquireSet()
 
     def gridToggle(self, enabled):
         """ Connect with grid toggle from Image Widget through communication channel. """
@@ -57,6 +64,11 @@ class ViewController(ImConWidgetController):
     def setLiveViewCrosshairVisible(self, visible: bool) -> None:
         """ Sets whether the LiveView crosshair is visible. """
         self._widget.setLiveViewCrosshairVisible(visible)
+
+    @APIExport(runOnUIThread=True)
+    def setLiveViewAcquireSet(self, visible: bool) -> None:
+        """ Sets whether the acquireSet is visible. """
+        self._widget.setLiveViewAcquireSet(visible)
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

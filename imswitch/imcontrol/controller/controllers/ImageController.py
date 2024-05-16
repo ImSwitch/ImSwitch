@@ -92,6 +92,7 @@ class ImageController(LiveUpdatedController):
     def crosshairToggle(self, enabled):
         """ Shows or hides crosshair. """
         self._widget.setCrosshairVisible(enabled)
+        
 
     def memorySnapAvailable(self, name, image, _, __):
         """ Adds captured image to widget. """

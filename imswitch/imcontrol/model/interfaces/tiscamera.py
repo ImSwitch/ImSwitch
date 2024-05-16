@@ -3,12 +3,10 @@ import numpy as np
 from imswitch.imcommon.model import initLogger
 from .pyicic import IC_ImagingControl
 
-
 class CameraTIS:
     def __init__(self, cameraNo):
         super().__init__()
         self.__logger = initLogger(self, tryInheritParent=True)
-
         ic_ic = IC_ImagingControl.IC_ImagingControl()
         ic_ic.init_library()
         cam_names = ic_ic.get_unique_device_names()

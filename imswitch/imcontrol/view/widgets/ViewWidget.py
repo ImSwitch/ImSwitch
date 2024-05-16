@@ -11,6 +11,8 @@ class ViewWidget(Widget):
     sigGridToggled = QtCore.Signal(bool)  # (enabled)
     sigCrosshairToggled = QtCore.Signal(bool)  # (enabled)
     sigLiveviewToggled = QtCore.Signal(bool)  # (enabled)
+    sigAcquireSetToggled = QtCore.Signal(bool)  # (enabled)
+
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -34,6 +36,12 @@ class ViewWidget(Widget):
         self.liveviewButton.setSizePolicy(QtWidgets.QSizePolicy.Preferred,
                                           QtWidgets.QSizePolicy.Expanding)
         self.liveviewButton.setEnabled(True)
+        
+        # Acquire set button
+        self.acquireSetButton = guitools.BetterPushButton('AcquireSet')
+        self.acquireSetButton.setCheckable(False)
+        self.acquireSetButton.setSizePolicy(QtWidgets.QSizePolicy.Preferred,
+                                           QtWidgets.QSizePolicy.Expanding)
 
         # Add elements to GridLayout
         self.viewCtrlLayout = QtWidgets.QGridLayout()
@@ -41,11 +49,13 @@ class ViewWidget(Widget):
         self.viewCtrlLayout.addWidget(self.liveviewButton, 0, 0, 1, 2)
         self.viewCtrlLayout.addWidget(self.gridButton, 1, 0)
         self.viewCtrlLayout.addWidget(self.crosshairButton, 1, 1)
+        self.viewCtrlLayout.addWidget(self.acquireSetButton, 2, 0, 1, 0)
 
         # Connect signals
         self.gridButton.toggled.connect(self.sigGridToggled)
         self.crosshairButton.toggled.connect(self.sigCrosshairToggled)
         self.liveviewButton.toggled.connect(self.sigLiveviewToggled)
+        self.acquireSetButton.clicked.connect(self.sigAcquireSetToggled)
 
     def getLiveViewActive(self):
         return self.liveviewButton.isChecked()
@@ -65,6 +75,10 @@ class ViewWidget(Widget):
     def setLiveViewCrosshairVisible(self, visible):
         """ Sets whether the LiveView crosshair is visible. """
         self.gridButton.setChecked(visible)
+
+    def setLiveViewAcquireSet(self, visible):
+        """ Sets whether the AcquireSet button is visible. """
+        self.acquireSetButton.setChecked(visible)
 
     @shortcut('Ctrl+L', "Liveview")
     def toggleLiveviewButton(self):

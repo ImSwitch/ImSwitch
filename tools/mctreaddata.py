@@ -103,10 +103,15 @@ def create_video_from_hdf5(reader, output_video='output.mp4', reduction_factor=4
         for iChannel in range(3):
     
             # Read image, assuming the reader returns a 2D numpy array for each frame
+            import time
+            mTime = time.time()
             img = reader.read_slice(time_idx=iFrame, channel_idx=iChannel)
-            img = np.std(img, axis=0)  # Compute standard deviation along z axis
-            # change size of image
+            print("1: "+str(mTime-time.time()))
             img = cv2.resize(img.copy(), dsize = None, fx = 1/reduction_factor, fy=1/reduction_factor, interpolation=cv2.INTER_AREA)
+            print("2: "+str(mTime-time.time()))
+            img = np.std(img, axis=0)  # Compute standard deviation along z axis
+            print("3: "+str(mTime-time.time()))
+            # change size of image
             
             mChannels[:, width*iChannel:width*(iChannel+1)] = img.T/np.max(img)
         print("added frame: "+str(iFrame))
@@ -139,7 +144,7 @@ def create_video_from_hdf5(reader, output_video='output.mp4', reduction_factor=4
 # Example of using the HDF5Reader with dimensionality query
 mFilename = 'C:\\Users\\user\\Documents\\ImSwitchConfig\\recordings\\2024_04_18-02-05-01_PM\\2024_04_18-02-05-01_PM_MCT.h5'
 mFilename = '/Users/bene/Downloads/2024_04_16-01-50-08_PM_MCT.h5'
-mFilename = 'F:\\2024_04_18-05-24-16_PM_MCT.h5'
+mFilename = 'C:\\Users\\diederichbenedict\\Dropbox\LENA\\2024_04_18-05-24-16_PM\\2024_04_18-05-24-16_PM_MCT.h5'
 reader = HDF5Reader(mFilename)
 
 create_video_from_hdf5(reader)

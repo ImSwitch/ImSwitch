@@ -68,7 +68,9 @@ class HistoScanController(LiveUpdatedController):
         else:
             self.webCamDetector = None
 
+        # some locking mechanisms
         self.ishistoscanRunning = False
+        self.isStageScanningRunning = False 
        
         # select lasers and add to gui
         allLaserNames = self._master.lasersManager.getAllDeviceNames()
@@ -310,22 +312,30 @@ class HistoScanController(LiveUpdatedController):
         
     @APIExport(runOnUIThread=False)
     def startStageMapping(self) -> str:
-        pixelSize = self.microscopeDetector.pixelSizeUm[-1] # µm
-        mumPerStep = 1 # µm
-        calibFilePath = "calibFile.json"
-        mStageMapper = OFMStageMapping.OFMStageScanClass(self, calibration_file_path=calibFilePath, effPixelsize=pixelSize, stageStepSize=mumPerStep,
-                                                         IS_CLIENT=False, mDetector=self.microscopeDetector, mStage=self.stages)
-        mData = mStageMapper.calibrate_xy(return_backlash_data=0 )
-        result = mData
-        print(f"Calibration result:")
-        for k, v in result.items():
-            print(f"    {k}:")
-            for l, w in v.items():
-                if len(str(w)) < 50:
-                    print(f"        {l}: {w}")
-                else:
-                    print(f"        {l}: too long to print")
-        return str(result)
+        if not self.isStageScanningRunning or not self.ishistoscanRunning:
+            self.isStageScanningRunning = True
+            pixelSize = self.microscopeDetector.pixelSizeUm[-1] # µm
+            mumPerStep = 1 # µm
+            calibFilePath = "calibFile.json"
+            try:
+                mStageMapper = OFMStageMapping.OFMStageScanClass(self, calibration_file_path=calibFilePath, effPixelsize=pixelSize, stageStepSize=mumPerStep,
+                                                                IS_CLIENT=False, mDetector=self.microscopeDetector, mStage=self.stages)
+                mData = mStageMapper.calibrate_xy(return_backlash_data=0 )
+                self.stageMappingResult = mData
+                print(f"Calibration result:")
+                for k, v in self.stageMappingResult.items():
+                    print(f"    {k}:")
+                    for l, w in v.items():
+                        if len(str(w)) < 50:
+                            print(f"        {l}: {w}")
+                        else:
+                            print(f"        {l}: too long to print")
+            except Exception as e:
+                self._logger.error(e)
+            self.isStageScanningRunning = False
+            return str(self.stageMappingResult)
+        else:
+            return "busy"
         
     def starthistoscanCamerabased(self):
         '''
@@ -432,6 +442,9 @@ class HistoScanController(LiveUpdatedController):
         self._widget.ScanSelectViewWidget.setOffset(offsetX,offsetY)
         
     def starthistoscan(self):
+        '''
+        Start an XY scan that was triggered from the Figure-based Scan Tab
+        '''
         minPosX = self._widget.getMinPositionX()
         maxPosX = self._widget.getMaxPositionX()
         minPosY = self._widget.getMinPositionY()
@@ -517,6 +530,7 @@ class HistoScanController(LiveUpdatedController):
             if self.histoscanTask is not None:
                 self.histoscanTask.join()
                 del self.histoscanTask
+            # Launch the XY scan in the background 
             self.histoscanTask = threading.Thread(target=self.histoscanThread, args=(minPosX, maxPosX, minPosY, 
                                                                                      maxPosY, overlap, nTimes, tPeriod, illuSource, positionList))
             self.histoscanTask.start()
@@ -622,7 +636,7 @@ class HistoScanController(LiveUpdatedController):
                         
                         lastStagePositionX = currentPosX
                         
-
+            # Scan over all positions in XY 
             for iPos in positionList:
                 try:
                     if not self.ishistoscanRunning:
@@ -652,6 +666,7 @@ class HistoScanController(LiveUpdatedController):
 
                 except Exception as e:
                     self._logger.error(e)
+            # we are done and switch off the ligth
             if illuSource is not None:
                 self._master.lasersManager[illuSource].setEnabled(0)
 
@@ -676,6 +691,8 @@ class HistoScanController(LiveUpdatedController):
             # display result 
             self.setImageForDisplay(largeImage, "histoscanStitch")
         threading.Thread(target=getStitchedResult).start()
+        
+        # TODO: Here we want to process the data to merge into an ASHLAR-based stitching image
 
     def valueIlluChanged(self):
         illuSource = self._widget.getIlluminationSource()
@@ -759,6 +776,44 @@ class ImageStitcher:
         self.processing_thread = threading.Thread(target=self._process_queue)
         self.isRunning = True
         self.processing_thread.start()
+
+    def process_ashlar(self, arrays, position_list, pixel_size, output_filename='ashlar_output_numpy.tif', maximum_shift_microns=10):
+        '''
+        install from here: https://github.com/openUC2/ashlar
+        arrays => 4d numpy array (n_images, n_channels, height, width)
+        position_list => list of tuples with (x,y) positions
+        pixel_size => pixel size in microns
+        '''
+        from ashlar.scripts.ashlar import process_images
+        if len(arrays.shape)<4:
+            np.expand_dims(np.array(arrays), axis=1)
+        arrays = [arrays] # ensure channel is set
+        position_list = np.array(position_list) # has to be a list
+        print("Stitching tiles with ashlar..")
+
+        # Process numpy arrays
+        process_images(filepaths=arrays,
+                        output=output_filename,
+                        align_channel=0,
+                        flip_x=False,
+                        flip_y=False,
+                        flip_mosaic_x=False,
+                        flip_mosaic_y=False,
+                        output_channels=None,
+                        maximum_shift=maximum_shift_microns,
+                        stitch_alpha=0.01,
+                        maximum_error=None,
+                        filter_sigma=0,
+                        filename_format='cycle_{cycle}_channel_{channel}.tif',
+                        pyramid=False,
+                        tile_size=1024,
+                        ffp=None,
+                        dfp=None,
+                        barrel_correction=0,
+                        plates=False,
+                        quiet=False, 
+                        position_list=position_list,
+                        pixel_size=pixel_size)
 
     def add_image(self, img, coords, metadata):
         with self.lock:

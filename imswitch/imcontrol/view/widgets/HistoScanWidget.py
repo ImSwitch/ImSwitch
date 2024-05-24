@@ -228,6 +228,16 @@ class HistoScanWidget(NapariHybridWidget):
         thirdTabLayout.setColumnStretch(1, 1)
         # Add the third tab
         self.tabWidget.addTab(thirdTabWidget, "Camera-based Scan")
+
+        # add tabwidget for stage calibration
+        self.stageCalibrationWidget = QtWidgets.QWidget()
+        self.tabWidget.addTab(self.stageCalibrationWidget, "Stage Calibration")
+        self.buttonStartCalibration = QtWidgets.QPushButton("Start Calibration")
+        self.buttonStopCalibration = QtWidgets.QPushButton("Stop Calibration")   
+        fourthTabLayout = QtWidgets.QGridLayout(self.stageCalibrationWidget)     
+        fourthTabLayout.addWidget(self.buttonStartCalibration, 0, 0)
+        fourthTabLayout.addWidget(self.buttonStopCalibration, 0, 1)
+        self.tabWidget.addTab(self.stageCalibrationWidget, "Stage Calibration")
         
         # Add the self.tabWidget to the main layout of the widget
         mainLayout = QtWidgets.QVBoxLayout(self)

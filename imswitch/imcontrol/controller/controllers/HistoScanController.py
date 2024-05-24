@@ -116,7 +116,7 @@ class HistoScanController(LiveUpdatedController):
             ## update optimal scan parameters for tile-based scan
             try:
                 overlap = 0.75
-                mFrameSize = self.microscopeDetector.getLatestFrame().shape
+                mFrameSize = self.microscopeDetector.fullShape
                 bestScanSizeX = mFrameSize[1]*self.microscopeDetector.pixelSizeUm[-1]*overlap
                 bestScanSizeY = mFrameSize[0]*self.microscopeDetector.pixelSizeUm[-1]*overlap     
                 self._widget.setTilebasedScanParameters((bestScanSizeX, bestScanSizeY))
@@ -139,6 +139,10 @@ class HistoScanController(LiveUpdatedController):
             self._widget.getCameraScanCoordinatesButton.clicked.connect(self.getCameraScanCoordinates)
             self._widget.startButton3.clicked.connect(self.starthistoscanCamerabased)
             self._widget.stopButton3.clicked.connect(self.stophistoscanCamerabased)
+
+            # connect to stage mapping
+            self._widget.buttonStartCalibration.clicked.connect(self.startStageMappingFromButton)
+            self._widget.buttonStopCalibration.clicked.connect(self.stopHistoScanFromButton)
             
             # on tab click, add the image to the napari viewer
             self._widget.tabWidget.currentChanged.connect(self.onTabChanged)
@@ -311,12 +315,11 @@ class HistoScanController(LiveUpdatedController):
         self._widget.setCameraScanParameters(nTilesX, nTilesY, minPosX, maxPosX, minPosY, maxPosY)
         
     @APIExport(runOnUIThread=False)
-    def startStageMapping(self) -> str:
+    def startStageMapping(self, mumPerStep: int=1, calibFilePath: str = "calibFile.json") -> str:
         if not self.isStageScanningRunning or not self.ishistoscanRunning:
             self.isStageScanningRunning = True
             pixelSize = self.microscopeDetector.pixelSizeUm[-1] # µm
-            mumPerStep = 1 # µm
-            calibFilePath = "calibFile.json"
+            # mumPerStep = 1 # µm
             try:
                 mStageMapper = OFMStageMapping.OFMStageScanClass(self, calibration_file_path=calibFilePath, effPixelsize=pixelSize, stageStepSize=mumPerStep,
                                                                 IS_CLIENT=False, mDetector=self.microscopeDetector, mStage=self.stages)
@@ -326,17 +329,33 @@ class HistoScanController(LiveUpdatedController):
                 for k, v in self.stageMappingResult.items():
                     print(f"    {k}:")
                     for l, w in v.items():
-                        if len(str(w)) < 50:
+                        if len(str(w)) < 75:
                             print(f"        {l}: {w}")
                         else:
                             print(f"        {l}: too long to print")
             except Exception as e:
                 self._logger.error(e)
+                self.stageMappingResult = ((0,0),(0,0))
             self.isStageScanningRunning = False
             return str(self.stageMappingResult)
         else:
             return "busy"
         
+    def startStageMappingFromButton(self):
+        self.positionBeforeStageMapping = self.stages.getPosition()
+        
+        self.mStageMappingThread = threading.Thread(target=self.startStageMapping)
+        self.mStageMappingThread.start()
+    
+    def stopHistoScanFromButton(self):
+        del self.mStageMappingThread
+        try:
+            # move back to the position before the stage mapping
+            self.isStopStageMapping = True
+            self.stages.move(value=(self.positionBeforeStageMapping["X"], self.positionBeforeStageMapping["Y"]), axis="XY", is_absolute=True, is_blocking=False, acceleration=(self.acceleration,self.acceleration))
+        except Exception as e:
+            self._logger.error(e)
+
     def starthistoscanCamerabased(self):
         '''
         start a camera scan

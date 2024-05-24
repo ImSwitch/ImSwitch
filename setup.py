@@ -75,8 +75,8 @@ setup(
         "aiortc >= 1.3.0",
         "juliacall",
         "UC2-REST", 
-        "rpyc" 
-        
+        "rpyc",
+        "PyQtWebEngine >= 5.15.2"
     ],
      extras_require={
         'PyQt5': [
@@ -93,3 +93,5 @@ setup(
     },
 )
 
+# For NIP install it using:
+# python -m pip install https://gitlab.com/bionanoimaging/nanoimagingpack/-/archive/master/nanoimagingpack-master.zip

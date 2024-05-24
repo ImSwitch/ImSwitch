@@ -38,9 +38,13 @@ except:
     IS_RPYC = False
     class Service:
         pass
-    
+IS_RPYC = False
+
+
 import logging
 
+PORT = 8001
+IS_SSL = False
 class RPYCService(Service):
     def on_connect(self, conn):
         logging.info("Connection established")
@@ -51,7 +55,8 @@ class RPYCService(Service):
     pass  # Additional methods will be added based on the @APIExport decorator
 
 app = FastAPI()
-app.add_middleware(HTTPSRedirectMiddleware)
+if IS_SSL:
+    app.add_middleware(HTTPSRedirectMiddleware)
 
 origins = [
     "http://localhost:8001",
@@ -100,7 +105,10 @@ class ImSwitchServer(Worker):
         print(os.path.join(_baseDataFilesDir,"ssl", "key.cert"))
         
         def run_server():
-            uvicorn.run(app, host="0.0.0.0", port=8001, ssl_keyfile=os.path.join(_baseDataFilesDir,"ssl", "key.pem"), ssl_certfile=os.path.join(_baseDataFilesDir,"ssl", "cert.pem"))
+            if IS_SSL:
+                uvicorn.run(app, host="0.0.0.0", port=PORT, ssl_keyfile=os.path.join(_baseDataFilesDir,"ssl", "key.pem"), ssl_certfile=os.path.join(_baseDataFilesDir,"ssl", "cert.pem"))
+            else:
+                uvicorn.run(app, host="0.0.0.0", port=PORT)
         server_thread = threading.Thread(target=run_server)
         server_thread.start()
         
@@ -135,6 +143,7 @@ class ImSwitchServer(Worker):
             rpyc_thread.start()
         
         self.__logger.debug("Started server with URI -> PYRO:" + self._name + "@" + self._host + ":" + str(self._port))
+        return 
         try:
             Pyro5.config.SERIALIZER = "msgpack"
 
@@ -152,8 +161,8 @@ class ImSwitchServer(Worker):
                 port=self._port,
             )
 
-        except:
-            self.__loger.error("Couldn't start server.")
+        except Exception as e:
+            self.__logger.error("Couldn't start server.")
         self.__logger.debug("Loop Finished")
 
 

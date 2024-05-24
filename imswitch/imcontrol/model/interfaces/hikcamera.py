@@ -31,7 +31,7 @@ except Exception as e:
 
 
 class CameraHIK:
-    def __init__(self,cameraNo=None, exposure_time = 10000, gain = 0, frame_rate=-1, blacklevel=100, isRGB=False, binning=1):
+    def __init__(self,cameraNo=None, exposure_time = 10000, gain = 0, frame_rate=-1, blacklevel=100, isRGB=False, binning=2):
         super().__init__()
         self.__logger = initLogger(self, tryInheritParent=False)
 
@@ -63,6 +63,8 @@ class CameraHIK:
         self.camera = None
 
         # binning 
+        if platform in ("darwin", "linux2", "linux"):
+            binning = 2
         self.binning = binning
 
         self.SensorHeight = 0
@@ -109,6 +111,8 @@ class CameraHIK:
         ret = self.camera.MV_CC_OpenDevice(MV_ACCESS_Exclusive, 0)
         if ret != 0:
             raise Exception("open device fail! ret[0x%x]", ret)            
+        # bin to speed up?
+        self.setBinning(binning=self.binning)
 
         stBool = c_bool(False)
         ret = self.camera.MV_CC_GetBoolValue("AcquisitionFrameRateEnable", stBool)
@@ -249,23 +253,31 @@ class CameraHIK:
 
     def setBinning(self, binning=1):
         # Unfortunately this does not work
-        # self.camera.BinningHorizontal.set(binning)
-        # self.camera.BinningVertical.set(binning)
-        self.binning = binning
+        try:
+            self.camera.MV_CC_SetIntValue("BinningX", binning)
+            self.camera.MV_CC_SetIntValue("BinningY", binning)
+            self.binning = binning
+        except Exception as e:
+            self._logger.error(e)
 
-    def getLast(self, is_resize=True, timeout=10):
-        # get frame and save
-        # only return fresh frames
+    def getLast(self, returnFrameNumber=False, timeout=10):
+        # get frame and save 
+        '''
         t0 = time.time()
-        while(self.lastFrameId == self.frameNumber or self.frame is None):
+        while(self.lastFrameId >= self.frameNumber and self.frame is None):
             time.sleep(.01) # wait for fresh frame
             if time.time()-t0>timeout:
                 return
-        self.lastFrameId = self.frameNumber
-        
         if self.isFlatfielding and self.flatfieldImage is not None:
             self.frame = self.frame/self.flatfieldImage
-        return self.frame
+        self.lastFrameId = self.frameNumber
+        print(self.frameNumber)
+        '''
+        frame = self.frame_buffer[-1]
+        frameNumber = self.frameid_buffer[-1]
+        if returnFrameNumber:
+            return np.array(frame), frameNumber
+        return np.array(frame)  
 
     def flushBuffer(self):
         self.frameid_buffer.clear()
@@ -451,7 +463,7 @@ class CameraHIK:
                         self.frame = data.reshape((stOutFrame.stFrameInfo.nHeight, stOutFrame.stFrameInfo.nWidth))
 
                         self.SensorHeight, self.SensorWidth = stOutFrame.stFrameInfo.nHeight, stOutFrame.stFrameInfo.nWidth
-                        self.frameNumber = stOutFrame.stFrameInfo.nFrameNum
+                        self.frameNumber = stOutFrame.stFrameInfo.nFrameNum 
                         self.timestamp = time.time()
                         self.frame_buffer.append(self.frame)
                         self.frameid_buffer.append(self.lastFrameId)
@@ -477,7 +489,6 @@ class CameraHIK:
 
             ret = cam.MV_CC_GetOneFrameTimeout(byref(data_buf), nPayloadSize, stDeviceList, 1000)
             while True:
-                
                 if self.isRGB:
                     try:
                         stDeviceList = MV_FRAME_OUT_INFO_EX()
@@ -512,17 +523,18 @@ class CameraHIK:
 
                             data = np.frombuffer(img_buff, count=int(nRGBSize),dtype=np.uint8)
                             self.frame = data.reshape((stDeviceList.nHeight, stDeviceList.nWidth, -1))
+                            
 
                     except:
                         pass
                 else:
                     img_buff = (c_ubyte * nPayloadSize)()
-                    ret = cam.MV_CC_GetOneFrameTimeout(byref(data_buf), nPayloadSize, stDeviceList, 1000)
+                    ret = cam.MV_CC_GetOneFrameTimeout(byref(data_buf), nPayloadSize, stDeviceList, 100)
                     data = np.frombuffer(data_buf, count=int(stDeviceList.nWidth * stDeviceList.nHeight), dtype=np.uint8)
                     self.frame = data.reshape((stDeviceList.nHeight, stDeviceList.nWidth))
 
                 self.SensorHeight, self.SensorWidth = stDeviceList.nWidth, stDeviceList.nHeight  
-                self.lastFrameId = stDeviceList.nFrameNum
+                self.frameNumber = stDeviceList.nFrameNum
                 self.timestamp = time.time()
                 self.frame_buffer.append(self.frame)
                 self.frameid_buffer.append(self.lastFrameId)

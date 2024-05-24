@@ -1,16 +1,20 @@
-from .MultiManager import MultiManager
+from imswitch import immikro
+from imswitch.imcommon import prepareApp, launchApp
+from imswitch.imcommon.controller import ModuleCommunicationChannel
 
 
-class PositionersManager(MultiManager):
-    """ PositionersManager interface for dealing with PositionerManagers. It is
-    a MultiManager for positioners. """
+def main():
+    app = prepareApp()
+    moduleCommChannel = ModuleCommunicationChannel()
+    moduleCommChannel.register(immikro)
+    mainView, mainController = immikro.getMainViewAndController(moduleCommChannel)
+    launchApp(app, mainView, [mainController])
 
-    def __init__(self, positionerInfos, commChannel, **lowLevelManagers):
-        lowLevelManagers['commChannel'] = commChannel
-        super().__init__(positionerInfos, 'positioners', **lowLevelManagers)
 
-        
-# Copyright (C) 2020-2023 ImSwitch developers
+if __name__ == '__main__':
+    main()
+
+# Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

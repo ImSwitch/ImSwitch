@@ -44,7 +44,7 @@ class FlowStopManager(SignalInterface):
             self.defaultConfig = {}
             self.defaultConfig["wasRunning"] = False
             self.defaultConfig["defaultFlowRate"] = 100
-            self.defaultConfig["defaultNumberOfFrames"] = 0
+            self.defaultConfig["defaultNumberOfFrames"] = -1
             self.defaultConfig["defaultExperimentName"] = "FlowStopExperiment"
             self.defaultConfig["defaultFrameRate"] = 1
             self.defaultConfig["defaultSavePath"] = "./"

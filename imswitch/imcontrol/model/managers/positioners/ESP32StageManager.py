@@ -12,6 +12,7 @@ class ESP32StageManager(PositionerManager):
     def __init__(self, positionerInfo, name, **lowLevelManagers):
         super().__init__(positionerInfo, name, initialPosition={axis: 0 for axis in positionerInfo.axes})
         self._rs232manager = lowLevelManagers['rs232sManager'][positionerInfo.managerProperties['rs232device']]
+        self._commChannel = lowLevelManagers['commChannel']
         self.__logger = initLogger(self, instanceName=name)
 
         # Grab motor object
@@ -263,6 +264,7 @@ class ESP32StageManager(PositionerManager):
                 else: self._position[iaxis] = value[i]
         else:
             self.__logger.error('Wrong axis, has to be "A", "X" "Y" or "Z" and speed has to be >0')
+        self._commChannel.sigUpdateMotorPosition.emit() # TODO: This is a hacky workaround to force Imswitch to update the motor positions in the gui..
 
 
     def measure(self, sensorID=0, NAvg=100):

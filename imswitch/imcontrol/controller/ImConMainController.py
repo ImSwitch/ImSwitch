@@ -15,7 +15,7 @@ from .CommunicationChannel import CommunicationChannel
 from .MasterController import MasterController
 from .PickSetupController import PickSetupController
 from .basecontrollers import ImConWidgetControllerFactory
-
+import threading
 
 class ImConMainController(MainController):
     def __init__(self, options, setupInfo, mainView, moduleCommChannel):
@@ -99,9 +99,8 @@ class ImConMainController(MainController):
             self._thread.finished.connect(self._serverWorker.stop)
             self._thread.start()
         else:
-            import threading
-            mThread = threading.Thread(target=self._serverWorker.run)
-            mThread.start()
+            self._thread = threading.Thread(target=self._serverWorker.run)
+            self._thread.start()
 
     @property
     def api(self):
@@ -169,10 +168,8 @@ class ImConMainController(MainController):
         self.__masterController.closeEvent()
         
         # seems like the imswitchserver is not closing from the closing event, need to hard kill it
-        #self._serverWorker.stop()
-        #self._thread.quit()
-        #self._thread.terminate()        
-        #del self._thread
+        self._thread.stop()
+        self._thread.join()
 
     def pickUC2Config(self):
         """ Let the user change which UC2 Board config is used. """

@@ -68,7 +68,7 @@ class Camera:
         self.PixelSize = 1.0
         self.isRGB = False
         # precompute noise so that we will save energy and trees
-        self.noiseStack = np.random.randn(self.SensorHeight,self.SensorWidth,100)*.2+1
+        self.noiseStack = np.random.randn(self.SensorHeight,self.SensorWidth,100)*.15
         
     def produce_frame(self, x_offset=0, y_offset=0, light_intensity=1.0, defocusPSF=None):
         """Generate a frame based on the current settings."""
@@ -81,14 +81,15 @@ class Camera:
 
             # do all post-processing on cropped image
             if IS_NIP and defocusPSF is not None and not defocusPSF.shape == ():
+                print("Defocus:"+str(defocusPSF.shape))
                 image = np.array(np.real(nip.convolve(image, defocusPSF)))
-            image = image/np.mean(image)
-            image += self.noiseStack[:,:,np.random.randint(0,100)]
+            image = np.float32(image)/np.max(image) * np.float32(light_intensity)
+            #image += self.noiseStack[:,:,np.random.randint(0,100)]
                         
             # Adjust illumination
-            image = (image * light_intensity).astype(np.uint16)
+            image = image.astype(np.uint16)
             time.sleep(0.1)
-            return image
+            return np.array(image)
         
     def getLast(self):
         position = self._parent.positioner.get_position()
@@ -168,7 +169,7 @@ class Illuminator:
 
     def set_intensity(self, channel=1, intensity=0):
         with self.lock:
-            self.intensity = intensity/1024
+            self.intensity = intensity
 
     def get_intensity(self, channel):
         with self.lock:
@@ -188,7 +189,10 @@ class VirtualMicroscopy:
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
-    microscope = VirtualMicroscopy(filePath='/Users/bene/Dropbox/Dokumente/Promotion/PROJECTS/MicronController/ImSwitch/imswitch/_data/images/histoASHLARStitch.jpg')
+    # Read the image locally
+    mFWD = os.path.dirname(os.path.realpath(__file__)).split("imswitch")[0]
+    imagePath = mFWD+"imswitch/_data/images/histoASHLARStitch.jpg"
+    microscope = VirtualMicroscopy(filePath=imagePath)
     microscope.illuminator.set_intensity(intensity=1000)
         
     for i in range(10):

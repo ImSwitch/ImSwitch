@@ -46,9 +46,9 @@ class FlowStopController(LiveUpdatedController):
         
         # select light source and activate
         allIlluNames = self._master.lasersManager.getAllDeviceNames()
-        ledSource = self._master.lasersManager[allIlluNames[0]]
-        ledSource.setValue(1023)
-        ledSource.setEnabled(1)
+        self.ledSource = self._master.lasersManager[allIlluNames[0]]
+        #self.ledSource.setValue(1023)
+        self.ledSource.setEnabled(1)
         # connect camera and stage
         self.positionerName = self._master.positionersManager.getAllDeviceNames()[0]
         self.positioner = self._master.positionersManager[self.positionerName]
@@ -140,6 +140,30 @@ class FlowStopController(LiveUpdatedController):
         self._widget.buttonStop.setStyleSheet("background-color: grey")
         self._widget.buttonStart.setStyleSheet("background-color: green")
         self.stopFlowStopExperiment()
+
+    @APIExport(runOnUIThread=True)
+    def stopPump(self):
+        self.positioner.stopAll()
+
+    @APIExport(runOnUIThread=True)
+    def movePump(self, value: float = 0.0, speed: float = 10000.0):
+        self.positioner.move(value=value, speed=speed, axis=self.pumpAxis, is_absolute=False, is_blocking=False)
+    
+    @APIExport(runOnUIThread=True)
+    def moveFocus(self, value: float = 0.0, speed: float = 10000.0):
+        self.positioner.move(value=value, speed=speed, axis=self.focusAxis, is_absolute=False, is_blocking=False)
+        
+    @APIExport(runOnUIThread=True)
+    def stopFocus(self):
+        self.positioner.stopAll()
+        
+    @APIExport(runOnUIThread=True)
+    def getCurrentFrameNumber(self):
+        return self.imagesTaken
+    
+    @APIExport(runOnUIThread=True)
+    def setIlluIntensity(self, value: float = 0.0):
+        self.ledSource.setValue(value)
 
     @APIExport(runOnUIThread=True)
     def stopFlowStopExperiment(self):

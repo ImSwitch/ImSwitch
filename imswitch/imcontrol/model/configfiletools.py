@@ -1,7 +1,7 @@
 import glob
 import os
 from pathlib import Path
-
+import json
 from imswitch.imcommon.model import dirtools
 from .Options import Options
 
@@ -34,9 +34,13 @@ def loadOptions():
         )
         optionsDidNotExist = True
     else:
-        with open(_optionsFilePath, 'r') as optionsFile:
-            _options = Options.from_json(optionsFile.read(), infer_missing=True)
-
+        try:
+            with open(_optionsFilePath, 'r') as optionsFile:
+                _options = Options.from_json(optionsFile.read(), infer_missing=True)
+        except json.decoder.JSONDecodeError:
+            # create a warning message as a popup
+            print("Warning: The options file was corrupted and has been reset to default values.")
+            
     return _options, optionsDidNotExist
 
 def loadUC2BoardConfigs():

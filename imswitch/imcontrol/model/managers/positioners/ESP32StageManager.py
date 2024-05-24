@@ -23,10 +23,11 @@ class ESP32StageManager(PositionerManager):
         self._position = self.getPosition()
 
         # Calibrated stepsizes in steps/µm
-        self.stepsizeX = positionerInfo.managerProperties.get('stepsizeX', 1)
-        self.stepsizeY = positionerInfo.managerProperties.get('stepsizeY', 1)
-        self.stepsizeZ = positionerInfo.managerProperties.get('stepsizeZ', 1)
-        self.stepsizeA = positionerInfo.managerProperties.get('stepsizeA', 1)
+        self.stepSizes = {}
+        self.stepSizes["X"] = positionerInfo.managerProperties.get('stepsizeX', 1)
+        self.stepSizes["Y"] = positionerInfo.managerProperties.get('stepsizeY', 1)
+        self.stepSizes["Z"] = positionerInfo.managerProperties.get('stepsizeZ', 1)
+        self.stepSizes["A"] = positionerInfo.managerProperties.get('stepsizeA', 1)
 
         # Minimum/maximum steps in X
         self.minX = positionerInfo.managerProperties.get('minX', -np.inf)
@@ -115,8 +116,8 @@ class ESP32StageManager(PositionerManager):
         # Dual Axis if we have A and Z to drive the motor
         self.isDualAxis = positionerInfo.managerProperties.get("isDualaxis", False)
         if self.isDualAxis:
-            self.stepsizeA = self.stepsizeZ
-            self.backlashA = self.backlashZ
+            self.stepSizes["A"] = self.stepsizeZ
+            self.stepSizes["A"]= self.backlashZ
 
         # Acceleration
         self.acceleration = {"X": MAX_ACCEL, "Y": MAX_ACCEL, "Z": MAX_ACCEL, "A": MAX_ACCEL}
@@ -128,23 +129,27 @@ class ESP32StageManager(PositionerManager):
         self._motor.setIsCoreXY(isCoreXY=self.isCoreXY)
 
         # Setup motors
-        self.setupMotor(self.minX, self.maxX, self.stepsizeX, self.backlashX, "X")
-        self.setupMotor(self.minY, self.maxY, self.stepsizeY, self.backlashY, "Y")
-        self.setupMotor(self.minZ, self.maxZ, self.stepsizeZ, self.backlashZ, "Z")
-        self.setupMotor(self.minA, self.maxA, self.stepsizeA, self.backlashA, "A")
+        self.setupMotor(self.minX, self.maxX, self.stepSizes["X"], self.backlashX, "X")
+        self.setupMotor(self.minY, self.maxY, self.stepSizes["Y"], self.backlashY, "Y")
+        self.setupMotor(self.minZ, self.maxZ, self.stepSizes["Z"], self.backlashZ, "Z")
+        self.setupMotor(self.minA, self.maxA, self.stepSizes["A"], self.backlashA, "A")
 
         # optional: hom on startup:
         if self.homeOnStartX: self.home_x()
         if self.homeOnStartY: self.home_y()
         if self.homeOnStartZ: self.home_z()
 
-        
         # set speed for all axes
         self._speed = {"X": positionerInfo.managerProperties.get('speedX', 10000),
                         "Y": positionerInfo.managerProperties.get('speedY', 10000),
                         "Z": positionerInfo.managerProperties.get('speedZ', 10000),
                         "A": positionerInfo.managerProperties.get('speedA', 10000)}
 
+        # try to register the callback
+        try:
+            self._motor.register_callback(0,callbackfct=self.setPositionFromDevice)
+        except Exception as e:
+            self.__logger.error(f"Could not register callback: {e}")
 
     def setHomeParametersAxis(self, axis, speed, direction, endstoppolarity, endposrelease, timeout=None):
         if axis == "X":
@@ -171,8 +176,8 @@ class ESP32StageManager(PositionerManager):
             self.homeEndstoppolarityA = endstoppolarity
             self.homeEndposReleaseA = endposrelease
             self.homeTimeoutA = timeout
-        
-        
+            
+
     def setAxisOrder(self, order=[0,1,2,3]):
         self._motor.setMotorAxisOrder(order=order)
 
@@ -261,8 +266,7 @@ class ESP32StageManager(PositionerManager):
                 else: self._position[iaxis] = value[i]
         else:
             self.__logger.error('Wrong axis, has to be "A", "X" "Y" or "Z" and speed has to be >0')
-        self._commChannel.sigUpdateMotorPosition.emit() # TODO: This is a hacky workaround to force Imswitch to update the motor positions in the gui..
-
+        #self._commChannel.sigUpdateMotorPosition.emit() # TODO: This is a hacky workaround to force Imswitch to update the motor positions in the gui..
 
     def measure(self, sensorID=0, NAvg=100):
         return self._motor.read_sensor(sensorID=sensorID, NAvg=NAvg)
@@ -307,6 +311,14 @@ class ESP32StageManager(PositionerManager):
         self.setPosition(value, axis)
         self._motor.set_position(axis, value)
 
+    def setPositionFromDevice(self, poitionArray: np.array):
+        ''' mostly used for he position callback 
+        If new positions are coming from the device they will be updated in ImSwitch too'''
+        for iAxis, axisName in enumerate(["A", "X", "Y", "Z"]):
+            self.setPosition(poitionArray[iAxis]*self.stepSizes[axisName], axisName)
+        self._commChannel.sigUpdateMotorPosition.emit()
+        
+        
     def closeEvent(self):
         pass
 

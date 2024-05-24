@@ -117,6 +117,9 @@ class CommunicationChannel(SignalInterface):
     sigSetSyncInMovementSettings = Signal(str, float)  # (rotatorName, position)
 
     sigNewFrame = Signal()
+    
+    # signal to control actions from the ESP32
+    sigESP32Message = Signal(str, str)  # (key, message)
 
     # useq-schema related signals
     sigSetXYPosition = Signal(float, float)

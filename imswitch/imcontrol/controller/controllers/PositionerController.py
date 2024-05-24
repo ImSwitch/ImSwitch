@@ -92,7 +92,7 @@ class PositionerController(ImConWidgetController):
             self._logger.error(e)
             self._master.positionersManager[positionerName].move(dist, axis)
         self._commChannel.sigUpdateMotorPosition.emit()
-        self.updatePosition(positionerName, axis)
+        #self.updatePosition(positionerName, axis)
 
     def moveForever(self, speed=(0, 0, 0, 0), is_stop=False):
         self._master.positionersManager.execOnAll(lambda p: p.moveForever(speed=speed, is_stop=is_stop))

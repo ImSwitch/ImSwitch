@@ -163,7 +163,7 @@ class HyphaController(LiveUpdatedController):
         self.hyphaURL = f"https://bioimage.io/chat?server={server_url}&extension={svc.id}"
         try:
             webbrowser.open(self.hyphaURL)
-            self._widget.setChatURL(url=f"https://bioimage.io/chat?token={token}")
+            self._widget.setChatURL(url=f"https://bioimage.io/chat?token={token}&assistant=Skyler&server={server_url}&extension={svc.id}")
             self._isConnected = True
         except:
             pass
@@ -207,12 +207,15 @@ class HyphaController(LiveUpdatedController):
         if config.z: self.setPosition(value=config.z, axis="Z", is_absolute=False, is_blocking=True)
         return "Moved the stage a relative distance!"
 
-    def move_to_position(self, kwargs):
+    def move_to_position(self, kwargs=None, x=None, y=None, z=None):
         '''Move the stage to a specified position, the unit of distance is micrometers.'''
-        config = MoveToPositionInput(**kwargs)
-        x = config.x
-        y = config.y
-        z = config.z
+        if kwargs is not None:            
+            config = MoveToPositionInput(**kwargs)
+            x = config.x
+            y = config.y
+            z = config.z
+        elif x is not None and y is not None and z is not None:
+            pass
         return self.move_to_position_exec(x, y, z)
 
     def move_to_position_exec(self, x, y, z):
@@ -264,7 +267,7 @@ class HyphaController(LiveUpdatedController):
         """
 
         """
-        scope = self
+        self.scope = self
         config = ScriptExecutor(**kwargs)
         locals_dict = locals()
         try:
@@ -290,22 +293,29 @@ class HyphaController(LiveUpdatedController):
         '''
         Set the illumination of the microscope without the schema.
         '''
-        self.laserName = self._master.lasersManager.getAllDeviceNames()[mChannel]
-        self._master.lasersManager[self.laserName].setEnabled(True*bool(mIntensity))
-        self._master.lasersManager[self.laserName].setValue(mIntensity)
-        return "Set the illumination!"
+        try:
+            self.laserName = self._master.lasersManager.getAllDeviceNames()[mChannel]
+            self._master.lasersManager[self.laserName].setEnabled(True*bool(mIntensity))
+            self._master.lasersManager[self.laserName].setValue(mIntensity)
+            return "Set the illumination!"
+        except Exception as e:
+            return "Error setting illumination: "+str(e)
+        
 
-    def snap_image(self, kwargs):
+    def snap_image(self, kwargs=None):
         '''
         '''
+        if kwargs is None:
+            return self.detector.getLatestFrame()
+        
         config = SnapImageInput(**kwargs)
         mExposureTime = config.exposure = 100
         mFilePath = config.filepath 
         imageProcessingFunction = config.imageProcessingFunction 
         
-        return self.snap_image_exec(mExposureTime, mFilePath, imageProcessingFunction)
+        return self.snap_image_exec(config, mExposureTime, mFilePath, imageProcessingFunction)
     
-    def snap_image_exec(self, mExposureTime:int=100, mFilePath:str="./", imageProcessingFunction:str=""):
+    def snap_image_exec(self, config=None, mExposureTime:int=100, mFilePath:str="./", imageProcessingFunction:str=""):
         '''
         Captures a single image and processes it using a Python function provided as a string.
         '''
@@ -337,7 +347,7 @@ class HyphaController(LiveUpdatedController):
             # Step 3: Save the Image
             # check if processedImage is an image
             if type(processedImage)==np.ndarray and len(processedImage.shape)>1:    
-                if config.returnAsNumpy:
+                if config is not None and config.returnAsNumpy:
                     return processedImage
                 if not os.path.exists(os.path.dirname(mFilePath)):
                     os.makedirs(os.path.dirname(mFilePath))
@@ -443,7 +453,7 @@ class SnapImageInput(BaseModel):
     '''
     exposure: int = Field(description="Set the microscope camera's exposure time. and the time unit is ms, so you need to input the time in miliseconds.")
     filepath: str = Field(description="The path to save the captured image. It will be a tif, so the extension does not need to be added. ")
-    imageProcessingFunction: str = Field(description="The Python function to use for processing the image. Default is empty. image is the 2D array from the detector Example: def processImage(image): return cv2.cvtColor(image, cv2.COLOR_BGR2GRAY")                        
+    imageProcessingFunction: str = Field(description="The Python function to use for processing the image. Default is empty. image is the 2D array from the detector Example: def processImage(image): return cv2.cvtColor(image, cv2.COLOR_BGR2GRAY). Avoid returning images since this is too much bandwidth. Return parameters from the function instead. Avoid using cv2") 
     returnAsNumpy: bool = Field(description="Return the image as a numpy array. Default is False and the image will be saved under filepath.")
                                          
 class SetIlluminationInput(BaseModel):

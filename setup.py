@@ -76,7 +76,8 @@ setup(
         "juliacall",
         "UC2-REST", 
         "rpyc",
-        "PyQtWebEngine >= 5.15.2"
+        "PyQtWebEngine >= 5.15.2", 
+        "tk >= 0.1.0"
     ],
      extras_require={
         'PyQt5': [

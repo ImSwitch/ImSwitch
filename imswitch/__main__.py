@@ -1,6 +1,7 @@
 import importlib
 import traceback
 import logging
+import argparse
 
 import imswitch
 from imswitch.imcommon import prepareApp, launchApp
@@ -92,7 +93,6 @@ def main():
 
 if __name__ == '__main__':
     main()
-
 
 # Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.

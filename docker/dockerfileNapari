@@ -3,8 +3,11 @@ FROM --platform=linux/amd64 ubuntu:22.04 AS napari
 # the APT definitions for Xpra below so it reflects the
 # new codename (e.g. 20.04 was focal, 22.04 had jammy)
 
-# docker build --platform linux/arm64/v8 -f dockerfileNapari -t my-app .
-# docker run -it --rm -p 9876:9876 -p 8001:8001 my-app
+# docker build --platform linux/arm64/v8 -f dockerfileNapari -t imswitch .
+# docker run -it --rm -p 9876:9876 -p 8001:8001 -p 2222:22 imswitch
+# docker exec -it agitated_dhawan  /bin/bash # to enter the container
+# start ssh server
+# service ssh start
 
 # below env var required to install libglib2.0-0 non-interactively
 ENV TZ=America/Los_Angeles
@@ -43,12 +46,14 @@ RUN apt-get update && \
 
 # install napari from repo
 # see https://github.com/pypa/pip/issues/6548#issuecomment-498615461 for syntax
-RUN pip install --upgrade pip && \
-    pip install "https://github.com/openUC2/ImSwitch/archive/refs/heads/master.zip"
-
-# copy examples
-#COPY examples /tmp/examples
-
+RUN pip install --upgrade pip 
+RUN git clone https://github.com/openUC2/ImSwitch && \
+    cd ImSwitch && \
+    git pull && \
+    pip install -e . && \
+    git rev-parse HEAD
+#pip install "https://github.com/openUC2/ImSwitch/archive/refs/heads/master.zip"
+    
 ENTRYPOINT ["python3", "-m", "imswitch"]
 
 #########################################################

@@ -130,6 +130,8 @@ class CameraHIK:
         memset(byref(stFloatParam_height), 0, sizeof(MVCC_INTVALUE))
         stFloatParam_width = MVCC_INTVALUE()
         memset(byref(stFloatParam_width), 0, sizeof(MVCC_INTVALUE))
+        
+        #stOutFrame = MV_FRAME_OUT()  # stOutFrame.stFrameInfo.nHeight
         self.SensorHeight = self.camera.MV_CC_GetIntValue("Height", stFloatParam_height)
         self.SensorWidth = self.camera.MV_CC_GetIntValue("Width", stFloatParam_width)
         #if self.isRGB:
@@ -435,7 +437,7 @@ class CameraHIK:
                             
                             data = np.frombuffer(img_buff, count=int(nRGBSize),dtype=np.uint8)
                             self.frame = data.reshape((stOutFrame.stFrameInfo.nHeight, stOutFrame.stFrameInfo.nWidth, -1))
-                            self.SensorHeight, self.SensorWidth = stOutFrame.stFrameInfo.nHeight, stOutFrame.stFrameInfo.nWidth
+                            self.SensorHeight, self.SensorWidth = self.frame.shape[0], self.frame.shape[1] #stOutFrame.stFrameInfo.nHeight, stOutFrame.stFrameInfo.nWidth
                             self.frameNumber = stOutFrame.stFrameInfo.nFrameNum
                             self.timestamp = time.time()
                             self.frame_buffer.append(self.frame)
@@ -448,7 +450,7 @@ class CameraHIK:
                     
 
             else:
-                stOutFrame = MV_FRAME_OUT()  
+                stOutFrame = MV_FRAME_OUT()  # 
                 memset(byref(stOutFrame), 0, sizeof(stOutFrame))
                 while True:
                     ret = cam.MV_CC_GetImageBuffer(stOutFrame, 1000)
@@ -462,7 +464,7 @@ class CameraHIK:
                                     dtype=np.uint8)
                         self.frame = data.reshape((stOutFrame.stFrameInfo.nHeight, stOutFrame.stFrameInfo.nWidth))
 
-                        self.SensorHeight, self.SensorWidth = stOutFrame.stFrameInfo.nHeight, stOutFrame.stFrameInfo.nWidth
+                        self.SensorHeight, self.SensorWidth = self.frame.shape[0], self.frame.shape[1] #stOutFrame.stFrameInfo.nHeight, stOutFrame.stFrameInfo.nWidth
                         self.frameNumber = stOutFrame.stFrameInfo.nFrameNum 
                         self.timestamp = time.time()
                         self.frame_buffer.append(self.frame)

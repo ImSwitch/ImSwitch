@@ -26,8 +26,11 @@ class UC2ConfigController(ImConWidgetController):
         self._widget.btpairingButton.clicked.connect(self.btpairing)
         self._widget.stopCommunicationButton.clicked.connect(self.interruptSerialCommunication)
         
-        self.stages = self._master.positionersManager[self._master.positionersManager.getAllDeviceNames()[0]]
-
+        try:
+            self.stages = self._master.positionersManager[self._master.positionersManager.getAllDeviceNames()[0]]
+        except Exception as e:
+            self.__logger.error("No Stages found in the config file? " +e )
+            self.stages = None
         # update the gui elements 
         self._commChannel.sigUpdateMotorPosition.emit()
 

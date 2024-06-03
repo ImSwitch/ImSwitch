@@ -116,9 +116,8 @@ class ESP32StageManager(PositionerManager):
         # Dual Axis if we have A and Z to drive the motor
         self.isDualAxis = positionerInfo.managerProperties.get("isDualaxis", False)
         if self.isDualAxis:
-            self.stepSizes["A"] = self.stepsizeZ
-            self.stepSizes["A"]= self.backlashZ
-
+            self.stepSizes["A"] = self.stepSizes["Z"]
+            self.stepSizes["A"] = self.stepSizes["Z"]
         # Acceleration
         self.acceleration = {"X": MAX_ACCEL, "Y": MAX_ACCEL, "Z": MAX_ACCEL, "A": MAX_ACCEL}
 

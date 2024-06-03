@@ -464,7 +464,7 @@ class MCTController(ImConWidgetController):
                         illuValue = self.Illu3Value
                     
                     mIllumination.setValue(illuValue)
-                    mIllumination.setEnabled(True, getReturn=True)
+                    mIllumination.setEnabled(True)
                     time.sleep(self.tWait)
                     allChannelFrames.append(self.detector.getLatestFrame().copy())
                     

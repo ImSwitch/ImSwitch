@@ -50,12 +50,9 @@ setup(
         "numpy >= 1.19",
         "packaging >= 19",
         "psutil >= 5.4.8",
-        "PyQt5 >= 5.15.2",
         "pyqtgraph >= 0.12.1",
         "microscope",
         "pyserial >= 3.4",
-        "QDarkStyle >= 3",
-        "QScintilla >= 2.12",
         "qtpy >= 1.9",
         "requests >= 2.25",
         "scikit-image >= 0.18",
@@ -77,12 +74,17 @@ setup(
         "UC2-REST", 
         "rpyc",
         "PyQtWebEngine >= 5.15.2", 
-        "tk >= 0.1.0"
+        "tk >= 0.1.0", 
+        "jupyter-notebook >= 6.4.0", 
+        "python-multipart >= 0.0.5"
     ],
-     extras_require={
+     extras_require={ # we assume that this is installed in a conda environment or via apt-get
         'PyQt5': [
             "PyQt5 >= 5.15.2",
-            "QtWebEngineWidgets >= 5.15.2"
+            "PyQt5 >= 5.15.2",
+            "QtWebEngineWidgets >= 5.15.2",
+            "QDarkStyle >= 3",
+            "QScintilla >= 2.12"            
         ]},
     entry_points={
         "console_scripts": [

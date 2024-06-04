@@ -15,6 +15,8 @@ from scipy.ndimage import gaussian_filter
 from collections import deque
 from PyQt5.QtCore import QTimer
 from PyQt5.QtGui import QImage, QPixmap
+import ast
+        
 
 # todo: better have it relative?
 from  imswitch.imcontrol.controller.controllers.camera_stage_mapping import OFMStageMapping
@@ -124,7 +126,7 @@ class HistoScanController(LiveUpdatedController):
                 self._logger.error(e)
                 
             self._widget.setAvailableIlluSources(allLaserNames)
-            self._widget.startButton.clicked.connect(self.starthistoscan)
+            self._widget.startButton.clicked.connect(self.startHistoScanCoordinatebased)
             self._widget.stopButton.clicked.connect(self.stophistoscan)
             self._widget.startButton2.clicked.connect(self.starthistoscanTilebased)
             self._widget.stopButton2.clicked.connect(self.stophistoscanTilebased)
@@ -312,6 +314,7 @@ class HistoScanController(LiveUpdatedController):
         
     @APIExport(runOnUIThread=False)
     def startStageMapping(self) -> str:
+        self.stageMappingResult = None
         if not self.isStageScanningRunning or not self.ishistoscanRunning:
             self.isStageScanningRunning = True
             pixelSize = self.microscopeDetector.pixelSizeUm[-1] # µm
@@ -362,7 +365,7 @@ class HistoScanController(LiveUpdatedController):
         nTimes = 1
         tPeriod = 0
         
-        self.performScanningRecording(minPosX=minPosX, minPosY=minPosY, maxPosX=maxPosX, maxPosY=maxPosY, positionList=self.mCamScanCoordinates, nTimes=nTimes, tPeriod=tPeriod, illuSource=illuSource)
+        self.startStageScanning(minPosX=minPosX, minPosY=minPosY, maxPosX=maxPosX, maxPosY=maxPosY, positionList=self.mCamScanCoordinates, nTimes=nTimes, tPeriod=tPeriod, illuSource=illuSource)
                 
     
     def stophistoscanCamerabased(self):
@@ -441,7 +444,7 @@ class HistoScanController(LiveUpdatedController):
         self._master.HistoScanManager.writeConfig({"offsetX":offsetX, "offsetY":offsetY})
         self._widget.ScanSelectViewWidget.setOffset(offsetX,offsetY)
         
-    def starthistoscan(self):
+    def startHistoScanCoordinatebased(self):
         '''
         Start an XY scan that was triggered from the Figure-based Scan Tab
         '''
@@ -459,8 +462,8 @@ class HistoScanController(LiveUpdatedController):
         self._widget.startButton.setStyleSheet("background-color: green")
         overlap = 0.75
         illuSource = self._widget.getIlluminationSource()
-
-        self.performScanningRecording(minPosX, maxPosX, minPosY, maxPosY, overlap, nTimes, tPeriod, illuSource)
+        # start stage scanning without provision of stage coordinate list
+        self.startStageScanning(minPosX, maxPosX, minPosY, maxPosY, overlap, nTimes, tPeriod, illuSource)
 
     def starthistoscanTilebased(self):
         numberTilesX, numberTilesY = self._widget.getNumberTiles()
@@ -480,7 +483,7 @@ class HistoScanController(LiveUpdatedController):
         self.startHistoScanTileBasedByParameters(numberTilesX, numberTilesY, stepSizeX, stepSizeY, nTimes, tPeriod, illuSource, initPosX, initPosY)
 
         
-    @APIExport(runOnUIThread=True)
+    @APIExport()
     def stopHistoScan(self):
         self.ishistoscanRunning = False
         if imswitch.IS_HEADLESS:
@@ -492,7 +495,7 @@ class HistoScanController(LiveUpdatedController):
             self._widget.startButton.setStyleSheet("background-color: red")
             self._logger.debug("histoscan scanning stopped.")
 
-    @APIExport(runOnUIThread=True)
+    @APIExport()
     def startHistoScanTileBasedByParameters(self, numberTilesX:int=2, numberTilesY:int=2, stepSizeX:int=100, stepSizeY:int=100, nTimes:int=1, tPeriod:int=1, illuSource:str=None, initPosX:int=0, initPosY:int=0):
         def computePositionList(numberTilesX, numberTilesY, stepSizeX, stepSizeY, initPosX, initPosY):
             positionList = []
@@ -511,8 +514,8 @@ class HistoScanController(LiveUpdatedController):
         maxPosX = np.max(positionList, axis=0)[0]
         minPosY = np.min(positionList, axis=0)[1]
         maxPosY = np.max(positionList, axis=0)[1]
-        
-        self.performScanningRecording(minPosX=minPosX, minPosY=minPosY, maxPosX=maxPosX, maxPosY=maxPosY, positionList=positionList, nTimes=nTimes, tPeriod=tPeriod, illuSource=illuSource)
+        # start stage scanning with positionlist 
+        self.startStageScanning(minPosX=minPosX, minPosY=minPosY, maxPosX=maxPosX, maxPosY=maxPosY, positionList=positionList, nTimes=nTimes, tPeriod=tPeriod, illuSource=illuSource)
         
     def stophistoscanTilebased(self):
         self.ishistoscanRunning = False
@@ -524,7 +527,26 @@ class HistoScanController(LiveUpdatedController):
         self._widget.startButton2.setStyleSheet("background-color: red")
         self._logger.debug("histoscan scanning stopped.")
 
-    def performScanningRecording(self, minPosX=None, maxPosX=None, minPosY=None, maxPosY=None, overlap=None, nTimes=1, tPeriod=0, illuSource=None, positionList=None):
+    @APIExport()
+    def startStageScanningPositionlistbased(self, positionList:str, nTimes:int=1, tPeriod:int=0, illuSource:str=None):
+        '''
+        Start a stage scanning based on a list of positions
+        positionList: list of tuples with X/Y positions (e.g. "[(10, 10, 100), (100, 100, 100)]")
+        nTimes: number of times to repeat the scan
+        tPeriod: time between scans
+        illuSource: illumination source        
+        '''
+        
+        positionList = np.array(ast.literal_eval(positionList))
+        maxPosX = np.max(positionList, axis=0)[0]
+        minPosX = np.min(positionList, axis=0)[0]
+        maxPosY = np.max(positionList, axis=0)[1]
+        minPosY = np.min(positionList, axis=0)[1]
+        return self.startStageScanning(minPosX=minPosX, maxPosX=maxPosX, minPosY=minPosY, maxPosY=maxPosY, overlap=None, 
+                                nTimes=nTimes, tPeriod=tPeriod, illuSource=illuSource, positionList=positionList)
+            
+    def startStageScanning(self, minPosX:float=None, maxPosX:float=None, minPosY:float=None, maxPosY:float=None, 
+                           overlap:float=None, nTimes:int=1, tPeriod:int=0, illuSource:str=None, positionList:list=None):
         if not self.ishistoscanRunning:
             self.ishistoscanRunning = True
             if self.histoscanTask is not None:
@@ -553,6 +575,9 @@ class HistoScanController(LiveUpdatedController):
         
         return coordinates
 
+    @APIExport()
+    def getStatusScanRunning(self):
+        return {"ishistoscanRunning": bool(self.ishistoscanRunning)}
         
     def histoscanThread(self, minPosX, maxPosX, minPosY, maxPosY, overlap=0.75, nTimes=1, 
                         tPeriod=0, illuSource=None, positionList=None,

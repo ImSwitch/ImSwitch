@@ -218,7 +218,7 @@ class ImSwitchServer(Worker):
         functions = api_dict.keys()
 
         def includeAPI(str, func):
-            @app.get(str)
+            @app.get(str) # TODO: Perhaps we want POST instead?
             @wraps(func)
             async def wrapper(*args, **kwargs):
                 return func(*args, **kwargs)

@@ -57,8 +57,8 @@ class PositionerController(ImConWidgetController):
             condition = lambda p: p.resetOnClose
         )
 
-    def getPos(self, fromDevice=False):
-        if fromDevice:
+    def getPos(self, fromDevice:bool=False):
+        if bool(fromDevice):
             # need to retreive positions e.g. over USB-serial
             # return self._master.positionersManager.execOnAll(lambda p: p.getPosition)
             return self._master.positionersManager["ESP32Stage"].getPosition()

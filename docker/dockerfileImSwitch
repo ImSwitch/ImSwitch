@@ -3,7 +3,9 @@ FROM --platform=linux/amd64 ubuntu:22.04 AS napari
 # the APT definitions for Xpra below so it reflects the
 # new codename (e.g. 20.04 was focal, 22.04 had jammy)
 
-# docker build --platform linux/arm64/v8 -f dockerfileNapari -t imswitch .
+# killall Docker && open /Applications/Docker.app
+# export DOCKER_BUILDKIT=0
+# docker build --platform linux/arm64/v8 -f dockerfileImSwitch -t imswitch .
 # docker run -it --rm -p 9876:9876 -p 8001:8001 -p 2222:22 imswitch
 # docker exec -it agitated_dhawan  /bin/bash # to enter the container
 # start ssh server
@@ -47,10 +49,15 @@ RUN apt-get update && \
 # install napari from repo
 # see https://github.com/pypa/pip/issues/6548#issuecomment-498615461 for syntax
 RUN pip install --upgrade pip 
+RUN pip install https://gitlab.com/bionanoimaging/nanoimagingpack/-/archive/master/nanoimagingpack-master.zip
 RUN git clone https://github.com/openUC2/ImSwitch && \
     cd ImSwitch && \
     git pull && \
     pip install -e . && \
+    git rev-parse HEAD
+# pull latest commit from main branch
+RUN cd ImSwitch && \
+    git pull && \
     git rev-parse HEAD
 #pip install "https://github.com/openUC2/ImSwitch/archive/refs/heads/master.zip"
     
@@ -85,10 +92,24 @@ RUN apt-get update && \
 
 # Set up SSH server
 RUN mkdir /var/run/sshd
-RUN echo 'root:password' | chpasswd
+
+
+# Set root password
+RUN echo 'root:YOUR_PASSWORD' | chpasswd
+
+# Allow root login
 RUN sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
-RUN sed -i 's/PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
-RUN sed -i 's/#PasswordAuthentication yes/PasswordAuthentication yes/' /etc/ssh/sshd_config
+
+# SSH login fix. Otherwise user is kicked off after login
+RUN sed 's@session\s*required\s*pam_loginuid.so@session optional pam_loginuid.so@g' -i /etc/pam.d/sshd
+
+# Create a script to start the SSH server
+RUN echo '#!/bin/bash' > /start_ssh.sh
+RUN echo '/usr/sbin/sshd -D' >> /start_ssh.sh
+RUN chmod +x /start_ssh.sh
+
+# Set the script as the entrypoint
+ENTRYPOINT ["/start_ssh.sh"]
 
 # Expose SSH port
 EXPOSE 22
@@ -100,7 +121,7 @@ ENV DISPLAY=:100
 ENV XPRA_PORT=9876
 ENV XPRA_START="python3 -m imswitch"
 ENV XPRA_EXIT_WITH_CLIENT="yes"
-ENV XPRA_XVFB_SCREEN="1920x1080x24+32"
+ENV XPRA_XVFB_SCREEN="2560x1440x24+32"
 EXPOSE 9876
 
 CMD echo "Launching napari on Xpra. Connect via http://localhost:$XPRA_PORT or $(hostname -i):$XPRA_PORT"; \

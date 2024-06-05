@@ -50,7 +50,6 @@ setup(
         "numpy >= 1.19",
         "packaging >= 19",
         "psutil >= 5.4.8",
-        "pyqtgraph >= 0.12.1",
         "microscope",
         "pyserial >= 3.4",
         "qtpy >= 1.9",
@@ -73,7 +72,6 @@ setup(
         "juliacall",
         "UC2-REST", 
         "rpyc",
-        "PyQtWebEngine >= 5.15.2", 
         "tk >= 0.1.0", 
         "jupyter-notebook >= 6.4.0", 
         "python-multipart >= 0.0.5"
@@ -84,7 +82,9 @@ setup(
             "PyQt5 >= 5.15.2",
             "QtWebEngineWidgets >= 5.15.2",
             "QDarkStyle >= 3",
-            "QScintilla >= 2.12"            
+            "QScintilla >= 2.12",
+            "PyQtWebEngine >= 5.15.2",
+            "pyqtgraph >= 0.12.1"
         ]},
     entry_points={
         "console_scripts": [

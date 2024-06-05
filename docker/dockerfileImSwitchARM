@@ -48,9 +48,9 @@ RUN apt-get update && \
         && apt-get clean
 
 RUN apt-get install -y python3-pyqt5 \
-    python3-qscintilla \
-	git \
+    git \
 	tk
+    #python3-qscintilla \
 # install napari from repo
 # see https://github.com/pypa/pip/issues/6548#issuecomment-498615461 for syntax
 RUN pip install --upgrade pip 

@@ -538,10 +538,10 @@ class HistoScanController(LiveUpdatedController):
         '''
         
         positionList = np.array(ast.literal_eval(positionList))
-        maxPosX = np.max(positionList, axis=0)[0]
-        minPosX = np.min(positionList, axis=0)[0]
-        maxPosY = np.max(positionList, axis=0)[1]
-        minPosY = np.min(positionList, axis=0)[1]
+        maxPosX = np.max(positionList[:,0])
+        minPosX = np.min(positionList[:,0])
+        maxPosY = np.max(positionList[:,1])
+        minPosY = np.min(positionList[:,1])
         return self.startStageScanning(minPosX=minPosX, maxPosX=maxPosX, minPosY=minPosY, maxPosY=maxPosY, overlap=None, 
                                 nTimes=nTimes, tPeriod=tPeriod, illuSource=illuSource, positionList=positionList)
             

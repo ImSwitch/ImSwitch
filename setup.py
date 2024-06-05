@@ -73,7 +73,7 @@ setup(
         "UC2-REST", 
         "rpyc",
         "tk >= 0.1.0", 
-        "jupyter-notebook >= 6.4.0", 
+        "jupyter", 
         "python-multipart >= 0.0.5"
     ],
      extras_require={ # we assume that this is installed in a conda environment or via apt-get

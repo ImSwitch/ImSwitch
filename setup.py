@@ -41,11 +41,10 @@ setup(
         "coloredlogs >= 15",
         "colour-science >= 0.3",
         "dataclasses-json >= 0.5",
-        "h5py >= 3",
+        "h5py >= 2.10",
         "pyvisa-py==0.4.1",
         "lantzdev[qt] >= 0.5.2",
         "luddite >= 1",
-        "napari[pyqt5]",
         "nidaqmx >= 0.5.7",
         "numpy >= 1.19",
         "packaging >= 19",
@@ -84,7 +83,8 @@ setup(
             "QDarkStyle >= 3",
             "QScintilla >= 2.12",
             "PyQtWebEngine >= 5.15.2",
-            "pyqtgraph >= 0.12.1"
+            "pyqtgraph >= 0.12.1",
+            "napari[pyqt5]"
         ]},
     entry_points={
         "console_scripts": [

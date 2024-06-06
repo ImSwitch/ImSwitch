@@ -1,0 +1,43 @@
+# Use an ARM64 base image with Ubuntu
+FROM arm64v8/ubuntu:20.04
+
+# Install necessary dependencies
+RUN apt-get update && apt-get install -y \
+    wget \
+    bzip2 \
+    ca-certificates \
+    curl \
+    git \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Miniconda
+RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-aarch64.sh -O /tmp/miniconda.sh && \
+    /bin/bash /tmp/miniconda.sh -b -p /opt/conda && \
+    rm /tmp/miniconda.sh
+
+# Update PATH environment variable
+ENV PATH=/opt/conda/bin:$PATH
+
+# Create conda environment and install packages
+RUN conda create -y --name myenv python=3.8 && \
+    conda init bash && \
+    echo "conda activate myenv" >> ~/.bashrc
+
+# Install specific packages inside the conda environment
+RUN /opt/conda/bin/conda install -n myenv -y numpy pandas scipy
+
+# activate environement and install additional packages using pip
+RUN /bin/bash -c "source activate myenv && pip install matplotlib scikit-learn"
+
+RUN /opt/conda/bin/conda install -n myenv -y -c conda-forge napari pyqt
+
+# git clone the repository github.com/openUC2/imSwitch
+RUN cd /home \
+     git clone https://github.com/openUC2/imSwitch \
+        cd imSwitch \
+        /bin/bash -c "source activate myenv && pip install -e ."
+
+
+# Set the default command to start a bash shell
+CMD ["bash"]

@@ -234,10 +234,12 @@ class HoloController(LiveUpdatedController):
             self.reconstructionMode = mode
 
         def reconholo(self, mimage, PSFpara, N_subroi=1024, pixelsize=1e-3, dz=50e-3):
+            '''
             Main.xs = [1, 2, 3]
             Main.mimage = mimage
             print(Main.eval("sin.(xs)"))
             print(Main.eval("sin.(mimage)"))
+            '''
             # FIXME: @Aaron, you can change this code to have yours instead
             if self.reconstructionMode == "offaxis" and self.CCCenter is not None:
                 mimage = np.sqrt(nip.image(mimage.copy()))  # get e-field

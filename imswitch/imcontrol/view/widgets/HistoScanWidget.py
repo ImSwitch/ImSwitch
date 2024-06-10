@@ -32,6 +32,7 @@ class HistoScanWidget(NapariHybridWidget):
     sigSliderIlluValueChanged = QtCore.Signal(float)  # (value)
     sigGoToPosition = QtCore.Signal(float, float)  # (posX, posY)
     sigCurrentOffset = QtCore.Signal(float, float)
+    sigStageMappingComplete = QtCore.Signal(np.ndarray, np.ndarray, bool)  # (xy mapping matrix, backlash, isCalibrated)
 
     def __post_init__(self):
         #super().__init__(*args, **kwargs)
@@ -157,9 +158,6 @@ class HistoScanWidget(NapariHybridWidget):
         secondTabLayout.addWidget(self.stepSizeXLineEdit, 2, 1)
         secondTabLayout.addWidget(QtWidgets.QLabel("Step Size Y:"), 3, 0)
         secondTabLayout.addWidget(self.stepSizeYLineEdit, 3, 1)
-
-
-
         self.startButton2 = QtWidgets.QPushButton("Start")
         self.stopButton2 = QtWidgets.QPushButton("Stop")
 
@@ -195,7 +193,6 @@ class HistoScanWidget(NapariHybridWidget):
         self.buttonTurnOnLEDArray = QtWidgets.QPushButton("Array On")
         self.buttonTurnOffLEDArray = QtWidgets.QPushButton("Array Off")
 
-        # Webcam view 
         self.imageLabel = ImageLabel()
         # Create a container widget for the ImageLabel
         imageLabelContainer = QtWidgets.QWidget()
@@ -229,6 +226,37 @@ class HistoScanWidget(NapariHybridWidget):
         # Add the third tab
         self.tabWidget.addTab(thirdTabWidget, "Camera-based Scan")
         
+        
+        # 4th Calibration:
+        fourthTabWidget = QtWidgets.QWidget()
+        fourthLayout = QtWidgets.QGridLayout(fourthTabWidget)
+
+        self.startCalibrationButton = QtWidgets.QPushButton("Start Calibration")
+        self.stopCalibrationButton = QtWidgets.QPushButton("Stop Calibration")
+        self.calibrationLabel = QtWidgets.QLabel("""This uses the output from :func:.calibrate_backlash_1d, run at least 
+                            twice with orthogonal (or at least different) `direction` parameters. 
+                            The resulting 2x2 transformation matrix should map from image 
+                            to stage coordinates.  Currently, the backlash estimate given 
+                            by this function is only really trustworthy if you've supplied 
+                            two orthogonal calibrations - that will usually be the case.""")
+                                                    
+        self.calibrationLabelResult = QtWidgets.QLabel("Result:")
+        self.calibrationLabelResultTable = QtWidgets.QTableWidget()
+        fourthLayout.addWidget(self.startCalibrationButton, 0, 0)
+        fourthLayout.addWidget(self.stopCalibrationButton, 0, 1)
+        fourthLayout.addWidget(self.calibrationLabel, 1, 0, 1, 2)
+        fourthLayout.addWidget(self.calibrationLabelResult, 2, 1)
+        fourthLayout.addWidget(self.calibrationLabelResultTable, 3, 0, 1, 2)
+    
+        fourthLayout.setRowStretch(4, 1)  # Add stretch above the image container
+        fourthLayout.setRowStretch(9, 1)  # Add stretch below the image container
+        fourthLayout.setColumnStretch(0, 1)  # Add stretch to the sides of the image container
+        fourthLayout.setColumnStretch(1, 1)
+        
+        self.sigStageMappingComplete.connect(self.setStageMappingInfo)
+        # Add the fourth tab
+        self.tabWidget.addTab(fourthTabWidget, "Stage Mapping")
+    
         # Add the self.tabWidget to the main layout of the widget
         mainLayout = QtWidgets.QVBoxLayout(self)
         mainLayout.addWidget(self.tabWidget)
@@ -246,6 +274,20 @@ class HistoScanWidget(NapariHybridWidget):
         self.posYminLabel.setText("Min Position Y: " + str(minPosY))
         self.posYmaxLabel.setText("Max Position Y: " + str(maxPosY))
         
+    def setStageMappingInfo(self, xy_mapping_matrix, backlash, isCalibrated):
+        if isCalibrated:
+            self.calibrationLabelResult.setText("Result: Stage Mapping complete")
+            self.calibrationLabelResultTable.setRowCount(6)
+            # set first two rows with xy_mapping_matrix
+            self.calibrationLabelResultTable.setItem(0, 0, QtWidgets.QTableWidgetItem(str(xy_mapping_matrix[0,0])))
+            
+            # set 3rd row with backlash
+            self.calibrationLabelResultTable.setItem(2, 0, QtWidgets.QTableWidgetItem(str(backlash)))
+        else:
+            self.calibrationLabelResult.setText("Result: Stage Mapping failed")
+            # reset table
+            self.calibrationLabelResultTable.setRowCount(0)
+            
     def getNumberTiles(self):
         return int(self.numTilesXLineEdit.text()), int(self.numTilesYLineEdit.text())
     

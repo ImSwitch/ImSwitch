@@ -136,6 +136,9 @@ class HistoScanController(LiveUpdatedController):
             self._widget.sigCurrentOffset.connect(self.calibrateOffset)        
             self._widget.setDefaultSavePath(self._master.HistoScanManager.defaultConfigPath)
             
+            self._widget.startCalibrationButton.clicked.connect(self.startStageMapping)
+            self._widget.stopCalibrationButton.clicked.connect(self.stopStageMapping)
+            
             # Image View
             self._widget.resetScanCoordinatesButton.clicked.connect(self.resetScanCoordinates)
             self._widget.getCameraScanCoordinatesButton.clicked.connect(self.getCameraScanCoordinates)
@@ -193,6 +196,8 @@ class HistoScanController(LiveUpdatedController):
         '''
         Update the webcam image in the dedicated widget periodically to get an overview
         '''
+        if self.webCamDetector is None: 
+            return
         frame = self.webCamDetector.getLatestFrame() # X,Y,C, uint8 numpy array
         if frame is None: 
             return
@@ -323,23 +328,64 @@ class HistoScanController(LiveUpdatedController):
             try:
                 mStageMapper = OFMStageMapping.OFMStageScanClass(self, calibration_file_path=calibFilePath, effPixelsize=pixelSize, stageStepSize=mumPerStep,
                                                                 IS_CLIENT=False, mDetector=self.microscopeDetector, mStage=self.stages)
-                mData = mStageMapper.calibrate_xy(return_backlash_data=0 )
-                self.stageMappingResult = mData
-                print(f"Calibration result:")
-                for k, v in self.stageMappingResult.items():
-                    print(f"    {k}:")
-                    for l, w in v.items():
-                        if len(str(w)) < 50:
-                            print(f"        {l}: {w}")
-                        else:
-                            print(f"        {l}: too long to print")
+                def launchStageMappingBackground():
+                    self.stageMappingResult = mStageMapper.calibrate_xy(return_backlash_data=0)
+                    print(f"Calibration result:")
+                    for k, v in self.stageMappingResult.items():
+                        print(f"    {k}:")
+                        for l, w in v.items():
+                            if len(str(w)) < 50:
+                                print(f"        {l}: {w}")
+                            else:
+                                print(f"        {l}: too long to print")
+                    image_to_stage_displacement = self.stageMappingResult["camera_stage_mapping_calibration"]["image_to_stage_displacement"]
+                    backlash_vector = self.stageMappingResult["camera_stage_mapping_calibration"]["backlash_vector"]
+                    self._widget.sigStageMappingComplete.emit(image_to_stage_displacement, backlash_vector, True)
+                threading.Thread(target=launchStageMappingBackground).start()
+                '''
+                The result:
+                mData["camera_stage_mapping_calibration"]["image_to_stage_displacement"]=
+                array([[ 0.        , -1.00135997],
+                    [-1.00135997,  0.        ]])
+
+                mData["camera_stage_mapping_calibration"]["backlash_vector"]=
+                array([ 0.,  0.,  0.])
+                
+                From Richard:
+                """Combine X and Y calibrations
+
+                This uses the output from :func:`.calibrate_backlash_1d`, run at least
+                twice with orthogonal (or at least different) `direction` parameters.
+                The resulting 2x2 transformation matrix should map from image
+                to stage coordinates.  Currently, the backlash estimate given
+                by this function is only really trustworthy if you've supplied
+                two orthogonal calibrations - that will usually be the case.
+
+                Returns
+                -------
+                dict
+                    A dictionary of the resulting calibration, including:
+
+                    * **image_to_stage_displacement:** (`numpy.ndarray`) - a 2x2 matrix mapping
+                    image displacement to stage displacement
+                    * **backlash_vector:** (`numpy.ndarray`) - representing the estimated
+                    backlash in each direction
+                    * **backlash:** (`number`) - the highest element of `backlash_vector`
+                """
+
+                '''
             except Exception as e:
                 self._logger.error(e)
             self.isStageScanningRunning = False
-            return str(self.stageMappingResult)
+            return self.isStageScanningRunning
         else:
             return "busy"
         
+    @APIExport()
+    def stopStageMapping(self):
+        # FIXME: Not implemented yet!
+        pass 
+    
     def starthistoscanCamerabased(self):
         '''
         start a camera scan

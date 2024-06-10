@@ -89,11 +89,15 @@ def find_grbl_port():
     return None
 
 class GRBLStageManager(PositionerManager):
-    def __init__(self, positionerInfo, name, **lowLevelManagers):
+    def __init__(self, positionerInfo, name, port=None,  **lowLevelManagers):
         super().__init__(positionerInfo, name, initialPosition={axis: 0 for axis in positionerInfo.axes})
         self.__logger = initLogger(self, instanceName=name)
+        self.port = lowLevelManagers['rs232sManager'][positionerInfo.managerProperties['rs232device']]
         self._commChannel = lowLevelManagers['commChannel']
-        self.port = find_grbl_port()
+        if port is None:
+            self.port = find_grbl_port()
+        else:
+            self.port = port
         if self.port:
             self.controller = GRBLController(self.port)
             self._position = self.get_position()
@@ -131,7 +135,8 @@ class GRBLStageManager(PositionerManager):
         self.controller.close()
 
 if __name__ == "__main__":
-    port_path = find_grbl_port()
+    #port_path = find_grbl_port()
+    port_path = '/dev/cu.wchusbserial110'
     if port_path:
         print(f"GRBL controller found at port: {port_path}")
         grbl_controller = GRBLController(port_path)

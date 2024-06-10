@@ -1,6 +1,7 @@
 {
     "positioners": {
         "VirtualStage": {
+          "managerNameGRBL": "GRBLStageManager",
           "managerName": "VirtualStageManager",
           "managerProperties": {
             "rs232device": "VirtualMicroscope",

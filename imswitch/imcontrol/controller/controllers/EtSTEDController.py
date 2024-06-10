@@ -689,7 +689,7 @@ class EtSTEDCoordTransformHelper():
         if IS_TKINTER:
             filename = askopenfilename()
         else: 
-            filename = QFileDialog.getOpenFileName(self._widget, 'Open file', 'C:\\', "HDF5 files (*.h5)")[0]
+            filename = "" 
         return filename
 
     def updateCalibImage(self, img_data, modality):

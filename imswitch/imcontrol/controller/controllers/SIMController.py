@@ -747,7 +747,8 @@ class SIMProcessor(object):
         import cv2
 
         if path is None:
-            path = sim_parameters["patternPath"]
+            pass 
+            # FIXME: not implemented: path = sim_parameters["patternPath"]
         allPatternPaths = sorted(glob.glob(os.path.join(path, "*."+filetype)))
         self.allPatterns = []
         for iPatternPath in allPatternPaths:

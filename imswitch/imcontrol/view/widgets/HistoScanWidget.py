@@ -233,18 +233,22 @@ class HistoScanWidget(NapariHybridWidget):
 
         self.startCalibrationButton = QtWidgets.QPushButton("Start Calibration")
         self.stopCalibrationButton = QtWidgets.QPushButton("Stop Calibration")
-        self.calibrationLabel = QtWidgets.QLabel("""This uses the output from :func:.calibrate_backlash_1d, run at least 
-                            twice with orthogonal (or at least different) `direction` parameters. 
-                            The resulting 2x2 transformation matrix should map from image 
-                            to stage coordinates.  Currently, the backlash estimate given 
-                            by this function is only really trustworthy if you've supplied 
-                            two orthogonal calibrations - that will usually be the case.""")
+        calibrationLabel = QtWidgets.QLabel("""This uses the output from :func:.calibrate_backlash_1d, run at least 
+                                    twice with orthogonal (or at least different) `direction` parameters. 
+                                    The resulting 2x2 transformation matrix should map from image 
+                                    to stage coordinates.  Currently, the backlash estimate given 
+                                    by this function is only really trustworthy if you've supplied 
+                                    two orthogonal calibrations - that will usually be the case.""")
+
+        calibrationLabelScroll = QtWidgets.QScrollArea()  # Scrollbereich erstellen
+        calibrationLabelScroll.setWidget(calibrationLabel)  # QLabel zum Scrollbereich hinzufügen
+        calibrationLabelScroll.setWidgetResizable(True)  # Erlaubt das QLabel, sich auf die Größe des Scrollbereichs auszudehnen
                                                     
         self.calibrationLabelResult = QtWidgets.QLabel("Result:")
         self.calibrationLabelResultTable = QtWidgets.QTableWidget()
         fourthLayout.addWidget(self.startCalibrationButton, 0, 0)
         fourthLayout.addWidget(self.stopCalibrationButton, 0, 1)
-        fourthLayout.addWidget(self.calibrationLabel, 1, 0, 1, 2)
+        fourthLayout.addWidget(calibrationLabelScroll, 1, 0, 1, 2)
         fourthLayout.addWidget(self.calibrationLabelResult, 2, 1)
         fourthLayout.addWidget(self.calibrationLabelResultTable, 3, 0, 1, 2)
     
@@ -277,12 +281,16 @@ class HistoScanWidget(NapariHybridWidget):
     def setStageMappingInfo(self, xy_mapping_matrix, backlash, isCalibrated):
         if isCalibrated:
             self.calibrationLabelResult.setText("Result: Stage Mapping complete")
-            self.calibrationLabelResultTable.setRowCount(6)
+            rows, cols = 6,3
+            self.calibrationLabelResultTable.setRowCount(rows)
+            self.calibrationLabelResultTable.setColumnCount(cols)
             # set first two rows with xy_mapping_matrix
-            self.calibrationLabelResultTable.setItem(0, 0, QtWidgets.QTableWidgetItem(str(xy_mapping_matrix[0,0])))
-            
+            for i in range(2):
+                for j in range(2):
+                    self.calibrationLabelResultTable.setItem(i, j, QtWidgets.QTableWidgetItem(str(xy_mapping_matrix[i, j])))
             # set 3rd row with backlash
-            self.calibrationLabelResultTable.setItem(2, 0, QtWidgets.QTableWidgetItem(str(backlash)))
+            for j in range(cols):
+                self.calibrationLabelResultTable.setItem(3, j, QtWidgets.QTableWidgetItem(str(backlash[j])))
         else:
             self.calibrationLabelResult.setText("Result: Stage Mapping failed")
             # reset table

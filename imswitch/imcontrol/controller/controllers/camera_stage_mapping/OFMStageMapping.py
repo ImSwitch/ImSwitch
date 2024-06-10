@@ -157,6 +157,7 @@ class OFMStageScanClass(object):
             self._logger.info("Calibrating Y axis:")
             cal_y = self.calibrate_1d(np.array([0, 1, 0]), return_backlash_data=return_backlash_data)
         except Exception as e:
+            return False
             self._logger.error("Calibration failed. Try reordering the stage axes. Error: %s", e)
             self._stageOrder[0], self._stageOrder[1] = self._stageOrder[1], self._stageOrder[0]
             self._logger.info("Calibrating X axis:")

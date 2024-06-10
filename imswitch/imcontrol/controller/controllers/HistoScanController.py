@@ -330,6 +330,9 @@ class HistoScanController(LiveUpdatedController):
                                                                 IS_CLIENT=False, mDetector=self.microscopeDetector, mStage=self.stages)
                 def launchStageMappingBackground():
                     self.stageMappingResult = mStageMapper.calibrate_xy(return_backlash_data=0)
+                    if self.stageMappingResult is bool:
+                        self._logger.error("Calibration failed")
+                        self._widget.sigStageMappingComplete.emit(None, None, False)
                     print(f"Calibration result:")
                     for k, v in self.stageMappingResult.items():
                         print(f"    {k}:")

@@ -168,9 +168,12 @@ class ImConMainController(MainController):
         self.__masterController.closeEvent()
         
         # seems like the imswitchserver is not closing from the closing event, need to hard kill it
-        self._thread.stop()
-        self._thread.join()
-
+        try:
+            self._thread.stop()
+            self._thread.join()
+        except Exception as e:
+            self.__logger.debug(e)
+            self.__logger.debug('Fixme: ImSwitchServer not closing from the closing event, need to hard kill it')
     def pickUC2Config(self):
         """ Let the user change which UC2 Board config is used. """
 

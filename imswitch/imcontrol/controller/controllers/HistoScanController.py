@@ -343,15 +343,17 @@ class HistoScanController(LiveUpdatedController):
         
     def startStageMappingFromButton(self):
         self.positionBeforeStageMapping = self.stages.getPosition()
-        
+        self.isStopStageMapping = False
+        self._widget.buttonStartCalibration.setEnabled(False)
         self.mStageMappingThread = threading.Thread(target=self.startStageMapping)
         self.mStageMappingThread.start()
     
     def stopHistoScanFromButton(self):
-        del self.mStageMappingThread
+        self._widget.buttonStartCalibration.setEnabled(True)
+        self.isStopStageMapping = True
         try:
             # move back to the position before the stage mapping
-            self.isStopStageMapping = True
+            del self.mStageMappingThread    
             self.stages.move(value=(self.positionBeforeStageMapping["X"], self.positionBeforeStageMapping["Y"]), axis="XY", is_absolute=True, is_blocking=False, acceleration=(self.acceleration,self.acceleration))
         except Exception as e:
             self._logger.error(e)

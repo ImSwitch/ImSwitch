@@ -128,13 +128,17 @@ class HistoScanWidget(NapariHybridWidget):
         self.loadSampleLayout(0)
         self.grid.addWidget(self.ScanSelectViewWidget, 12, 0, 2, 2)
 
-
         # set combobox with all samples
         self.setSampleLayouts(self.allScanParameters)
         self.samplePicker.currentIndexChanged.connect(self.loadSampleLayout)
 
+        # Create a scroll area and set the second tab widget as its content
+        firstTabscrollArea = QtWidgets.QScrollArea()
+        firstTabscrollArea.setWidget(mainWidget)
+        firstTabscrollArea.setWidgetResizable(True)
+        
         # Add the first tab
-        self.tabWidget.addTab(mainWidget, "Figure-based Scan")
+        self.tabWidget.addTab(firstTabscrollArea, "Figure-based Scan")
 
         '''
         2nd Widget: Manual tiling
@@ -160,12 +164,22 @@ class HistoScanWidget(NapariHybridWidget):
         secondTabLayout.addWidget(self.stepSizeYLineEdit, 3, 1)
         self.startButton2 = QtWidgets.QPushButton("Start")
         self.stopButton2 = QtWidgets.QPushButton("Stop")
+        self.stitchAshlarCheckBox = QtWidgets.QCheckBox("Stitch Ashlar")
+        self.stitchAshlarFlipXCheckBox = QtWidgets.QCheckBox("Flip X")
+        self.stitchAshlarFlipYCheckBox = QtWidgets.QCheckBox("Flip Y")
+        secondTabLayout.addWidget(self.stitchAshlarCheckBox, 4, 0)
+        secondTabLayout.addWidget(self.stitchAshlarFlipXCheckBox, 4, 1)
+        secondTabLayout.addWidget(self.stitchAshlarFlipYCheckBox, 4, 2)
+        secondTabLayout.addWidget(self.startButton2, 5, 0)
+        secondTabLayout.addWidget(self.stopButton2, 5, 1)
+        
+        # Create a scroll area and set the second tab widget as its content
+        secondTabscrollArea = QtWidgets.QScrollArea()
+        secondTabscrollArea.setWidget(secondTabWidget)
+        secondTabscrollArea.setWidgetResizable(True)
 
-        secondTabLayout.addWidget(self.startButton2, 4, 0)
-        secondTabLayout.addWidget(self.stopButton2, 4, 1)
-
-        # Add the second tab
-        self.tabWidget.addTab(secondTabWidget, "Tile-based Scan")
+        # Add the scroll area as the second tab
+        self.tabWidget.addTab(secondTabscrollArea, "Tile-based Scan")
 
         '''
         3rd Widget: Camera-based tile-scanning

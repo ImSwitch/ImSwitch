@@ -70,6 +70,9 @@ class HistoScanController(LiveUpdatedController):
         else:
             self.webCamDetector = None
 
+        # object for stage mapping/calibration
+        self.mStageMapper = None
+        
         # some locking mechanisms
         self.ishistoscanRunning = False
         self.isStageScanningRunning = False 
@@ -326,10 +329,10 @@ class HistoScanController(LiveUpdatedController):
             mumPerStep = 1 # µm
             calibFilePath = "calibFile.json"
             try:
-                mStageMapper = OFMStageMapping.OFMStageScanClass(self, calibration_file_path=calibFilePath, effPixelsize=pixelSize, stageStepSize=mumPerStep,
+                self.mStageMapper = OFMStageMapping.OFMStageScanClass(self, calibration_file_path=calibFilePath, effPixelsize=pixelSize, stageStepSize=mumPerStep,
                                                                 IS_CLIENT=False, mDetector=self.microscopeDetector, mStage=self.stages)
                 def launchStageMappingBackground():
-                    self.stageMappingResult = mStageMapper.calibrate_xy(return_backlash_data=0)
+                    self.stageMappingResult = self.mStageMapper.calibrate_xy(return_backlash_data=0)
                     if self.stageMappingResult is bool:
                         self._logger.error("Calibration failed")
                         self._widget.sigStageMappingComplete.emit(None, None, False)
@@ -386,8 +389,7 @@ class HistoScanController(LiveUpdatedController):
         
     @APIExport()
     def stopStageMapping(self):
-        # FIXME: Not implemented yet!
-        pass 
+        self.mStageMapper.stop()
     
     def starthistoscanCamerabased(self):
         '''
@@ -529,7 +531,13 @@ class HistoScanController(LiveUpdatedController):
         initialPosition = self.stages.getPosition()
         initPosX = initialPosition["X"]
         initPosY = initialPosition["Y"]
-        self.startHistoScanTileBasedByParameters(numberTilesX, numberTilesY, stepSizeX, stepSizeY, nTimes, tPeriod, illuSource, initPosX, initPosY)
+        # check if we want to stitch the images
+        isStitchAshlar = self._widget.stitchAshlarCheckBox.isChecked()
+        isStitchAshlarFlipX = self._widget.stitchAshlarFlipXCheckBox.isChecked()
+        isStitchAshlarFlipY = self._widget.stitchAshlarFlipYCheckBox.isChecked()
+        
+        self.startHistoScanTileBasedByParameters(numberTilesX, numberTilesY, stepSizeX, stepSizeY, nTimes, tPeriod, illuSource, initPosX, initPosY, 
+                                                 isStitchAshlar, isStitchAshlarFlipX, isStitchAshlarFlipY)
 
         
     @APIExport()
@@ -545,7 +553,8 @@ class HistoScanController(LiveUpdatedController):
             self._logger.debug("histoscan scanning stopped.")
 
     @APIExport()
-    def startHistoScanTileBasedByParameters(self, numberTilesX:int=2, numberTilesY:int=2, stepSizeX:int=100, stepSizeY:int=100, nTimes:int=1, tPeriod:int=1, illuSource:str=None, initPosX:int=0, initPosY:int=0):
+    def startHistoScanTileBasedByParameters(self, numberTilesX:int=2, numberTilesY:int=2, stepSizeX:int=100, stepSizeY:int=100, nTimes:int=1, tPeriod:int=1, illuSource:str=None, initPosX:int=0, initPosY:int=0, 
+                                            isStitchAshlar:bool=False, isStitchAshlarFlipX:bool=False, isStitchAshlarFlipY:bool=False):
         def computePositionList(numberTilesX, numberTilesY, stepSizeX, stepSizeY, initPosX, initPosY):
             positionList = []
             for i in range(numberTilesX):
@@ -564,7 +573,8 @@ class HistoScanController(LiveUpdatedController):
         minPosY = np.min(positionList, axis=0)[1]
         maxPosY = np.max(positionList, axis=0)[1]
         # start stage scanning with positionlist 
-        self.startStageScanning(minPosX=minPosX, minPosY=minPosY, maxPosX=maxPosX, maxPosY=maxPosY, positionList=positionList, nTimes=nTimes, tPeriod=tPeriod, illuSource=illuSource)
+        self.startStageScanning(minPosX=minPosX, minPosY=minPosY, maxPosX=maxPosX, maxPosY=maxPosY, positionList=positionList, nTimes=nTimes, tPeriod=tPeriod, illuSource=illuSource, 
+                                isStitchAshlar=isStitchAshlar, isStitchAshlarFlipX=isStitchAshlarFlipX, isStitchAshlarFlipY=isStitchAshlarFlipY)
         
     def stophistoscanTilebased(self):
         self.ishistoscanRunning = False
@@ -595,7 +605,8 @@ class HistoScanController(LiveUpdatedController):
                                 nTimes=nTimes, tPeriod=tPeriod, illuSource=illuSource, positionList=positionList)
             
     def startStageScanning(self, minPosX:float=None, maxPosX:float=None, minPosY:float=None, maxPosY:float=None, 
-                           overlap:float=None, nTimes:int=1, tPeriod:int=0, illuSource:str=None, positionList:list=None):
+                           overlap:float=None, nTimes:int=1, tPeriod:int=0, illuSource:str=None, positionList:list=None, 
+                           isStitchAshlar:bool=False, isStitchAshlarFlipX:bool=False, isStitchAshlarFlipY:bool=False):
         if not self.ishistoscanRunning:
             self.ishistoscanRunning = True
             if self.histoscanTask is not None:
@@ -603,7 +614,9 @@ class HistoScanController(LiveUpdatedController):
                 del self.histoscanTask
             # Launch the XY scan in the background 
             self.histoscanTask = threading.Thread(target=self.histoscanThread, args=(minPosX, maxPosX, minPosY, 
-                                                                                     maxPosY, overlap, nTimes, tPeriod, illuSource, positionList))
+                                                                                     maxPosY, overlap, nTimes, tPeriod, illuSource, positionList, 
+                                                                                     isStitchAshlarFlipX, isStitchAshlarFlipY, 0.05,
+                                                                                     isStitchAshlar))
             self.histoscanTask.start()
         
     def generate_snake_scan_coordinates(self, posXmin, posYmin, posXmax, posYmax, img_width, img_height, overlap):
@@ -630,7 +643,8 @@ class HistoScanController(LiveUpdatedController):
         
     def histoscanThread(self, minPosX, maxPosX, minPosY, maxPosY, overlap=0.75, nTimes=1, 
                         tPeriod=0, illuSource=None, positionList=None,
-                        flipX=False, flipY=False, tSettle=0.05):
+                        flipX=False, flipY=False, tSettle=0.05, 
+                        isStitchAshlar=False):
         self._logger.debug("histoscan thread started.")
         
         initialPosition = self.stages.getPosition()
@@ -678,7 +692,7 @@ class HistoScanController(LiveUpdatedController):
                 flatfieldImage = None
             stitcher = ImageStitcher(self, min_coords=(0,0), max_coords=(maxPosPixX, maxPosPixY), folder=folder, 
                                      nChannels=nChannels, file_name=file_name, extension=extension, flatfieldImage=flatfieldImage,
-                                     flipX=flipX, flipY=flipY)
+                                     flipX=flipX, flipY=flipY, isStitchAshlar=isStitchAshlar, pixel_size=self.microscopeDetector.pixelSizeUm[0])
             
             # move to the first position
             self.stages.move(value=positionList[0], axis="XY", is_absolute=True, is_blocking=True, acceleration=(self.acceleration,self.acceleration))
@@ -766,8 +780,6 @@ class HistoScanController(LiveUpdatedController):
             self.setImageForDisplay(largeImage, "histoscanStitch")
         threading.Thread(target=getStitchedResult).start()
         
-        # TODO: Here we want to process the data to merge into an ASHLAR-based stitching image
-
     def valueIlluChanged(self):
         illuSource = self._widget.getIlluminationSource()
         illuValue = self._widget.illuminationSlider.value()
@@ -815,31 +827,18 @@ class ImageStitcher:
 
     def __init__(self, parent, min_coords, max_coords,  folder, file_name, extension, 
                  subsample_factor=.25, nChannels = 3, flatfieldImage=None, 
-                 flipX=True, flipY=True):
+                 flipX=True, flipY=True, isStitchAshlar=False, pixel_size = -1):
         # Initial min and max coordinates 
         self._parent = parent
-        self.subsample_factor = subsample_factor
-        self.min_coords = np.int32(np.array(min_coords)*self.subsample_factor)
-        self.max_coords = np.int32(np.array(max_coords)*self.subsample_factor)
+        self.isStichAshlar = isStitchAshlar
         self.flipX = flipX
         self.flipY = flipY
-        
+        self.pixel_size = pixel_size
+
         # determine write location
         self.file_name = file_name
         self.file_path = os.sep.join([folder, file_name + extension])
-        
-        # Create a blank canvas for the final image and a canvas to track blending weights
-        self.nY = self.max_coords[1] - self.min_coords[1]
-        self.nX = self.max_coords[0] - self.min_coords[0]
-        self.stitched_image = np.zeros((self.nY, self.nX, nChannels), dtype=np.float32)
-        self.stitched_image_shape= self.stitched_image.shape
-        
-        # get the background image
-        if flatfieldImage is not None:
-            self.flatfieldImage = cv2.resize(np.copy(flatfieldImage), None, fx=self.subsample_factor, fy=self.subsample_factor, interpolation=cv2.INTER_NEAREST)  
-        else:
-            self.flatfieldImage = np.ones((self.nY, self.nX, nChannels), dtype=np.float32)
-        
+            
         # Queue to hold incoming images
         self.queue = deque()
 
@@ -850,8 +849,32 @@ class ImageStitcher:
         self.processing_thread = threading.Thread(target=self._process_queue)
         self.isRunning = True
         self.processing_thread.start()
+        
+        # differentiate between ASHLAR and simple memory based stitching
+        if self.isStichAshlar:
+            self.ashlarImageList = []
+            self.ashlarPositionList = []
+        else:
+            self.subsample_factor = subsample_factor
+            self.min_coords = np.int32(np.array(min_coords)*self.subsample_factor)
+            self.max_coords = np.int32(np.array(max_coords)*self.subsample_factor)
+            
+            
+            # Create a blank canvas for the final image and a canvas to track blending weights
+            self.nY = self.max_coords[1] - self.min_coords[1]
+            self.nX = self.max_coords[0] - self.min_coords[0]
+            self.stitched_image = np.zeros((self.nY, self.nX, nChannels), dtype=np.float32)
+            self.stitched_image_shape= self.stitched_image.shape
+            
+            # get the background image
+            if flatfieldImage is not None:
+                self.flatfieldImage = cv2.resize(np.copy(flatfieldImage), None, fx=self.subsample_factor, fy=self.subsample_factor, interpolation=cv2.INTER_NEAREST)  
+            else:
+                self.flatfieldImage = np.ones((self.nY, self.nX, nChannels), dtype=np.float32)
+            
 
-    def process_ashlar(self, arrays, position_list, pixel_size, output_filename='ashlar_output_numpy.tif', maximum_shift_microns=10):
+
+    def process_ashlar(self, arrays, position_list, pixel_size, output_filename='ashlar_output_numpy.tif', maximum_shift_microns=10, flip_x=False, flip_y=False):
         '''
         install from here: https://github.com/openUC2/ashlar
         arrays => 4d numpy array (n_images, n_channels, height, width)
@@ -859,18 +882,13 @@ class ImageStitcher:
         pixel_size => pixel size in microns
         '''
         from ashlar.scripts.ashlar import process_images
-        if len(arrays.shape)<4:
-            np.expand_dims(np.array(arrays), axis=1)
-        arrays = [arrays] # ensure channel is set
-        position_list = np.array(position_list) # has to be a list
         print("Stitching tiles with ashlar..")
-
         # Process numpy arrays
         process_images(filepaths=arrays,
                         output=output_filename,
                         align_channel=0,
-                        flip_x=False,
-                        flip_y=False,
+                        flip_x=flip_x,
+                        flip_y=flip_y,
                         flip_mosaic_x=False,
                         flip_mosaic_y=False,
                         output_channels=None,
@@ -908,45 +926,61 @@ class ImageStitcher:
             
 
     def _place_on_canvas(self, img, coords, flipX=True, flipY=True):
-        # these are pixelcoordinates (e.g. center of the imageslice)
-        offset_x = int(coords[0]*self.subsample_factor - self.min_coords[0])
-        offset_y = int(self.max_coords[1]-coords[1]*self.subsample_factor)
-        #self._parent._logger.debug("Coordinates: "+str((offset_x,offset_y)))
+        # 
+        if self.isStichAshlar:
+            # in case we want to process it with ASHLAR later on
+            self.ashlarImageList.append(img)
+            self.ashlarPositionList.append(coords)
+        else:            
+            # This is only for placing the images on a larger canvas for later displaying, no proper blending/stitching
+            # these are pixelcoordinates (e.g. center of the imageslice)
+            offset_x = int(coords[0]*self.subsample_factor - self.min_coords[0])
+            offset_y = int(self.max_coords[1]-coords[1]*self.subsample_factor)
+            #self._parent._logger.debug("Coordinates: "+str((offset_x,offset_y)))
 
-        # Calculate a feathering mask based on image intensity
-        img = cv2.resize(np.copy(img), None, fx=self.subsample_factor, fy=self.subsample_factor, interpolation=cv2.INTER_NEAREST) 
-        if flipX: 
-            img = np.flip(img,1)
-        if flipY:
-            img = np.flip(img,0)
-        scalingFactor = .5
-        try: img = np.float32(img)/np.float32(self.flatfieldImage) # we scale flatfieldImage 0...1
-        except: pass #self._parent._logger.error("Could not divide by flatfieldImage")
-        if len(img.shape)==3:
-           img = np.uint8(img) # napari only accepts uint8 for RGB
-        try: 
-            stitchDim = self.stitched_image[offset_y-img.shape[0]:offset_y, offset_x:offset_x+img.shape[1]].shape
-            stitchImage = img[0:stitchDim[0], 0:stitchDim[1]]
-            if len(stitchImage.shape)==2:
-                stitchImage = np.expand_dims(stitchImage, axis=-1)
-            self.stitched_image[offset_y-img.shape[0]:offset_y, offset_x:offset_x+img.shape[1]] = stitchImage
-        
-            # try to display in napari if ready
-            #self._parent.setPartialImageForDisplay(stitchImage, (offset_x, offset_y, img.shape[1], img.shape[0]), "Stitched Image")
-        except Exception as e:
-            self.__logger.error(e)
+            # Calculate a feathering mask based on image intensity
+            img = cv2.resize(np.copy(img), None, fx=self.subsample_factor, fy=self.subsample_factor, interpolation=cv2.INTER_NEAREST) 
+            if flipX: 
+                img = np.flip(img,1)
+            if flipY:
+                img = np.flip(img,0)
+            scalingFactor = .5
+            try: img = np.float32(img)/np.float32(self.flatfieldImage) # we scale flatfieldImage 0...1
+            except: pass #self._parent._logger.error("Could not divide by flatfieldImage")
+            if len(img.shape)==3:
+                img = np.uint8(img) # napari only accepts uint8 for RGB
+            try: 
+                stitchDim = self.stitched_image[offset_y-img.shape[0]:offset_y, offset_x:offset_x+img.shape[1]].shape
+                stitchImage = img[0:stitchDim[0], 0:stitchDim[1]]
+                if len(stitchImage.shape)==2:
+                    stitchImage = np.expand_dims(stitchImage, axis=-1)
+                self.stitched_image[offset_y-img.shape[0]:offset_y, offset_x:offset_x+img.shape[1]] = stitchImage
+            
+                # try to display in napari if ready
+                #self._parent.setPartialImageForDisplay(stitchImage, (offset_x, offset_y, img.shape[1], img.shape[0]), "Stitched Image")
+            except Exception as e:
+                self.__logger.error(e)
 
     def get_stitched_image(self):
         with self.lock:
-            # Normalize by the weight image to get the final result
-            stitched = self.stitched_image.copy()
-            '''
-            if len(stitched.shape)>2:
-                stitched = stitched/np.max(stitched)
-                stitched = np.uint8(stitched*255)
-            '''
-            self.isRunning = False
-            return stitched 
+            if self.isStichAshlar:
+                # convert the image and positionlist 
+                arrays = [np.expand_dims(np.array(self.ashlarImageList),1)]  # (num_images, num_channels, height, width)
+                position_list = np.array(self.ashlarPositionList)
+                self.process_ashlar(arrays, position_list, self.pixel_size, output_filename=self.file_path, maximum_shift_microns=100, flip_x=self.flipX, flip_y=self.flipY)
+                # reload the image
+                stitched = tifffile.imread(self.file_path)
+                return stitched
+            else:
+                # Normalize by the weight image to get the final result
+                stitched = self.stitched_image.copy()
+                '''
+                if len(stitched.shape)>2:
+                    stitched = stitched/np.max(stitched)
+                    stitched = np.uint8(stitched*255)
+                '''
+                self.isRunning = False
+                return stitched 
 
     def save_stitched_image(self, filename):
         stitched = self.get_stitched_image()

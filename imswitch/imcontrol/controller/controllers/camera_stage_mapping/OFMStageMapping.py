@@ -61,6 +61,7 @@ class OFMStageScanClass(object):
         self._logger = logging.getLogger(__name__)
         # set logging level
         self._logger.setLevel(logging.INFO)
+        self.isStop = False
         # everything is measured in normalized pixel coordinates
         # so if we want to move the stage by one pixel we need to know the effective pixel size
         # and the stage step size
@@ -75,7 +76,12 @@ class OFMStageScanClass(object):
         self.microscopeDetector = mDetector
         self.microscopeStage = mStage
 
+    def stop(self):
+        self.isStop = True
         
+    def getIsStop(self):
+        return self.isStop
+    
     def camera_stage_functions(self):
         """Return functions that allow us to interface with the microscope"""
         
@@ -143,7 +149,7 @@ class OFMStageScanClass(object):
 
         tracker = Tracker(grab_image, get_position, settle=wait)
 
-        result = calibrate_backlash_1d(tracker, move, direction)#, return_backlash_data=return_backlash_data, nMultipliers=nMultipliers)
+        result = calibrate_backlash_1d(tracker, move, direction, self.getIsStop)#, return_backlash_data=return_backlash_data, nMultipliers=nMultipliers)
         result["move_history"] = move.history
         return result
     

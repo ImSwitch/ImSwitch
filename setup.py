@@ -79,7 +79,6 @@ setup(
         'PyQt5': [
             "PyQt5 >= 5.15.2",
             "PyQt5 >= 5.15.2",
-            "QtWebEngineWidgets >= 5.15.2",
             "QDarkStyle >= 3",
             "QScintilla >= 2.12",
             "PyQtWebEngine >= 5.15.2",

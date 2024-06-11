@@ -26,11 +26,6 @@ class MCTWidget(NapariHybridWidget):
     sigSliderIllu3ValueChanged = QtCore.Signal(float)  # (value)
 
     def __post_init__(self):
-        #super().__init__(*args, **kwargs)
-
-
-        self.mctFrame = pg.GraphicsLayoutWidget()
-        
         # initialize all GUI elements
         
         # period
@@ -141,57 +136,67 @@ class MCTWidget(NapariHybridWidget):
         self.grid = QtWidgets.QGridLayout()
         self.setLayout(self.grid)
 
-        self.grid.addWidget(self.mctLabelTimePeriod, 0, 0, 1, 1)
-        self.grid.addWidget(self.mctValueTimePeriod, 0, 1, 1, 1)
-        self.grid.addWidget(self.mctLabelTimeDuration, 0, 2, 1, 1)
-        self.grid.addWidget(self.mctValueTimeDuration, 0, 3, 1, 1)
+        # Fügen Sie das QGridLayout zu einem QWidget hinzu
+        gridWidget = QtWidgets.QWidget()
+        gridWidget.setLayout(self.grid)
+
+        # Erstellen Sie ein QScrollArea und setzen Sie das QWidget als dessen Inhalt
+        self.scrollArea = QtWidgets.QScrollArea()
+        self.scrollArea.setWidget(gridWidget)
+        self.scrollArea.setWidgetResizable(True)
+
+        # Jetzt können Sie scrollArea zu Ihrem Layout hinzufügen
+        self.scrollArea.addWidget(self.mctLabelTimePeriod, 0, 0, 1, 1)
+        self.scrollArea.addWidget(self.mctValueTimePeriod, 0, 1, 1, 1)
+        self.scrollArea.addWidget(self.mctLabelTimeDuration, 0, 2, 1, 1)
+        self.scrollArea.addWidget(self.mctValueTimeDuration, 0, 3, 1, 1)
         #z-stack
-        self.grid.addWidget(self.mctLabelZStack, 1, 0, 1, 1)
-        self.grid.addWidget(self.mctValueZmin, 1, 1, 1, 1)
-        self.grid.addWidget(self.mctValueZmax, 1, 2, 1, 1)
-        self.grid.addWidget(self.mctValueZsteps, 1, 3, 1, 1)
+        self.scrollArea.addWidget(self.mctLabelZStack, 1, 0, 1, 1)
+        self.scrollArea.addWidget(self.mctValueZmin, 1, 1, 1, 1)
+        self.scrollArea.addWidget(self.mctValueZmax, 1, 2, 1, 1)
+        self.scrollArea.addWidget(self.mctValueZsteps, 1, 3, 1, 1)
         
         #xy-scanning
-        self.grid.addWidget(self.mctLabelXScan, 2, 0, 1, 1)
-        self.grid.addWidget(self.mctValueXmin, 2, 1, 1, 1)
-        self.grid.addWidget(self.mctValueXmax, 2, 2, 1, 1)
-        self.grid.addWidget(self.mctValueXsteps, 2, 3, 1, 1)
+        self.scrollArea.addWidget(self.mctLabelXScan, 2, 0, 1, 1)
+        self.scrollArea.addWidget(self.mctValueXmin, 2, 1, 1, 1)
+        self.scrollArea.addWidget(self.mctValueXmax, 2, 2, 1, 1)
+        self.scrollArea.addWidget(self.mctValueXsteps, 2, 3, 1, 1)
 
-        self.grid.addWidget(self.mctLabelYScan, 3, 0, 1, 1)
-        self.grid.addWidget(self.mctValueYmin, 3, 1, 1, 1)
-        self.grid.addWidget(self.mctValueYmax, 3, 2, 1, 1)
-        self.grid.addWidget(self.mctValueYsteps, 3, 3, 1, 1)
+        self.scrollArea.addWidget(self.mctLabelYScan, 3, 0, 1, 1)
+        self.scrollArea.addWidget(self.mctValueYmin, 3, 1, 1, 1)
+        self.scrollArea.addWidget(self.mctValueYmax, 3, 2, 1, 1)
+        self.scrollArea.addWidget(self.mctValueYsteps, 3, 3, 1, 1)
 
-        self.grid.addWidget(self.mctLabelIllu1, 4, 0, 1, 1)
-        self.grid.addWidget(self.sliderIllu1, 4, 1, 1, 3)
-        self.grid.addWidget(self.mctLabelIllu2, 5, 0, 1, 1)
-        self.grid.addWidget(self.sliderIllu2, 5, 1, 1, 3)        
-        self.grid.addWidget(self.mctLabelIllu3, 6, 0, 1, 1)
-        self.grid.addWidget(self.sliderIllu3, 6, 1, 1, 3)
+        self.scrollArea.addWidget(self.mctLabelIllu1, 4, 0, 1, 1)
+        self.scrollArea.addWidget(self.sliderIllu1, 4, 1, 1, 3)
+        self.scrollArea.addWidget(self.mctLabelIllu2, 5, 0, 1, 1)
+        self.scrollArea.addWidget(self.sliderIllu2, 5, 1, 1, 3)        
+        self.scrollArea.addWidget(self.mctLabelIllu3, 6, 0, 1, 1)
+        self.scrollArea.addWidget(self.sliderIllu3, 6, 1, 1, 3)
 
         # filesettings
-        self.grid.addWidget(self.mctLabelFileName, 7, 0, 1, 1)
-        self.grid.addWidget(self.mctEditFileName, 7, 1, 1, 1)
-        self.grid.addWidget(self.mctNImages, 7, 2, 1, 1)
-        self.grid.addWidget(self.mctDoZStack, 7, 3, 1, 1)
+        self.scrollArea.addWidget(self.mctLabelFileName, 7, 0, 1, 1)
+        self.scrollArea.addWidget(self.mctEditFileName, 7, 1, 1, 1)
+        self.scrollArea.addWidget(self.mctNImages, 7, 2, 1, 1)
+        self.scrollArea.addWidget(self.mctDoZStack, 7, 3, 1, 1)
         
         # autofocus
-        self.grid.addWidget(self.autofocusLabel, 8, 0, 1, 1)
-        self.grid.addWidget(self.autofocusRange, 8, 1, 1, 1)
-        self.grid.addWidget(self.autofocusSteps, 8, 2, 1, 1)
-        self.grid.addWidget(self.autofocusPeriod, 8, 3, 1, 1)
+        self.scrollArea.addWidget(self.autofocusLabel, 8, 0, 1, 1)
+        self.scrollArea.addWidget(self.autofocusRange, 8, 1, 1, 1)
+        self.scrollArea.addWidget(self.autofocusSteps, 8, 2, 1, 1)
+        self.scrollArea.addWidget(self.autofocusPeriod, 8, 3, 1, 1)
         
-        self.grid.addWidget(self.autofocusSelectionLabel, 9, 0, 1, 1)        
-        self.grid.addWidget(self.autofocusLaser1Checkbox, 9, 1, 1, 1)
-        self.grid.addWidget(self.autofocusLaser2Checkbox, 9, 2, 1, 1)
-        self.grid.addWidget(self.autofocusLED1Checkbox, 9, 3, 1, 1)
+        self.scrollArea.addWidget(self.autofocusSelectionLabel, 9, 0, 1, 1)        
+        self.scrollArea.addWidget(self.autofocusLaser1Checkbox, 9, 1, 1, 1)
+        self.scrollArea.addWidget(self.autofocusLaser2Checkbox, 9, 2, 1, 1)
+        self.scrollArea.addWidget(self.autofocusLED1Checkbox, 9, 3, 1, 1)
 
         # start stop
-        self.grid.addWidget(self.mctStartButton, 10, 0, 1, 1)
-        self.grid.addWidget(self.mctStopButton, 10, 1, 1, 1)
-        self.grid.addWidget(self.mctShowLastButton, 10, 2, 1, 1)
-        self.grid.addWidget(self.mctDoXYScan, 10, 3, 1, 1)
-        # self.grid.addWidget(self.mctInitFilterButton,8, 3, 1, 1)
+        self.scrollArea.addWidget(self.mctStartButton, 10, 0, 1, 1)
+        self.scrollArea.addWidget(self.mctStopButton, 10, 1, 1, 1)
+        self.scrollArea.addWidget(self.mctShowLastButton, 10, 2, 1, 1)
+        self.scrollArea.addWidget(self.mctDoXYScan, 10, 3, 1, 1)
+        # self.scrollArea.addWidget(self.mctInitFilterButton,8, 3, 1, 1)
         
         self.layer = None
         

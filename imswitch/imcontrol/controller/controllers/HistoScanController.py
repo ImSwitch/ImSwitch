@@ -94,6 +94,8 @@ class HistoScanController(LiveUpdatedController):
         self.sigImageReceived.connect(self.displayImage)
         self.sigUpdatePartialImage.connect(self.updatePartialImage)
         self._commChannel.sigUpdateMotorPosition.connect(self.updateAllPositionGUI)
+        self._commChannel.sigStartTileBasedTileScanning.connect(self.startHistoScanTileBasedByParameters)
+        self._commChannel.sigStopTileBasedTileScanning.connect(self.stophistoscanTilebased)
         
         self.partialImageCoordinates = (0,0,0,0)
         self.partialHistoscanStack = np.ones((1,1,3))
@@ -120,10 +122,7 @@ class HistoScanController(LiveUpdatedController):
             self._widget.setOffset(offsetX, offsetY)
             ## update optimal scan parameters for tile-based scan
             try:
-                overlap = 0.75
-                mFrameSize = self.microscopeDetector.getLatestFrame().shape
-                bestScanSizeX = mFrameSize[1]*self.microscopeDetector.pixelSizeUm[-1]*overlap
-                bestScanSizeY = mFrameSize[0]*self.microscopeDetector.pixelSizeUm[-1]*overlap     
+                bestScanSizeX, bestScanSizeY = self.computeOptimalScanStepSize()
                 self._widget.setTilebasedScanParameters((bestScanSizeX, bestScanSizeY))
             except Exception as e:
                 self._logger.error(e)
@@ -162,6 +161,12 @@ class HistoScanController(LiveUpdatedController):
             self._widget.buttonTurnOnLEDArray.clicked.connect(self.turnOnLEDArray)
             self._widget.buttonTurnOffLEDArray.clicked.connect(self.turnOffLEDArray)
         
+    def computeOptimalScanStepSize(self, overlap = 0.75):
+        mFrameSize = self.microscopeDetector.getLatestFrame().shape
+        bestScanSizeX = mFrameSize[1]*self.microscopeDetector.pixelSizeUm[-1]*overlap
+        bestScanSizeY = mFrameSize[0]*self.microscopeDetector.pixelSizeUm[-1]*overlap     
+        return bestScanSizeX, bestScanSizeY
+
     def turnOnLED(self):
         if self.led is not None:
             self.led.setEnabled(1)
@@ -565,13 +570,20 @@ class HistoScanController(LiveUpdatedController):
                 for j in rangeY:
                     positionList.append((i*stepSizeX+initPosX-numberTilesX//2*stepSizeX, j*stepSizeY+initPosY-numberTilesY//2*stepSizeY))
             return positionList
-        if illuSource is None:
+        if illuSource is None or illuSource not in self._master.lasersManager.getAllDeviceNames():
             illuSource = self._master.lasersManager.getAllDeviceNames()[0]
+        # compute optimal step size if not provided
+        if stepSizeX<=0 or stepSizeX is None:
+            stepSizeX, _ = self.computeOptimalScanStepSize()
+        if stepSizeY<=0 or stepSizeY is None:
+            _, stepSizeY = self.computeOptimalScanStepSize()          
+        
         positionList = computePositionList(numberTilesX, numberTilesY, stepSizeX, stepSizeY, initPosX, initPosY)
         minPosX = np.min(positionList, axis=0)[0]
         maxPosX = np.max(positionList, axis=0)[0]
         minPosY = np.min(positionList, axis=0)[1]
         maxPosY = np.max(positionList, axis=0)[1]
+        
         # start stage scanning with positionlist 
         self.startStageScanning(minPosX=minPosX, minPosY=minPosY, maxPosX=maxPosX, maxPosY=maxPosY, positionList=positionList, nTimes=nTimes, tPeriod=tPeriod, illuSource=illuSource, 
                                 isStitchAshlar=isStitchAshlar, isStitchAshlarFlipX=isStitchAshlarFlipX, isStitchAshlarFlipY=isStitchAshlarFlipY)
@@ -916,7 +928,7 @@ class ImageStitcher:
             while self.isRunning:
                 with self.lock:
                     if not self.queue:
-                        time.sleep(.1) # unload CPU
+                        time.sleep(.02) # unload CPU
                         continue
                     img, coords, metadata = self.queue.popleft()
                     self._place_on_canvas(img, coords, flipX=self.flipX, flipY=self.flipY)

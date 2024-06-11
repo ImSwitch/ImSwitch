@@ -11,7 +11,6 @@ psutil >= 5.4.8
 microscope
 pyserial >= 3.4
 QDarkStyle >= 3
-QScintilla >= 2.12
 requests >= 2.25
 scikit-image >= 0.18
 Send2Trash >= 1.8
@@ -35,3 +34,5 @@ jupyter
 rpyc >= 5.0.0
 tk >= 0.1.0
 lantzdev[qt] >= 0.5.2
+https://github.com/openUC2/ashlar/archive/refs/heads/master.zip
+https://gitlab.com/bionanoimaging/nanoimagingpack/-/archive/master/nanoimagingpack-master.zip

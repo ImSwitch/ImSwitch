@@ -1,3 +1,5 @@
+# docker build --platform linux/arm64/v8 -f dockerCondaARM -t imswitchcondaarm .
+# docker run -it --rm -p 9876:9876 -p 8001:8001 -p 22:2222 imswitchcondaarm
 # Use an ARM64 base image with Ubuntu
 FROM arm64v8/ubuntu:20.04
 
@@ -20,19 +22,43 @@ RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-aar
 ENV PATH=/opt/conda/bin:$PATH
 
 # Create conda environment and install packages
-RUN conda create -y --name myenv python=3.10 && \
+RUN conda create -y --name imswitch python=3.10 && \
     conda init bash && \
-    echo "conda activate myenv" >> ~/.bashrc
+    echo "conda activate imswitch" >> ~/.bashrc
 
 # Install napari and pyqt
-RUN /opt/conda/bin/conda install -n myenv -y -c conda-forge napari pyqt
+RUN /opt/conda/bin/conda install -n imswitch -y -c conda-forge napari pyqt hdf5
 
 # git clone the repository github.com/openUC2/imSwitch
 RUN cd /home \
      git clone https://github.com/openUC2/imSwitch \
         cd imSwitch \
-        /bin/bash -c "source activate myenv && pip install -e ."
+        /bin/bash -c "source activate imswitch && pip install -r requirements-arm64.txt" \
+        /bin/bash -c "source activate imswitch && pip install -e . --no-deps" 
+
+
+# Set up SSH server
+RUN mkdir /var/run/sshd
+
+# Set root password
+RUN echo 'root:password' | chpasswd
+
+# Allow root login
+RUN sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
+
+# SSH login fix. Otherwise user is kicked off after login
+RUN sed 's@session\s*required\s*pam_loginuid.so@session optional pam_loginuid.so@g' -i /etc/pam.d/sshd
+
+# Create a script to start the SSH server
+RUN echo '#!/bin/bash' > /start_ssh.sh
+RUN echo '/usr/sbin/sshd -D' >> /start_ssh.sh
+RUN chmod +x /start_ssh.sh
+
+# Set the script as the entrypoint
+RUN ["/start_ssh.sh"]
 
 
 # Set the default command to start a bash shell
 CMD ["bash"]
+#python3 -m imswitch --headless 
+

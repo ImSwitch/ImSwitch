@@ -167,7 +167,7 @@ class ImConMainController(MainController):
         self.__masterController.closeEvent()
         
         # seems like the imswitchserver is not closing from the closing event, need to hard kill it
-        self._thread.stop()
+        self._serverWorker.stop()
         self._thread.join()
 
 # Copyright (C) 2020-2023 ImSwitch developers

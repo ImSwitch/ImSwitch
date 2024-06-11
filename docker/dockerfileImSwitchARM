@@ -99,7 +99,7 @@ RUN apt-get update && \
 RUN mkdir /var/run/sshd
 
 # Set root password
-RUN echo 'root:YOUR_PASSWORD' | chpasswd
+RUN echo 'root:password' | chpasswd
 
 # Allow root login
 RUN sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
@@ -113,7 +113,7 @@ RUN echo '/usr/sbin/sshd -D' >> /start_ssh.sh
 RUN chmod +x /start_ssh.sh
 
 # Set the script as the entrypoint
-ENTRYPOINT ["/start_ssh.sh"]
+RUN ["/start_ssh.sh"]
 
 # Expose SSH port
 EXPOSE 22

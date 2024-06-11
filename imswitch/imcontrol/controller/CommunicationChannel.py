@@ -126,7 +126,16 @@ class CommunicationChannel(SignalInterface):
     sigSetZPosition = Signal(float)
     sigSetExposure = Signal(float)
     sigSetSpeed = Signal(float)
-
+    
+    # light-sheet related signals
+    sigStartLightSheet = Signal(float, float, float, str, str, float)
+    sigStopLightSheet = Signal()
+    
+    # scanning-related signals
+    sigStartTileBasedTileScanning = Signal(int, int, int, int, int, int, str, int, int, bool, bool, bool) # (numb erTilesX, numberTilesY, stepSizeX, stepSizeY, nTimes, tPeriod, illuSource, initPosX, initPosY, isStitchAshlar, isStitchAshlarFlipX, isStitchAshlarFlipY)
+    sigStopTileBasedTileScanning = Signal()
+    
+    
     @property
     def sharedAttrs(self):
         return self.__sharedAttrs

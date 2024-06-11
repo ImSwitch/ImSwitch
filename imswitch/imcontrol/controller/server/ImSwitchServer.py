@@ -120,10 +120,13 @@ class ImSwitchServer(Worker):
         print(os.path.join(_baseDataFilesDir,"ssl", "key.cert"))
         
         def run_server():
-            if IS_SSL:
-                uvicorn.run(app, host="0.0.0.0", port=PORT, ssl_keyfile=os.path.join(_baseDataFilesDir,"ssl", "key.pem"), ssl_certfile=os.path.join(_baseDataFilesDir,"ssl", "cert.pem"))
-            else:
-                uvicorn.run(app, host="0.0.0.0", port=PORT)
+            try:
+                if IS_SSL:
+                    uvicorn.run(app, host="0.0.0.0", port=PORT, ssl_keyfile=os.path.join(_baseDataFilesDir,"ssl", "key.pem"), ssl_certfile=os.path.join(_baseDataFilesDir,"ssl", "cert.pem"))
+                else:
+                    uvicorn.run(app, host="0.0.0.0", port=PORT)
+            except Exception as e:
+                self.__logger.error("Couldn't start server: "+str(e))
         server_thread = threading.Thread(target=run_server)
         server_thread.start()
         

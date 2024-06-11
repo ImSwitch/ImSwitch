@@ -196,7 +196,9 @@ class HyphaController(LiveUpdatedController):
             "set_illumination": SetIlluminationInput.schema(),
             "set_message_dict": MessagingExchange.schema(),
             "get_message_dict": MessagingExchange.schema(),
-            "script_executor": ScriptExecutor.schema()
+            "script_executor": ScriptExecutor.schema(), 
+            "lightsheet_scan": LightsheetScan.schema(),
+            "slide_scan": SlideScanInput.schema()
         }
 
     def move_stage_by_distance(self, kwargs):
@@ -301,6 +303,34 @@ class HyphaController(LiveUpdatedController):
         except Exception as e:
             return "Error setting illumination: "+str(e)
         
+    def scan_lightsheet(self, kwargs=None):
+        # FIXME: not implemented yet
+        pass
+    
+    def scan_slide(self, kwargs=None):
+        '''
+        This performs tile-based scanning of a slide.
+        '''
+        if kwargs is None:
+            return 
+        
+        config = SlideScanInput(**kwargs)
+        numberTilesX = config.numberTilesX
+        numberTilesY = config.numberTilesY
+        stepSizeX = config.stepSizeX
+        stepSizeY = config.stepSizeY
+        nTimes = config.nTimes
+        tPeriod = config.tPeriod
+        illuSource = config.illuSource
+        initPosX = config.initPosX
+        initPosY = config.initPosY
+        isStitchAshlar = config.isStitchAshlar
+        isStitchAshlarFlipX = config.isStitchAshlarFlipX
+        isStitchAshlarFlipY = config.isStitchAshlarFlipY
+        
+        # Signal(int, int, int, int, int, int, str, int, int, bool, bool, bool) # (numberTilesX, numberTilesY, stepSizeX, stepSizeY, nTimes, tPeriod, illuSource, initPosX, initPosY, isStitchAshlar, isStitchAshlarFlipX, isStitchAshlarFlipY)
+        self._commChannel.sigStartTileBasedTileScanning.emit(numberTilesX, numberTilesY, stepSizeX, stepSizeY, nTimes, tPeriod, illuSource, initPosX, initPosY, isStitchAshlar, isStitchAshlarFlipX, isStitchAshlarFlipY)
+        return "Started slide scanning!"
 
     def snap_image(self, kwargs=None):
         '''
@@ -389,7 +419,9 @@ class HyphaController(LiveUpdatedController):
                 "set_illumination": self.set_illumination,
                 "set_message_dict": self.set_message_dict,
                 "get_message_dict": self.get_message_dict,
-                "script_executor": self.script_executor
+                "script_executor": self.script_executor, 
+                "lightsheet_scan": self.scan_lightsheet, 
+                "slide_scan": self.scan_slide
             }
         }
             
@@ -455,7 +487,31 @@ class SnapImageInput(BaseModel):
     filepath: str = Field(description="The path to save the captured image. It will be a tif, so the extension does not need to be added. ")
     imageProcessingFunction: str = Field(description="The Python function to use for processing the image. Default is empty. image is the 2D array from the detector Example: def processImage(image): return cv2.cvtColor(image, cv2.COLOR_BGR2GRAY). Avoid returning images since this is too much bandwidth. Return parameters from the function instead. Avoid using cv2") 
     returnAsNumpy: bool = Field(description="Return the image as a numpy array. Default is False and the image will be saved under filepath.")
-                                         
+                 
+class LightsheetScan(BaseModel):
+    '''
+    This performs a light-sheet volumetric scan 
+    '''                        
+
+class SlideScanInput(BaseModel):
+    '''
+    This performs a slide scan 
+    '''
+    #sigStartTileBasedTileScanning = Signal(int, int, int, int, int, int, str, int, int, int, bool, bool, bool) 
+    # (numberTilesX, numberTilesY, stepSizeX, stepSizeY, nTimes, tPeriod, illuSource, initPosX, initPosY, isStitchAshlar, isStitchAshlarFlipX, isStitchAshlarFlipY)
+    numberTilesX: int = Field(description="The number of tiles in the X direction. Example: numberTilesX=3")
+    numberTilesY: int = Field(description="The number of tiles in the Y direction. Example: numberTilesY=3")
+    stepSizeX: int = Field(description="The step size in the X direction. If None, ImSwitch will calculate the correct spacing for you. Example: stepSizeX=None")
+    stepSizeY: int = Field(description="The step size in the Y direction. If None, ImSwitch will calculate the correct spacing for you. Example: stepSizeY=None")
+    nTimes: int = Field(description="The number of times to repeat the scan. Example: nTimes=1")
+    tPeriod: int = Field(description="The time period between each scan. Example: tPeriod=1")
+    illuSource: str = Field(description="The illumination source to use. Example: illuSource=None")
+    initPosX: int = Field(description="The initial position in the X direction. If None the microscope will take the current position. Example: initPosX=None")
+    initPosY: int = Field(description="The initial position in the Y direction. If None the microscope will take the current position. Example: initPosY=None") 
+    isStitchAshlar: bool = Field(description="Stitch the tiles using the software Ashlar. Example isStitchAshlar=True")
+    isStitchAshlarFlipX: bool = Field(description="Flip the tiles along the X axis. Example isStitchAshlarFlipX=True")
+    isStitchAshlarFlipY: bool = Field(description="Flip the tiles along the Y axis. Example isStitchAshlarFlipY=False")
+    
 class SetIlluminationInput(BaseModel):
     """Set the illumination of the microscope."""
     channel: int = Field(description="Set the channel of the illumination. The value should choosed from this list: [0, 1, 2, 3] ")

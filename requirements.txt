@@ -39,3 +39,5 @@ python-multipart >= 0.0.5
 jupyter 
 rpyc >= 5.0.0
 tk >= 0.1.0
+https://github.com/openUC2/ashlar/archive/refs/heads/master.zip
+https://gitlab.com/bionanoimaging/nanoimagingpack/-/archive/master/nanoimagingpack-master.zip

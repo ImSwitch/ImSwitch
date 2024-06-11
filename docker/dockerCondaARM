@@ -20,16 +20,11 @@ RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-aar
 ENV PATH=/opt/conda/bin:$PATH
 
 # Create conda environment and install packages
-RUN conda create -y --name myenv python=3.8 && \
+RUN conda create -y --name myenv python=3.10 && \
     conda init bash && \
     echo "conda activate myenv" >> ~/.bashrc
 
-# Install specific packages inside the conda environment
-RUN /opt/conda/bin/conda install -n myenv -y numpy pandas scipy
-
-# activate environement and install additional packages using pip
-RUN /bin/bash -c "source activate myenv && pip install matplotlib scikit-learn"
-
+# Install napari and pyqt
 RUN /opt/conda/bin/conda install -n myenv -y -c conda-forge napari pyqt
 
 # git clone the repository github.com/openUC2/imSwitch

@@ -128,7 +128,7 @@ class CommunicationChannel(SignalInterface):
     sigSetSpeed = Signal(float)
     
     # light-sheet related signals
-    sigStartLightSheet = Signal(float, float, float, str, str, float)
+    sigStartLightSheet = Signal(float, float, float, str, str, float) # (startX, startY, speed, axis, lightsource, lightsourceIntensity)
     sigStopLightSheet = Signal()
     
     # scanning-related signals

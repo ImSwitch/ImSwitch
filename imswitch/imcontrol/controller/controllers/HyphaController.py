@@ -304,8 +304,23 @@ class HyphaController(LiveUpdatedController):
             return "Error setting illumination: "+str(e)
         
     def scan_lightsheet(self, kwargs=None):
-        # FIXME: not implemented yet
-        pass
+        '''
+        This performs a light-sheet volumetric scan.
+        '''
+        #sigStartLightSheet = Signal(float, float, float, str, str, float) # (startX, endX, speed, axis, lightsource, lightsourceIntensity)
+        if kwargs is None:
+            return
+        config = LightsheetScan(**kwargs)
+        startX = config.startX
+        endX = config.endX
+        speed = config.speed
+        axis = config.axis
+        lightsource = config.lightsource
+        lightsourceIntensity = config.lightsourceIntensity
+        self._commChannel.sigStartLightSheet.emit(startX, endX, speed, axis, lightsource, lightsourceIntensity)
+        return "Started light-sheet scanning!"
+        
+    
     
     def scan_slide(self, kwargs=None):
         '''
@@ -492,6 +507,13 @@ class LightsheetScan(BaseModel):
     '''
     This performs a light-sheet volumetric scan 
     '''                        
+    startX: float = Field(description="The starting position in the X direction. Example: startX=0")
+    endX: float = Field(description="The starting position in the Y direction. Example: startY=0")
+    speed: float = Field(description="The speed of the scan. Example: speed=1")
+    axis: str = Field(description="The axis to scan. Example: axis='A'")
+    lightsource: str = Field(description="The lightsource to use. Example: lightsource='Laser'")
+    lightsourceIntensity: float = Field(description="The intensity of the lightsource. Example: lightsourceIntensity=100")
+    
 
 class SlideScanInput(BaseModel):
     '''

@@ -46,7 +46,7 @@ class LightsheetController(ImConWidgetController):
         # connect signals
         self._widget.sigSliderIlluValueChanged.connect(self.valueIlluChanged)
         self.sigImageReceived.connect(self.displayImage)
-        self._commChannel.sigStartLightSheet.connect(self.startLightsheet)
+        self._commChannel.sigStartLightSheet.connect(self.performScanningRecording)
         self._commChannel.sigStopLightSheet.connect(self.stopLightsheet)
         self._commChannel.sigUpdateMotorPosition.connect(self.updateAllPositionGUI)
         
@@ -238,11 +238,14 @@ class LightsheetController(ImConWidgetController):
     def performScanningRecording(self, minPos=0, maxPos=1000, speed=1000, axis="A", illusource=None, illuvalue=512):
         if not self.isLightsheetRunning:
             
+            # check parameters
+            if axis not in ("A", "X", "Y", "Z"):
+                axis = "A"
             # use default illumination source if not selectd 
-            if illusource is None or illusource=="None":
+            if illusource is None or illusource=="None" or illusource not in self._master.lasersManager.getAllDeviceNames():
                 illusource = self._master.lasersManager.getAllDeviceNames()[0]
         
-            initialPosition = self.stages.getPosition()[axis]
+            #initialPosition = self.stages.getPosition()[axis]
         
             self.isLightsheetRunning = True
             if self.lightsheetTask is not None:

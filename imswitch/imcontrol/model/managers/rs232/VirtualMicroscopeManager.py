@@ -67,6 +67,7 @@ class Camera:
         self.model = "VirtualCamera"
         self.PixelSize = 1.0
         self.isRGB = False
+        self.frameNumber = 0
         # precompute noise so that we will save energy and trees
         self.noiseStack = np.random.randn(self.SensorHeight,self.SensorWidth,100)*.15
         
@@ -91,11 +92,16 @@ class Camera:
             time.sleep(0.1)
             return np.array(image)
         
-    def getLast(self):
+    def getLast(self, returnFrameNumber=False):
         position = self._parent.positioner.get_position()
         defocusPSF = np.squeeze(self._parent.positioner.get_psf())
         intensity = self._parent.illuminator.get_intensity(1)
-        return self.produce_frame(x_offset=position['X'], y_offset=position['Y'], light_intensity=intensity, defocusPSF=defocusPSF)
+        self.frameNumber += 1
+        if returnFrameNumber:
+            return self.produce_frame(x_offset=position['X'], y_offset=position['Y'], light_intensity=intensity, defocusPSF=defocusPSF), self.frameNumber
+        else:
+            return self.produce_frame(x_offset=position['X'], y_offset=position['Y'], light_intensity=intensity, defocusPSF=defocusPSF)
+    
 
     def setPropertyValue(self, propertyName, propertyValue):
         pass

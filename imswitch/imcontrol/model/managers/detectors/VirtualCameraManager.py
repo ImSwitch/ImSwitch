@@ -83,10 +83,22 @@ class VirtualCameraManager(DetectorManager):
             elif triggerSource == 2 and triggerMode == 1:
                 self.setParameter('Trigger source', 'External "frame-trigger"')
 
-    def getLatestFrame(self, is_save=False):
-        frame = self._camera.getLast()
-        return frame
+    def getLatestFrame(self, is_resize=True, returnFrameNumber=False):
+        if returnFrameNumber:
+            frame, frameNumber = self._camera.getLast(returnFrameNumber=returnFrameNumber)
+            return frame, frameNumber
+        else:
+            frame = self._camera.getLast()
+            return frame
 
+    def getLatestFrame(self, is_resize=True, returnFrameNumber=False):
+        if returnFrameNumber:
+            frame, frameNumber = self._camera.getLast(returnFrameNumber=returnFrameNumber)
+            return frame, frameNumber
+        else:
+            frame = self._camera.getLast(returnFrameNumber=returnFrameNumber)
+            return frame
+        
     def setParameter(self, name, value):
         """Sets a parameter value and returns the value.
         If the parameter doesn't exist, i.e. the parameters field doesn't

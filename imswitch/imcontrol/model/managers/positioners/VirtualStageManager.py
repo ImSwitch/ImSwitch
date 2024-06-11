@@ -28,7 +28,7 @@ class VirtualStageManager(PositionerManager):
         if axis == "Z":
             self._positioner.move(z=value, is_absolute=is_absolute)
         if axis == "A":
-            self._positioner.move(t=value, is_absolute=is_absolute)
+            self._positioner.move(a=value, is_absolute=is_absolute)
         if axis == "XYZ":
             self._positioner.move(x=value[0], y=value[1], z=value[2], is_absolute=is_absolute)
         if axis == "XY":

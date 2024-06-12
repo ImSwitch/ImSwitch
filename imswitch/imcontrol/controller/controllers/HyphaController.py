@@ -6,18 +6,17 @@ try:
 except:
     isNIP = False
 import webbrowser
-import argparse
 import asyncio
 import logging
 import os
-import uuid
 import fractions
 import tifffile as tif
-
+from imswitch.imcontrol.controller.controllers.hypha.hypha_storage import HyphaDataStore
 import numpy as np
 from av import VideoFrame
 from imjoy_rpc.hypha.sync import connect_to_server, register_rtc_service, login
 import aiortc
+import cv2
 from aiortc import MediaStreamTrack, RTCPeerConnection, RTCSessionDescription, RTCConfiguration
 from imswitch.imcommon.framework import Signal, Thread, Worker, Mutex
 from imswitch.imcontrol.view import guitools
@@ -100,6 +99,9 @@ class HyphaController(LiveUpdatedController):
         # connect signals 
         self._widget.sigLoginHypha.connect(self._loginHypha)
         
+        # create datastorer
+        self.datastore = HyphaDataStore()
+        
     def _loginHypha(self):
         # start the service
         # TODO: Create ID based on user input
@@ -159,6 +161,7 @@ class HyphaController(LiveUpdatedController):
             "server_url": server_url,
             "token": token}
             )
+        self.datastore.setup(server, service_id="data-store")
         svc = server.register_service(self.getExtensionDefinition())
         self.hyphaURL = f"https://bioimage.io/chat?server={server_url}&extension={svc.id}"
         try:
@@ -321,7 +324,6 @@ class HyphaController(LiveUpdatedController):
         return "Started light-sheet scanning!"
         
     
-    
     def scan_slide(self, kwargs=None):
         '''
         This performs tile-based scanning of a slide.
@@ -357,7 +359,6 @@ class HyphaController(LiveUpdatedController):
         mExposureTime = config.exposure = 100
         mFilePath = config.filepath 
         imageProcessingFunction = config.imageProcessingFunction 
-        
         return self.snap_image_exec(config, mExposureTime, mFilePath, imageProcessingFunction)
     
     def snap_image_exec(self, config=None, mExposureTime:int=100, mFilePath:str="./", imageProcessingFunction:str=""):
@@ -391,6 +392,17 @@ class HyphaController(LiveUpdatedController):
 
             # Step 3: Save the Image
             # check if processedImage is an image
+            processedImage = np.uint8(processedImage)
+            if len(processedImage.shape)>2:
+                bgr_img = np.stack((processedImage,)*3, axis=-1)  # Duplicate grayscale data across 3 channels to simulate BGR format.
+            else:
+                bgr_img = cv2.cvtColor(processedImage, cv2.COLOR_GRAY2BGR)
+            _, png_image = cv2.imencode('.png', bgr_img)        
+            file_id = self.datastore.put('file', png_image.tobytes(), 'snapshot.png', "Captured microscope image in PNG format")
+            print(f'The image is snapped and saved as {self.datastore.get_url(file_id)}')
+            return self.datastore.get_url(file_id)
+
+            '''
             if type(processedImage)==np.ndarray and len(processedImage.shape)>1:    
                 if config is not None and config.returnAsNumpy:
                     return processedImage
@@ -400,7 +412,8 @@ class HyphaController(LiveUpdatedController):
                 self._commChannel.sigDisplayImageNapari.emit(mFilePath, processedImage, False) # layername, image, isRGB
                 return "Image saved at "+mFilePath+".tif"
             else:
-                return str(processedImage)
+            '''
+            
         except Exception as e:
             return "Error processing image: "+str(e)
 
@@ -507,9 +520,9 @@ class LightsheetScan(BaseModel):
     '''
     This performs a light-sheet volumetric scan 
     '''                        
-    startX: float = Field(description="The starting position in the X direction. Example: startX=0")
-    endX: float = Field(description="The starting position in the Y direction. Example: startY=0")
-    speed: float = Field(description="The speed of the scan. Example: speed=1")
+    startX: float = Field(description="The starting position in the lightsheet scanning  direction. Example: startX=-1000")
+    endX: float = Field(description="The end position in the lightsheet scanning direction. Example: startX=1000")
+    speed: float = Field(description="The speed of the scan. Example: speed=1000")
     axis: str = Field(description="The axis to scan. Example: axis='A'")
     lightsource: str = Field(description="The lightsource to use. Example: lightsource='Laser'")
     lightsourceIntensity: float = Field(description="The intensity of the lightsource. Example: lightsourceIntensity=100")

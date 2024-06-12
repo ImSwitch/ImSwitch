@@ -2,7 +2,7 @@ import threading
 import Pyro5
 import Pyro5.server
 from Pyro5.api import expose
-
+import multiprocessing
 from imswitch.imcommon.framework import Worker
 from imswitch.imcommon.model import initLogger
 from ._serialize import register_serializers
@@ -88,6 +88,34 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+_baseDataFilesDir = os.path.join(os.path.dirname(os.path.realpath(imswitch.__file__)), '_data')
+print(os.path.join(_baseDataFilesDir,"ssl", "key.cert"))
+        
+class ServerThread(threading.Thread):
+    def __init__(self):
+        super().__init__()
+        self.server = None
+
+    def run(self):
+        try:
+            config = uvicorn.Config(
+                app,
+                host="0.0.0.0",
+                port=PORT,
+                ssl_keyfile=os.path.join(_baseDataFilesDir, "ssl", "key.pem") if IS_SSL else None,
+                ssl_certfile=os.path.join(_baseDataFilesDir, "ssl", "cert.pem") if IS_SSL else None
+            )
+            self.server = uvicorn.Server(config)
+            self.server.run()
+        except Exception as e:
+            print(f"Couldn't start server: {e}")
+
+    def stop(self):
+        if self.server:
+            self.server.should_exit = True
+            self.server.lifespan.shutdown()
+            print("Server is stopping...")
 class ImSwitchServer(Worker):
 
     def __init__(self, api, setupInfo):
@@ -116,20 +144,10 @@ class ImSwitchServer(Worker):
         # To operate remotely we need to provide https
         # openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365
         # uvicorn your_fastapi_app:app --host 0.0.0.0 --port 8001 --ssl-keyfile=./key.pem --ssl-certfile=./cert.pem
-        _baseDataFilesDir = os.path.join(os.path.dirname(os.path.realpath(imswitch.__file__)), '_data')
-        print(os.path.join(_baseDataFilesDir,"ssl", "key.cert"))
-        
-        def run_server():
-            try:
-                if IS_SSL:
-                    uvicorn.run(app, host="0.0.0.0", port=PORT, ssl_keyfile=os.path.join(_baseDataFilesDir,"ssl", "key.pem"), ssl_certfile=os.path.join(_baseDataFilesDir,"ssl", "cert.pem"))
-                else:
-                    uvicorn.run(app, host="0.0.0.0", port=PORT)
-            except Exception as e:
-                self.__logger.error("Couldn't start server: "+str(e))
-        server_thread = threading.Thread(target=run_server)
-        server_thread.start()
-        
+
+        # Create and start the server thread
+        self.server_thread = ServerThread()
+        self.server_thread.start()        
         if IS_RPYC:
             # Registrieren Sie den Dienst bei RPyC
             def run_rpyc_server():
@@ -186,11 +204,14 @@ class ImSwitchServer(Worker):
 
     def stop(self):
         self.__logger.debug("Stopping ImSwitchServer")
-        self._daemon.shutdown()
-        print("Unregistering...")
+        try:
+            self.server_thread.stop()
+            #self.server_thread.join()
+        except Exception as e:
+            self.__logger.error("Couldn't stop server: "+str(e))
         if IS_ZEROCONF:
-            zeroconf.unregister_service(self.info)
-            zeroconf.close()
+            self.zeroconf.unregister_service(self.info)
+            self.zeroconf.close()
 
 
     def get_ip(self):
@@ -217,8 +238,8 @@ class ImSwitchServer(Worker):
             port=server_port,
             properties={},
         )
-        if not IS_ZEROCONF:
-            zeroconf = Zeroconf()
+        if IS_ZEROCONF:
+            self.zeroconf = Zeroconf()
             print(f"Registering service {service_name}, type {service_type}, at {server_ip}:{server_port}")
             try:
                 zeroconf.register_service(self.info)

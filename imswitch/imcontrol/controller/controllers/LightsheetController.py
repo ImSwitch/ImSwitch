@@ -237,7 +237,8 @@ class LightsheetController(ImConWidgetController):
     @APIExport()
     def performScanningRecording(self, minPos=0, maxPos=1000, speed=1000, axis="A", illusource=None, illuvalue=512):
         if not self.isLightsheetRunning:
-            
+            if maxPos - minPos <= 0: return
+            if speed < 100: speed = 100 
             # check parameters
             if axis not in ("A", "X", "Y", "Z"):
                 axis = "A"

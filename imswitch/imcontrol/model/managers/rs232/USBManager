@@ -1,0 +1,54 @@
+from imswitch.imcommon.model import initLogger
+
+class USBManager:
+    """ A general-purpose USB manager that together with a general-purpose
+    USBDriver interface can handle an arbitrary USB communication channel,
+    with all the standard USB communication protocol parameters as defined
+    in the hardware control configuration.
+
+    Manager properties:
+
+    - ``port``
+    - ``encoding``
+    - ``recv_termination``
+    - ``send_termination``
+    - ``baudrate``
+    - ``bytesize``
+    - ``parity``
+    - ``stopbits``
+    - ``rtscts``
+    - ``dsrdtr``
+    - ``xonxoff``
+    """
+
+    def __init__(self, usbInfo, name, **_lowLevelManagers):
+        self.__logger = initLogger(self, instanceName=name)
+
+        self._settings = usbInfo.managerProperties
+        self._name = name
+        self._port = usbInfo.managerProperties['port']
+        self._usbport = self._getUSBport(self._port, self._settings)
+
+    def query(self, arg: str) -> str:
+        """ Sends the specified command to the USB device and returns a
+        string encoded from the received bytes. """
+        return self._usbport.query(arg)
+
+    def write(self, arg: str):
+        """ Sends the specified command to the USB device. """
+        return self._usbport.write(arg)
+
+    def finalize(self):
+        self._usbport.close()
+
+    def _getUSBport(self, port, settings):
+        try:
+            from imswitch.imcontrol.model.interfaces.USBDriver import generateDriverClass
+            DriverClass = generateDriverClass(settings)
+            usbport = DriverClass(port)
+            usbport.initialize()
+            return usbport
+        except Exception:
+            self.__logger.warning('Initializing mock USB port')
+            from imswitch.imcontrol.model.interfaces.USBDriver_mock import MockUSBDriver
+            return MockUSBDriver(port, settings)

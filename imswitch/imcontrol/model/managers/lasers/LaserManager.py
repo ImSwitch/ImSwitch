@@ -94,7 +94,7 @@ class LaserManager(ABC):
     
     @property
     def freqRangeMax(self) -> int:
-        """ The minimum frequency of the laser modulation. """
+        """ The maximum frequency of the laser modulation. """
         return self.__freqRangeMax
     
     @property

@@ -3,16 +3,30 @@
 # Use an ARM64 base image with Ubuntu
 FROM arm64v8/ubuntu:20.04
 
+ENV TZ=Europe/Berlin
+ARG DEBIAN_FRONTEND=noninteractive
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
 # Install necessary dependencies
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y \     
+    xvfb \
+    curl \
     wget \
     bzip2 \
     ca-certificates \
-    curl \
     git \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+    libgles2-mesa-dev \
+    pkg-config 
 
+RUN apt-get update && apt-get install -y \    
+    build-essential \
+    libhdf5-dev \
+    hdf5-tools && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+#apt-get install -y --no-install-recommends gnupg2 curl && \
+#apt-get install -y --no-install-recommends \
 # Install Miniconda
 RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-aarch64.sh -O /tmp/miniconda.sh && \
     /bin/bash /tmp/miniconda.sh -b -p /opt/conda && \
@@ -22,31 +36,23 @@ RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-aar
 ENV PATH=/opt/conda/bin:$PATH
 
 # Create conda environment and install packages
-RUN conda create -y --name imswitch python=3.10 && \
-    conda init bash && \
-    echo "conda activate imswitch" >> ~/.bashrc
+RUN /opt/conda/bin/conda create -y --name imswitch python=3.10
 
 # Install napari and pyqt
-RUN /opt/conda/bin/conda install -n imswitch -y -c conda-forge napari pyqt hdf5
-
-# git clone the repository github.com/openUC2/imSwitch
-RUN cd /home \
-     git clone https://github.com/openUC2/imSwitch \
-        cd imSwitch \
-        /bin/bash -c "source activate imswitch && pip install -r requirements-arm64.txt" \
-        /bin/bash -c "source activate imswitch && pip install -e . --no-deps" 
+RUN /opt/conda/bin/conda install -n imswitch -y -c conda-forge napari pyqt hdf5   && \
+    /opt/conda/bin/conda clean --all -f -y
 
 
-# Set up SSH server
+# Clone the repository and install dependencies
+RUN git clone https://github.com/openUC2/imSwitch /tmp/ImSwitch && \
+    /bin/bash -c "source /opt/conda/bin/activate imswitch && pip install -r /tmp/ImSwitch/requirements-arm64.txt" && \
+    /bin/bash -c "source /opt/conda/bin/activate imswitch && pip install -e /tmp/ImSwitch --no-deps"
+
+# Install and configure SSH
+RUN apt-get update && apt-get install -y openssh-server
 RUN mkdir /var/run/sshd
-
-# Set root password
 RUN echo 'root:password' | chpasswd
-
-# Allow root login
 RUN sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
-
-# SSH login fix. Otherwise user is kicked off after login
 RUN sed 's@session\s*required\s*pam_loginuid.so@session optional pam_loginuid.so@g' -i /etc/pam.d/sshd
 
 # Create a script to start the SSH server
@@ -54,11 +60,21 @@ RUN echo '#!/bin/bash' > /start_ssh.sh
 RUN echo '/usr/sbin/sshd -D' >> /start_ssh.sh
 RUN chmod +x /start_ssh.sh
 
+# Create a script to start the application and SSH server
+RUN echo '#!/bin/bash' > /start.sh
+RUN echo 'export QT_DEBUG_PLUGINS=1' >> /start.sh
+RUN echo 'Xvfb :99 -screen 0 1024x768x16 &' >> /start.sh
+RUN echo 'export DISPLAY=:99' >> /start.sh
+RUN echo 'source /opt/conda/bin/activate imswitch' >> /start.sh
+RUN echo 'python3 -m imswitch --headless &' >> /start.sh
+RUN echo '/usr/sbin/sshd -D' >> /start.sh
+RUN chmod +x /start.sh
+
+# Set environment variable to use offscreen platform
+ENV QT_QPA_PLATFORM=offscreen
+
 # Set the script as the entrypoint
-RUN ["/start_ssh.sh"]
+CMD ["/start.sh"]
 
-
-# Set the default command to start a bash shell
-CMD ["bash"]
-#python3 -m imswitch --headless 
-
+# Expose the necessary ports
+EXPOSE 9876 8001 2222

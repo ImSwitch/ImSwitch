@@ -12,6 +12,7 @@ import os
 import fractions
 import tifffile as tif
 from imswitch.imcontrol.controller.controllers.hypha.hypha_storage import HyphaDataStore
+from imswitch.imcontrol.controller.controllers.hypha.hypha_executor import execute_code
 import numpy as np
 from av import VideoFrame
 from imjoy_rpc.hypha.sync import connect_to_server, register_rtc_service, login
@@ -197,13 +198,25 @@ class HyphaController(LiveUpdatedController):
             "home_stage": HomeStage.schema(),
             "move_to_position": MoveToPositionInput.schema(),
             "set_illumination": SetIlluminationInput.schema(),
-            "set_message_dict": MessagingExchange.schema(),
-            "get_message_dict": MessagingExchange.schema(),
+            #"set_message_dict": MessagingExchange.schema(),
+            #"get_message_dict": MessagingExchange.schema(),
             "script_executor": ScriptExecutor.schema(), 
             "lightsheet_scan": LightsheetScan.schema(),
-            "slide_scan": SlideScanInput.schema()
+            "slide_scan": SlideScanInput.schema(), 
+            "create_qttabwidget": CreateQTTabWidget.schema()
+            
         }
 
+    def create_qttabwidget(self, kwargs):
+        '''
+        Create a QTTabWidget with a WebView to display the chatbot.
+        '''
+        if kwargs is None:
+            return
+        config = CreateQTTabWidget(**kwargs)
+        
+        
+        
     def move_stage_by_distance(self, kwargs):
         '''move the stage by a specified distance, the unit of distance is micrometers, so you need to input the distance in millimeters.'''
         config = MoveByDistanceInput(**kwargs)
@@ -268,7 +281,7 @@ class HyphaController(LiveUpdatedController):
         self._logger.debug(f"Moving stage to {value} along {axis}")
         self.stages.move(value=value, axis=axis, is_absolute=is_absolute, is_blocking=is_blocking)
 
-    def script_executor(self, kwargs):
+    async def script_executor(self, kwargs):
         """
 
         """
@@ -276,9 +289,11 @@ class HyphaController(LiveUpdatedController):
         config = ScriptExecutor(**kwargs)
         locals_dict = locals()
         try:
-            exec(config.script, globals(), locals_dict)
-            # Access the result
-            result = locals_dict.get('result')            
+            result = await execute_code(self.datastore, config.script, locals_dict)
+            if 0:
+                exec(config.script, globals(), locals_dict)
+                # Access the result
+                result = locals_dict.get('result')            
         except Exception as e:
             print(f"Script execution failed: {e}")
             result = f"Script execution failed: {e}"
@@ -359,15 +374,18 @@ class HyphaController(LiveUpdatedController):
         mExposureTime = config.exposure = 100
         mFilePath = config.filepath 
         imageProcessingFunction = config.imageProcessingFunction 
-        return self.snap_image_exec(config, mExposureTime, mFilePath, imageProcessingFunction)
+        return_image = config.returnAsNumpy
+        return self.snap_image_exec(config, mExposureTime, mFilePath, imageProcessingFunction, return_image)
     
-    def snap_image_exec(self, config=None, mExposureTime:int=100, mFilePath:str="./", imageProcessingFunction:str=""):
+    def snap_image_exec(self, config=None, mExposureTime:int=100, mFilePath:str="./", imageProcessingFunction:str="", return_image=False):
         '''
         Captures a single image and processes it using a Python function provided as a string.
         '''
         # Step 1: Capture Image
         self._logger.debug("getProcessedImages - functionstring: "+imageProcessingFunction)
         mImage = self.detector.getLatestFrame()
+        if return_image:
+            return mImage
         
         
         # TODO: Generate thumbnail and send to datastorage
@@ -402,34 +420,23 @@ class HyphaController(LiveUpdatedController):
             print(f'The image is snapped and saved as {self.datastore.get_url(file_id)}')
             return self.datastore.get_url(file_id)
 
-            '''
-            if type(processedImage)==np.ndarray and len(processedImage.shape)>1:    
-                if config is not None and config.returnAsNumpy:
-                    return processedImage
-                if not os.path.exists(os.path.dirname(mFilePath)):
-                    os.makedirs(os.path.dirname(mFilePath))
-                tif.imsave(mFilePath+".tif",processedImage)
-                self._commChannel.sigDisplayImageNapari.emit(mFilePath, processedImage, False) # layername, image, isRGB
-                return "Image saved at "+mFilePath+".tif"
-            else:
-            '''
-            
         except Exception as e:
             return "Error processing image: "+str(e)
 
+    '''
     def set_message_dict(self, kwargs):
-        '''Store key and value pairs between consecutive message exchanges and chatbot sessions. Messages will be added to the 
-        message dictionary and will be stored accross chat entries and chatbot sessions.'''
+        """Store key and value pairs between consecutive message exchanges and chatbot sessions. Messages will be added to the 
+        message dictionary and will be stored accross chat entries and chatbot sessions."""
         config = MessagingExchange(**kwargs)
         
         # for all entries in the message dictionary config.message, add them to the message_dict
         self.message_dict_entry.update(config.message)
     
         return "Set and update the message dictionary!"
-
-    def get_message_dict(self, kwargs):
-        '''Retrieve the message dictionary. The message dictionary stores key and value pairs between consecutive message exchanges and chatbot sessions.'''
-        return self.message_dict_entry
+    '''
+    #def get_message_dict(self, kwargs):
+    #    '''Retrieve the message dictionary. The message dictionary stores key and value pairs between consecutive message exchanges and chatbot sessions.'''
+    #    return self.message_dict_entry
 
     def getExtensionDefinition(self):
             return {
@@ -437,19 +444,21 @@ class HyphaController(LiveUpdatedController):
             "type": "bioimageio-chatbot-extension",
             "id": "UC2_microscope",
             "name": "UC2 Microscope Control",
-            "description": "Control the microscope based on the user's request. Now you can move the microscope stage, control the illumination, snap an image and process it.",
+            "description": "Control the microscope based on the user's request. Move the microscope stage, control the illumination, snap an image, and process it. Use the scriptexecutor for executing tasks. Display received images as markdown in the chat window",
             "get_schema": self.get_schema,
+            "config": {"run_in_executor": True},
             "tools": {
                 "move_by_distance": self.move_stage_by_distance,
                 "snap_image": self.snap_image,
                 "home_stage": self.home_stage,
                 "move_to_position": self.move_to_position,
                 "set_illumination": self.set_illumination,
-                "set_message_dict": self.set_message_dict,
-                "get_message_dict": self.get_message_dict,
+                #"set_message_dict": self.set_message_dict,
+                #"get_message_dict": self.get_message_dict,
                 "script_executor": self.script_executor, 
                 "lightsheet_scan": self.scan_lightsheet, 
-                "slide_scan": self.scan_slide
+                "slide_scan": self.scan_slide, 
+                "create_qttabwidget": self.create_qttabwidget
             }
         }
             
@@ -466,12 +475,11 @@ class MessagingExchange(BaseModel):
       
 class ScriptExecutor(BaseModel):
     """
-    Executes a Python script within the HyphaController class to control a microscope, accessible via 'self' or 'scope'. Scripts can orchestrate complex workflows using methods provided for microscope manipulation, incorporating loops and conditions. The script, a string of safe Python code, must not contain malicious elements, manipulate local files, or access the network. Key methods include:
-    - "move_to_position" using MoveToPositionInput.schema() for xyz movement in absolute or relative terms.
-    - "set_illumination" using SetIlluminationInput.schema() to adjust illumination between 0 and 1023.
-    - "snap_image" using SnapImageInput.schema() to capture or process images. 
-    Execution results are stored in a 'result' variable for feedback to the chatbot. Scripts have access to HyphaController's methods and local variables.
-    The script must be safe to execute!
+    Executes a Python script within the HyphaController class to control a microscope, accessible via 'self'. Scripts can orchestrate complex workflows using methods provided for microscope manipulation, incorporating loops and conditions. The script must be safe, without malicious elements, local file manipulation, or network access. Key methods include e.g.:
+    - `self.move_to_position(kwargs)` using MoveToPositionInput.schema() for xyz movement.
+    - `self.set_illumination(kwargs)` using SetIlluminationInput.schema() to adjust illumination (0-1023).
+    - `self.snap_image(kwargs)` using SnapImageInput.schema() to capture or process images.
+    Execution results are stored in a 'result' variable for chatbot feedback. Scripts can import known libraries (e.g., time, numpy) for additional functionality.
     """   
     script: str = Field(description="The Python script to execute.")
     context: dict = Field(description="Context information containing user details.")
@@ -514,7 +522,7 @@ class SnapImageInput(BaseModel):
     exposure: int = Field(description="Set the microscope camera's exposure time. and the time unit is ms, so you need to input the time in miliseconds.")
     filepath: str = Field(description="The path to save the captured image. It will be a tif, so the extension does not need to be added. ")
     imageProcessingFunction: str = Field(description="The Python function to use for processing the image. Default is empty. image is the 2D array from the detector Example: def processImage(image): return cv2.cvtColor(image, cv2.COLOR_BGR2GRAY). Avoid returning images since this is too much bandwidth. Return parameters from the function instead. Avoid using cv2") 
-    returnAsNumpy: bool = Field(description="Return the image as a numpy array. Default is False and the image will be saved under filepath.")
+    returnAsNumpy: bool = Field(description="Return the image as a numpy array if True, else return the URl to the image in the Hypha DataStore. ")
                  
 class LightsheetScan(BaseModel):
     '''
@@ -562,6 +570,21 @@ class MoveToPositionInput(BaseModel):
     y: float = Field(description="Move the stage to the specified position along Y axis.")
     z: float = Field(description="Move the stage to the specified position along Z axis.")
 
+class CreateQTTabWidget(BaseModel):
+    """Create a QT widget that executes a formely created function string on a button press.
+    an example widget:
+    from qtpy import QtWidgets 
+    def _execute(): 
+        self.start_service("UC2_microscope") 
+    self._widget.tab3 = QtWidgets.QWidget() 
+    self._widget.mButtonExecute = QtWidgets.QPushButton('Execute') 
+    self._widget.mButtonExecute.clicked.connect(_execute)
+    self._widget.tab3_layout = QtWidgets.QVBoxLayout(self._widget.tab3) 
+    self._widget.tab3_layout.addWidget(self._widget.mButtonExecute)"""
+    functionString: str = Field(description="The function string to execute.")
+    qtWidgetFunctionString: str = Field(description="The function string to define the QT Widget that triggers the execution of the function coming from the chat bot. The widget has to be integrated into: self._widget.tab3")
+    buttonText: str = Field(description="The text to display on the button.")
+    
 class VideoTransformTrack(MediaStreamTrack):
     """
     A video stream track that transforms frames from an another track.

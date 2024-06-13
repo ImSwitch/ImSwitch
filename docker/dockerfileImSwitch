@@ -98,7 +98,7 @@ CMD ["/usr/sbin/sshd", "-D"]
 
 ENV DISPLAY=:100
 ENV XPRA_PORT=9876
-ENV XPRA_START="python3 -m imswitch"
+ENV XPRA_START="python3 -m imswitch --headless 1 --config-file example_virtual_microscope.json"
 ENV XPRA_EXIT_WITH_CLIENT="yes"
 ENV XPRA_XVFB_SCREEN="1920x1080x24+32"
 EXPOSE 9876

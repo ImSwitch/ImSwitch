@@ -582,7 +582,7 @@ class MCTController(ImConWidgetController):
 
         return newPath
 
-    def setAutoFocusIsRunning(self, isRunning):
+    def setAutoFocusIsRunning(self, isRunning: bool):
         # this is set by the AutofocusController once the AF is finished/initiated
         self.isAutofocusRunning = isRunning
 

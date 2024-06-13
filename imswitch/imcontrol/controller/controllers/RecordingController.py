@@ -41,7 +41,7 @@ class RecordingController(ImConWidgetController):
         self._commChannel.sigScanDone.connect(self.scanDone)
         self._commChannel.sigUpdateRecFrameNum.connect(self.updateRecFrameNum)
         self._commChannel.sigUpdateRecTime.connect(self.updateRecTime)
-        self._commChannel.sharedAttrs.sigAttributeSet.connect(self.attrChanged)
+        self._commChannel.sharedAttrs.sigAttributeSet.connect(self.attrChanged, check_nargs=False)
         self._commChannel.sigSnapImg.connect(self.snap)
         self._commChannel.sigSnapImgPrev.connect(self.snapImagePrev)
         self._commChannel.sigStartRecordingExternal.connect(self.startRecording)

@@ -121,7 +121,7 @@ class MasterController:
         self.recordingManager.sigRecordingFrameNumUpdated.connect(cc.sigUpdateRecFrameNum)
         self.recordingManager.sigRecordingTimeUpdated.connect(cc.sigUpdateRecTime)
         self.recordingManager.sigMemorySnapAvailable.connect(cc.sigMemorySnapAvailable)
-        #self.recordingManager.sigMemoryRecordingAvailable.connect(self.memoryRecordingAvailable) #FIXME !!!!
+        self.recordingManager.sigMemoryRecordingAvailable.connect(self.memoryRecordingAvailable, check_nargs=False) 
 
         self.slmManager.sigSLMMaskUpdated.connect(cc.sigSLMMaskUpdated)
         self.simManager.sigSIMMaskUpdated.connect(cc.sigSIMMaskUpdated)

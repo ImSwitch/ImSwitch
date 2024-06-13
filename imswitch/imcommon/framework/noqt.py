@@ -21,7 +21,7 @@ class Mutex(base.Mutex):
 class Signal(base.Signal):
     def __new__(cls, *argtypes) -> base.Signal:
         # psygnal.Signal does not take argument types in the same way
-        return psygnal.Signal()
+        return psygnal.Signal(argtypes)
 
 class SignalInterface(base.SignalInterface):
     # Implement alternative SignalInterface functionality if needed

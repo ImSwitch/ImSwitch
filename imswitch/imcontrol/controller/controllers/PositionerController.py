@@ -40,7 +40,7 @@ class PositionerController(ImConWidgetController):
                     self.setSharedAttr(pName, axis, _stopAttr, pManager.stop[axis])
 
         # Connect CommunicationChannel signals
-        self._commChannel.sharedAttrs.sigAttributeSet.connect(self.attrChanged)
+        self._commChannel.sharedAttrs.sigAttributeSet.connect(self.attrChanged, check_nargs=False)
 
         # Connect PositionerWidget signals
         if not imswitch.IS_HEADLESS:

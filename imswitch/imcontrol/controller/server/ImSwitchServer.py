@@ -134,6 +134,9 @@ class ImSwitchServer(Worker):
         # start broadcasting server IP
         self.startmdns()
 
+    def moveToThread(self, thread) -> None:
+        return super().moveToThread(thread)
+    
     def run(self):
         # Erstellen Sie eine Instanz des Dienstes
         self.mRPYCService = RPYCService()

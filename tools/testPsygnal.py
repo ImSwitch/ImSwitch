@@ -18,7 +18,7 @@ class mCommChannel:
 # Other components can subscribe to these change notifications by connecting a callback function to the signal instance using its connect method
 
 
-def on_move_stage(new_value: str):
+def on_move_stage(new_value):
     print(f"The new value is {new_value!r}")
 
 # instantiate the object with Signals

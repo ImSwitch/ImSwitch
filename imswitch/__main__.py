@@ -16,8 +16,15 @@ def main():
         logger = initLogger('main')
         logger.info(f'Starting ImSwitch {imswitch.__version__}')
         logger.info(f'Headless mode: {imswitch.IS_HEADLESS}')
-        app = prepareApp()
+        if not imswitch.IS_HEADLESS:
+            app = prepareApp()
         enabledModuleIds = modulesconfigtools.getEnabledModuleIds()
+
+        # Ensure that imscripting is disabled when in non-gui mode
+        if imswitch.IS_HEADLESS:
+            if 'imscripting' in enabledModuleIds:
+                logger.warning('Disabling imscripting in headless mode')
+                enabledModuleIds.remove('imscripting')
 
         if 'imscripting' in enabledModuleIds and not imswitch.IS_HEADLESS:
             # Ensure that imscripting is added last
@@ -46,8 +53,8 @@ def main():
         else:
             multiModuleWindow = None
             multiModuleWindowController = None
-
-        app.processEvents()  # Draw window before continuing
+        if not imswitch.IS_HEADLESS:
+            app.processEvents()  # Draw window before continuing
 
         # Register modules
         for modulePkg in modulePkgs:
@@ -83,10 +90,12 @@ def main():
                 moduleMainControllers[moduleId] = controller
 
                 # Update loading progress
-                if not imswitch.IS_HEADLESS: multiModuleWindow.updateLoadingProgress(i / len(modulePkgs))
-                app.processEvents()  # Draw window before continuing
+                if not imswitch.IS_HEADLESS: 
+                    multiModuleWindow.updateLoadingProgress(i / len(modulePkgs))
+                    app.processEvents()  # Draw window before continuing
         logger.info(f'init done')
-        launchApp(app, multiModuleWindow, moduleMainControllers.values())
+        if not imswitch.IS_HEADLESS:
+            launchApp(app, multiModuleWindow, moduleMainControllers.values())
     except Exception as e:
         logging.error(traceback.format_exc())
 

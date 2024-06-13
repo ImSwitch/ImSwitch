@@ -32,9 +32,7 @@ class ImConMainView(QtWidgets.QMainWindow):
         if not imswitch.IS_HEADLESS:
             self.pickSetupDialog = PickSetupDialog(self)
             self.pickDatasetsDialog = PickDatasetsDialog(self, allowMultiSelect=False)
-
-
-
+            
             # Menu Bar
             menuBar = self.menuBar()
             file = menuBar.addMenu('&File')
@@ -156,7 +154,7 @@ class ImConMainView(QtWidgets.QMainWindow):
             dockArea, 'left'
         )
 
-    # Add dock area to layout
+        #  Add dock area to layout
         if not imswitch.IS_HEADLESS:
             layout.addWidget(dockArea)
 
@@ -245,6 +243,115 @@ class ImConMainView(QtWidgets.QMainWindow):
 
         return docks
 
+class ImConMainViewNoQt(object):
+    # FIXME: Hacky way to make this class compatible with the rest of the code without QT
+    def __init__(self, options, viewSetupInfo, *args, **kwargs):
+        self.__logger = initLogger(self)
+        self.__logger.debug('Initializing')
+
+        super().__init__(*args, **kwargs)
+        self.docks = {}
+        self.widgets = {}
+        self.shortcuts = {}
+
+        self.viewSetupInfo = viewSetupInfo
+
+        # Dock area
+        allDockKeys = {
+            'Autofocus': _DockInfo(name='Autofocus', yPosition=1),
+            'FocusLock': _DockInfo(name='Focus Lock', yPosition=0),
+            'FOVLock': _DockInfo(name='FOV Lock', yPosition=0),
+            'SLM': _DockInfo(name='SLM', yPosition=0),
+            'UC2Config': _DockInfo(name='UC2Config', yPosition=0),
+            'SIM': _DockInfo(name='SIM', yPosition=0),
+            'DPC': _DockInfo(name='DPC', yPosition=0),
+            'MCT': _DockInfo(name='MCT', yPosition=0),
+            'ROIScan': _DockInfo(name='ROIScan', yPosition=0),
+            'Lightsheet': _DockInfo(name='Lightsheet', yPosition=0),
+            'WebRTC': _DockInfo(name='WebRTC', yPosition=0),
+            'Hypha': _DockInfo(name='Hypha', yPosition=0),
+            'MockXX': _DockInfo(name='MockXX', yPosition=0),
+            'JetsonNano': _DockInfo(name='JetsonNano', yPosition=0),
+            'HistoScan': _DockInfo(name='HistoScan', yPosition=1),
+            'Flatfield': _DockInfo(name='Flatfield', yPosition=1),
+            'PixelCalibration': _DockInfo(name='PixelCalibration', yPosition=1),
+            'ISM': _DockInfo(name='ISM', yPosition=0),
+            'Laser': _DockInfo(name='Laser Control', yPosition=0),
+            'LED': _DockInfo(name='LED Control', yPosition=0),
+            'EtSTED': _DockInfo(name='EtSTED', yPosition=0),
+            'Positioner': _DockInfo(name='Positioner', yPosition=1),
+            'Rotator': _DockInfo(name='Rotator', yPosition=1),
+            'MotCorr': _DockInfo(name='Motorized Correction Collar', yPosition=1),
+            'StandaPositioner': _DockInfo(name='StandaPositioner', yPosition=1),
+            'StandaStage': _DockInfo(name='StandaStage', yPosition=1),
+            'SLM': _DockInfo(name='SLM', yPosition=2),
+            'Scan': _DockInfo(name='Scan', yPosition=2),
+            'RotationScan': _DockInfo(name='RotationScan', yPosition=2),
+            'BeadRec': _DockInfo(name='Bead Rec', yPosition=3),
+            'AlignmentLine': _DockInfo(name='Alignment Tool', yPosition=3),
+            'AlignAverage': _DockInfo(name='Axial Alignment Tool', yPosition=3),
+            'AlignXY': _DockInfo(name='Rotational Alignment Tool', yPosition=3),
+            'ULenses': _DockInfo(name='uLenses Tool', yPosition=3),
+            'FFT': _DockInfo(name='FFT Tool', yPosition=3),
+            'Holo': _DockInfo(name='Holo Tool', yPosition=3),
+            'Joystick': _DockInfo(name='Joystick Tool', yPosition=3),
+            'Histogramm': _DockInfo(name='Histogramm Tool', yPosition=3),
+            'STORMRecon': _DockInfo(name='STORM Recon Tool', yPosition=2),
+            'HoliSheet': _DockInfo(name='HoliSheet Tool', yPosition=3),
+            'FlowStop': _DockInfo(name='FlowStop Tool', yPosition=3),
+            'FLIMLabs': _DockInfo(name='FLIMLabs Tool', yPosition=3),
+            'ObjectiveRevolver': _DockInfo(name='Objective Revolver', yPosition=3),
+            'Temperature': _DockInfo(name='Temperature Controller', yPosition=3),
+            'SquidStageScan': _DockInfo(name='SquidStageScan Tool', yPosition=3),
+            'WellPlate': _DockInfo(name='Wellplate Tool', yPosition=1),
+            'Deck': _DockInfo(name="Deck Tool", yPosition=1),
+            'DeckScan': _DockInfo(name="Deck Scanner", yPosition=1),
+            'LEDMatrix': _DockInfo(name='LEDMatrix Tool', yPosition=0),
+            'Watcher': _DockInfo(name='File Watcher', yPosition=3),
+            'Tiling': _DockInfo(name='Tiling', yPosition=3),
+            'Settings': _DockInfo(name='Detector Settings', yPosition=0),
+            'View': _DockInfo(name='Image Controls', yPosition=1),
+            'Recording': _DockInfo(name='Recording', yPosition=2),
+            'Console': _DockInfo(name='Console', yPosition=3)
+        }
+        enabledDockKeys = self.viewSetupInfo.availableWidgets
+        if enabledDockKeys is False:
+            enabledDockKeys = []
+        elif enabledDockKeys is True:
+            enabledDockKeys = allDockKeys
+        self._addWidget(
+            {k: v for k, v in allDockKeys.items() if k in enabledDockKeys}
+        )
+        
+            
+    def closeEvent(self, event):
+        self.sigClosing.emit()
+        event.accept()
+
+    def _addWidget(self, dockInfoDict):
+        docks = []
+
+        prevDock = None
+        prevDockYPosition = -1
+        for widgetKey, dockInfo in dockInfoDict.items():
+            try:
+                self.widgets[widgetKey] = (
+                    getattr(widgets, f'{widgetKey}Widget')
+                    if widgetKey != 'Scan' else
+                    getattr(widgets, f'{widgetKey}Widget{self.viewSetupInfo.scan.scanWidgetType}')
+                )
+            except Exception as e:
+                # try to get it from the plugins
+                foundPluginController = False
+                for entry_point in pkg_resources.iter_entry_points(f'imswitch.implugins'):
+                    if entry_point.name == f'{widgetKey}_widget':
+                        packageWidget = entry_point.load()
+                        self.widgets[widgetKey] = packageWidget
+                        foundPluginController = True
+                        break
+                if not foundPluginController:
+                    self.__logger.error(f"Could not load widget {widgetKey} from imswitch.imcontrol.view.widgets", e)
+            
 
 @dataclass
 class _DockInfo:

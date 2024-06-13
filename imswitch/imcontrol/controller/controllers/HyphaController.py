@@ -1,5 +1,5 @@
 import numpy as np
-
+import imswitch
 try:
     import NanoImagingPack as nip
     isNIP = True
@@ -97,9 +97,10 @@ class HyphaController(LiveUpdatedController):
         self.detector_names = self._master.detectorsManager.getAllDeviceNames()
         self.detector = self._master.detectorsManager[self.detector_names[0]]
 
-        # connect signals 
-        self._widget.sigLoginHypha.connect(self._loginHypha)
-        
+        if not imswitch.IS_HEADLESS:
+            # connect signals 
+            self._widget.sigLoginHypha.connect(self._loginHypha)
+            
         # create datastorer
         self.datastore = HyphaDataStore()
         

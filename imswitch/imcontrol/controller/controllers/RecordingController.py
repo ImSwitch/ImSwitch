@@ -2,18 +2,17 @@ import os
 import time
 from typing import Optional, Union, List
 import numpy as np
-
+import datetime
 from fastapi.responses import StreamingResponse
 from fastapi import FastAPI, Response, HTTPException
 import cv2
 from PIL import Image
 import io
-
+import imswitch 
 from imswitch.imcommon.framework import Timer
-from imswitch.imcommon.model import ostools, APIExport
+from imswitch.imcommon.model import ostools, APIExport, initLogger, dirtools
 from imswitch.imcontrol.model import RecMode, SaveMode, SaveFormat
 from ..basecontrollers import ImConWidgetController
-from imswitch.imcommon.model import initLogger
 
 
 class RecordingController(ImConWidgetController):
@@ -22,11 +21,8 @@ class RecordingController(ImConWidgetController):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.__logger = initLogger(self)
-        self._widget.setDetectorList(
-            self._master.detectorsManager.execOnAll(lambda c: c.model,
-                                                    condition=lambda c: c.forAcquisition)
-        )
-
+        
+        
         # Define a dictionary to store variables accessible to the function
         self.shared_variables: dict[str, any] = {}
 
@@ -39,17 +35,6 @@ class RecordingController(ImConWidgetController):
         
         self.streamstarted = False
 
-        self._widget.setsaveFormat(SaveFormat.HDF5.value)
-        self._widget.setSnapSaveMode(SaveMode.Disk.value)
-        self._widget.setSnapSaveModeVisible(self._setupInfo.hasWidget('Image'))
-
-        self._widget.setRecSaveMode(SaveMode.Disk.value)
-        self._widget.setRecSaveModeVisible(
-            self._moduleCommChannel.isModuleRegistered('imreconstruct')
-        )
-
-        self.untilStop()
-
         # Connect CommunicationChannel signals
         self._commChannel.sigRecordingStarted.connect(self.recordingStarted)
         self._commChannel.sigRecordingEnded.connect(self.recordingEnded)
@@ -61,6 +46,26 @@ class RecordingController(ImConWidgetController):
         self._commChannel.sigSnapImgPrev.connect(self.snapImagePrev)
         self._commChannel.sigStartRecordingExternal.connect(self.startRecording)
         self._commChannel.sigRequestScanFreq.connect(self.sendScanFreq)
+        
+
+        if imswitch.IS_HEADLESS: return
+        
+        self.untilStop()
+        
+        # ADD GUI elements just in case
+        self._widget.setDetectorList(
+            self._master.detectorsManager.execOnAll(lambda c: c.model,
+                                                    condition=lambda c: c.forAcquisition)
+        )
+        self._widget.setsaveFormat(SaveFormat.HDF5.value)
+        self._widget.setSnapSaveMode(SaveMode.Disk.value)
+        self._widget.setSnapSaveModeVisible(self._setupInfo.hasWidget('Image'))
+
+        self._widget.setRecSaveMode(SaveMode.Disk.value)
+        self._widget.setRecSaveModeVisible(
+            self._moduleCommChannel.isModuleRegistered('imreconstruct')
+        )
+
 
         # Connect RecordingWidget signals
         self._widget.sigDetectorModeChanged.connect(self.detectorChanged)
@@ -98,9 +103,16 @@ class RecordingController(ImConWidgetController):
 
         # by default save as it's noted in the widget
         if mSaveFormat is None:
-            mSaveFormat = SaveFormat(self._widget.getSnapSaveMode())
+            if imswitch.IS_HEADLESS:
+                mSaveFormat = SaveFormat(self._widget.getSnapSaveMode())
+            else:
+                mSaveFormat = 1 # TIFF
 
-        folder = self._widget.getRecFolder()
+        if imswitch.IS_HEADLESS:
+            folder = self._widget.getRecFolder()
+        else:
+            timeStamp = datetime.datetime.now().strftime("%Y_%m_%d-%I-%M-%S_%p")
+            folder = os.path.join(dirtools.UserFileDirs.Root, 'recordings', timeStamp)
         if not os.path.exists(folder):
             os.makedirs(folder)
         time.sleep(0.01)

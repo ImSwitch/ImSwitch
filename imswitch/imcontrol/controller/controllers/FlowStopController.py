@@ -8,7 +8,7 @@ except:
     isNIP = False
 import time
 import os
-from imswitch.imcommon.model import dirtools, modulesconfigtools, ostools, APIExport
+from imswitch.imcommon.model import dirtools, APIExport
 from imswitch.imcommon.framework import Signal, Worker, Mutex, Timer
 from imswitch.imcontrol.view import guitools
 from imswitch.imcommon.model import initLogger

@@ -1,3 +1,4 @@
+import imswitch
 __imswitch_module__ = True
 __title__ = 'Hardware Control'
 
@@ -7,7 +8,7 @@ def getMainViewAndController(moduleCommChannel, *_args,
     from imswitch.imcommon.model import initLogger
     from .controller import ImConMainController
     from .model import configfiletools
-    from .view import ViewSetupInfo, ImConMainView
+    from .view import ViewSetupInfo, ImConMainView, ImConMainViewNoQt
 
     logger = initLogger('imcontrol init')
 
@@ -48,13 +49,16 @@ def getMainViewAndController(moduleCommChannel, *_args,
         setupInfo = overrideSetupInfo
 
     logger.debug(f'Setup used: {options.setupFileName}')
-    
-    view = ImConMainView(options, setupInfo)
+    if not imswitch.IS_HEADLESS:
+        view = ImConMainView(options, setupInfo)
+    else:
+        view = ImConMainViewNoQt(options, setupInfo)
     try:
         controller = ImConMainController(options, setupInfo, view, moduleCommChannel)
     except Exception as e:
         # TODO: To broad exception
-        view.close()
+        logger.error('Error initializing controller: %s', e)
+        if not imswitch.IS_HEADLESS: view.close()
         raise e
 
     return view, controller

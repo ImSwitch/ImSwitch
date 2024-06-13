@@ -10,7 +10,7 @@ if __name__ == '__main__':
                         help='run in headless mode')
 
     args = parser.parse_args()
-    imswitch.IS_HEADLESS = args.headless
+    imswitch.IS_HEADLESS = True# args.headless
     
     if imswitch.IS_HEADLESS:
         os.environ["DISPLAY"] = ":0"
@@ -18,4 +18,5 @@ if __name__ == '__main__':
 
     from imswitch.__main__ import main
     main()
+    # keep the event loop running
     

@@ -1,4 +1,4 @@
-from .ImConMainView import ImConMainView
+from .ImConMainView import ImConMainView, ImConMainViewNoQt
 from .PickSetupDialog import PickSetupDialog
 from .PickUC2BoardConfigDialog import PickUC2BoardConfigDialog
 from .SLMDisplay import SLMDisplay

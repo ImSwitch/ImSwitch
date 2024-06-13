@@ -3,10 +3,12 @@ import os
 import sys
 import traceback
 
-from qtpy import QtCore, QtGui, QtWidgets
+import imswitch
+if not imswitch.IS_HEADLESS:
+    from qtpy import QtCore, QtGui, QtWidgets
 
-from .model import dirtools, pythontools, initLogger
-from .view.guitools import getBaseStyleSheet
+    from .model import dirtools, pythontools, initLogger
+    from .view.guitools import getBaseStyleSheet
 
 
 def prepareApp():

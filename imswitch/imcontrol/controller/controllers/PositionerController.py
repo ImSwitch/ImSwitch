@@ -5,7 +5,7 @@ from imswitch.imcommon.model import APIExport
 from ..basecontrollers import ImConWidgetController
 from imswitch.imcommon.model import initLogger
 from typing import Optional
-from Pyro5.api import expose
+
 
 class PositionerController(ImConWidgetController):
     """ Linked to PositionerWidget."""

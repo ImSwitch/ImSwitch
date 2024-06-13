@@ -1,21 +1,31 @@
 import imswitch
 from dataclasses import dataclass
 
-from pyqtgraph.dockarea import Dock, DockArea
-from qtpy import QtCore, QtWidgets
-
+# FIXME: We should probably create another file that does not import these files
+from imswitch.imcommon.framework import Signal
+if not imswitch.IS_HEADLESS:
+    from pyqtgraph.dockarea import Dock, DockArea
+    from qtpy import QtCore, QtWidgets
+    from qtpy.QtWidgets import QMainWindow
+    from imswitch.imcommon.view import PickDatasetsDialog
+    from .PickSetupDialog import PickSetupDialog    
+else:
+    Dock = None
+    DockArea = None
+    QtCore = None
+    QtWidgets = None
+    QMainWindow = object
 from imswitch.imcommon.model import initLogger
-from imswitch.imcommon.view import PickDatasetsDialog
+
 from . import widgets
-from .PickSetupDialog import PickSetupDialog
 import pkg_resources
 import importlib
 
-class ImConMainView(QtWidgets.QMainWindow):
-    sigLoadParamsFromHDF5 = QtCore.Signal()
-    sigPickSetup = QtCore.Signal()
-    sigPickConfig = QtCore.Signal()
-    sigClosing = QtCore.Signal()
+class ImConMainView(QMainWindow):
+    sigLoadParamsFromHDF5 = Signal()
+    sigPickSetup = Signal()
+    sigPickConfig = Signal()
+    sigClosing = Signal()
 
     def __init__(self, options, viewSetupInfo, *args, **kwargs):
         self.__logger = initLogger(self)
@@ -329,17 +339,10 @@ class ImConMainViewNoQt(object):
         event.accept()
 
     def _addWidget(self, dockInfoDict):
-        docks = []
-
-        prevDock = None
-        prevDockYPosition = -1
+        
         for widgetKey, dockInfo in dockInfoDict.items():
             try:
-                self.widgets[widgetKey] = (
-                    getattr(widgets, f'{widgetKey}Widget')
-                    if widgetKey != 'Scan' else
-                    getattr(widgets, f'{widgetKey}Widget{self.viewSetupInfo.scan.scanWidgetType}')
-                )
+                self.widgets[widgetKey] = (widgetKey)
             except Exception as e:
                 # try to get it from the plugins
                 foundPluginController = False

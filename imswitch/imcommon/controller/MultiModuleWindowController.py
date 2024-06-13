@@ -5,10 +5,12 @@ import psutil
 import imswitch
 from imswitch.imcommon.framework import Timer
 from imswitch.imcommon.model import dirtools, modulesconfigtools, ostools, APIExport
-from imswitch.imcommon.view import guitools
-from .CheckUpdatesController import CheckUpdatesController
-from .PickModulesController import PickModulesController
 from .basecontrollers import WidgetController
+
+if not imswitch.IS_HEADLESS:
+    from imswitch.imcommon.view import guitools
+    from .CheckUpdatesController import CheckUpdatesController
+    from .PickModulesController import PickModulesController
 
 
 class MultiModuleWindowController(WidgetController):

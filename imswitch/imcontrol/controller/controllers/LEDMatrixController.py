@@ -1,14 +1,11 @@
 from typing import Dict, List
 from functools import partial
-from qtpy import QtCore, QtWidgets
 import numpy as np
-
 
 from imswitch.imcommon.model import APIExport
 from ..basecontrollers import ImConWidgetController
 from imswitch.imcontrol.view import guitools as guitools
 from imswitch.imcommon.model import initLogger, APIExport
-
 
 class LEDMatrixController(ImConWidgetController):
     """ Linked to LEDMatrixWidget."""

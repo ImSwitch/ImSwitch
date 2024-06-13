@@ -7,7 +7,7 @@ import imswitch
 from imswitch.imcommon import prepareApp, launchApp
 from imswitch.imcommon.controller import ModuleCommunicationChannel, MultiModuleWindowController
 from imswitch.imcommon.model import modulesconfigtools, pythontools, initLogger
-from imswitch.imcommon.view import MultiModuleWindow, ModuleLoadErrorView
+
 
 # FIXME: Add to configuration file
 
@@ -45,6 +45,7 @@ def main():
         moduleCommChannel = ModuleCommunicationChannel()
 
         if not imswitch.IS_HEADLESS:
+            from imswitch.imcommon.view import MultiModuleWindow
             multiModuleWindow = MultiModuleWindow('ImSwitch')
             multiModuleWindowController = MultiModuleWindowController.create(
                 multiModuleWindow, moduleCommChannel
@@ -83,7 +84,9 @@ def main():
                 logger.error(e)
                 logger.error(traceback.format_exc())
                 moduleCommChannel.unregister(modulePkg)
-                if not imswitch.IS_HEADLESS: multiModuleWindow.addModule(moduleId, moduleName, ModuleLoadErrorView(e))
+                if not imswitch.IS_HEADLESS: 
+                    from imswitch.imcommon.view import ModuleLoadErrorView
+                    multiModuleWindow.addModule(moduleId, moduleName, ModuleLoadErrorView(e))
             else:
                 # Add module to window
                 if not imswitch.IS_HEADLESS: multiModuleWindow.addModule(moduleId, moduleName, view)

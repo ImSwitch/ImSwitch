@@ -13,7 +13,7 @@ from inspect import signature
 from wsgiref import validate
 from scipy.optimize import least_squares
 import scipy.ndimage as ndi
-import pyqtgraph as pg
+
 import numpy as np
 try:
     from tkinter.filedialog import askopenfilename
@@ -27,7 +27,10 @@ from imswitch.imcommon.model import dirtools
 from imswitch.imcontrol.view import guitools
 from ..basecontrollers import ImConWidgetController
 from imswitch.imcommon.model import initLogger
+import imswitch 
 
+if not imswitch.IS_HEADLESS:
+    import pyqtgraph as pg
 _logsDir = os.path.join(dirtools.UserFileDirs.Root, 'recordings', 'logs_etsted')
 
 
@@ -331,7 +334,8 @@ class EtSTEDController(ImConWidgetController):
         # scatter plot exinfo if there is something (cdvesprox or dynamin)
         if exinfo is not None:
             if 'cd_vesicle_prox' in self.__pipelinename or 'dynamin' in self.__pipelinename:
-                self._widget.analysisHelpWidget.scatter.setData(x=np.array(exinfo['y']), y=np.array(exinfo['x']), pen=pg.mkPen(None), brush='g', symbol='x', size=15)
+                if not imswitch.IS_HEADLESS:
+                    self._widget.analysisHelpWidget.scatter.setData(x=np.array(exinfo['y']), y=np.array(exinfo['x']), pen=pg.mkPen(None), brush='g', symbol='x', size=15)
             #else:
             #    self._widget.analysisHelpWidget.scatter.setData(x=[], y=[])
 

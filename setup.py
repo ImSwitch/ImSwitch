@@ -73,7 +73,8 @@ setup(
         "rpyc",
         "tk >= 0.1.0", 
         "jupyter", 
-        "python-multipart >= 0.0.5"
+        "python-multipart >= 0.0.5", 
+        "psygnal==0.11.1"
     ],
      extras_require={ # we assume that this is installed in a conda environment or via apt-get
         'PyQt5': [

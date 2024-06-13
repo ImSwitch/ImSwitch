@@ -23,7 +23,6 @@ from imswitch.imcommon.framework import Signal, Thread, Worker, Mutex
 from imswitch.imcontrol.view import guitools
 from imswitch.imcommon.model import initLogger
 from ..basecontrollers import LiveUpdatedController
-from PyQt5.QtCore import QThread, pyqtSignal
 
 import asyncio
 import logging
@@ -50,8 +49,8 @@ relay = None
 webcam = None
 
 
-class AsyncioThread(QThread):
-    started = pyqtSignal()
+class AsyncioThread(Thread):
+    started = Signal()
 
     def __init__(self, loop):
         super().__init__()

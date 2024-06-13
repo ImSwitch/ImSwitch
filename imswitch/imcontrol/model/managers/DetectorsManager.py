@@ -1,5 +1,5 @@
 from time import sleep
-
+import threading
 import numpy as np
 
 from imswitch.imcommon.framework import Mutex, Signal, SignalInterface, Thread, Timer, Worker
@@ -31,11 +31,13 @@ class DetectorsManager(MultiManager, SignalInterface):
             if not self._subManagers[detectorName].forAcquisition:
                 continue
             # Connect signals
-            self._subManagers[detectorName].sigImageUpdated.connect(
-                lambda image, init, scale, detectorName=detectorName: self.sigImageUpdated.emit(
-                    detectorName, image, init, scale, detectorName==self._currentDetectorName
+            import imswitch # FXIME: THIS IS NOT CORRECT FIX IT!!!!!!!!
+            if not imswitch.IS_HEADLESS:
+                self._subManagers[detectorName].sigImageUpdated.connect(
+                    lambda image, init, scale, detectorName=detectorName: self.sigImageUpdated.emit(
+                        detectorName, image, init, scale, detectorName==self._currentDetectorName
+                    )
                 )
-            )
             self._subManagers[detectorName].sigNewFrame.connect(lambda: self.sigNewFrame.emit())
 
             # Set as default if first detector
@@ -44,10 +46,11 @@ class DetectorsManager(MultiManager, SignalInterface):
 
         # A timer will collect the new frame and update it through the communication channel
         self._lvWorker = LVWorker(self, updatePeriod)
-        self._thread = Thread()
-        self._lvWorker.moveToThread(self._thread)
-        self._thread.started.connect(self._lvWorker.run)
-        self._thread.finished.connect(self._lvWorker.stop)
+        self._lvWorker.start()
+        #self._thread = Thread()
+        #self._lvWorker.moveToThread(self._thread)
+        #self._thread.started.connect(self._lvWorker.run)
+        #self._thread.finished.connect(self._lvWorker.stop)
 
     def __del__(self):
         self._thread.quit()
@@ -170,8 +173,31 @@ class DetectorsManager(MultiManager, SignalInterface):
         self._thread.wait()
         self._thread.start()
 
-
 class LVWorker(Worker):
+    def __init__(self, detectorsManager, updatePeriod):
+        super().__init__()
+        self._detectorsManager = detectorsManager
+        self._updatePeriod = updatePeriod
+        self._stop_event = threading.Event()
+
+    def run(self):
+        while not self._stop_event.is_set():
+            self._detectorsManager.execOnAll(
+                lambda c: c.updateLatestFrame(True),
+                condition=lambda c: c.forAcquisition
+            )
+            sleep(self._updatePeriod / 1000.0)
+
+    def moveToThread(self):
+        pass
+
+    def stop(self):
+        self._stop_event.set()
+
+    def setUpdatePeriod(self, updatePeriod):
+        self._updatePeriod = updatePeriod
+        
+class LVWorker_old(Worker):
     def __init__(self, detectorsManager, updatePeriod):
         super().__init__()
         self._detectorsManager = detectorsManager
@@ -195,7 +221,9 @@ class LVWorker(Worker):
     def setUpdatePeriod(self, updatePeriod):
         self._updatePeriod = updatePeriod
 
-
+    def moveToThread(self):
+        # Implementieren Sie die Methode hier
+        pass
 class NoDetectorsError(RuntimeError):
     """ Error raised when a function related to the current detector is called
     if the DetectorsManager doesn't manage any detectors (i.e. the manager is

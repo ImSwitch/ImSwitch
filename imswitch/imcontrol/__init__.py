@@ -9,7 +9,6 @@ def getMainViewAndController(moduleCommChannel, *_args,
     from .controller import ImConMainController
     from .model import configfiletools
     from .view import ViewSetupInfo, ImConMainView, ImConMainViewNoQt
-
     logger = initLogger('imcontrol init')
 
     def pickSetup(options):
@@ -17,6 +16,7 @@ def getMainViewAndController(moduleCommChannel, *_args,
         import sys
         from qtpy import QtWidgets
         from imswitch.imcontrol.view import PickSetupDialog
+        
 
         # Let user pick the setup to use
         pickSetupDialog = PickSetupDialog()

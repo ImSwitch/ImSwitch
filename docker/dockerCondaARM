@@ -16,9 +16,7 @@ RUN apt-get update && apt-get install -y \
     ca-certificates \
     git \
     libgles2-mesa-dev \
-    pkg-config 
-
-RUN apt-get update && apt-get install -y \    
+    pkg-config \
     build-essential \
     libhdf5-dev \
     hdf5-tools && \
@@ -39,14 +37,14 @@ ENV PATH=/opt/conda/bin:$PATH
 RUN /opt/conda/bin/conda create -y --name imswitch python=3.10
 
 # Install napari and pyqt
-RUN /opt/conda/bin/conda install -n imswitch -y -c conda-forge napari pyqt hdf5   && \
-    /opt/conda/bin/conda clean --all -f -y
-
+RUN /opt/conda/bin/conda install -n imswitch -y -c conda-forge napari pyqt hdf5 h5py && \
+    conda clean --all -f -y
 
 # Clone the repository and install dependencies
 RUN git clone https://github.com/openUC2/imSwitch /tmp/ImSwitch && \
     /bin/bash -c "source /opt/conda/bin/activate imswitch && pip install -r /tmp/ImSwitch/requirements-arm64.txt" && \
     /bin/bash -c "source /opt/conda/bin/activate imswitch && pip install -e /tmp/ImSwitch --no-deps"
+RUN /bin/bash -c "source /opt/conda/bin/activate imswitch && pip install pyqtgraph>=0.12.0"
 
 # Install and configure SSH
 RUN apt-get update && apt-get install -y openssh-server

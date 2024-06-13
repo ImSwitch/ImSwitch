@@ -2,6 +2,7 @@ import importlib
 import traceback
 import logging
 import argparse
+import os 
 
 import imswitch
 from imswitch.imcommon import prepareApp, launchApp
@@ -10,12 +11,33 @@ from imswitch.imcommon.model import modulesconfigtools, pythontools, initLogger
 from imswitch.imcommon.view import MultiModuleWindow, ModuleLoadErrorView
 
 # FIXME: Add to configuration file
+# python main.py --headless or 
+# python -m imswitch --headless 1 --config-file example_virtual_microscope.json
 
 def main():
+    parser = argparse.ArgumentParser(description='Process some integers.')
+    
+    # specify if run in headless mode
+    parser.add_argument('--headless', dest='headless', type=bool, default=0,
+                        help='run in headless mode')
+    
+    # specify config file name - None for default
+    parser.add_argument('--config-file', dest='config_file', type=str, default=None,
+                        help='specify run with config file')
+    
+    args = parser.parse_args()
+    imswitch.IS_HEADLESS = args.headless
+    imswitch.DEFAULT_SETUP_FILE = args.config_file # e.g. example_virtual_microscope.json
+    
+    if imswitch.IS_HEADLESS:
+        os.environ["DISPLAY"] = ":0"
+        os.environ["QT_QPA_PLATFORM"] = "offscreen"
+
     try:
         logger = initLogger('main')
         logger.info(f'Starting ImSwitch {imswitch.__version__}')
         logger.info(f'Headless mode: {imswitch.IS_HEADLESS}')
+        logger.info(f'Config file: {imswitch.DEFAULT_SETUP_FILE}')
         app = prepareApp()
         enabledModuleIds = modulesconfigtools.getEnabledModuleIds()
 

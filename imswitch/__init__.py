@@ -5,11 +5,8 @@ __version__ = "1.2.9"
 __httpport__ = 8001
 __ssl__ = True
 
-if platform == "linux" or platform == "linux2":
-    IS_HEADLESS = True
-else:
-    IS_HEADLESS = False
-
+IS_HEADLESS = False
+DEFAULT_SETUP_FILE = None
 
 # Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.

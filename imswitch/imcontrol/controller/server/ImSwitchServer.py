@@ -21,12 +21,7 @@ import socket
 import os
 
 import imswitch
-try:
-    import zeroconf
-    from zeroconf import ServiceInfo, Zeroconf
-    IS_ZEROCONF = True
-except:
-    IS_ZEROCONF = False
+
 import socket
 from fastapi.middleware.cors import CORSMiddleware
 from http.server import HTTPServer, BaseHTTPRequestHandler
@@ -131,8 +126,6 @@ class ImSwitchServer(Worker):
 
         self.__logger =  initLogger(self)
         
-        # start broadcasting server IP
-        self.startmdns()
 
     def run(self):
         # Erstellen Sie eine Instanz des Dienstes
@@ -209,10 +202,6 @@ class ImSwitchServer(Worker):
             #self.server_thread.join()
         except Exception as e:
             self.__logger.error("Couldn't stop server: "+str(e))
-        if IS_ZEROCONF:
-            self.zeroconf.unregister_service(self.info)
-            self.zeroconf.close()
-
 
     def get_ip(self):
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -224,29 +213,6 @@ class ImSwitchServer(Worker):
         finally:
             s.close()
         return IP
-
-    def startmdns(self):
-        service_type = "_https._tcp.local."  # Changed to HTTPS
-        service_name = "imswitch._https._tcp.local."
-        server_ip = self.get_ip()
-        server_port = 8001  # Change to your server's port
-
-        self.info = ServiceInfo(
-            service_type,
-            service_name,
-            addresses=[socket.inet_aton(server_ip)],
-            port=server_port,
-            properties={},
-        )
-        if IS_ZEROCONF:
-            self.zeroconf = Zeroconf()
-            print(f"Registering service {service_name}, type {service_type}, at {server_ip}:{server_port}")
-            try:
-                zeroconf.register_service(self.info)
-            except Exception as e:
-                print(f"Failed to register service: {e}")
-            
-
     #@expose: FIXME: Remove
     def testMethod(self):
         return "Hello World"

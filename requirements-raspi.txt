@@ -21,7 +21,6 @@ requests>=2.25
 scikit-image>=0.18
 Send2Trash>=1.8
 tifffile>=2020.11.26
-#zeroconf>=0.39.0
 pymba>=0.3.7
 opencv-python>=4.6.0.66
 pco>=0.1.0

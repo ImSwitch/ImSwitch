@@ -35,5 +35,5 @@ jobs:
           context: docker
           file: dockerfileImSwitch
           push: true
-          tags: ghcr.io/${{ github.repository }}:latest
+          tags: ghcr.io/openuc2/imswitch:latest
           labels: ${{ steps.meta.outputs.labels }}

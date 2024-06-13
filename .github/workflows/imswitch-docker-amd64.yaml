@@ -30,7 +30,6 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.SHORT_SHA }}
 
       - name: Build and push Docker image (latest tag)
-        if: steps.check-version.outputs.current-version
         uses: docker/build-push-action@v5.0.0
         with:
           context: docker

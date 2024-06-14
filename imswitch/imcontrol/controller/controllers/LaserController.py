@@ -1,5 +1,5 @@
 from typing import List, Union
-
+from imswitch.imcommon.framework import Signal
 import imswitch
 from imswitch.imcommon.model import APIExport
 from imswitch.imcontrol.model import configfiletools
@@ -27,6 +27,12 @@ class LaserController(ImConWidgetController):
                 )
                 self.setSharedAttr(lName, _enabledAttr, self._widget.isLaserActive(lName))
                 self.setSharedAttr(lName, _valueAttr, self._widget.getValue(lName))
+            else:
+                self.laserModules = {}
+                self.addLaser(lName, lManager.valueUnits, lManager.valueDecimals, lManager.wavelength,
+                    (lManager.valueRangeMin, lManager.valueRangeMax) if not lManager.isBinary else None,
+                    lManager.valueRangeStep if lManager.valueRangeStep is not None else None,
+                    (lManager.freqRangeMin, lManager.freqRangeMax, lManager.freqRangeInit) if lManager.isModulated else (0, 0, 0))
             
             if not lManager.isBinary:
                 self.valueChanged(lName, lManager.valueRangeMin)
@@ -257,18 +263,65 @@ class LaserController(ImConWidgetController):
     def setLaserActive(self, laserName: str, active: bool) -> None:
         """ Sets whether the specified laser is powered on. """
         if not imswitch.IS_HEADLESS: self._widget.setLaserActive(laserName, active)
+        else: self.toggleLaser(laserName, active) #TODO: !!! self.laserModules[laserName].sigEnableChanged.emit(laserName, active)
 
     @APIExport(runOnUIThread=True)
     def setLaserValue(self, laserName: str, value: Union[int, float]) -> None:
         """ Sets the value of the specified laser, in the units that the laser
         uses. """
         if not imswitch.IS_HEADLESS: self._widget.setValue(laserName, value)
+        else: self.valueChanged(laserName, value) #TODO: !!! 
 
     @APIExport()
     def changeScanPower(self, laserName, laserValue):
         defaultPreset = self._setupInfo.laserPresets[self._setupInfo.defaultLaserPresetForScan]
         defaultPreset[laserName] = guitools.LaserPresetInfo(value=laserValue)
 
+    def addLaser(self, laserName, valueUnits, valueDecimals, wavelength, valueRange=None,
+                valueRangeStep=1, frequencyRange=(0, 0, 0)):
+        """ Adds a laser module widget. valueRange is either a tuple
+        (min, max), or None (if the laser can only be turned on/off).
+        frequencyRange is either a tuple (min, max, initVal)
+        or (0, 0, 0) (if the laser is not modulated in frequency)"""
+        
+        control = LaserModule(
+            valueUnits=valueUnits, valueDecimals=valueDecimals, valueRange=valueRange,
+            tickInterval=5, singleStep=valueRangeStep,
+            initialPower=valueRange[0] if valueRange is not None else 0,
+            frequencyRange=frequencyRange
+        )
+        
+        control.sigEnableChanged = Signal(str, bool)
+        control.sigValueChanged = Signal(str, float)
+
+
+        if all(num > 0 for num in frequencyRange):
+            control.sigModEnabledChanged.connect(
+                lambda enabled: self.sigModEnabledChanged.emit(laserName, enabled)
+            )
+            control.sigFreqChanged.connect(
+                lambda frequency: self.sigFreqChanged.emit(laserName, frequency)
+            )
+            control.sigDutyCycleChanged.connect(
+                lambda dutyCycle: self.sigDutyCycleChanged.emit(laserName, dutyCycle)
+            )
+
+        self.laserModules[laserName] = control
+
+
+class LaserModule(object):
+    """ Module to handle a single laser without GUI. """
+    from imswitch.imcommon.framework import Signal
+    sigEnableChanged = Signal(bool)  # (enabled)
+    sigValueChanged = Signal(float)  # (value)
+    sigModEnabledChanged = Signal(bool) # (modulation enabled)
+    sigFreqChanged = Signal(int)        # (frequency)
+    sigDutyCycleChanged = Signal(int)   # (duty cycle)
+
+    def __init__(self, valueUnits, valueDecimals, valueRange, tickInterval, singleStep,
+                 initialPower, frequencyRange, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.valueDecimals = valueDecimals
 
 _attrCategory = 'Laser'
 _enabledAttr = 'Enabled'

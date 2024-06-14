@@ -229,8 +229,8 @@ class ImSwitchServer(Worker):
             openapi_url=app.openapi_url,
             title=app.title + " - ImSwitch Swagger UI",
             oauth2_redirect_url=app.swagger_ui_oauth2_redirect_url,
-            swagger_js_url=os.path.join(static_dir, "swagger-ui-bundle.js"),
-            swagger_css_url=os.path.join(static_dir, "swagger-ui.css"),
+            swagger_js_url="/static/swagger-ui-bundle.js",
+            swagger_css_url="/static/swagger-ui.css",
         )
 
     @app.get("/")

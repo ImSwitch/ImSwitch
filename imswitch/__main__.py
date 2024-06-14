@@ -12,20 +12,22 @@ import imswitch
 
 def main(is_headless:bool=None, default_config:str=None):
     try:
-        parser = argparse.ArgumentParser(description='Process some integers.')
-        
-        # specify if run in headless mode
-        parser.add_argument('--headless', dest='headless', type=bool, default=0,
-                            help='run in headless mode')
-        
-        # specify config file name - None for default
-        parser.add_argument('--config-file', dest='config_file', type=str, default=None,
-                            help='specify run with config file')
-        
-        args = parser.parse_args()
-        imswitch.IS_HEADLESS = args.headless
-        imswitch.DEFAULT_SETUP_FILE = args.config_file # e.g. example_virtual_microscope.json
-        
+        try: # Google Colab does not support argparse
+            parser = argparse.ArgumentParser(description='Process some integers.')
+            
+            # specify if run in headless mode
+            parser.add_argument('--headless', dest='headless', type=bool, default=0,
+                                help='run in headless mode')
+            
+            # specify config file name - None for default
+            parser.add_argument('--config-file', dest='config_file', type=str, default=None,
+                                help='specify run with config file')
+            
+            args = parser.parse_args()
+            imswitch.IS_HEADLESS = args.headless
+            imswitch.DEFAULT_SETUP_FILE = args.config_file # e.g. example_virtual_microscope.json
+        except: 
+            pass        
         # override settings if provided as argument
         if is_headless is not None:
             imswitch.IS_HEADLESS = is_headless

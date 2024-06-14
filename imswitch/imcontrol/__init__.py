@@ -1,4 +1,7 @@
 import imswitch
+import dataclasses
+import sys
+
 __imswitch_module__ = True
 __title__ = 'Hardware Control'
 
@@ -12,12 +15,9 @@ def getMainViewAndController(moduleCommChannel, *_args,
     logger = initLogger('imcontrol init')
 
     def pickSetup(options):
-        import dataclasses
-        import sys
         from qtpy import QtWidgets
         from imswitch.imcontrol.view import PickSetupDialog
         
-
         # Let user pick the setup to use
         pickSetupDialog = PickSetupDialog()
         pickSetupDialog.setSetups(configfiletools.getSetupList())
@@ -28,20 +28,25 @@ def getMainViewAndController(moduleCommChannel, *_args,
             sys.exit()
         return dataclasses.replace(options, setupFileName=setupFileName)
 
+
     if overrideOptions is None:
         options, optionsDidNotExist = configfiletools.loadOptions()
         if optionsDidNotExist:
-            options = pickSetup(options)  # Setup to use not set, let user pick
-
+            if not imswitch.IS_HEADLESS: options = pickSetup(options)  # Setup to use not set, let user pick
+            if imswitch.DEFAULT_SETUP_FILE is not None:
+                try:
+                    setupFileName = imswitch.DEFAULT_SETUP_FILE
+                    dataclasses.replace(options, setupFileName=setupFileName)
+                except Exception as e: 
+                    print("Error setting default setup file from commandline..:" + e)
+            
         configfiletools.saveOptions(options)
     else:
+        # force the options to use a specific configuration
         options = overrideOptions
 
     if overrideSetupInfo is None:
         try:
-            if imswitch.DEFAULT_SETUP_FILE is not None:
-                try:options.setupFileName = imswitch.DEFAULT_SETUP_FILE
-                except:print("Error setting default setup file from commandline.." )
             setupInfo = configfiletools.loadSetupInfo(options, ViewSetupInfo)
         except FileNotFoundError:
             # Have user pick setup anyway

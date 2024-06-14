@@ -193,17 +193,37 @@ class HyphaController(LiveUpdatedController):
         
     def get_schema(self):
         return {
-            "move_by_distance": MoveByDistanceInput.schema(),
+            # TODO: push/pull the schema similar to a property in the class
+            '''
+            Beginner Mode
+            "move"  # "illumination"
+            "snap" # also perform scanning 
+            "record" # 
+            "set_config" # 
+            "get_config"
+            '''            
+            '''
+            Hacker Mode
+            '''
+            "move_stage": MoveStage.schema(), # absolute vs relative
             "snap_image": SnapImageInput.schema(),
+            "record_video": RecordingVideo.schema(), # duration, filepath, framerate
             "home_stage": HomeStage.schema(),
             "move_to_position": MoveToPositionInput.schema(),
             "set_illumination": SetIlluminationInput.schema(),
-            #"set_message_dict": MessagingExchange.schema(),
-            #"get_message_dict": MessagingExchange.schema(),
+            "get_illumination": GetIllumination.schema(),
             "script_executor": ScriptExecutor.schema(), 
             "lightsheet_scan": LightsheetScan.schema(),
-            "slide_scan": SlideScanInput.schema(), 
-            "create_qttabwidget": CreateQTTabWidget.schema()
+            "autofocus": AutoFocus.schema(),
+            "get_config": GetMicroscopeConfig.schema(), # STage Limits, Available Illumination, Available Detectors, Dictionary of config 
+            "get_status": GetPosition.schema(), # get current position of the stage, get illumination state, get detector state, get temperature, etc
+            "set_camera_config": CameraSettings.schema(), # set exposure, set gain, set binning, set ROI, set color mode, set frame rate, fov, sample size
+            "get_camera_config": GetCameraSettings.schema(), # get exposure, get gain, get binning, get ROI, get color mode, get frame rate
+            "slide_scan": SlideScanInput.schema(),
+            "led_matrix": LEDMatrix.schema(),  
+            #"set_message_dict": MessagingExchange.schema(),
+            #"get_message_dict": MessagingExchange.schema(),
+            #"create_qttabwidget": CreateQTTabWidget.schema(), 
             
         }
 
@@ -219,7 +239,7 @@ class HyphaController(LiveUpdatedController):
         
     def move_stage_by_distance(self, kwargs):
         '''move the stage by a specified distance, the unit of distance is micrometers, so you need to input the distance in millimeters.'''
-        config = MoveByDistanceInput(**kwargs)
+        config = MoveStage(**kwargs)
         if config.x: self.setPosition(value=config.x, axis="X", is_absolute=False, is_blocking=True)
         if config.y: self.setPosition(value=config.y, axis="Y", is_absolute=False, is_blocking=True)
         if config.z: self.setPosition(value=config.z, axis="Z", is_absolute=False, is_blocking=True)
@@ -485,11 +505,12 @@ class ScriptExecutor(BaseModel):
     context: dict = Field(description="Context information containing user details.")
 
 
-class MoveByDistanceInput(BaseModel):
+class MoveStage(BaseModel):
     """Move the stage by a specified distance, the unit of distance is millimeters, so you need to input the distance in millimeters."""
     x: float = Field(description="Move the stage along X axis.")
     y: float = Field(description="Move the stage along Y axis.")
     z: float = Field(description="Move the stage along Z axis.")
+    isRelative: bool = Field(description="Move the stage by a relative distance if True, else move to an absolute position.")
 
 class SnapImageInput(BaseModel):
     #TODO: Docstring should be below 4000 characters

@@ -2,6 +2,7 @@ import importlib
 import traceback
 import logging
 import argparse
+import os
 
 import imswitch
 from imswitch.imcommon import prepareApp, launchApp
@@ -10,6 +11,8 @@ from imswitch.imcommon.model import modulesconfigtools, pythontools, initLogger
 
 
 # FIXME: Add to configuration file
+# python main.py --headless or
+# python -m imswitch --headless 1 --config-file example_virtual_microscope.json
 
 def main(is_headless:bool=None, default_config:str=None):
     try:
@@ -38,7 +41,7 @@ def main(is_headless:bool=None, default_config:str=None):
             except ImportError:
                 logger.error('QtWebEngineWidgets not found, disabling imnotebook')
                 enabledModuleIds.remove('imnotebook')
-            
+
         modulePkgs = [importlib.import_module(pythontools.joinModulePath('imswitch', moduleId))
                     for moduleId in enabledModuleIds]
 
@@ -84,7 +87,7 @@ def main(is_headless:bool=None, default_config:str=None):
                 logger.error(e)
                 logger.error(traceback.format_exc())
                 moduleCommChannel.unregister(modulePkg)
-                if not imswitch.IS_HEADLESS: 
+                if not imswitch.IS_HEADLESS:
                     from imswitch.imcommon.view import ModuleLoadErrorView
                     multiModuleWindow.addModule(moduleId, moduleName, ModuleLoadErrorView(e))
             else:
@@ -93,7 +96,7 @@ def main(is_headless:bool=None, default_config:str=None):
                 moduleMainControllers[moduleId] = controller
 
                 # Update loading progress
-                if not imswitch.IS_HEADLESS: 
+                if not imswitch.IS_HEADLESS:
                     multiModuleWindow.updateLoadingProgress(i / len(modulePkgs))
                     app.processEvents()  # Draw window before continuing
         logger.info(f'init done')

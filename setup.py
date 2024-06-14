@@ -63,7 +63,6 @@ setup(
         "matplotlib >= 3.6",
         "websockets >= 10.0",
         "websocket-client >= 1.2", 
-        "zeroconf >= 0.30", 
         "opencv-python", 
         "imjoy_rpc",
         "imjoy",

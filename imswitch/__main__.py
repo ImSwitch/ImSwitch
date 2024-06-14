@@ -5,10 +5,6 @@ import argparse
 import os
 
 import imswitch
-from imswitch.imcommon import prepareApp, launchApp
-from imswitch.imcommon.controller import ModuleCommunicationChannel, MultiModuleWindowController
-from imswitch.imcommon.model import modulesconfigtools, pythontools, initLogger
-
 
 # FIXME: Add to configuration file
 # python main.py --headless or
@@ -16,9 +12,40 @@ from imswitch.imcommon.model import modulesconfigtools, pythontools, initLogger
 
 def main(is_headless:bool=None, default_config:str=None):
     try:
+        parser = argparse.ArgumentParser(description='Process some integers.')
+        
+        # specify if run in headless mode
+        parser.add_argument('--headless', dest='headless', type=bool, default=0,
+                            help='run in headless mode')
+        
+        # specify config file name - None for default
+        parser.add_argument('--config-file', dest='config_file', type=str, default=None,
+                            help='specify run with config file')
+        
+        args = parser.parse_args()
+        imswitch.IS_HEADLESS = args.headless
+        imswitch.DEFAULT_SETUP_FILE = args.config_file # e.g. example_virtual_microscope.json
+        
+        # override settings if provided as argument
+        if is_headless is not None:
+            imswitch.IS_HEADLESS = is_headless
+        if default_config is not None:
+            imswitch.DEFAULT_CONFIG_FILE = default_config
+        
+        # FIXME: !!!!             
+        from imswitch.imcommon import prepareApp, launchApp
+        from imswitch.imcommon.controller import ModuleCommunicationChannel, MultiModuleWindowController
+        from imswitch.imcommon.model import modulesconfigtools, pythontools, initLogger
+
         logger = initLogger('main')
         logger.info(f'Starting ImSwitch {imswitch.__version__}')
         logger.info(f'Headless mode: {imswitch.IS_HEADLESS}')
+        
+        if imswitch.IS_HEADLESS:
+            os.environ["DISPLAY"] = ":0"
+            os.environ["QT_QPA_PLATFORM"] = "offscreen"
+    
+
         if not imswitch.IS_HEADLESS:
             app = prepareApp()
         enabledModuleIds = modulesconfigtools.getEnabledModuleIds()

@@ -46,7 +46,7 @@ class DetectorsManager(MultiManager, SignalInterface):
 
         # A timer will collect the new frame and update it through the communication channel
         self._lvWorker = LVWorker(self, updatePeriod)
-        self._lvWorker.start()
+        #self._lvWorker.start()
         #self._thread = Thread()
         #self._lvWorker.moveToThread(self._thread)
         #self._thread.started.connect(self._lvWorker.run)

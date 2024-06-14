@@ -257,12 +257,14 @@ class ImSwitchServer(Worker):
     
     @app.get("/docs", include_in_schema=False)
     async def custom_swagger_ui_html():
+        package_dir = os.path.dirname(os.path.abspath(imswitch.__file__))
+        staticPath = os.path.join(package_dir, "_data/static")
         return get_swagger_ui_html(
             openapi_url=app.openapi_url,
             title=app.title + " - ImSwitch Swagger UI",
             oauth2_redirect_url=app.swagger_ui_oauth2_redirect_url,
-            swagger_js_url="/static/swagger-ui-bundle.js",
-            swagger_css_url="/static/swagger-ui.css",
+            swagger_js_url=os.path.join(staticPath, "swagger-ui-bundle.js"),
+            swagger_css_url=os.path.join(staticPath, "swagger-ui.css"),
         )
 
     @app.get("/")

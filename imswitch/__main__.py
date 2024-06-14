@@ -11,7 +11,7 @@ from imswitch.imcommon.model import modulesconfigtools, pythontools, initLogger
 
 # FIXME: Add to configuration file
 
-def main():
+def main(is_headless:bool=None, default_config:str=None):
     try:
         logger = initLogger('main')
         logger.info(f'Starting ImSwitch {imswitch.__version__}')

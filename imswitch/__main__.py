@@ -32,7 +32,7 @@ def main(is_headless:bool=None, default_config:str=None):
         if is_headless is not None:
             imswitch.IS_HEADLESS = is_headless
         if default_config is not None:
-            imswitch.DEFAULT_CONFIG_FILE = default_config
+            imswitch.DEFAULT_SETUP_FILE = default_config
         
         # FIXME: !!!!             
         from imswitch.imcommon import prepareApp, launchApp

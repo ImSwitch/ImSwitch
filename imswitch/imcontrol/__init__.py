@@ -29,23 +29,22 @@ def getMainViewAndController(moduleCommChannel, *_args,
         return dataclasses.replace(options, setupFileName=setupFileName)
 
 
+    '''
+    load the options such as imcontrol, imnotebook, etc.
+    '''
     if overrideOptions is None:
         options, optionsDidNotExist = configfiletools.loadOptions()
         if optionsDidNotExist:
-            if not imswitch.IS_HEADLESS: options = pickSetup(options)  # Setup to use not set, let user pick
-            if imswitch.DEFAULT_SETUP_FILE is not None:
-                try:
-                    setupFileName = imswitch.DEFAULT_SETUP_FILE
-                    dataclasses.replace(options, setupFileName=setupFileName)
-                except Exception as e: 
-                    print("Error setting default setup file from commandline..:" + e)
-            
+            if not imswitch.IS_HEADLESS: options = pickSetup(options)  # Setup to use not set, let user pick            
         configfiletools.saveOptions(options)
     else:
         # force the options to use a specific configuration
         options = overrideOptions
 
-    if overrideSetupInfo is None:
+    '''
+    load the setup configuration including detectors, stages, etc.
+    '''
+    if not imswitch.IS_HEADLESS and overrideSetupInfo is None:
         try:
             setupInfo = configfiletools.loadSetupInfo(options, ViewSetupInfo)
         except FileNotFoundError:
@@ -53,8 +52,18 @@ def getMainViewAndController(moduleCommChannel, *_args,
             options = pickSetup(options)
             configfiletools.saveOptions(options)
             setupInfo = configfiletools.loadSetupInfo(options, ViewSetupInfo)
-    else:
+    elif imswitch.IS_HEADLESS and overrideSetupInfo is None:
+        if imswitch.DEFAULT_SETUP_FILE is not None:
+            try:
+                setupFileName = imswitch.DEFAULT_SETUP_FILE
+                options = dataclasses.replace(options, setupFileName=setupFileName)
+            except Exception as e: 
+                print("Error setting default setup file from commandline..:" + e)
+        setupInfo = configfiletools.loadSetupInfo(options, ViewSetupInfo)
+    elif overrideSetupInfo is not None:
         setupInfo = overrideSetupInfo
+    else:
+        raise KeyError # FIXME: !!!!
 
     logger.debug(f'Setup used: {options.setupFileName}')
     if not imswitch.IS_HEADLESS:

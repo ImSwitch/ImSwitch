@@ -332,7 +332,8 @@ class RecordingController(ImConWidgetController):
 
     def getDetectorNamesToCapture(self):
         """ Returns a list of which detectors the user has selected to be captured. """
-        detectorMode = self._widget.getDetectorMode()
+        if not imswitch.IS_HEADLESS: detectorMode = self._widget.getDetectorMode()
+        else: detectorMode = -1
         if detectorMode == -1:  # Current detector at start
             return [self._master.detectorsManager.getCurrentDetectorName()]
         elif detectorMode == -2:  # All acquisition detectors

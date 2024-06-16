@@ -2,7 +2,7 @@ import glob
 from sys import platform
 # used to be, but actions will replace this with the current release TAG ->1.2.9
 __version__ = "1.2.9"
-__httpport__ = 8001
+__httpport__ = 8002
 __ssl__ = True
 
 IS_HEADLESS = False

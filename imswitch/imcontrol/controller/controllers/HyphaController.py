@@ -68,7 +68,7 @@ class MyMicroscope(object):
     
     def set_illumination(self, channel, intensity):
         # TODO: implement mChannel
-        self.illumination.setActive(True*bool(intensity))
+        self.illumination.setEnabled(True*bool(intensity))
         return self.illumination.setValue(intensity)
     
     def snap_image(self, exposure, gain):
@@ -151,6 +151,7 @@ class HyphaController(LiveUpdatedController):
         # connect signals 
         if not imswitch.IS_HEADLESS: 
             self._widget.sigLoginHypha.connect(self._loginHypha)
+            
 
         ''' 
         assign hardware functions 
@@ -255,9 +256,15 @@ class HyphaController(LiveUpdatedController):
             # automatically open default browser and return the login token 
             webbrowser.open(message['login_url']) # TODO: pass login token to qtwebview
             print(f"Please open your browser and login at: {message['login_url']}")
-        token = login({"server_url": server_url, 
+        
+        try:
+            token = login({"server_url": server_url, 
                        "login_callback": autoLogin, 
                        "timeout": 10})
+        except Exception as e:
+            # probably timeout error - not connected to the Internet?
+            self.__logger.error(e)
+            return "probably timeout error - not connected to the Internet?"
         server = connect_to_server(
             {
             "server_url": server_url,
@@ -294,31 +301,21 @@ class HyphaController(LiveUpdatedController):
             )
             self.__logger.debug(f"You can access the webrtc stream at https://oeway.github.io/webrtc-hypha-demo/?service_id={service_id}")
         
-        
-    def get_schema(self):
-        return {
-            # TODO: push/pull the schema similar to a property in the class
-            '''
-            Beginner Mode
-            "move"  # "illumination"
-            "snap" # also perform scanning 
-            "record" # 
-            "set_config" # 
-            "get_config"
-            '''            
-            '''
-            Hacker Mode
-            '''
             
-            ''' 
-            Explanation: the function (e.g. "move_stage") is connected to the Schema (e.g. MoveStage.schema())
-            The Schema contains the doc strings and information for the chatbot to construct the response and hardware control
-            '''
-            "move_stage": MoveStage.schema(), 
+                    
+    # TODO: push/pull the schema similar to a property in the class
+    # TODO: Differentiate into hacker/beginner mode 
+    def get_schema(self):
+        ''' 
+        Explanation: the function (e.g. "move_stage") is connected to the Schema (e.g. MoveStage.schema())
+        The Schema contains the doc strings and information for the chatbot to construct the response and hardware control
+        '''
+        
+        return {
             "snap_image": SnapImageInput.schema(),
             "record_video": RecordingVideo.schema(), 
             "home_stage": HomeStageInput.schema(),
-            "move_positioner": MoveToPositionInput.schema(),
+            "move_stage": MovePositionerInput.schema(),
             "set_illumination": SetIlluminationInput.schema(),
             "autofocus": AutoFocusInput.schema(), 
             "script_executor": ScriptExecutor.schema(), 
@@ -345,10 +342,10 @@ class HyphaController(LiveUpdatedController):
             return
         config = CreateQTTabWidget(**kwargs)
         
-    def move_positioner(self, kwargs=None):
+    def move_stage(self, kwargs=None):
         '''Move the stage to a specified position, the unit of distance is micrometers.'''
         if kwargs is not None:            
-            config = MoveToPositionInput(**kwargs)
+            config = MovePositionerInputop(**kwargs)
         distance = config.distance
         is_absolute = config.is_absolute
         axis = config.axis
@@ -577,11 +574,10 @@ class HyphaController(LiveUpdatedController):
             "get_schema": self.get_schema,
             "config": {"run_in_executor": True},
             "tools": {
-                "move_by_distance": self.move_positioner,
                 "snap_image": self.snap_image,
                 "record_video": self.record_video,
                 "home_stage": self.home_stage,
-                "move_positioner": self.move_positioner,
+                "move_stage": self.move_stage,
                 "set_illumination": self.set_illumination,
                 #"set_message_dict": self.set_message_dict,
                 #"get_message_dict": self.get_message_dict,
@@ -607,22 +603,14 @@ class MessagingExchange(BaseModel):
 class ScriptExecutor(BaseModel):
     """
     Executes a Python script within the HyphaController class to control a microscope, accessible via 'self'. Scripts can orchestrate complex workflows using methods provided for microscope manipulation, incorporating loops and conditions. The script must be safe, without malicious elements, local file manipulation, or network access. Key methods include e.g.:
-    - `self.move_positioner(kwargs)` using MoveToPositionInput.schema() for xyz movement.
+    - `self.move_stage(kwargs)` using MoveToPositionInput.schema() for xyz movement.
     - `self.set_illumination(kwargs)` using SetIlluminationInput.schema() to adjust illumination (0-1023).
     - `self.snap_image(kwargs)` using SnapImageInput.schema() to capture or process images.
     Execution results are stored in a 'result' variable for chatbot feedback. Scripts can import known libraries (e.g., time, numpy) for additional functionality.
     """   
     script: str = Field(description="The Python script to execute.")
     context: dict = Field(description="Context information containing user details.")
-
-
-class MoveStage(BaseModel):
-    """Move the stage by a specified distance, the unit of distance is millimeters, so you need to input the distance in millimeters."""
-    x: float = Field(description="Move the stage along X axis.")
-    y: float = Field(description="Move the stage along Y axis.")
-    z: float = Field(description="Move the stage along Z axis.")
-    isRelative: bool = Field(description="Move the stage by a relative distance if True, else move to an absolute position.")
-
+    
 class SnapImageInput(BaseModel):
     #TODO: Docstring should be below 4000 characters
     #TODO: individual elements should be below 1024
@@ -712,7 +700,7 @@ class HomeStageInput(BaseModel):
     """Home the stage."""
     axis: str = Field(description="The axis to home. Default is X. Available options are: X, Y, Z, A.")
     
-class MoveToPositionInput(BaseModel):
+class MovePositionerInput(BaseModel):
     """Move the stage either to a specific position or relative, the unit of distance is micrometers. """
     distance: float = Field(description="The distance to move the stage if is_absolute is false, otherwise the position in absolute coordinates. The unit is micrometers.")
     is_absolute: bool = Field(description="Move the stage to an absolute position if True, otherwise move by a relative distance.")

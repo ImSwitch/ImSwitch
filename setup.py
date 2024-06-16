@@ -62,18 +62,19 @@ setup(
         "uvicorn[standard] >= 0.19.0",
         "matplotlib >= 3.6",
         "websockets >= 10.0",
-        "websocket-client >= 1.2", 
-        "opencv-python", 
+        "websocket-client >= 1.2",
+        "opencv-python",
         "imjoy_rpc",
         "imjoy",
         "aiortc >= 1.3.0",
         "juliacall",
-        "UC2-REST", 
+        "UC2-REST",
         "rpyc",
-        "tk >= 0.1.0", 
-        "jupyter", 
-        "python-multipart >= 0.0.5", 
-        "psygnal==0.11.1"
+        "tk >= 0.1.0",
+        "jupyter",
+        "python-multipart >= 0.0.5",
+        "psygnal==0.11.1",
+        "piexif" >= "1.1.3"
     ],
      extras_require={ # we assume that this is installed in a conda environment or via apt-get
         'PyQt5': [

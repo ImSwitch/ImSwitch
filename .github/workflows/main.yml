@@ -36,5 +36,6 @@ jobs:
           context: docker
           file: docker/dockerfileImSwitchAMDNoQT
           push: true
-          tags: ghcr.io/openuc2/imswitch:latest
+          tags: ghcr.io/openuc2/imswitch-docker-amd64-noqt:latest
           labels: ${{ steps.meta.outputs.labels }}
+          

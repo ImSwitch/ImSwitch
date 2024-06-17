@@ -13,8 +13,8 @@ _webaddr = None
 
 
 def testnotebook(notebook_executable="jupyter-notebook"):
+    # if the notebook executable is not found, return False
     return 0 == os.system("%s --version" % notebook_executable)
-
 
 def startnotebook(notebook_executable="jupyter-notebook", port=8888, directory='',
                   configfile=os.path.join(os.path.dirname(__file__), 'jupyterqt_notebook_config.py')):

@@ -1,5 +1,6 @@
 name: imswitch-docker-arm64-noqt
 on:
+  workflow_dispatch:
   push:
     branches:
       - master

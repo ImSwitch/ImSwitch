@@ -425,6 +425,11 @@ class RecordingController(ImConWidgetController):
                 if output_frame is None:
                     continue
                 try:
+                    # adaptive resize: Keep them below 640x480
+                    if output_frame.shape[0] > 640 or output_frame.shape[1] > 480:
+                        self.fx = self.fy = min(640/output_frame.shape[0], 480/output_frame.shape[1])
+                    else:
+                        self.fx = self.fy = 1
                     output_frame = cv2.resize(output_frame, dsize=None, fx=self.fx,fy=self.fx)
                 except: 
                     output_frame = np.zeros((640,460))

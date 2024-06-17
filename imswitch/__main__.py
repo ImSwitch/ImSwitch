@@ -8,7 +8,7 @@ import imswitch
 
 # FIXME: Add to configuration file
 # python main.py --headless or
-# python -m imswitch --headless 1 --config-file example_virtual_microscope.json
+# python -m imswitch --headless 1 --config-file example_virtual_microscope.json --http-port 8001 --ssl 1
 
 def main(is_headless:bool=None, default_config:str=None, http_port:int=None, ssl:bool=None):
     try:

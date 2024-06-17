@@ -211,9 +211,11 @@ class PositionerController(ImConWidgetController):
         if not imswitch.IS_HEADLESS: self._widget.setStepSize(positionerName, stepSize)
 
     @APIExport(runOnUIThread=True)
-    def movePositioner(self, positionerName: str, axis: str, dist: Optional[float] = None, isAbsolute: bool = False, isBlocking: bool=False, speed: float=None) -> None:
+    def movePositioner(self, positionerName: str=None, axis: str=None, dist: Optional[float] = None, isAbsolute: bool = False, isBlocking: bool=False, speed: float=None) -> None:
         """ Moves the specified positioner axis by the specified number of
         micrometers. """
+        if axis is None or dist is None:
+            raise ValueError("Both axis and dist must be specified.")
         try: # uc2 only
             self.move(positionerName, axis, dist, isAbsolute=isAbsolute, isBlocking=isBlocking, speed=speed)
         except Exception as e:

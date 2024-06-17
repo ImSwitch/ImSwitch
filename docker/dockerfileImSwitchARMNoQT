@@ -7,7 +7,7 @@ FROM --platform=linux/arm64/v8 ubuntu:22.04 AS imswitch
 # killall Docker && open /Applications/Docker.app
 # export DOCKER_BUILDKIT=1
 # docker build --platform linux/arm64/v8 -f dockerfileImSwitchARMNoQT -t imswitchnoqt .
-# docker run -it --rm -p -p 8001:8001 -p 2222:22 imswitchnoqt
+# docker run -it --rm  -p 8001:8001 -p 2222:22 imswitchnoqt
 # docker exec -it agitated_dhawan  /bin/bash # to enter the container
 # start ssh server
 # service ssh start
@@ -49,8 +49,17 @@ RUN /opt/conda/bin/conda install -n imswitch -y -c conda-forge  h5py && \
 RUN git clone https://github.com/openUC2/imSwitch /tmp/ImSwitch && \
     cd /tmp/ImSwitch && \
     git checkout NOQT && \
-    /bin/bash -c "source /opt/conda/bin/activate imswitch && pip install -e /tmp/ImSwitch"
+    /bin/bash -c "source /opt/conda/bin/activate imswitch && pip install -e /tmp/ImSwitch" 
+        
+# Install UC2-REST (as git for now)
+RUN git clone https://github.com/openUC2/UC2-REST /tmp/UC2-REST && \
+    cd /tmp/UC2-REST && \
+    /bin/bash -c "source /opt/conda/bin/activate imswitch && pip install -e /tmp/UC2-REST"
 
+# Install nanoimagingpack (as git for now)
+RUN git clone https://gitlab.com/bionanoimaging/nanoimagingpack /tmp/nanoimagingpack && \
+    cd /tmp/nanoimagingpack && \
+    /bin/bash -c "source /opt/conda/bin/activate imswitch && pip install -e /tmp/nanoimagingpack"
 
 # install hdf5 # https://github.com/h5py/h5py/issues/2035#issuecomment-2142905113
 #RUN pip install --upgrade pip 
@@ -92,7 +101,7 @@ RUN sed 's@session\s*required\s*pam_loginuid.so@session optional pam_loginuid.so
 # Create a startup script
 RUN echo '#!/bin/bash' > /start_ssh.sh && \
     echo '/usr/sbin/sshd -D &' >> /start_ssh.sh && \
-    echo 'source /opt/conda/bin/activate imswitch && python3 -m imswitch' >> /start_ssh.sh && \
+    echo 'source /opt/conda/bin/activate imswitch && python3 -m imswitch --headless 1 --config-file example_virtual_microscope.json --http-port 8001 --ssl 1' >> /start_ssh.sh && \
     chmod +x /start_ssh.sh
 
 # Expose SSH port

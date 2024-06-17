@@ -1,0 +1,102 @@
+# Use an ARM-based Ubuntu image
+FROM --platform=linux/arm64/v8 ubuntu:22.04 AS imswitch
+# if you change the Ubuntu version, remember to update
+# the APT definitions for Xpra below so it reflects the
+# new codename (e.g. 20.04 was focal, 22.04 had jammy)
+
+# killall Docker && open /Applications/Docker.app
+# export DOCKER_BUILDKIT=1
+# docker build --platform linux/arm64/v8 -f dockerfileImSwitchARMNoQT -t imswitchnoqt .
+# docker run -it --rm -p -p 8001:8001 -p 2222:22 imswitchnoqt
+# docker exec -it agitated_dhawan  /bin/bash # to enter the container
+# start ssh server
+# service ssh start
+
+# below env var required to install libglib2.0-0 non-interactively
+ENV TZ=America/Los_Angeles
+ARG DEBIAN_FRONTEND=noninteractive
+ARG IMSWITCH_COMMIT=main
+
+# install python resources 
+RUN apt-get update && \
+    apt-get install -y  \
+        build-essential \
+        git \
+        mesa-utils \
+        openssh-server \
+        libhdf5-dev \
+        && apt-get clean
+ #https://stackoverflow.com/questions/78359706/docker-build-fails-for-h5py-in-python-3-9 \
+# install imswitch from repo
+
+
+# Install Miniconda
+RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-aarch64.sh -O /tmp/miniconda.sh && \
+    /bin/bash /tmp/miniconda.sh -b -p /opt/conda && \
+    rm /tmp/miniconda.sh
+
+# Update PATH environment variable
+ENV PATH=/opt/conda/bin:$PATH
+
+# Create conda environment and install packages
+RUN /opt/conda/bin/conda create -y --name imswitch python=3.10
+
+# Install napari and pyqt
+RUN /opt/conda/bin/conda install -n imswitch -y -c conda-forge  h5py && \
+    conda clean --all -f -y
+
+# Clone the repository and install dependencies
+RUN git clone https://github.com/openUC2/imSwitch /tmp/ImSwitch && \
+    cd /tmp/ImSwitch && \
+    git checkout NOQT && \
+    /bin/bash -c "source /opt/conda/bin/activate imswitch && pip install -e /tmp/ImSwitch"
+
+
+# install hdf5 # https://github.com/h5py/h5py/issues/2035#issuecomment-2142905113
+#RUN pip install --upgrade pip 
+#RUN pip install --upgrade "setuptools>=44.0.0"
+#RUN pip install --upgrade "wheel>=0.37.1"
+#RUN pip install --upgrade Cython
+#RUN pip3 wheel --no-deps h5py==2.9.0
+#RUN pip install h5py
+#RUN pip install --no-binary=h5py h5py==2.10.0
+
+# see https://github.com/pypa/pip/issues/6548#issuecomment-498615461 for syntax
+
+#RUN git clone https://github.com/openUC2/ImSwitch && \
+#    cd ImSwitch && \
+#    git checkout NOQT && \
+#    git pull && \
+#    pip install -e . && \
+#    git rev-parse HEAD
+
+    
+
+
+#########################################################
+# Setup SSH server 
+#########################################################
+
+# Set up SSH server
+RUN mkdir /var/run/sshd
+
+# Set root password
+RUN echo 'root:password' | chpasswd
+
+# Allow root login
+RUN sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
+
+# SSH login fix. Otherwise user is kicked off after login
+RUN sed 's@session\s*required\s*pam_loginuid.so@session optional pam_loginuid.so@g' -i /etc/pam.d/sshd
+
+# Create a startup script
+RUN echo '#!/bin/bash' > /start_ssh.sh && \
+    echo '/usr/sbin/sshd -D &' >> /start_ssh.sh && \
+    echo 'source /opt/conda/bin/activate imswitch && python3 -m imswitch' >> /start_ssh.sh && \
+    chmod +x /start_ssh.sh
+
+# Expose SSH port
+EXPOSE 22
+
+# Set the entrypoint to the startup script
+ENTRYPOINT ["/start_ssh.sh"]

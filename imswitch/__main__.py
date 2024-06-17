@@ -10,7 +10,7 @@ import imswitch
 # python main.py --headless or
 # python -m imswitch --headless 1 --config-file example_virtual_microscope.json
 
-def main(is_headless:bool=None, default_config:str=None):
+def main(is_headless:bool=None, default_config:str=None, http_port:int=None, ssl:bool=None):
     try:
         try: # Google Colab does not support argparse
             parser = argparse.ArgumentParser(description='Process some integers.')
@@ -23,9 +23,19 @@ def main(is_headless:bool=None, default_config:str=None):
             parser.add_argument('--config-file', dest='config_file', type=str, default=None,
                                 help='specify run with config file')
             
+            # specify http port
+            parser.add_argument('--http-port', dest='http_port', type=int, default=8001,
+                                help='specify http port')
+            
+            # specify ssl
+            parser.add_argument('--ssl', dest='ssl', type=bool, default=True,
+                                help='specify ssl')
+            
             args = parser.parse_args()
             imswitch.IS_HEADLESS = args.headless
             imswitch.DEFAULT_SETUP_FILE = args.config_file # e.g. example_virtual_microscope.json
+            imswitch.__httpport__ = args.http_port
+            imswitch.__ssl__ = args.ssl
         except: 
             pass        
         # override settings if provided as argument
@@ -33,6 +43,10 @@ def main(is_headless:bool=None, default_config:str=None):
             imswitch.IS_HEADLESS = is_headless
         if default_config is not None:
             imswitch.DEFAULT_SETUP_FILE = default_config
+        if http_port is not None:
+            imswitch.__httpport__ = http_port
+        if ssl is not None:
+            imswitch.__ssl__ = ssl
         
         # FIXME: !!!!             
         from imswitch.imcommon import prepareApp, launchApp

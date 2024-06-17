@@ -17,6 +17,8 @@ import numpy as np
 import numpy as np
 from av import VideoFrame
 from imjoy_rpc.hypha.sync import connect_to_server, register_rtc_service, login
+from imjoy_rpc.hypha import connect_to_server as connect_to_server_async
+from imjoy_rpc.hypha import login as login_async
 import aiortc
 import cv2
 from aiortc import MediaStreamTrack, RTCPeerConnection, RTCSessionDescription, RTCConfiguration
@@ -24,7 +26,6 @@ from imswitch.imcommon.framework import Signal, Thread, Worker, Mutex
 from imswitch.imcontrol.view import guitools
 from imswitch.imcommon.model import initLogger
 from ..basecontrollers import LiveUpdatedController
-
 import asyncio
 import logging
 import os
@@ -160,10 +161,6 @@ class HyphaController(LiveUpdatedController):
         self.detector_names = self._master.detectorsManager.getAllDeviceNames()
         self.detector = self._master.detectorsManager[self.detector_names[0]]
 
-        if not imswitch.IS_HEADLESS:
-            # connect signals
-            self._widget.sigLoginHypha.connect(self._loginHypha)
-
         # create datastorer
         self.datastore = HyphaDataStore()
 
@@ -256,8 +253,14 @@ class HyphaController(LiveUpdatedController):
             @track.on("ended")
             def on_ended():
                 self.__logger.debug(f"Track {track.kind} ended")
+                
     @APIExport()
-    def start_service(self, service_id, server_url="https://chat.bioimage.io", workspace=None, token=None):
+    def start_hypha_service(self, service_id="UC2ImSwitch", server_url="https://chat.bioimage.io", workspace=None, token=None):
+        #mThread = threading.Thread(target=self.start_service, args=(service_id, server_url, workspace, token))
+        #mThread.start()
+        self.start_service(service_id, server_url, workspace, token, is_async=True)
+        
+    def start_service(self, service_id="UC2ImSwitch", server_url="https://chat.bioimage.io", workspace=None, token=None, is_async=False):
         '''
         This logs into the Hypha Server and starts the service.
         It also registers the extensions that will hook up the microsocpe to the chatbot
@@ -275,20 +278,32 @@ class HyphaController(LiveUpdatedController):
             # automatically open default browser and return the login token
             webbrowser.open(message['login_url']) # TODO: pass login token to qtwebview
             print(f"Please open your browser and login at: {message['login_url']}")
-
+            
         try:
-            token = login({"server_url": server_url,
+            if is_async:
+                token = login_async({"server_url": server_url,
+                                     "login_callback": autoLogin,
+                                     "timeout": 10})
+            else:
+                token = login({"server_url": server_url,
                        "login_callback": autoLogin,
                        "timeout": 10})
         except Exception as e:
             # probably timeout error - not connected to the Internet?
             self.__logger.error(e)
             return "probably timeout error - not connected to the Internet?"
-        server = connect_to_server(
-            {
-            "server_url": server_url,
-            "token": token}
-            )
+        if is_async:
+            server =  connect_to_server_async(
+                {
+                "server_url": server_url,
+                "token": token}
+                )
+        else:
+            server = connect_to_server(
+                {
+                "server_url": server_url,
+                "token": token}
+                )
         # initialize datastorer for image saving and data handling outside the chat prompts, resides on the hypha server
         self.datastore.setup(server, service_id="data-store")
         svc = server.register_service(self.getMicroscopeControlExtensionDefinition())

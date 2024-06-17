@@ -65,8 +65,6 @@ setup(
         "imjoy_rpc",
         "imjoy",
         "aiortc >= 1.3.0",
-        "https://github.com/openUC2/UC2-REST/archive/refs/heads/master.zip",
-        "https://gitlab.com/bionanoimaging/nanoimagingpack/-/archive/master/nanoimagingpack-master.zip",
         "rpyc",
         "tk >= 0.1.0",
         "jupyter",
@@ -76,7 +74,9 @@ setup(
     ],
         #"juliacall",
         # "microscope", 
-
+        #"https://github.com/openUC2/UC2-REST/archive/refs/heads/master.zip",
+        #"https://gitlab.com/bionanoimaging/nanoimagingpack/-/archive/master/nanoimagingpack-master.zip",
+        
      extras_require={ # we assume that this is installed in a conda environment or via apt-get
         'PyQt5': [
             "qtpy >= 1.9",

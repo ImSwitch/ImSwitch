@@ -1,4 +1,4 @@
-name: Publish Docker
+name: imswitch-docker-arm64-noqt
 on:
   push:
     branches:

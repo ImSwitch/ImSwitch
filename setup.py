@@ -73,7 +73,7 @@ setup(
         "tk >= 0.1.0", 
         "jupyter", 
         "python-multipart >= 0.0.5", 
-        "piexif" >= "1.1.3"
+        "piexif >= 1.1.3"
     ],
      extras_require={ # we assume that this is installed in a conda environment or via apt-get
         'PyQt5': [

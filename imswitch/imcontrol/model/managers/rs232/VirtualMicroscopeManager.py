@@ -40,19 +40,11 @@ class VirtualMicroscopeManager:
         self._settings = rs232Info.managerProperties
         self._name = name
         try:
-            self._imagePath = rs232Info.managerProperties["imagePath"]
+            self._mode = rs232Info.managerProperties["mode"]
         except:
-            package_dir = os.path.dirname(os.path.abspath(imswitch.__file__))
-            self._imagePath = os.path.join(
-                package_dir, "_data/images/histoASHLARStitch.jpg"
-            )
+            self._mode = "example"
 
-        # TODO change this to come from rs232, only for testing purposes
-        self._imagePath = os.path.join(
-                package_dir, "_data/images/binary.jpeg"
-            )
-
-        self._virtualMicroscope = VirtualMicroscopy(self._imagePath)
+        self._virtualMicroscope = VirtualMicroscopy(self._mode)
         self._positioner = self._virtualMicroscope.positioner
         self._camera = self._virtualMicroscope.camera
         self._illuminator = self._virtualMicroscope.illuminator

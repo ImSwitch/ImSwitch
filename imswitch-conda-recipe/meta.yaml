@@ -1,0 +1,84 @@
+#conda-build .
+package:
+  name: imswitch
+  version: {{ load_setup_py_data().get('version') }}
+
+source:
+  path: ..
+
+build:
+  script: "{{ PYTHON }} -m pip install . -vv"
+
+requirements:
+  build:
+    - {{ compiler('c') }}  # Include if you have C extensions
+    - {{ compiler('cxx') }}  # Include if you have C++ extensions
+    - python
+    - pip
+
+  host:
+    - python >=3.8
+    - pip
+
+  run:
+    - python >=3.8
+    - coloredlogs >=15
+    - colour-science >=0.3
+    - dataclasses-json >=0.5
+    - h5py >=2.10
+    - pyvisa-py==0.4.1
+    - luddite >=1
+    - numpy >=1.19
+    - packaging >=19
+    - psutil >=5.4.8
+    - pyserial >=3.4
+    - qtpy >=1.9
+    - requests >=2.25
+    - scikit-image >=0.18
+    - Send2Trash >=1.8
+    - tifffile >=2020.11.26
+    - Pyro5 >=5.14
+    - fastapi >=0.86.0
+    - uvicorn[standard] >=0.19.0
+    - matplotlib >=3.6
+    - websockets >=10.0
+    - websocket-client >=1.2
+    - tk >=0.1.0
+    - jupyter
+    - python-multipart >=0.0.5
+    - piexif >=1.1.3
+    - conda-forge::napari[pyqt5]
+    - conda-forge::QDarkStyle >=3
+    #- conda-forge::QScintilla >=2.12
+    - conda-forge::PyQtWebEngine >=5.15.2
+    - conda-forge::pyqtgraph >=0.12.1
+
+    
+  # Include packages from PyPI that are not available in Conda
+  run_constrained:
+    - pip
+    - aiortc >=1.3.0
+    - imjoy
+    - imjoy_rpc
+    - lantzdev[qt] >=0.5.2
+    - nidaqmx >=0.5.7
+    - ome_zarr >=0.6.1
+    - opencv-python
+    - UC2-REST
+    - NanoImagingPack==2.1.3.dev1
+
+test:
+  imports:
+    - imswitch
+
+about:
+  home: https://github.com/openuc2/ImSwitch
+  license: GPL-3.0-or-later
+  summary: "Microscopy control"
+  description: |
+    Microscopy control.
+  license_family: GPL3
+
+extra:
+  recipe-maintainers:
+    - beniroquai

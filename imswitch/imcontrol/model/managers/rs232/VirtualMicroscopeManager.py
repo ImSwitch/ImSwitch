@@ -69,7 +69,7 @@ class Camera:
         self.isRGB = False
         self.frameNumber = 0
         # precompute noise so that we will save energy and trees
-        self.noiseStack = np.random.randn(self.SensorHeight,self.SensorWidth,100)*.15
+        self.noiseStack = np.random.randn(self.SensorHeight,self.SensorWidth,100)*2
         
     def produce_frame(self, x_offset=0, y_offset=0, light_intensity=1.0, defocusPSF=None):
         """Generate a frame based on the current settings."""
@@ -85,7 +85,7 @@ class Camera:
                 print("Defocus:"+str(defocusPSF.shape))
                 image = np.array(np.real(nip.convolve(image, defocusPSF)))
             image = np.float32(image)/np.max(image) * np.float32(light_intensity)
-            #image += self.noiseStack[:,:,np.random.randint(0,100)]
+            image += self.noiseStack[:,:,np.random.randint(0,100)]
                         
             # Adjust illumination
             image = image.astype(np.uint16)

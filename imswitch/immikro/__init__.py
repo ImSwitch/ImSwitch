@@ -23,13 +23,13 @@ def getMainViewAndController(
 
     settings = QtCore.QSettings("napari", f"{identifier}:{version}")
 
-
+    # constructor to create an instance of the arkitekt app
     global_app = publicscheduleqt(
         identifier, version, logo=logo, settings=settings
     )
 
 
-
+    # main view of the app 
     the_view = MikroMainView(app=global_app)
 
     try:

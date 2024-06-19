@@ -39,5 +39,5 @@ jupyter
 rpyc >= 5.0.0
 tk >= 0.1.0
 piexif >= 1.1.3
+NanoImagingPack==2.1.3.dev1
 https://github.com/openUC2/ashlar/archive/refs/heads/master.zip
-https://gitlab.com/bionanoimaging/nanoimagingpack/-/archive/master/nanoimagingpack-master.zip

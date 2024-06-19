@@ -311,22 +311,6 @@ class VirtualMicroscopy:
         pass
 
 
-def example_workflow():
-    import matplotlib.pyplot as plt
-
-    # Read the image locally
-    # mFWD = os.path.dirname(os.path.realpath(__file__)).split("imswitch")[0]
-    # imagePath = mFWD + "imswitch/_data/images/histoASHLARStitch.jpg"
-    microscope = VirtualMicroscopy(mode="example")  # for now options are: example or SMLM
-    microscope.illuminator.set_intensity(intensity=1000)
-
-    for i in range(10):
-        microscope.positioner.move(x=i, y=i, z=-10, is_absolute=True)
-        frame = microscope.camera.getLast()
-        plt.imsave(f"frame_{i}.png", frame)
-    cv2.destroyAllWindows()
-
-
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
 

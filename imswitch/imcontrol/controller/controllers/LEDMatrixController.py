@@ -2,6 +2,7 @@ from typing import Dict, List
 from functools import partial
 import numpy as np
 
+import imswitch
 from imswitch.imcommon.model import APIExport
 from ..basecontrollers import ImConWidgetController
 from imswitch.imcontrol.view import guitools as guitools
@@ -25,12 +26,14 @@ class LEDMatrixController(ImConWidgetController):
         self.ledMatrix = self._master.LEDMatrixsManager[self.ledMatrix_name]
 
         # set up GUI and "wire" buttons
-        self._widget.add_matrix_view(self.nLedsX, self.nLedsY)
         self.connect_leds()
 
         # initialize matrix
         self.setAllLEDOff()
 
+        if imswitch.IS_HEADLESS:
+            return
+        self._widget.add_matrix_view(self.nLedsX, self.nLedsY)
         self._widget.ButtonAllOn.clicked.connect(self.setAllLEDOn)
         self._widget.ButtonAllOff.clicked.connect(self.setAllLEDOff)
         self._widget.slider.sliderReleased.connect(self.setIntensity)
@@ -44,13 +47,13 @@ class LEDMatrixController(ImConWidgetController):
 
     def setSpecial1(self):
         SpecialPattern1 = self._master.LEDMatrixsManager._subManagers['ESP32 LEDMatrix'].SpecialPattern1.copy()
-        intensity = self._widget.slider.value()
         self.setSpecial(SpecialPattern1, intensity = intensity)
+        if not imswitch.IS_HEADLESS: intensity = self._widget.slider.value()
         
     def setSpecial2(self):
         SpecialPattern2 = self._master.LEDMatrixsManager._subManagers['ESP32 LEDMatrix'].SpecialPattern2.copy()
-        intensity = self._widget.slider.value()
         self.setSpecial(SpecialPattern2, intensity = intensity)
+        if not imswitch.IS_HEADLESS: intensity = self._widget.slider.value()
                 
     @APIExport()
     def setSpecial(self, pattern, intensity = 255, getReturn=False):
@@ -77,6 +80,7 @@ class LEDMatrixController(ImConWidgetController):
         if intensity is not None:
             self.setIntensity(intensity=intensity)
         self.ledMatrix.setAll(state=state,getReturn=getReturn)
+        if imswitch.IS_HEADLESS: return
         for coords, btn in self._widget.leds.items():
             if isinstance(btn, guitools.BetterPushButton):
                 btn.setChecked(np.sum(state)>0)
@@ -84,7 +88,7 @@ class LEDMatrixController(ImConWidgetController):
     @APIExport()
     def setIntensity(self, intensity=None):
         if intensity is None:
-            intensity = int(self._widget.slider.value()//1)
+            if not imswitch.IS_HEADLESS: intensity = int(self._widget.slider.value()//1)
         else:
             # this is only if the GUI/API is calling this function
             intensity = int(intensity)
@@ -96,11 +100,12 @@ class LEDMatrixController(ImConWidgetController):
         self._ledmatrixMode = "single"
         self.ledMatrix.setLEDSingle(indexled=int(LEDid), state=state)
         pattern = self.ledMatrix.getPattern()
-        self._widget.leds[str(LEDid)].setChecked(state)
+        if not imswitch.IS_HEADLESS: self._widget.leds[str(LEDid)].setChecked(state)
 
     def connect_leds(self):
         """Connect leds (Buttons) to the Sample Pop-Up Method"""
         # Connect signals for all buttons
+        if imswitch.IS_HEADLESS: return
         for coords, btn in self._widget.leds.items():
             # Connect signals
             if isinstance(btn, guitools.BetterPushButton):

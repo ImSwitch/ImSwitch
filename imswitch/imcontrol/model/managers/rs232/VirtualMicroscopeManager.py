@@ -217,7 +217,7 @@ class Camera:
                 return np.mean(combined, axis=0), self._parent.get_acquired_frames()
             else:
                 self._parent.set_acquired_frames(current_frame)
-                return current_frame, current_frame
+                return np.squeeze(current_frame), np.squeeze(current_frame)
 
     def setPropertyValue(self, propertyName, propertyValue):
         pass

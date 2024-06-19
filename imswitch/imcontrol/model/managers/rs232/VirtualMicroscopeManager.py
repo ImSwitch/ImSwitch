@@ -31,6 +31,8 @@ except ModuleNotFoundError:
 
         return wrapper
 
+from nanopyx import eSRRF
+
 
 class VirtualMicroscopeManager:
     """A low-level wrapper for TCP-IP communication (ESP32 REST API)"""
@@ -41,12 +43,9 @@ class VirtualMicroscopeManager:
         self._name = name
         try:
             self._mode = rs232Info.managerProperties["mode"]
-        except:
-            self._mode = "example"
-
-        try:
             self._imagePath = rs232Info.managerProperties['imagePath']
         except:
+            self._mode = "example"
             package_dir = os.path.dirname(os.path.abspath(imswitch.__file__))
 
             self._imagePath = os.path.join(
@@ -93,6 +92,8 @@ class Camera:
             self.noiseStack = (
                 np.random.randn(self.SensorHeight, self.SensorWidth, 100) * 0.15
             )
+
+        print(self._parent)
 
     def produce_frame(
         self, x_offset=0, y_offset=0, light_intensity=1.0, defocusPSF=None
@@ -199,6 +200,22 @@ class Camera:
                     n_photons=intensity,
                     n_photons_std=intensity*0.01
                 )
+        elif self.mode == "eSRRF":
+            current_frame = self.produce_smlm_frame(
+                x_offset=position["X"],
+                y_offset=position["Y"],
+                n_photons=intensity,
+                n_photons_std=intensity*0.01
+            )
+            current_frame = np.asarray([eSRRF(current_frame, magnification=2)[0]])
+            previous_frames = self._parent.get_acquired_frames()
+            if previous_frames is not None:
+                combined = np.concatenate((previous_frames, current_frame))
+                self._parent.set_acquired_frames(combined)
+                return np.mean(combined, axis=0)
+            else:
+                self._parent.set_acquired_frames(current_frame)
+                return current_frame
 
     def setPropertyValue(self, propertyName, propertyValue):
         pass
@@ -306,9 +323,16 @@ class VirtualMicroscopy:
         self.camera = Camera(self, mode, imagePath)
         self.positioner = Positioner(self)
         self.illuminator = Illuminator(self)
+        self.acquired_frames = None
 
     def stop(self):
         pass
+
+    def set_acquired_frames(self, img):
+        self.acquired_frames = img
+
+    def get_acquired_frames(self):
+        return self.acquired_frames
 
 
 if __name__ == "__main__":

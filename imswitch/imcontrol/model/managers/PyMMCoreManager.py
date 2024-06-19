@@ -4,7 +4,6 @@ from imswitch.imcontrol.model.configfiletools import _mmcoreLogDir
 from typing import Union, Tuple, Dict, List
 from pymmcore_plus import PropertyType
 from pycromanager import Core, start_headless, stop_headless
-from pycromanager.headless import _create_pymmcore_instance
 import datetime as dt
 import os
 

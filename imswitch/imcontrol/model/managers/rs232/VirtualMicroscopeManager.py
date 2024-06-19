@@ -44,7 +44,16 @@ class VirtualMicroscopeManager:
         except:
             self._mode = "example"
 
-        self._virtualMicroscope = VirtualMicroscopy(self._mode)
+        try:
+            self._imagePath = rs232Info.managerProperties['imagePath']
+        except:
+            package_dir = os.path.dirname(os.path.abspath(imswitch.__file__))
+
+            self._imagePath = os.path.join(
+                package_dir, "_data/images/histoASHLARStitch.jpg"
+            )
+
+        self._virtualMicroscope = VirtualMicroscopy(self._mode, self._imagePath)
         self._positioner = self._virtualMicroscope.positioner
         self._camera = self._virtualMicroscope.camera
         self._illuminator = self._virtualMicroscope.illuminator
@@ -66,17 +75,10 @@ class VirtualMicroscopeManager:
 
 
 class Camera:
-    def __init__(self, parent, mode="example"):
+    def __init__(self, parent, mode, imagePath):
         self._parent = parent
         self.mode = mode
-        mFWD = os.path.dirname(os.path.realpath(__file__)).split("imswitch")[0]
-
-        if self.mode == "example":
-            imagePath = mFWD + "imswitch/_data/images/histoASHLARStitch.jpg"
-            self.image = np.mean(cv2.imread(imagePath), axis=2)
-        elif self.mode == "SMLM":
-            imagePath = mFWD + "imswitch/_data/images/binary.jpg"
-            self.image = np.mean(cv2.imread(imagePath), axis=2)
+        self.image = np.mean(cv2.imread(imagePath), axis=2)
 
         self.image /= np.max(self.image)
         self.lock = threading.Lock()
@@ -87,9 +89,10 @@ class Camera:
         self.isRGB = False
         self.frameNumber = 0
         # precompute noise so that we will save energy and trees
-        self.noiseStack = (
-            np.random.randn(self.SensorHeight, self.SensorWidth, 100) * 0.15
-        )
+        if mode == "example":
+            self.noiseStack = (
+                np.random.randn(self.SensorHeight, self.SensorWidth, 100) * 0.15
+            )
 
     def produce_frame(
         self, x_offset=0, y_offset=0, light_intensity=1.0, defocusPSF=None
@@ -185,7 +188,7 @@ class Camera:
                         x_offset=position["X"],
                         y_offset=position["Y"],
                         n_photons=intensity,
-                    n_photons_std=intensity*0.01
+                        n_photons_std=intensity*0.01
                     ),
                     self.frameNumber,
                 )
@@ -299,8 +302,8 @@ class Illuminator:
 
 
 class VirtualMicroscopy:
-    def __init__(self, mode: str = "example"):
-        self.camera = Camera(self, mode=mode)
+    def __init__(self, mode, imagePath):
+        self.camera = Camera(self, mode, imagePath)
         self.positioner = Positioner(self)
         self.illuminator = Illuminator(self)
 
@@ -324,19 +327,20 @@ def example_workflow():
     cv2.destroyAllWindows()
 
 
-def smlm_workflow():
-    microscope = VirtualMicroscopy(mode="SMLM")  # for now options are: example or SMLM
-    microscope.illuminator.set_intensity(intensity=5000)
+if __name__ == "__main__":
+    import matplotlib.pyplot as plt
 
-    for i in range(0, 5):
-        microscope.positioner.move(x=-(i*50), y=0, z=0, is_absolute=True)
+    # Read the image locally
+    mFWD = os.path.dirname(os.path.realpath(__file__)).split("imswitch")[0]
+    imagePath = mFWD + "imswitch/_data/images/histoASHLARStitch.jpg"
+    microscope = VirtualMicroscopy("example", imagePath)
+    microscope.illuminator.set_intensity(intensity=1000)
+
+    for i in range(10):
+        microscope.positioner.move(x=i, y=i, z=i, is_absolute=True)
         frame = microscope.camera.getLast()
         plt.imsave(f"frame_{i}.png", frame)
     cv2.destroyAllWindows()
-
-
-if __name__ == "__main__":
-    smlm_workflow()
 
 # Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.

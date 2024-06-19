@@ -19,25 +19,22 @@ class PyMMCoreManager(SignalInterface):
         super().__init__()
         self.__logger = initLogger(self)
         self.__core = None
+        
+        # TODO: this flag was tied with using the Java
+        # backend, but it's not necessary anymore. Replace it
+        # and remove related code
         self.__usingPycroManager = False
 
-        if "PycroManager" in setupInfo.availableWidgets:
-            self.__usingPycroManager = True
-            self.__logger.info("Starting headless instance...")
-            start_headless(
-                mm_app_path=setupInfo.pycroManager.mmPath,
-                max_memory_mb=setupInfo.pycroManager.maxMemoryMB,
-                buffer_size_mb=setupInfo.pycroManager.bufferSizeMB,
-                port=setupInfo.pycroManager.port 
-            )
-            self.__logger.info(f"Started on port {setupInfo.pycroManager.port}")
-            self.__core = Core()
-        else:
-            self.__logger.info("Starting pymmcore instance...")
-            self.__core = _create_pymmcore_instance()
-            self.__core.set_device_adapter_search_paths([setupInfo.pycroManager.mmPath,])
-            self.__core.set_circular_buffer_memory_footprint(setupInfo.pycroManager.bufferSizeMB)
-            self.__logger.info("Using pymmcore backend")
+        self.__logger.info("Starting pymmcore instance...")
+        start_headless(
+            python_backend=True,
+            mm_app_path=setupInfo.pycroManager.mmPath,
+            max_memory_mb=setupInfo.pycroManager.maxMemoryMB,
+            buffer_size_mb=setupInfo.pycroManager.bufferSizeMB,
+            port=setupInfo.pycroManager.port 
+        )
+        self.__core = Core()
+        self.__logger.info("Using pymmcore backend")
 
         self.__logger.info(self.__core.get_api_version_info())
 

@@ -272,7 +272,7 @@ class PyroServerInfo:
 @dataclass(frozen=True)
 class PycroManagerInfo:
     # TODO: this path is valid only for Windows; add support for other OSes
-    mmPath : Optional[str] = "C://Program Files//Micro-Manager-2.0"
+    mmPath : Optional[str] = "C://Program Files//Micro-Manager"
     port: Optional[int] = 4827
     bufferSizeMB : Optional[int] = 1024
     maxMemoryMB : Optional[int] = 2000

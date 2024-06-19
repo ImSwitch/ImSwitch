@@ -208,6 +208,8 @@ class Camera:
                 n_photons_std=intensity*0.01
             )
             current_frame = np.asarray([eSRRF(current_frame, magnification=2)[0]])
+            rows, cols = current_frame.shape[-2:]
+            current_frame = np.squeeze(current_frame).reshape(1, rows, cols)
             previous_frames = self._parent.get_acquired_frames()
             if previous_frames is not None:
                 combined = np.concatenate((previous_frames, current_frame))

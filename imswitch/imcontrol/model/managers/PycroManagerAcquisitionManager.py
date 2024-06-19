@@ -2,9 +2,13 @@ from pycromanager import Core, Acquisition, multi_d_acquisition_events, AcqNotif
 from imswitch.imcommon.framework import Signal, SignalInterface, Worker, Thread, Timer
 from imswitch.imcommon.model import initLogger, SaveMode
 from tifffile.tifffile import TiffWriter
-from typing import Dict
+from typing import Dict, TYPE_CHECKING
+from time import sleep
 import os, json
 import numpy as np
+
+if TYPE_CHECKING:
+    from typing import Any, Generator
 
 _PYCROMANAGER_LIVE_REFRESH_MS = 100 # live view refresh time
 
@@ -80,7 +84,7 @@ class PycroManagerAcquisitionManager(SignalInterface):
     def startRecording(self, recordingArgs: Dict[str, dict]) -> None:
         self.__acquisitionWorker.recordingArgs = recordingArgs
         self.__acquisitionThread.started.connect(self.__acquisitionWorker.record)
-        self.__acquisitionThread.finished.connect(self.__postInterruptionHandle)
+        self.__acquisitionWorker.finished.connect(self.__postInterruptionHandle)
         self.__acquisitionThread.start()
 
     def endRecording(self) -> None:
@@ -89,7 +93,7 @@ class PycroManagerAcquisitionManager(SignalInterface):
     def startLiveView(self, recordingArgs: Dict[str, dict]) -> None:
         self.__acquisitionWorker.recordingArgs = recordingArgs
         self.__acquisitionThread.started.connect(self.__acquisitionWorker.liveView)
-        self.__acquisitionThread.finished.connect(self.__postInterruptionHandle)
+        self.__acquisitionWorker.finished.connect(self.__postInterruptionHandle)
         self.__acquisitionThread.start()
 
         # enable live view timer if
@@ -105,14 +109,18 @@ class PycroManagerAcquisitionManager(SignalInterface):
     
     def __postInterruptionHandle(self) -> None:
         try:
+            self.__logger.info("Post cleanup")
             self.__acquisitionThread.quit()
             self.__acquisitionThread.started.disconnect()
-            self.__acquisitionThread.finished.disconnect()
+            self.__acquisitionWorker.finished.disconnect()
         except TypeError:
             # fallback in case signals were not connected
             pass
 
 class PycroManagerAcqWorker(Worker):
+    
+    finished = Signal()
+    
     def __init__(self, manager: PycroManagerAcquisitionManager) -> None:
         super().__init__()
         self.recordingArgs : Dict[str, dict] = None
@@ -124,71 +132,66 @@ class PycroManagerAcqWorker(Worker):
         self.__localBuffer = np.zeros((height, width), dtype=np.uint16)
         self.live = False
     
-    def __parse_record_notification(self, msg: AcqNotification) -> None:
+    def __parse_notification(self, msg: AcqNotification) -> None:
         if msg.is_image_saved_notification():
-            self.manager.sigPycroManagerNotificationUpdated.emit(json.dumps(msg.id))
+            # self.__logger.info(json.dumps(msg.payload))
+            self.manager.sigPycroManagerNotificationUpdated.emit(json.dumps(msg.payload))
     
-    def __parse_live_notification(self, msg: AcqNotification) -> None:
-        # TODO: apparently, msg.is_image_saved_notification()
-        # should work as well, but it doesn't;
-        # this is something which doesn't work probably on the
-        # pycromanager side; for now we use the POST_EXPOSURE
-        # phase to trigger notification
-        if msg.phase == AcqNotification.Camera.POST_EXPOSURE:
-            self.manager.sigPycroManagerNotificationUpdated.emit(json.dumps(msg.id))
-
-    def __store_live_local(self, image: np.ndarray, _: dict) -> None:
-        self.__localBuffer = image.astype(np.uint16)
+    def __event_generator(self, events: dict) -> "Generator[Any, None, None]":
+        """ Iterates over an events dictionary continously.
+        
+        Args:
+            events (`dict`): dictionary containing the events to iterate over.
+        """
+        while True:
+            for event in events:
+                yield event
+                # a minimum sleep time is required
+                # to prevent the GUI from freezing
+                sleep(0.0001)
+                
 
     def record(self) -> None:
         events = multi_d_acquisition_events(**self.recordingArgs["multi_d_acquisition_events"])
-        self.recordingArgs["Acquisition"]["notification_callback_fn"] = self.__parse_record_notification
+        self.recordingArgs["Acquisition"]["notification_callback_fn"] = self.__parse_notification
 
         self.__logger.info("Starting acquisition")
         self.manager.sigRecordingStarted.emit()
         with Acquisition(**self.recordingArgs["Acquisition"]) as acq:
             acq.acquire(events)
-        
+
         # dataset file handler causes a warning if not closed properly;
         acq.get_dataset().close()
         self.manager.sigRecordingEnded.emit()
 
         self.__logger.info("Acquisition ended")
-        # TODO: is this necessary?
-        del acq
     
     def liveView(self) -> None:
         self.__logger.info("Starting live view")
         self.live = True
         events = multi_d_acquisition_events(**self.recordingArgs["multi_d_acquisition_events"])
-        self.recordingArgs["Acquisition"]["notification_callback_fn"] = self.__parse_live_notification
+        self.recordingArgs["Acquisition"]["notification_callback_fn"] = self.__parse_notification
 
-        # if no image processing function is provided, we store the image locally;
-        # the latest saved image is emitted to the GUI every time the local timer expires
-        if self.recordingArgs["Acquisition"]["image_process_fn"] is None:
-            self.recordingArgs["Acquisition"]["image_process_fn"] = self.__store_live_local
-
-        # for live view we only redirect incoming images to the local buffer
-        # deliting the directory and name keys from the dictionary
-        # ensures that the images are not saved to disk
+        # for live view we only redirect incoming images to the local buffer;
+        # deleting the directory and name keys from the dictionary
+        # ensures that the images are stored in a RAM dataset
         self.recordingArgs["Acquisition"].pop("directory")
         self.recordingArgs["Acquisition"].pop("name")
-        
-        # get last time point for the future milestone
-        # TODO: depending on the requested acquisition, multiple milestones
-        # on different axis are required (i.e. XY, XYZ, different channels, etc.)
-        milestone = self.recordingArgs["multi_d_acquisition_events"]["num_time_points"] - 1
 
         with Acquisition(**self.recordingArgs["Acquisition"]) as acq:
+            generator = self.__event_generator(events)
+            future = acq.acquire(generator)
+            
+            # continous loop;
+            # live is toggled from the GUI
             while self.live:
-                future = acq.acquire(events)
-                future.await_execution({"time": milestone}, AcqNotification.Camera.POST_EXPOSURE)
+                image = future.await_image_saved(return_image=True, return_metadata=False)
+
+                # TODO: correctly handle data type conversion
+                self.__localBuffer = image.astype(np.uint16)
             acq.abort()
-
         self.__logger.info("Live view stopped")
-
-        # TODO: is this necessary?
-        del acq
+        self.finished.emit()
     
     @property
     def manager(self) -> PycroManagerAcquisitionManager:

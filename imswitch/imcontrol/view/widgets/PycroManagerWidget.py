@@ -18,8 +18,8 @@ class PycroManagerWidget(Widget):
     sigOpenRecFolderClicked = Signal()
     sigSpecFileToggled = Signal(bool)  # (enabled)
 
-    sigSpecTimeChanged = Signal(PycroManagerAcquisitionMode) # (mode = Frames | Time)
-    sigSpecSpaceChanged = Signal(PycroManagerAcquisitionMode) # (mode = ZStack | XYList | XYZList)
+    sigSpecTimeChanged  = Signal(bool) # (selected)
+    sigSpecSpaceChanged = Signal(bool, PycroManagerAcquisitionMode) # (selected, spaceMode)
     
     sigSnapSaveModeChanged = Signal()
     sigRecSaveModeChanged = Signal()
@@ -48,6 +48,11 @@ class PycroManagerWidget(Widget):
             "XY": None,
             "XYZ": None
         }
+        
+        # Acquisition mode flags
+        # XYList and XYZList are mutually exclusive
+        self.scanMode = PycroManagerAcquisitionMode.Absent
+        self.stackMode = PycroManagerAcquisitionMode.Absent
         
         # Graphical elements
         recTitle = QtWidgets.QLabel('<h2><strong>Pycro-Manager acquisition engine</strong></h2>')
@@ -161,12 +166,11 @@ class PycroManagerWidget(Widget):
         self.specifyFrames.setChecked(True)
 
         # Positions group button for managing
-        # mutually exclusive checkboxes
+        # mutually exclusive checkboxes (XY and XYZ scans)
         self.positionsGroupButton = QtWidgets.QButtonGroup()
-        self.positionsGroupButton.addButton(self.specifyZStack, PycroManagerAcquisitionMode.ZStack)
         self.positionsGroupButton.addButton(self.specifyXYList, PycroManagerAcquisitionMode.XYList)
         self.positionsGroupButton.addButton(self.specifyXYZList, PycroManagerAcquisitionMode.XYZList)
-        self.positionsGroupButton.setExclusive(False)
+        self.positionsGroupButton.setExclusive(True)
 
         # Add items to GridLayout
         buttonWidget = QtWidgets.QWidget()
@@ -269,19 +273,11 @@ class PycroManagerWidget(Widget):
         self.openFolderButton.clicked.connect(self.sigOpenRecFolderClicked)
         self.specifyFile.toggled.connect(self.sigSpecFileToggled)
         
-        def __evaluateTimeState(checked: bool, mode):
-            mode = mode if checked else PycroManagerAcquisitionMode.Absent
-            self.sigSpecTimeChanged.emit(mode)
-        
-        def __evaluateSpaceState(checked: bool, mode):
-            mode = mode if checked else PycroManagerAcquisitionMode.Absent
-            self.sigSpecSpaceChanged.emit(mode)
-        
-        self.specifyFrames.clicked.connect(lambda checked: __evaluateTimeState(checked, PycroManagerAcquisitionMode.Frames))
-        self.specifyTime.clicked.connect(lambda checked: __evaluateTimeState(checked, PycroManagerAcquisitionMode.Time))
-        self.specifyZStack.clicked.connect(lambda checked: __evaluateSpaceState(checked, PycroManagerAcquisitionMode.ZStack))
-        self.specifyXYList.clicked.connect(lambda checked: __evaluateSpaceState(checked, PycroManagerAcquisitionMode.XYList))
-        self.specifyXYZList.clicked.connect(lambda checked: __evaluateSpaceState(checked, PycroManagerAcquisitionMode.XYZList))
+        self.specifyFrames.clicked.connect(lambda: self.sigSpecTimeChanged.emit(PycroManagerAcquisitionMode.Frames))
+        self.specifyTime.clicked.connect(lambda: self.sigSpecTimeChanged.emit(PycroManagerAcquisitionMode.Time))
+        self.specifyZStack.clicked.connect(lambda checked: self.sigSpecSpaceChanged.emit(checked, PycroManagerAcquisitionMode.ZStack))
+        self.specifyXYList.clicked.connect(lambda checked: self.sigSpecSpaceChanged.emit(checked, PycroManagerAcquisitionMode.XYList))
+        self.specifyXYZList.clicked.connect(lambda checked: self.sigSpecSpaceChanged.emit(checked, PycroManagerAcquisitionMode.XYZList))
         
         self.openXYListTableButton.clicked.connect(lambda: self.openPositionsTableWidget(["X", "Y"]))
         self.loadXYListButton.clicked.connect(lambda: self.loadTableData("XY"))
@@ -295,7 +291,7 @@ class PycroManagerWidget(Widget):
         self.snapButton.clicked.connect(self.sigSnapRequested)
         self.recButton.toggled.connect(self.sigRecToggled)
     
-    def openPositionsTableWidget(self, coordinates: List[str]):
+    def openPositionsTableWidget(self, coordinates: List[str]) -> None:
         """ Opens a dialog to specify the XY coordinates list. """
         coordStr = "".join(coordinates)
         self.tableWidget = PositionsTableDialog(
@@ -391,7 +387,7 @@ class PycroManagerWidget(Widget):
         self.numExpositionsEdit.setEnabled(specFrames)
         self.timeToRec.setEnabled(specTime)
     
-    def setEnableSpaceParams(self, mode: PycroManagerAcquisitionMode = PycroManagerAcquisitionMode.Absent):
+    def setEnableSpaceParams(self, mode: PycroManagerAcquisitionMode = PycroManagerAcquisitionMode.Absent) -> None:
         self.startZEdit.setEnabled(mode & PycroManagerAcquisitionMode.ZStack)
         self.endZEdit.setEnabled(mode & PycroManagerAcquisitionMode.ZStack)
         self.stepZEdit.setEnabled(mode & PycroManagerAcquisitionMode.ZStack)

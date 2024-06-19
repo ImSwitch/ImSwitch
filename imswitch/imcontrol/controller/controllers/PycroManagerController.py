@@ -188,7 +188,8 @@ class PycroManagerController(ImConWidgetController):
             max = len(np.linspace(start, stop, int((stop - start) / step)))
             self.__logger.info(f"Recording {max} Z points (start: {start}, stop: {stop}, step: {step})")
             maxDict["z"] = max - 1
-        elif self.spaceRecMode & PycroManagerAcquisitionMode.XYList:
+        
+        if self.spaceRecMode & PycroManagerAcquisitionMode.XYList:
             max = len(self.xyScan)
             self.__logger.info(f"Recording {max} X-Y points")
             maxDict["position"] = max - 1
@@ -209,7 +210,7 @@ class PycroManagerController(ImConWidgetController):
             "Acquisition" : {
                 "directory" : folder,
                 "name" : savename,
-                "image_process_fn": None,
+                "show_display": False,
                 "debug" : False,
             },
             "multi_d_acquisition_events" : {
@@ -258,8 +259,7 @@ class PycroManagerController(ImConWidgetController):
             return self.xyzScan.labels()
         else:
             return None
-    
-    # TODO: HUGE SPAGHETTI; needs desperate refactor
+
     def performSanityCheck(self) -> bool:
         """ Checks the validity of the incoming recording request.
         If a condition occurs such as the recording would fail (no stages available, missing data points),
@@ -267,10 +267,9 @@ class PycroManagerController(ImConWidgetController):
         """
         errTitle = "Recording aborted"
 
-        if self.__checkAcquisitionOrderString(self._widget.getAcquisitionOrder()):
+        if not self.__checkAcquisitionOrderString(self._widget.getAcquisitionOrder()):
             self.sigErrorCondition.emit("Operation aborted", "error", "Unrecognized recording order, aborting operation.")
             return False
-
 
         if self.spaceRecMode != PycroManagerAcquisitionMode.Absent:
             if not self.__checkMMCorePositioners():
@@ -280,6 +279,7 @@ class PycroManagerController(ImConWidgetController):
                 return False
             else:
                 if self.spaceRecMode & PycroManagerAcquisitionMode.XYList:
+                    # XY scan is mutually exclusive with XYZ scan
                     if not self.__checkXYPoints():
                         msg = "No XY points were specified. Recording aborted."
                         self.__logger.warning(msg)
@@ -292,6 +292,7 @@ class PycroManagerController(ImConWidgetController):
                             self.sigErrorCondition.emit(errTitle, "warning", msg)
                             return False
                 elif self.spaceRecMode & PycroManagerAcquisitionMode.XYZList:
+                    # XYZ scan is mutually exclusive with XY scan
                     if not self.__checkXYZPoints():
                         msg = "No XYZ points were specified. Recording aborted."
                         self.__logger.warning(msg)
@@ -303,7 +304,8 @@ class PycroManagerController(ImConWidgetController):
                             msg = f"No {ax} stages are currently configured. Recording aborted."
                             self.__logger.warning(msg)
                             self.sigErrorCondition.emit(errTitle, "warning", msg)
-                elif self.spaceRecMode & PycroManagerAcquisitionMode.ZStack:
+                if self.spaceRecMode & PycroManagerAcquisitionMode.ZStack:
+                    # Z stack can be combined with XY or XYZ scan
                     if not self.__selectZStage():
                         msg = "No Z stage is currently configured. Recording aborted."
                         self.__logger.warning(msg)
@@ -318,7 +320,8 @@ class PycroManagerController(ImConWidgetController):
         and that string length is between boundaries.
         If any condition is reached, returns `True`; otherwise `False`.
         """
-        return not fullmatch(f"^[{ACQUISITION_ORDER_DEFAULT}]{1,4}$", order) is not None
+        pattern = f"^[{ACQUISITION_ORDER_DEFAULT}]{{1,4}}$"
+        return bool(fullmatch(pattern, order))
 
     def __checkMMCorePositioners(self) -> bool:
         """ Returns True if MMCore positioners are found in the setupInfo. """
@@ -375,16 +378,25 @@ class PycroManagerController(ImConWidgetController):
             newProgressDict["position"] = self.selectedScan.getIndex(newProgressDict["position"])
         self._widget.updateProgressBars(newProgressDict)
     
-    def specTimeMode(self, mode: PycroManagerAcquisitionMode):
+    def specTimeMode(self, mode: PycroManagerAcquisitionMode) -> None:
         self._widget.setEnableTimeParams(
             mode == PycroManagerAcquisitionMode.Frames,
             mode == PycroManagerAcquisitionMode.Time,
         )
         self.timeRecMode = mode
     
-    def specSpaceMode(self, mode: PycroManagerAcquisitionMode):
-        self._widget.setEnableSpaceParams(mode)
-        self.spaceRecMode = mode
+    def specSpaceMode(self, checked: bool, mode: PycroManagerAcquisitionMode) -> None:
+        if checked:
+            if mode in [PycroManagerAcquisitionMode.XYZList, PycroManagerAcquisitionMode.XYList]:
+                self.spaceRecMode &= ~PycroManagerAcquisitionMode.XYZList
+                self.spaceRecMode &= ~PycroManagerAcquisitionMode.XYList
+                self.spaceRecMode |= mode
+            if mode in [PycroManagerAcquisitionMode.ZStack]:
+                self.spaceRecMode &= ~PycroManagerAcquisitionMode.ZStack
+                self.spaceRecMode |= mode
+        else:
+            self.spaceRecMode &= ~mode
+        self._widget.setEnableSpaceParams(self.spaceRecMode)
     
     def parseTableData(self, coordinates: str, points: list):
         """ Parses the table data from the widget and creates a list of points.
@@ -400,7 +412,7 @@ class PycroManagerController(ImConWidgetController):
         else:
             self.xyzScan = PycroManagerXYZScan(
                 [
-                    PycroManagerXYPoint(**point) for point in points
+                    PycroManagerXYZPoint(**point) for point in points
                 ]
             )
             self.selectedScan = self.xyzScan

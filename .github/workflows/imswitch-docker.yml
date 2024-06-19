@@ -1,4 +1,4 @@
-name: imswitch-docker-amd64-noqt
+name: imswitch-docker
 on:
   workflow_dispatch:
   push:
@@ -7,7 +7,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: openuc2-imswitch-amd64-noqt
+  IMAGE_NAME: openuc2-imswitch
 
 jobs:
   build:

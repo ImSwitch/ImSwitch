@@ -10,6 +10,7 @@ if imswitch.IS_HEADLESS:
 
 
 def main():
+    global app
     app = prepareApp()
     moduleCommChannel = ModuleCommunicationChannel()
     moduleCommChannel.register(imcontrol)

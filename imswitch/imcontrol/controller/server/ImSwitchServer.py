@@ -85,7 +85,6 @@ app.add_middleware(
 )
 
 _baseDataFilesDir = os.path.join(os.path.dirname(os.path.realpath(imswitch.__file__)), '_data')
-print(os.path.join(_baseDataFilesDir,"ssl", "key.cert"))
         
 class ServerThread(threading.Thread):
     def __init__(self):

@@ -43,7 +43,6 @@ from .RotationScanController import RotationScanController
 from .LightsheetController import LightsheetController
 from .WebRTCController import WebRTCController
 from .HyphaController import HyphaController
-from .MockXXController import MockXXController
 from .JetsonNanoController import JetsonNanoController
 from .HistoScanController import HistoScanController
 from .FlatfieldController import FlatfieldController

@@ -212,10 +212,10 @@ class Camera:
             if previous_frames is not None:
                 combined = np.concatenate((previous_frames, current_frame))
                 self._parent.set_acquired_frames(combined)
-                return np.mean(combined, axis=0)
+                return np.mean(combined, axis=0), self._parent.get_acquired_frames()
             else:
                 self._parent.set_acquired_frames(current_frame)
-                return current_frame
+                return current_frame, current_frame
 
     def setPropertyValue(self, propertyName, propertyValue):
         pass

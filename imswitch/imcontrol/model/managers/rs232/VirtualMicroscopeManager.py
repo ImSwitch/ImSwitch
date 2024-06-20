@@ -87,6 +87,7 @@ class Camera:
         self.PixelSize = 1.0
         self.isRGB = False
         self.frameNumber = 0
+        self.return_raw = False
         # precompute noise so that we will save energy and trees
         if mode == "example":
             self.noiseStack = (
@@ -207,17 +208,26 @@ class Camera:
                 n_photons=intensity,
                 n_photons_std=intensity*0.01
             )
-            current_frame = np.asarray([eSRRF(current_frame, magnification=2)[0]])
+            rgc_frame = np.asarray([eSRRF(current_frame, magnification=2, _force_run_type="threaded")[0]])
             rows, cols = current_frame.shape[-2:]
-            current_frame = np.squeeze(current_frame).reshape(1, rows, cols)
-            previous_frames = self._parent.get_acquired_frames()
+            rgc_frame = np.squeeze(rgc_frame).reshape(1, rows, cols)
+            previous_frames = self._parent.get_rgc_maps()
             if previous_frames is not None:
-                combined = np.concatenate((previous_frames, current_frame))
-                self._parent.set_acquired_frames(combined)
-                return np.mean(combined, axis=0), self._parent.get_acquired_frames()
+                combined_rgc = np.concatenate((previous_frames[1:], rgc_frame))
+                self._parent.set_acquired_frames(np.concatenate((self.get_acquired_frames(), current_frame)))
+                self._parent.set_rgc_maps(combined_rgc)
+                if self.return_raw:
+                    return np.mean(combined_rgc, axis=0), np.squeeze(self._parent.get_acquired_frames())
+                else:
+                    return np.mean(combined_rgc, axis=0)
+
             else:
                 self._parent.set_acquired_frames(current_frame)
-                return np.squeeze(current_frame), np.squeeze(current_frame)
+                self._parent.set_rgc_maps(rgc_frame)
+                if self.return_raw:
+                    return np.squeeze(current_frame), np.squeeze(self._parent.get_acquired_frames())
+                else:
+                    return np.squeeze(current_frame)
 
     def setPropertyValue(self, propertyName, propertyValue):
         pass
@@ -238,6 +248,7 @@ class Positioner:
             self.psf = None
 
     def move(self, x=None, y=None, z=None, a=None, is_absolute=False):
+        self._parent.acquired_frames = None
         with self.lock:
             if is_absolute:
                 if x is not None:
@@ -326,6 +337,7 @@ class VirtualMicroscopy:
         self.positioner = Positioner(self)
         self.illuminator = Illuminator(self)
         self.acquired_frames = None
+        self.rgc_maps = None
 
     def stop(self):
         pass
@@ -336,15 +348,21 @@ class VirtualMicroscopy:
     def get_acquired_frames(self):
         return self.acquired_frames
 
+    def set_rgc_maps(self, img):
+        self.rgc_maps = img
+
+    def get_rgc_maps(self):
+        return self.rgc_maps
+
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
 
     # Read the image locally
     mFWD = os.path.dirname(os.path.realpath(__file__)).split("imswitch")[0]
-    imagePath = mFWD + "imswitch/_data/images/histoASHLARStitch.jpg"
-    microscope = VirtualMicroscopy("example", imagePath)
-    microscope.illuminator.set_intensity(intensity=1000)
+    imagePath = mFWD + "imswitch/_data/images/binary2.jpg"
+    microscope = VirtualMicroscopy("eSRRF", imagePath)
+    microscope.illuminator.set_intensity(intensity=5000)
 
     for i in range(10):
         microscope.positioner.move(x=i, y=i, z=i, is_absolute=True)

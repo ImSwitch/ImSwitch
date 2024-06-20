@@ -9,9 +9,6 @@ from .Options import Options
 def getSetupList():
     return [Path(file).name for file in glob.glob(os.path.join(_setupFilesDir, '*.json'))]
 
-def getBoardConfigList():
-    return [Path(file).name for file in glob.glob(os.path.join(_setupBoardConfigDir, '*.json'))]
-
 def loadSetupInfo(options, setupInfoType):
     with open(os.path.join(_setupFilesDir, options.setupFileName)) as setupFile:
         return setupInfoType.from_json(setupFile.read(), infer_missing=True)

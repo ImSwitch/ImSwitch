@@ -229,7 +229,7 @@ class Camera:
             rgc_frame = np.squeeze(rgc_frame).reshape(1, rows, cols)
             previous_frames = self._parent.get_rgc_maps()
             if previous_frames is not None:
-                combined_rgc = np.concatenate((previous_frames[1:], rgc_frame))
+                combined_rgc = np.concatenate((previous_frames, rgc_frame))
                 self._parent.set_acquired_frames(np.concatenate((self._parent.get_acquired_frames(), current_frame)))
                 self._parent.set_rgc_maps(combined_rgc)
                 if self.return_raw:

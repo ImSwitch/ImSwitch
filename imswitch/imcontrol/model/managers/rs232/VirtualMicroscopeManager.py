@@ -16,6 +16,7 @@ import time
 import numpy as np
 import imswitch
 import os
+from scipy.signal import convolve2d
 
 class VirtualMicroscopeManager:
     """ A low-level wrapper for TCP-IP communication (ESP32 REST API)
@@ -30,6 +31,16 @@ class VirtualMicroscopeManager:
         except:
             package_dir = os.path.dirname(os.path.abspath(imswitch.__file__))
             self._imagePath = os.path.join(package_dir, "_data/images/histoASHLARStitch.jpg")
+            self.__logger.info("If you want to use the plant, use 'imagePath': 'simplant' in your setup.json")
+            defaultJSON=  {"rs232devices": {
+                                "VirtualMicroscope": {
+                                "managerName": "VirtualMicroscopeManager",
+                                "managerProperties": {
+                                    "imagePath":"simplant"
+                                }
+                                }
+                            }}
+            self.__logger.info("Default JSON:" +str(defaultJSON))
             
         self._virtualMicroscope = VirtualMicroscopy(self._imagePath)
         self._positioner = self._virtualMicroscope.positioner
@@ -58,7 +69,10 @@ class VirtualMicroscopeManager:
 class Camera:
     def __init__(self, parent, filePath="path_to_image.jpeg"):
         self._parent = parent
-        self.image = np.mean(cv2.imread(filePath), axis=2)
+        if filePath == "simplant":
+            self.image = createBranchingTree(width=5000, height=5000)
+        else:
+            self.image = np.mean(cv2.imread(filePath), axis=2)
         
         self.image /= np.max(self.image)
         self.lock = threading.Lock()
@@ -84,9 +98,8 @@ class Camera:
             if IS_NIP and defocusPSF is not None and not defocusPSF.shape == ():
                 print("Defocus:"+str(defocusPSF.shape))
                 image = np.array(np.real(nip.convolve(image, defocusPSF)))
-            image = np.float32(image)/np.max(image) * np.float32(light_intensity)
-            image += self.noiseStack[:,:,np.random.randint(0,100)]
-                        
+            image = np.float32(image)/np.max(image) * np.float32(light_intensity)+ self.noiseStack[:,:,np.random.randint(0,100)]
+
             # Adjust illumination
             image = image.astype(np.uint16)
             time.sleep(0.1)
@@ -193,7 +206,74 @@ class VirtualMicroscopy:
         pass
 
 
+import matplotlib.pyplot as plt
+import numpy as np
+# Use the line function from skimage
+from skimage.draw import line
+
+def createBranchingTree(width=5000, height=5000, lineWidth = 3):
+    np.random.seed(0)  # Set a random seed for reproducibility
+    # Define the dimensions of the image
+    width, height = 5000, 5000
+
+    # Create a blank white image
+    image = np.ones((height, width), dtype=np.uint8) * 255
+
+    # Function to draw a line (blood vessel) on the image
+    def draw_vessel(start, end, image):
+        rr, cc = line(start[0], start[1], end[0], end[1])
+        try:image[rr, cc] = 0  # Draw a black line
+        except:
+            end=0
+            return
+
+    # Recursive function to draw a tree-like structure
+    def draw_tree(start, angle, length, depth, image, reducer, max_angle=40):
+        if depth == 0:
+            return
+        
+        # Calculate the end point of the branch
+        end = (
+            int(start[0] + length * np.sin(np.radians(angle))),
+            int(start[1] + length * np.cos(np.radians(angle)))
+        )
+        
+        # Draw the branch
+        draw_vessel(start, end, image)
+        
+        # change the angle slightly to add some randomness
+        angle += np.random.uniform(-10, 10)
+        
+        # Recursively draw the next level of branches
+        new_length = length * reducer  # Reduce the length for the next level
+        new_depth = depth - 1
+        draw_tree(end, angle - max_angle*np.random.uniform(-1, 1), new_length, new_depth, image, reducer)
+        draw_tree(end, angle + max_angle*np.random.uniform(-1, 1), new_length, new_depth, image, reducer)
+
+    # Starting point and parameters
+    start_point = (height - 1, width // 2)
+    initial_angle = -90  # Start by pointing upwards
+    initial_length = np.max((width, height))*.15  # Length of the first branch
+    depth = 7  # Number of branching levels
+    reducer = .9
+    # Draw the tree structure
+    draw_tree(start_point, initial_angle, initial_length, depth, image, reducer)
+    
+    # convolve image with rectangle 
+    rectangle = np.ones((lineWidth,lineWidth))
+    image = convolve2d(image, rectangle, mode='same', boundary='fill', fillvalue=0)
+
+    return image
+
+
+
 if __name__ == "__main__":
+    image = createBranchingTree(width=5000, height=5000, lineWidth=5)
+    # Display the image
+    plt.imshow(image, cmap='gray')
+    plt.axis('off')  # Hide the axis
+    plt.show()
+
     import matplotlib.pyplot as plt
     # Read the image locally
     mFWD = os.path.dirname(os.path.realpath(__file__)).split("imswitch")[0]

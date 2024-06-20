@@ -227,19 +227,24 @@ class Camera:
             rgc_frame = np.asarray([eSRRF(current_frame, magnification=2, _force_run_type="threaded")[0]])
             rows, cols = rgc_frame.shape[-2:]
             rgc_frame = np.squeeze(rgc_frame).reshape(1, rows, cols)
-            previous_frames = self._parent.get_rgc_maps()
-            if previous_frames is not None:
-                combined_rgc = np.concatenate((previous_frames, rgc_frame))
-                self._parent.set_acquired_frames(np.concatenate((self._parent.get_acquired_frames(), current_frame)))
-                self._parent.set_rgc_maps(combined_rgc)
+            #previous_frames = self._parent.get_rgc_maps() 
+            previous_tempCorr=self._parent.get_tempCorr() #HSH added this
+            #if previous_frames is not None:
+            if previous_tempCorr is not None:  #HSH added this
+                tempCorr_all = (previous_tempCorr*((self.frameNumber-1)/self.frameNumber))+(rgc_frame/self.frameNumber) #HSH added this
+                #combined_rgc = np.concatenate((previous_frames, rgc_frame))
+                self._parent.set_acquired_frames(np.concatenate((self._parent.get_acquired_frames(), current_frame))) 
+                self._parent.set_tempCorr(tempCorr_all)
                 if self.return_raw:
-                    return np.mean(combined_rgc, axis=0), np.squeeze(self._parent.get_acquired_frames())
+                    #return np.mean(combined_rgc, axis=0), np.squeeze(self._parent.get_acquired_frames())
+                    return np.squeeze(tempCorr_all),np.squeeze(self._parent.get_acquired_frames()) #HSH added this
                 else:
-                    return np.mean(combined_rgc, axis=0)
+                #   return np.mean(combined_rgc, axis=0)
+                    return np.squeeze(tempCorr_all) #HSH added this
 
             else:
                 self._parent.set_acquired_frames(current_frame)
-                self._parent.set_rgc_maps(rgc_frame)
+                self._parent.set_tempCorr(rgc_frame)
                 if self.return_raw:
                     return np.squeeze(rgc_frame), np.squeeze(self._parent.get_acquired_frames())
                 else:
@@ -266,6 +271,7 @@ class Positioner:
     def move(self, x=None, y=None, z=None, a=None, is_absolute=False):
         self._parent.acquired_frames = None
         self._parent.rgc_maps = None
+        self._parent.tempCorr = None
         with self.lock:
             if is_absolute:
                 if x is not None:
@@ -360,6 +366,8 @@ class VirtualMicroscopy:
         self.illuminator = Illuminator(self)
         self.acquired_frames = None
         self.rgc_maps = None
+        self.tempCorr = None # HSH: added this
+
 
     def stop(self):
         pass
@@ -376,6 +384,12 @@ class VirtualMicroscopy:
 
     def get_rgc_maps(self):
         return self.rgc_maps
+    
+    def set_tempCorr(self, img): # HSH: added this function
+        self.tempCorr = img
+
+    def get_tempCorr(self): # HSH: added this function
+        return self.tempCorr
 
 
 if __name__ == "__main__":

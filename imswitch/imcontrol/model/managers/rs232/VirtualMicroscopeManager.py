@@ -161,6 +161,14 @@ class Camera:
             return np.array(out)
 
     def binary2locs(self, img: np.ndarray, density: float):
+        """
+        Given a binary image `img` and a `density` value, this function returns a subset of the locations where the image is non-zero.
+        Parameters:
+            img (np.ndarray): A binary image.
+            density (float): The density of the subset of locations to be returned.
+        Returns:
+            tuple: A tuple containing two numpy arrays representing the x and y coordinates of the subset of locations.
+        """
         all_locs = np.nonzero(img == 1)
         n_points = int(len(all_locs[0]) * density)
         selected_idx = np.random.choice(len(all_locs[0]), n_points, replace=False)
@@ -209,6 +217,7 @@ class Camera:
                     n_photons_std=intensity*0.01
                 )
         elif self.mode == "eSRRF":
+            # this should likely be changed so that rgc maps and esrrf images are generated outside of this class
             current_frame = self.produce_smlm_frame(
                 x_offset=position["X"],
                 y_offset=position["Y"],
@@ -306,6 +315,11 @@ class Positioner:
 
 @njit(parallel=True)
 def FromLoc2Image_MultiThreaded(xc_array, yc_array, photon_array, sigma_array, image_size, pixel_size):
+    """
+    Function to generate an image from a list of emitter locations.
+    Based on the DeepStorm notebook on ZeroCostDL4Mic.
+    https://colab.research.google.com/github/HenriquesLab/ZeroCostDL4Mic/blob/master/Colab_notebooks/Deep-STORM_2D_ZeroCostDL4Mic.ipynb
+    """
     Image = np.zeros((image_size, image_size))
     for ij in prange(image_size*image_size):
         j = int(ij/image_size)
@@ -350,6 +364,7 @@ class VirtualMicroscopy:
     def stop(self):
         pass
 
+    # Methods to clear and get the stored frames and rgc_maps
     def set_acquired_frames(self, img):
         self.acquired_frames = img
 

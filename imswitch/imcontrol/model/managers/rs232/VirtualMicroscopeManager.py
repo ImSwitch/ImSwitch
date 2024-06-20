@@ -209,7 +209,7 @@ class Camera:
                 n_photons_std=intensity*0.01
             )
             rgc_frame = np.asarray([eSRRF(current_frame, magnification=2, _force_run_type="threaded")[0]])
-            rows, cols = current_frame.shape[-2:]
+            rows, cols = rgc_frame.shape[-2:]
             rgc_frame = np.squeeze(rgc_frame).reshape(1, rows, cols)
             previous_frames = self._parent.get_rgc_maps()
             if previous_frames is not None:

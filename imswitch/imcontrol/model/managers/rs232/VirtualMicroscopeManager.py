@@ -214,7 +214,7 @@ class Camera:
             previous_frames = self._parent.get_rgc_maps()
             if previous_frames is not None:
                 combined_rgc = np.concatenate((previous_frames[1:], rgc_frame))
-                self._parent.set_acquired_frames(np.concatenate((self.get_acquired_frames(), current_frame)))
+                self._parent.set_acquired_frames(np.concatenate((self._parent.get_acquired_frames(), current_frame)))
                 self._parent.set_rgc_maps(combined_rgc)
                 if self.return_raw:
                     return np.mean(combined_rgc, axis=0), np.squeeze(self._parent.get_acquired_frames())

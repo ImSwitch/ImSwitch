@@ -241,9 +241,9 @@ class Camera:
                 self._parent.set_acquired_frames(current_frame)
                 self._parent.set_rgc_maps(rgc_frame)
                 if self.return_raw:
-                    return np.squeeze(current_frame), np.squeeze(self._parent.get_acquired_frames())
+                    return np.squeeze(rgc_frame), np.squeeze(self._parent.get_acquired_frames())
                 else:
-                    return np.squeeze(current_frame)
+                    return np.squeeze(rgc_frame)
 
     def setPropertyValue(self, propertyName, propertyValue):
         pass

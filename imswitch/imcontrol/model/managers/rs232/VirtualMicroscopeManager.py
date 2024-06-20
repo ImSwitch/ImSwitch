@@ -20,6 +20,7 @@ import imswitch
 import os
 import math
 
+# workaround to not break if numba is not installed
 try:
     from numba import njit, prange
 except ModuleNotFoundError:
@@ -31,7 +32,13 @@ except ModuleNotFoundError:
 
         return wrapper
 
-from nanopyx import eSRRF
+# workaroung to not break if nanopyx is not installed
+try:
+    from nanopyx import eSRRF
+except ModuleNotFoundError:
+    def eSRRF(img, **kwargs):
+        # if nanopyx is not installed just returns the input image
+        return img
 
 
 class VirtualMicroscopeManager:
@@ -249,6 +256,7 @@ class Positioner:
 
     def move(self, x=None, y=None, z=None, a=None, is_absolute=False):
         self._parent.acquired_frames = None
+        self._parent.rgc_maps = None
         with self.lock:
             if is_absolute:
                 if x is not None:
@@ -332,7 +340,7 @@ class Illuminator:
 
 
 class VirtualMicroscopy:
-    def __init__(self, mode, imagePath):
+    def __init__(self, mode, imagePath):  # changed to now also take a mode: example (previous one), SMLM or eSRRF
         self.camera = Camera(self, mode, imagePath)
         self.positioner = Positioner(self)
         self.illuminator = Illuminator(self)

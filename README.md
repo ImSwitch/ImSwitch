@@ -365,6 +365,7 @@ sudo reboot
 Download the Linux zip (MVS2.1)
 https://www.hikrobotics.com/cn/machinevision/service/download or 
 
+Examples will be in  `/opt/MVS/Samples/aarch64/Python/GrabImage/`
 ```bash
 cd ~/Downloads
 wget https://www.hikrobotics.com/cn2/source/support/software/MVS_STD_GML_V2.1.2_231116.zip

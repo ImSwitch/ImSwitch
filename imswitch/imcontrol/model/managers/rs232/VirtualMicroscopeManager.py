@@ -95,6 +95,7 @@ class Camera:
         self.isRGB = False
         self.frameNumber = 0
         self.return_raw = False
+        self.smlm_density = 0.05
         # precompute noise so that we will save energy and trees
         if mode == "example":
             self.noiseStack = (
@@ -141,7 +142,7 @@ class Camera:
             )
             image = nip.extract(image, (self.SensorWidth, self.SensorHeight))
 
-            yc_array, xc_array = self.binary2locs(image, density=0.05)
+            yc_array, xc_array = self.binary2locs(image, density=self.smlm_density)
             photon_array = np.random.normal(n_photons, n_photons_std, size=len(xc_array))
 
             wavelenght = 6  # change to get it from microscope settings

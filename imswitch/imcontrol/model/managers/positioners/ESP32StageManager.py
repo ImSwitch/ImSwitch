@@ -312,11 +312,11 @@ class ESP32StageManager(PositionerManager):
         self.setPosition(value, axis)
         self._motor.set_position(axis, value)
 
-    def setPositionFromDevice(self, poitionArray: np.array):
+    def setPositionFromDevice(self, positionArray: np.array):
         ''' mostly used for he position callback 
         If new positions are coming from the device they will be updated in ImSwitch too'''
         for iAxis, axisName in enumerate(["A", "X", "Y", "Z"]):
-            self.setPosition(poitionArray[iAxis]*self.stepSizes[axisName], axisName)
+            self.setPosition(positionArray[iAxis]*self.stepSizes[axisName], axisName)
         self._commChannel.sigUpdateMotorPosition.emit()
         
         

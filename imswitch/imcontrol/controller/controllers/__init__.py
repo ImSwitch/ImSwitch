@@ -12,7 +12,6 @@ from .HistogrammController import HistogrammController
 from .STORMReconController import STORMReconController
 from .HoliSheetController import HoliSheetController
 from .FlowStopController import FlowStopController
-from .FLIMLabsController import FLIMLabsController
 from .ObjectiveRevolverController import ObjectiveRevolverController
 from .TemperatureController import TemperatureController
 from .SquidStageScanController import SquidStageScanController

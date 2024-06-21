@@ -30,11 +30,7 @@ class PositionerController(ImConWidgetController):
             for axis in pManager.axes:
                 self.setSharedAttr(pName, axis, _positionAttr, pManager.position[axis])
                 if hasSpeed:
-                    if pManager.speed[axis]== 0:
-                        mSpeed = 10000
-                    else:
-                        mSpeed = pManager.speed[axis]
-                    self.setSharedAttr(pName, axis, _speedAttr, mSpeed)
+                    self.setSharedAttr(pName, axis, _speedAttr, pManager.speed[axis])
                 if hasHome:
                     self.setSharedAttr(pName, axis, _homeAttr, pManager.home[axis])
                 if hasStop:
@@ -57,13 +53,8 @@ class PositionerController(ImConWidgetController):
             condition = lambda p: p.resetOnClose
         )
 
-    def getPos(self, fromDevice:bool=False):
-        if bool(fromDevice):
-            # need to retreive positions e.g. over USB-serial
-            # return self._master.positionersManager.execOnAll(lambda p: p.getPosition)
-            return self._master.positionersManager["ESP32Stage"].getPosition()
-        else:
-            return self._master.positionersManager.execOnAll(lambda p: p.position)
+    def getPos(self):
+        return self._master.positionersManager.execOnAll(lambda p: p.position)
 
     def getSpeed(self):
         return self._master.positionersManager.execOnAll(lambda p: p.speed)
@@ -198,9 +189,9 @@ class PositionerController(ImConWidgetController):
         return self._master.positionersManager.getAllDeviceNames()
 
     @APIExport()
-    def getPositionerPositions(self, fromDevice=False) -> Dict[str, Dict[str, float]]:
+    def getPositionerPositions(self) -> Dict[str, Dict[str, float]]:
         """ Returns the positions of all positioners. """
-        return self.getPos(fromDevice)
+        return self.getPos()
 
     @APIExport(runOnUIThread=True)
     def setPositionerStepSize(self, positionerName: str, stepSize: float) -> None:

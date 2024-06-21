@@ -1,0 +1,47 @@
+# Use an appropriate base image for Jetson Nano
+# sudo docker build -t hik_driver_jetson_nano .
+# sudo docker run -it hik_driver_jetson_nano --device -v /dev/bus/usb:/dev/bus/usb
+# sudo docker run -it hik_driver_jetson_nano --privileged -v /dev/bus/usb:/dev/bus/usb
+# docker stop hik_driver_jetson_nano
+# sudo docker inspect hik_driver_jetson_nano
+# docker run --privileged -it hik_driver_jetson_nano
+# performs python3 /opt/MVS/Samples/aarch64/Python/MvImport/GrabImage.py
+
+# Use an appropriate base image for Jetson Nano
+# docker build -t hik_driver_jetson_nano .
+#
+FROM --platform=linux/arm64/v8 ubuntu:22.04
+
+# Install necessary dependencies
+RUN apt-get update && apt-get install -y \
+    wget \
+    unzip \
+    python3 \
+    python3-pip \
+    && rm -rf /var/lib/apt/lists/*
+
+
+RUN cd /tmp && \
+    wget https://www.hikrobotics.com/cn2/source/support/software/MVS_STD_GML_V2.1.2_231116.zip && \
+    unzip MVS_STD_GML_V2.1.2_231116.zip && \
+    dpkg -i MVS-2.1.2_aarch64_20231116.deb
+
+RUN mkdir -p /opt/MVS/bin/fonts
+# Source the bashrc file
+RUN echo "source ~/.bashrc" >> ~/.bashrc
+RUN /bin/bash -c "source ~/.bashrc"
+
+# Copy the necessary Python script
+RUN cd /opt/MVS/Samples/aarch64/Python/ && \
+    cp GrabImage/GrabImage.py MvImport/GrabImage.py
+
+# Set environment variable for MVCAM_COMMON_RUNENV
+#ENV MVCAM_COMMON_RUNENV=/opt/MVS
+ENV MVCAM_COMMON_RUNENV=/opt/MVS/lib LD_LIBRARY_PATH=/opt/MVS/lib/64:/opt/MVS/lib/32:$LD_LIBRARY_PATH 
+
+
+# Run the Python script
+CMD ["python3", "/opt/MVS/Samples/aarch64/Python/MvImport/GrabImage.py"]
+
+# Start an interactive shell
+#CMD ["/bin/bash"]

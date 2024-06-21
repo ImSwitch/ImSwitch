@@ -1,5 +1,5 @@
 #%%
-!pip install https://github.com/openUC2/imswitchclient/archive/refs/heads/main.zip
+# !pip install https://github.com/openUC2/imswitchclient/archive/refs/heads/main.zip
 #%%
 import imswitchclient.ImSwitchClient as imc 
 import numpy as np

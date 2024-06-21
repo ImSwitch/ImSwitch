@@ -149,7 +149,8 @@ class PositionerController(ImConWidgetController):
         self._master.positionersManager[positionerName].doHome(axis, isBlocking=isBlocking)
         self.updatePosition(positionerName, axis)
         self._commChannel.sigUpdateMotorPosition.emit()
-
+    
+    @APIExport()
     def stopAxis(self, positionerName, axis):
         self.__logger.debug(f"Stopping axis {axis}")
         self._master.positionersManager[positionerName].forceStop(axis)
@@ -189,7 +190,6 @@ class PositionerController(ImConWidgetController):
             return self._master.positionersManager.enalbeMotors(enable=None, enableauto=None)
         except:
             pass
-
 
     @APIExport()
     def getPositionerNames(self) -> List[str]:

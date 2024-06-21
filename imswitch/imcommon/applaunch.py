@@ -11,6 +11,8 @@ from .view.guitools import getBaseStyleSheet
 
 def prepareApp():
     """ This function must be called before any views are created. """
+    from PyQt5.QtCore import Qt
+    from PyQt5.QtWidgets import QApplication
 
     # Initialize exception handling
     pythontools.installExceptHook()
@@ -32,7 +34,7 @@ def prepareApp():
     from PyQt5.QtWidgets import QApplication
     # Set application attributes
     QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
-    QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)    
+    QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
     QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_ShareOpenGLContexts)  # Fixes Napari issues
     QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_DisableHighDpiScaling, True) # proper scaling on Mac?
     #QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_UseHighDpiPixmaps, True)

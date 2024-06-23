@@ -242,7 +242,8 @@ class HyphaController(LiveUpdatedController):
             @track.on("ended")
             def on_ended():
                 self.__logger.debug(f"Track {track.kind} ended")
-    @APIExport() 
+    
+    @APIExport(runOnUIThread=True) 
     def start_service(self, service_id, server_url="https://chat.bioimage.io", workspace=None, token=None):
         '''
         This logs into the Hypha Server and starts the service.

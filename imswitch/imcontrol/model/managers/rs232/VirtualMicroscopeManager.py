@@ -26,8 +26,11 @@ class VirtualMicroscopeManager:
         self.__logger = initLogger(self, instanceName=name)
         self._settings = rs232Info.managerProperties
         self._name = name
+        availableImageModalities  = ["simplant"]
         try:
             self._imagePath = rs232Info.managerProperties['imagePath']
+            if not self._imagePath in availableImageModalities :
+                raise NameError
         except:
             package_dir = os.path.dirname(os.path.abspath(imswitch.__file__))
             self._imagePath = os.path.join(package_dir, "_data/images/histoASHLARStitch.jpg")

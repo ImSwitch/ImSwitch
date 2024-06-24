@@ -571,7 +571,8 @@ class HistoScanController(LiveUpdatedController):
                     positionList.append((i*stepSizeX+initPosX-numberTilesX//2*stepSizeX, j*stepSizeY+initPosY-numberTilesY//2*stepSizeY))
             return positionList
         if illuSource is None or illuSource not in self._master.lasersManager.getAllDeviceNames():
-            illuSource = self._master.lasersManager.getAllDeviceNames()[0]
+            try:illuSource = self._master.lasersManager.getAllDeviceNames()[0]
+            except: illuSource = None
         # compute optimal step size if not provided
         if stepSizeX<=0 or stepSizeX is None:
             stepSizeX, _ = self.computeOptimalScanStepSize()

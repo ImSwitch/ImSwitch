@@ -70,7 +70,8 @@ setup(
         "jupyter",
         "python-multipart >= 0.0.5",
         "psygnal==0.11.1",
-        "piexif >= 1.1.3"
+        "piexif >= 1.1.3", 
+        "NanoImagingPack==2.1.3.dev1"
     ],
         #"juliacall",
         # "microscope", 

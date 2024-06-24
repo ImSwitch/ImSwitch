@@ -21,6 +21,7 @@ class GRBLController:
         self.ser.write_timeout = .5
         self.debug = 1 #debug
         self.speed = {'X': 10000, 'Y': 10000, 'Z': 10000}
+        self.idle_counter_limit = 3
         self.send_wake_up()
 
     def write(self, command):
@@ -51,7 +52,7 @@ class GRBLController:
             if self.debug: print(f" : {grbl_out.strip().decode('utf-8')}")
 
     def wait_for_movement_completion(self, cleaned_line, timeout=5):
-        Event().wait(1)
+        Event().wait(.1)
         if cleaned_line not in ['$X', '$$']:
             idle_counter = 0
             timenow = time.time()   
@@ -65,7 +66,7 @@ class GRBLController:
                     idle_counter += 1
                 if grbl_response.find("Alarm") != -1:
                     self.write(("$X" + '\n').encode())
-                if idle_counter > 10:
+                if idle_counter > self.idle_counter_limit:
                     break
                 if time.time() - timenow > timeout:
                     break

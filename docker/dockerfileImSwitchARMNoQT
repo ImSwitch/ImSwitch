@@ -1,5 +1,5 @@
 # Use an ARM-based Ubuntu image
-FROM --platform=linux/arm64/v8 ubuntu:22.04 AS imswitch
+FROM --platform=linux/arm64/v8 ubuntu:22.04
 # if you change the Ubuntu version, remember to update
 # the APT definitions for Xpra below so it reflects the
 # new codename (e.g. 20.04 was focal, 22.04 had jammy)
@@ -14,8 +14,6 @@ FROM --platform=linux/arm64/v8 ubuntu:22.04 AS imswitch
 # service ssh start
 
 ENV TZ=America/Los_Angeles
-ARG DEBIAN_FRONTEND=noninteractive
-ARG IMSWITCH_COMMIT=main
 
 # Install dependencies
 RUN apt-get update && \
@@ -53,11 +51,6 @@ RUN git clone https://github.com/openUC2/imSwitch /tmp/ImSwitch && \
 RUN git clone https://github.com/openUC2/UC2-REST /tmp/UC2-REST && \
     cd /tmp/UC2-REST && \
     /bin/bash -c "source /opt/conda/bin/activate imswitch && pip install -e /tmp/UC2-REST"
-
-# Install nanoimagingpack
-RUN git clone https://gitlab.com/bionanoimaging/nanoimagingpack /tmp/nanoimagingpack && \
-    cd /tmp/nanoimagingpack && \
-    /bin/bash -c "source /opt/conda/bin/activate imswitch && pip install -e /tmp/nanoimagingpack"
 
 # Setup SSH server
 RUN mkdir /var/run/sshd && \

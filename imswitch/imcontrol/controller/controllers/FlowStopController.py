@@ -46,9 +46,9 @@ class FlowStopController(LiveUpdatedController):
         
         # select light source and activate
         allIlluNames = self._master.lasersManager.getAllDeviceNames()
-        ledSource = self._master.lasersManager[allIlluNames[0]]
-        ledSource.setValue(1023)
-        ledSource.setEnabled(1)
+        self.ledSource = self._master.lasersManager[allIlluNames[0]]
+        #self.ledSource.setValue(1023)
+        self.ledSource.setEnabled(1)
         # connect camera and stage
         self.positionerName = self._master.positionersManager.getAllDeviceNames()[0]
         self.positioner = self._master.positionersManager[self.positionerName]
@@ -117,10 +117,19 @@ class FlowStopController(LiveUpdatedController):
         self._widget.buttonStart.setStyleSheet("background-color: grey")
         self.startFlowStopExperiment(timeStamp, experimentName, experimentDescription, uniqueId, numImages, volumePerImage, timeToStabilize)
 
-    @APIExport(runOnUIThread=True)
-    def getStatus(self):
-        return self.is_measure, self.imagesTaken
+    @APIExport()
+    def getStatus(self) -> list:
+        return [self.is_measure, self.imagesTaken]
 
+    @APIExport()
+    def getExperimentParameters(self) -> dict:
+        self.mExperimentParameters = self._widget.getAutomaticImagingParameters()
+        return self.mExperimentParameters 
+    
+    @APIExport()
+    def isRunning(self) -> bool:
+        return self.is_measure
+    
     @APIExport(runOnUIThread=True)
     def startFlowStopExperiment(self, timeStamp: str, experimentName: str, experimentDescription: str, 
                                 uniqueId: str, numImages: int, volumePerImage: float, timeToStabilize: float, 
@@ -140,6 +149,30 @@ class FlowStopController(LiveUpdatedController):
         self._widget.buttonStop.setStyleSheet("background-color: grey")
         self._widget.buttonStart.setStyleSheet("background-color: green")
         self.stopFlowStopExperiment()
+
+    @APIExport(runOnUIThread=True)
+    def stopPump(self):
+        self.positioner.stopAll()
+
+    @APIExport(runOnUIThread=True)
+    def movePump(self, value: float = 0.0, speed: float = 10000.0):
+        self.positioner.move(value=value, speed=speed, axis=self.pumpAxis, is_absolute=False, is_blocking=False)
+    
+    @APIExport(runOnUIThread=True)
+    def moveFocus(self, value: float = 0.0, speed: float = 10000.0):
+        self.positioner.move(value=value, speed=speed, axis=self.focusAxis, is_absolute=False, is_blocking=False)
+        
+    @APIExport(runOnUIThread=True)
+    def stopFocus(self):
+        self.positioner.stopAll()
+        
+    @APIExport(runOnUIThread=True)
+    def getCurrentFrameNumber(self):
+        return self.imagesTaken
+    
+    @APIExport(runOnUIThread=True)
+    def setIlluIntensity(self, value: float = 0.0):
+        self.ledSource.setValue(value)
 
     @APIExport(runOnUIThread=True)
     def stopFlowStopExperiment(self):
@@ -164,7 +197,7 @@ class FlowStopController(LiveUpdatedController):
 
         '''
         self._logger.debug("Starting the FlowStop experiment thread in {delayToStart} seconds.")
-        time.sleep(delayToStart)
+        time.sleep(abs(delayToStart))
         self._commChannel.sigStartLiveAcquistion.emit(True)
         self.is_measure = True
         if numImages < 0: numImages = np.inf
@@ -196,7 +229,8 @@ class FlowStopController(LiveUpdatedController):
                 mFileName = f'{timeStamp}_{experimentName}_{uniqueId}_{self.imagesTaken}'
                 mFilePath = os.path.join(dirPath, mFileName)
                 self.snapImageFlowCam(mFilePath, metaData)
-                
+                self._logger.debug(f"Image {self.imagesTaken} saved to {mFilePath}")
+
                 # maintain framerate
                 while (time.time()-currentTime)<(1/frameRate):
                     time.sleep(0.05)

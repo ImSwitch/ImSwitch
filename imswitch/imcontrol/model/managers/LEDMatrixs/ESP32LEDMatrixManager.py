@@ -2,7 +2,6 @@ from imswitch.imcommon.model import initLogger
 from .LEDMatrixManager import LEDMatrixManager
 import numpy as np
 
-import uc2rest
 
 class ESP32LEDMatrixManager(LEDMatrixManager):
     """ LEDMatrixManager for controlling LEDs and LEDMatrixs connected to an

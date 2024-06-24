@@ -26,8 +26,11 @@ class UC2ConfigController(ImConWidgetController):
         self._widget.btpairingButton.clicked.connect(self.btpairing)
         self._widget.stopCommunicationButton.clicked.connect(self.interruptSerialCommunication)
         
-        self.stages = self._master.positionersManager[self._master.positionersManager.getAllDeviceNames()[0]]
-
+        try:
+            self.stages = self._master.positionersManager[self._master.positionersManager.getAllDeviceNames()[0]]
+        except Exception as e:
+            self.__logger.error("No Stages found in the config file? " +e )
+            self.stages = None
         # update the gui elements 
         self._commChannel.sigUpdateMotorPosition.emit()
 
@@ -62,8 +65,16 @@ class UC2ConfigController(ImConWidgetController):
             #tif.imsave()
             self._commChannel.sigDisplayImageNapari.emit('Image', mImage, False) # layername, image, isRGB
         
+        def printCallback(value):
+            self.__logger.debug(f"Callback called with value: {value}")
         try:
-            self._master.UC2ConfigManager.ESP32.message.register_callback(1, snapImage) # FIXME: Too hacky?
+            
+            self.__logger.debug("Registering callback for snapshot")
+            # register default callback
+            self._master.UC2ConfigManager.ESP32.message.register_callback(0, snapImage) # FIXME: Too hacky?
+            for i in range(1, self._master.UC2ConfigManager.ESP32.message.nCallbacks):
+                self._master.UC2ConfigManager.ESP32.message.register_callback(i, printCallback)
+            
         except Exception as e:
             self.__logger.error(f"Could not register callback: {e}")
             
@@ -121,6 +132,10 @@ class UC2ConfigController(ImConWidgetController):
         self._widget.reconnectDeviceLabel.setText("Reconnecting to ESP32 device.")
         mThread = threading.Thread(target=self.reconnectThread)
         mThread.start()
+    
+    @APIExport(runOnUIThread=True)
+    def is_connected(self):
+        return self._master.UC2ConfigManager.isConnected()
     
     @APIExport(runOnUIThread=True)
     def btpairing(self):

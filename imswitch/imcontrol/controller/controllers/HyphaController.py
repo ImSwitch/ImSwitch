@@ -1,37 +1,31 @@
-import numpy as np
-
+from imswitch.imcontrol.controller.controllers.hypha.hypha_storage import HyphaDataStore
+from imswitch.imcontrol.controller.controllers.hypha.hypha_executor import execute_code
+from imswitch.imcontrol.controller.basecontrollers import LiveUpdatedController
+from imswitch.imcommon.model import initLogger, APIExport
+import imswitch 
 try:
     import NanoImagingPack as nip
     isNIP = True
 except:
     isNIP = False
 import webbrowser
-import argparse
 import asyncio
 import logging
 import os
-import uuid
 import fractions
-import tifffile as tif
-
+import numpy as np
 import numpy as np
 from av import VideoFrame
 from imjoy_rpc.hypha.sync import connect_to_server, register_rtc_service, login
 import aiortc
+import cv2
 from aiortc import MediaStreamTrack, RTCPeerConnection, RTCSessionDescription, RTCConfiguration
-from imswitch.imcommon.framework import Signal, Thread, Worker, Mutex
-from imswitch.imcontrol.view import guitools
-from imswitch.imcommon.model import initLogger
-from ..basecontrollers import LiveUpdatedController
 from PyQt5.QtCore import QThread, pyqtSignal
-
 import asyncio
 import logging
 import os
 import asyncio
 import threading
-from aiohttp import web
-
 from aiohttp import web
 from aiortc import RTCPeerConnection, RTCSessionDescription
 from aiortc.contrib.media import MediaPlayer, MediaRelay, MediaStreamTrack
@@ -40,6 +34,11 @@ from av import VideoFrame
 import fractions
 import numpy as np
 from pydantic import BaseModel, Field
+import tifffile as tif
+import time
+from imswitch.imcommon.model import dirtools
+from datetime import datetime
+from typing import Optional
 
 ROOT = os.path.dirname(__file__)
 
@@ -49,10 +48,77 @@ pcs = set()
 relay = None
 webcam = None
 
+class MyMicroscope(object):
+    '''
+    Generalized microscopy object that will interact with the chatbot 
+    If you want to use this object, you need to implement the following functions:
+    - move_stage
+    - set_illumination
+    - snap_image
+    - record_image
+    
+    TODO: Should we provide Schemas alongside the functions? Make it generic (e.g. in the process when generating the swagger API?)
+    '''
+
+    def __init__(self, stage, illumination, camera, specialFcts=None):
+        self.stage = stage
+        self.illumination = illumination
+        self.camera = camera
+        self.specialFcts = specialFcts
+        
+    def move_stage(self, distance, is_absolute, axis, speed):
+        return self.stage.move(value=distance, is_absolute=is_absolute, axis=axis, speed=speed)
+    
+    def set_illumination(self, channel, intensity):
+        # TODO: implement mChannel
+        self.illumination.setEnabled(True*bool(intensity))
+        return self.illumination.setValue(intensity)
+    
+    def snap_image(self, exposure=None, gain=None):
+        # TODO: Implement the epxosure/gain values
+        return self.camera.getLatestFrame()
+
+    def home(self, axis):
+        return self.stage.home(axis)
+    
+    def autofocus(self, minZ, maxZ, stepSize):
+        try:
+            self.autofocus = self.specialFcts["autofocus"]
+            valueRange = (maxZ-minZ)
+            valueSteps = stepSize
+            return self.autofocus(valueRange, valueSteps)
+        except Exception as e:
+            return e
+        
+    def scan_stage(self, startX, endX, speed, axis, lightsource, lightsourceIntensity):
+        try:
+            self.scan = self.specialFcts["scan_stage"]
+            return self.scan(startX, endX, speed, axis, lightsource, lightsourceIntensity)
+        except Exception as e:
+            return e
+        
+    def scan_stage_tiles(self, numberTilesX, numberTilesY, stepSizeX, stepSizeY, nTimes, tPeriod, illuSource, initPosX, initPosY, isStitchAshlar, isStitchAshlarFlipX, isStitchAshlarFlipY):
+        try:
+            self.scan_tiles = self.specialFcts["scan_stage_tiles"]
+            return self.scan_tiles(numberTilesX, numberTilesY, stepSizeX, stepSizeY, nTimes, tPeriod, illuSource, initPosX, initPosY, isStitchAshlar, isStitchAshlarFlipX, isStitchAshlarFlipY)
+        except Exception as e:
+            return e
+        
+        # Signal(int, int, int, int, int, int, str, int, int, bool, bool, bool) 
+        # (numberTilesX, numberTilesY, stepSizeX, stepSizeY, nTimes, tPeriod, illuSource, initPosX, initPosY, isStitchAshlar, isStitchAshlarFlipX, isStitchAshlarFlipY)
+        # self._commChannel.sigStartTileBasedTileScanning.emit()
+
+    def scan_lightsheet(self, startX, endX, speed, axis, lightsource, lightsourceIntensity):
+        try:
+            self.scan_lightsheet = self.specialFcts["scan_lightsheet"]
+            return self.scan_lightsheet(startX, endX, speed, axis, lightsource, lightsourceIntensity)
+        except Exception as e:
+            return e
+        
 
 class AsyncioThread(QThread):
+    # We need this in order to get asynchronous behavior in the HyphaController
     started = pyqtSignal()
-
     def __init__(self, loop):
         super().__init__()
         self.loop = loop
@@ -67,7 +133,6 @@ class AsyncioThread(QThread):
         
 class HyphaController(LiveUpdatedController):
     """ Linked to HyphaWidget."""
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.__logger = initLogger(self)
@@ -80,43 +145,77 @@ class HyphaController(LiveUpdatedController):
         host = "0.0.0.0"
         port = 8080
         self._isConnected = False
-
         self.ssl_context = None
 
         # storer for message dictionary
         self.message_dict = {}
 
-        # grab all necessary hardware elements
-        self.stages = self._master.positionersManager[self._master.positionersManager.getAllDeviceNames()[0]]
+        # create datastorer for data transfer between Hypha and the microscope; also serves as long-term memory for data/results
+        self.datastore = HyphaDataStore()
+        
+        # connect signals 
+        if not imswitch.IS_HEADLESS: 
+            self._widget.sigLoginHypha.connect(self._loginHypha)
+            
+
+        ''' 
+        assign hardware functions 
+        '''
+        # Grab all necessary hardware elements
+        # This should be control-software agnostic
+        self.stageNames = self._master.positionersManager.getAllDeviceNames()
+        self.stage = self._master.positionersManager[self.stageNames[0]]   # Positioner Object
         self.laserNames = self._master.lasersManager.getAllDeviceNames()
-        self.laser = self._master.lasersManager[self.laserNames[0]]
+        self.laser = self._master.lasersManager[self.laserNames[0]]         # Illumination Object
+        self.detectorNames = self._master.detectorsManager.getAllDeviceNames()
+        self.detector = self._master.detectorsManager[self.detectorNames[0]]
         try: self.ledMatrix = self._master.LEDMatrixsManager[self._master.LEDMatrixsManager.getAllDeviceNames()[0]]
         except: self.ledMatrix = None
+        
+        # Misc
+        self._videoThread = None 
+        
+        # add special functions to the API
+        self.specialFcts = {}
+        self.specialFcts["scan_stage_tiles"] = lambda numberTilesX, numberTilesY, stepSizeX, stepSizeY, nTimes, tPeriod, illuSource, initPosX, initPosY, isStitchAshlar, isStitchAshlarFlipX, isStitchAshlarFlipY: self._commChannel.sigStartTileBasedTileScanning.emit(numberTilesX, numberTilesY, stepSizeX, stepSizeY, nTimes, tPeriod, illuSource, initPosX, initPosY, isStitchAshlar, isStitchAshlarFlipX, isStitchAshlarFlipY)
+        self.specialFcts["scan_lightsheet"] = lambda startX, endX, speed, axis, lightsource, lightsourceIntensity: self._commChannel.sigStartLightSheet.emit(startX, endX, speed, axis, lightsource, lightsourceIntensity)
+        self.specialFcts["autofocus"] = lambda valueRange, valueSteps: self._commChannel.sigAutoFocus.emit(valueRange, valueSteps) # move up/down around the current positio at certain stepsize
+        
+        # create microscope object
+        self.mMicroscope = MyMicroscope(stage=self.stage, 
+                                        illumination=self.laser,
+                                        camera=self.detector, 
+                                        specialFcts=self.specialFcts)
 
-        # get the first detector to stream data
-        self.detector_names = self._master.detectorsManager.getAllDeviceNames()
-        self.detector = self._master.detectorsManager[self.detector_names[0]]
-
-        # connect signals 
-        self._widget.sigLoginHypha.connect(self._loginHypha)
         
     def _loginHypha(self):
-        # start the service
+        '''
+        Function that opens the connection to the Hypha server.
+        It also returns the URL to be opened in the GUI to interact with it.
+        # 
         # TODO: Create ID based on user input
-        #if self._isConnected:
-        #    return
+        #   if self._isConnected:
+        #       return'''
         service_id = "UC2ImSwitch"
-        server_url = "http://localhost:9000"
-        server_url = "https://ai.imjoy.io/"        
-        self.start_asyncio_thread(server_url, service_id)
+        #server_url = "http://localhost:9000"
+        #server_url = "https://ai.imjoy.io/" 
+        server_url = "https://chat.bioimage.io"       
+        self.connecto_to_server_asyncio(service_id, server_url)
 
     def update(self, detectorName, im, init, isCurrentDetector):
         """ Update with new detector frame. """
         pass
 
-    def start_asyncio_thread(self, server_url, service_id):
+    def connecto_to_server_asyncio(self, service_id, server_url="https://chat.bioimage.io"):
+        '''
+        This function starts the asyncio thread and 
+        connects to the hypha server in the background and awaits an established connection
+        server_url: str - the URL of the server
+        service_id: str - the ID of the service
+        '''
         loop = asyncio.get_event_loop()
         self.service_id = service_id
+        self.server_url = server_url
         self.asyncio_thread = AsyncioThread(loop)
         self.asyncio_thread.started.connect(self.on_asyncio_thread_started)
         self.asyncio_thread.start()
@@ -125,7 +224,7 @@ class HyphaController(LiveUpdatedController):
         # Perform any necessary setup after the asyncio thread has started
         # Connect to the server and start the service
         logging.basicConfig(level=logging.DEBUG)
-        self.start_service(self.service_id)
+        self.start_service(self.service_id, self.server_url)
 
     async def on_shutdown(self, app):
         # close peer connections
@@ -143,32 +242,55 @@ class HyphaController(LiveUpdatedController):
             @track.on("ended")
             def on_ended():
                 self.__logger.debug(f"Track {track.kind} ended")
-
+    
+    @APIExport(runOnUIThread=True) 
     def start_service(self, service_id, server_url="https://chat.bioimage.io", workspace=None, token=None):
-        client_id = service_id + "-client"
+        '''
+        This logs into the Hypha Server and starts the service.
+        It also registers the extensions that will hook up the microsocpe to the chatbot
+        
+        service_id: str - the ID of the service that will be replied by the server when you log in
+        server_url: str - the URL of the server
+        workspace: str - the workspace of the server
+        token: str - the token to log in to the server and will be replied by the server when you log in
+        
+        '''
         self.__logger.debug(f"Starting service...")
+        client_id = service_id + "-client"
+        
         def autoLogin(message):
-            # automatically open default browser 
+            # automatically open default browser and return the login token 
             webbrowser.open(message['login_url']) # TODO: pass login token to qtwebview
             print(f"Please open your browser and login at: {message['login_url']}")
-        token = login({"server_url": server_url, 
-                       "login_callback": autoLogin})
+        
+        try:
+            token = login({"server_url": server_url, 
+                       "login_callback": autoLogin, 
+                       "timeout": 10})
+        except Exception as e:
+            # probably timeout error - not connected to the Internet?
+            self.__logger.error(e)
+            return "probably timeout error - not connected to the Internet?"
         server = connect_to_server(
             {
             "server_url": server_url,
             "token": token}
             )
-        svc = server.register_service(self.getExtensionDefinition())
+        # initialize datastorer for image saving and data handling outside the chat prompts, resides on the hypha server
+        self.datastore.setup(server, service_id="data-store")
+        svc = server.register_service(self.getMicroscopeControlExtensionDefinition())
         self.hyphaURL = f"https://bioimage.io/chat?server={server_url}&extension={svc.id}"
         try:
+            # open the chat window in the browser to interact with the herin created connection
             webbrowser.open(self.hyphaURL)
-            self._widget.setChatURL(url=f"https://bioimage.io/chat?token={token}")
+            self._widget.setChatURL(url=f"https://bioimage.io/chat?token={token}&assistant=Skyler&server={server_url}&extension={svc.id}")
             self._isConnected = True
         except:
             pass
         print(f"Extension service registered with id: {svc.id}, you can visit the chatbot at {self.hyphaURL}, and the service at: {server_url}/{server.config.workspace}/services/{svc.id.split(':')[1]}")
         
         if 0:
+            # FIXME: WEBRTC-related stuff, need to reimplement this! 
             coturn = server.get_service("coturn")
             ice_servers = coturn.get_rtc_ice_servers()
             register_rtc_service(
@@ -185,97 +307,97 @@ class HyphaController(LiveUpdatedController):
             )
             self.__logger.debug(f"You can access the webrtc stream at https://oeway.github.io/webrtc-hypha-demo/?service_id={service_id}")
         
-        
+            
+                    
+    # TODO: push/pull the schema similar to a property in the class
+    # TODO: Differentiate into hacker/beginner mode 
     def get_schema(self):
+        ''' 
+        Explanation: the function (e.g. "move_stage") is connected to the Schema (e.g. MoveStage.schema())
+        The Schema contains the doc strings and information for the chatbot to construct the response and hardware control
+        '''
+        
         return {
-            "move_by_distance": MoveByDistanceInput.schema(),
             "snap_image": SnapImageInput.schema(),
-            "home_stage": HomeStage.schema(),
-            "move_to_position": MoveToPositionInput.schema(),
+            "record_video": RecordingVideo.schema(), 
+            "home_stage": HomeStageInput.schema(),
+            "move_stage": MovePositionerInput.schema(),
             "set_illumination": SetIlluminationInput.schema(),
-            "set_message_dict": MessagingExchange.schema(),
-            "get_message_dict": MessagingExchange.schema(),
-            "script_executor": ScriptExecutor.schema()
+            "autofocus": AutoFocusInput.schema(), 
+            "script_executor": ScriptExecutor.schema(), 
+            "lightsheet_scan": LightsheetScan.schema(),
+            "stage_scan": StageScanInput.schema(),
+            # get current position of the stage, get illumination state, get detector state, get temperature, etc
+            #"get_config": GetMicroscopeConfig.schema(), # STage Limits, Available Illumination, Available Detectors, Dictionary of config 
+            #"set_camera_config": CameraSettings.schema(), # set exposure, set gain, set binning, set ROI, set color mode, set frame rate, fov, sample size
+            #"led_matrix": LEDMatrix.schema(),  
+            #"get_status": GetPosition.schema(),
+            #"get_camera_config": GetCameraSettings.schema(), # get exposure, get gain, get binning, get ROI, get color mode, get frame rate
+            #"set_message_dict": MessagingExchange.schema(),
+            #"get_message_dict": MessagingExchange.schema(),
+            #"create_qttabwidget": CreateQTTabWidget.schema(), 
+            #"get_illumination": GetIllumination.schema(),
+            
         }
 
-    def move_stage_by_distance(self, kwargs):
-        '''move the stage by a specified distance, the unit of distance is micrometers, so you need to input the distance in millimeters.'''
-        config = MoveByDistanceInput(**kwargs)
-        if config.x: self.setPosition(value=config.x, axis="X", is_absolute=False, is_blocking=True)
-        if config.y: self.setPosition(value=config.y, axis="Y", is_absolute=False, is_blocking=True)
-        if config.z: self.setPosition(value=config.z, axis="Z", is_absolute=False, is_blocking=True)
-        return "Moved the stage a relative distance!"
-
-    def move_to_position(self, kwargs):
+    def create_qttabwidget(self, kwargs):
+        '''
+        Create a QTTabWidget with a WebView to display the chatbot.
+        '''
+        if kwargs is None:
+            return
+        config = CreateQTTabWidget(**kwargs)
+        
+    def move_stage(self, kwargs=None):
         '''Move the stage to a specified position, the unit of distance is micrometers.'''
-        config = MoveToPositionInput(**kwargs)
-        x = config.x
-        y = config.y
-        z = config.z
-        return self.move_to_position_exec(x, y, z)
-
-    def move_to_position_exec(self, x, y, z):
-        if x: self.setPosition(value=x, axis="X", is_absolute=True, is_blocking=True)
-        if y: self.setPosition(value=y, axis="Y", is_absolute=True, is_blocking=True)
-        if z: self.setPosition(value=z, axis="Z", is_absolute=True, is_blocking=True)
-        return "Moved the stage to the specified position!"
-
-    def home_stage(self, kwargs):
-        config = HomeStage(**kwargs)
+        if kwargs is not None:            
+            config = MovePositionerInput(**kwargs)
+        distance = config.distance
+        is_absolute = config.is_absolute
         axis = config.axis
-        if axis == "X":
-            self._master.positionersManager[self._master.positionersManager.getAllDeviceNames()[0]].home_X()
-        elif axis == "Y":
-            self._master.positionersManager[self._master.positionersManager.getAllDeviceNames()[0]].home_Y()
-        elif axis == "Z":
-            self._master.positionersManager[self._master.positionersManager.getAllDeviceNames()[0]].home_Z()
-        elif axis == "A":
-            self._master.positionersManager[self._master.positionersManager.getAllDeviceNames()[0]].home_A()
-            
-        return "Homed the stage!"
+        speed = config.speed
+        return self.mMicroscope.move_stage(distance, is_absolute, axis, speed)
+        
+    def autofocus(self, kwargs=None):
+        '''
+        Perform an autofocus of the microscope increase sharpness of the image.
+        '''
+        if kwargs is None:
+            return
+        config = AutoFocusInput(**kwargs)
+        minZ = config.minZ
+        maxZ = config.maxZ
+        stepSize = config.stepSize
+        return self.mMicroscope.autofocus(minZ, maxZ, stepSize)
+    
+    def home_stage(self, kwargs):
+        '''
+        moves axis to 0 position and re-calibrates the position
+        '''
+        config = HomeStageInput(**kwargs)
+        axis = config.axis
+        return self.mMicroscope.home(axis=axis)
+        
 
-    def setPosition(self, value, axis, is_absolute=True, is_blocking=True):
-        """
-        Moves the microscope stage in the specified axis by a certain distance.
-
-        Example Use:
-            # Move the stage 10000 µm in the positive X direction in absolute coordinates and wait for the stage to arrive.
-            self.setPosition(value=10000, axis="X", is_absolute=True, is_blocking=True)
-
-            # move the stage 10000 µm in the negative Y direction in relative coordinates and return immediately.
-            self.setPosition(value=-10000, axis="Y", is_absolute=False, is_blocking=False)
-
-        Notes:
-            - Successful movement requires supported axis.
-            - Positive values move stage forward, negative values move it backward.
-            - `is_absolute=True` for absolute position, `is_absolute=False` for relative distance.
-            - `is_blocking=True` waits until stage arrives, `is_blocking=False` initiates and returns.
-
-        Explanation:
-            This function allows moving the microscope stage along the 'x', 'y', 'z', or 'a' axis by a certain distance. "\
-            "Use 'value' for the distance, 'is_absolute' for absolute or relative coordinates, and 'is_blocking' to control waiting behavior. "\
-            "Ensure valid axis values and stage support.
-        """
-        self._logger.debug(f"Moving stage to {value} along {axis}")
-        self.stages.move(value=value, axis=axis, is_absolute=is_absolute, is_blocking=is_blocking)
-
-    def script_executor(self, kwargs):
+    async def script_executor(self, kwargs):
         """
 
         """
-        scope = self
+        self.scope = self
         config = ScriptExecutor(**kwargs)
         locals_dict = locals()
         try:
-            exec(config.script, globals(), locals_dict)
-            # Access the result
-            result = locals_dict.get('result')            
+            print(config.script)
+            result = await execute_code(self.datastore, config.script, locals_dict)
+            if 0:
+                exec(config.script, globals(), locals_dict)
+                # Access the result
+                result = locals_dict.get('result')            
         except Exception as e:
             print(f"Script execution failed: {e}")
             result = f"Script execution failed: {e}"
         return result
         
-
     def set_illumination(self, kwargs):
         '''
         Set the illumination of the microscope
@@ -283,39 +405,137 @@ class HyphaController(LiveUpdatedController):
         config = SetIlluminationInput(**kwargs)
         mChannel = config.channel
         mIntensity = config.intensity
-        return self.set_illuimination_exec(mChannel, mIntensity)
-        
-    def set_illuimination_exec(self, mChannel, mIntensity):
-        '''
-        Set the illumination of the microscope without the schema.
-        '''
-        self.laserName = self._master.lasersManager.getAllDeviceNames()[mChannel]
-        self._master.lasersManager[self.laserName].setEnabled(True*bool(mIntensity))
-        self._master.lasersManager[self.laserName].setValue(mIntensity)
-        return "Set the illumination!"
+        return self.mMicroscope.set_illumination(mChannel, mIntensity)
 
-    def snap_image(self, kwargs):
+    def scan_lightsheet(self, kwargs=None):
         '''
+        This performs a light-sheet volumetric scan.
         '''
+        #sigStartLightSheet = Signal(float, float, float, str, str, float) # (startX, endX, speed, axis, lightsource, lightsourceIntensity)
+        if kwargs is None:
+            return
+        config = LightsheetScan(**kwargs)
+        startX = config.startX
+        endX = config.endX
+        speed = config.speed
+        axis = config.axis
+        lightsource = config.lightsource
+        lightsourceIntensity = config.lightsourceIntensity
+        self.mMicroscope.scan_lightsheet(startX, endX, speed, axis, lightsource, lightsourceIntensity)
+        return "Started light-sheet scanning!"
+        
+    
+    def stage_scan(self, kwargs=None):
+        '''
+        This performs tile-based scanning of a microscopy sample.
+        '''
+        if kwargs is None:
+            return 
+        config = StageScanInput(**kwargs)
+        numberTilesX = config.numberTilesX
+        numberTilesY = config.numberTilesY
+        stepSizeX = config.stepSizeX
+        stepSizeY = config.stepSizeY
+        nTimes = config.nTimes
+        tPeriod = config.tPeriod
+        illuSource = config.illuSource
+        initPosX = config.initPosX
+        initPosY = config.initPosY
+        isStitchAshlar = config.isStitchAshlar
+        isStitchAshlarFlipX = config.isStitchAshlarFlipX
+        isStitchAshlarFlipY = config.isStitchAshlarFlipY
+        return self.mMicroscope.scan_stage_tiles(numberTilesX, numberTilesY, stepSizeX, stepSizeY, 
+                                                 nTimes, tPeriod, illuSource, initPosX, initPosY, 
+                                                 isStitchAshlar, isStitchAshlarFlipX, isStitchAshlarFlipY)
+        
+    def record_video(self, kwargs=None):
+        '''
+        record frames as fast as possible and save them as a "video" (TIF) to disk
+        '''
+        record_video = RecordingVideo(**kwargs)
+        duration = record_video.duration
+        filepath = record_video.filepath
+        framerate = record_video.framerate
+        stop = record_video.stop
+        
+        class VideoThread(threading.Thread):
+            def __init__(self, duration, filepath, framerate):
+                self.duration = duration
+                self.filepath = filepath
+                # check if the file exists and if it has a tif extension
+                if not self.filepath.endswith(".tif"):
+                    self.filepath = self.filepath + ".tif"
+                # if the folder does not exist, create it 
+                if not os.path.exists(os.path.dirname(self.filepath)):
+                    os.makedirs(os.path.dirname(self.filepath))
+                self.framerate = framerate
+                self.stop = False
+                threading.Thread.__init__(self)
+            
+            def run(self):
+                mStartTime = time.time()
+                while time.time()-mStartTime < self.duration and not self.stop:
+                    mFrame = self.detector.getLatestFrame()
+                    tif.imsave(self.filepath, mFrame, append=True)
+                    time.sleep(1/self.framerate)
+                
+            def stop(self):
+                self.stop = True
+                
+        if stop and self._videoThread is not None:
+            # stop the video recording
+            self._videoThread.stop()
+            return 
+        
+        if self._videoThread is None:
+            self._videoThread = VideoThread(duration, filepath, framerate)
+            self._videoThread.start()
+            
+        
+    def snap_image(self, kwargs=None):
+        '''
+        snap an image, store it eventually, return it eventually or process it eventually 
+        '''
+        
+        # parse the schema 
         config = SnapImageInput(**kwargs)
         mExposureTime = config.exposure = 100
         mFilePath = config.filepath 
         imageProcessingFunction = config.imageProcessingFunction 
+        return_image = config.returnAsNumpy
+        mImage = self.mMicroscope.snap_image(mExposureTime)
+        returnMessage = {}
         
-        return self.snap_image_exec(mExposureTime, mFilePath, imageProcessingFunction)
-    
-    def snap_image_exec(self, mExposureTime:int=100, mFilePath:str="./", imageProcessingFunction:str=""):
-        '''
-        Captures a single image and processes it using a Python function provided as a string.
-        '''
-        # Step 1: Capture Image
-        self._logger.debug("getProcessedImages - functionstring: "+imageProcessingFunction)
-        mImage = self.detector.getLatestFrame()
+        def packImageToDatastore(mImage):
+            '''
+            helper function to send image to hyphastore and restore the URL 
+            '''
+            processedImage = np.uint8(mImage)
+            if len(processedImage.shape)>2:
+                bgr_img = np.stack((processedImage,)*3, axis=-1)  # Duplicate grayscale data across 3 channels to simulate BGR format.
+            else:
+                bgr_img = cv2.cvtColor(processedImage, cv2.COLOR_GRAY2BGR)
+            _, png_image = cv2.imencode('.png', bgr_img)        
+            file_id = self.datastore.put('file', png_image.tobytes(), 'snapshot.png', "Captured microscope image in PNG format")
+            print(f'The image is snapped and saved as {self.datastore.get_url(file_id)}')
+            return self.datastore.get_url(file_id)
         
-        
-        # TODO: Generate thumbnail and send to datastorage
-        
-        # Step 2: Load and Execute Python Function from String
+        if mFilePath:
+            try:
+                # check if the file exists and if it has a tif extension
+                if not mFilePath.endswith(".tif"):
+                    mFilePath = mFilePath + ".tif"
+                # if the folder does not exist, create it
+                dirPath  = os.path.join(dirtools.UserFileDirs.Root, 'recordings', datetime.now().strftime("%Y_%m_%d-%I-%M-%S_%p") )
+                if not os.path.exists(dirPath):
+                    os.makedirs(dirPath)
+                # save an image as a tif 
+                tif.imsave(os.path.join(dirPath,mFilePath), mImage)
+                returnMessage["imagePath"] = os.path.join(dirPath,mFilePath)
+                self.__logger.debug(f"Image saved as {os.path.join(dirPath,mFilePath)}")
+            except Exception as e:
+                return "Error saving image: "+str(e)
+            
         try:
             if imageProcessingFunction and imageProcessingFunction !=  "":
                 # Define a default processImage function in case exec fails
@@ -333,52 +553,53 @@ class HyphaController(LiveUpdatedController):
             else:
                 processedImage = mImage
 
-            # Step 3: Save the Image
-            # check if processedImage is an image
-            if type(processedImage)==np.ndarray and len(processedImage.shape)>1:    
-                if config.returnAsNumpy:
-                    return processedImage
-                if not os.path.exists(os.path.dirname(mFilePath)):
-                    os.makedirs(os.path.dirname(mFilePath))
-                tif.imsave(mFilePath+".tif",processedImage)
-                self._commChannel.sigDisplayImageNapari.emit(mFilePath, processedImage, False) # layername, image, isRGB
-                return "Image saved at "+mFilePath+".tif"
-            else:
-                return str(processedImage)
+            # directly return the image
+            imageURL = packImageToDatastore(processedImage)
+            returnMessage["imageURL"] = imageURL
+            if return_image:
+                processedImage
+            return returnMessage
+
         except Exception as e:
             return "Error processing image: "+str(e)
 
+    '''
     def set_message_dict(self, kwargs):
-        '''Store key and value pairs between consecutive message exchanges and chatbot sessions. Messages will be added to the 
-        message dictionary and will be stored accross chat entries and chatbot sessions.'''
+        """Store key and value pairs between consecutive message exchanges and chatbot sessions. Messages will be added to the 
+        message dictionary and will be stored accross chat entries and chatbot sessions."""
         config = MessagingExchange(**kwargs)
         
         # for all entries in the message dictionary config.message, add them to the message_dict
         self.message_dict_entry.update(config.message)
     
         return "Set and update the message dictionary!"
+    '''
+    #def get_message_dict(self, kwargs):
+    #    '''Retrieve the message dictionary. The message dictionary stores key and value pairs between consecutive message exchanges and chatbot sessions.'''
+    #    return self.message_dict_entry
 
-    def get_message_dict(self, kwargs):
-        '''Retrieve the message dictionary. The message dictionary stores key and value pairs between consecutive message exchanges and chatbot sessions.'''
-        return self.message_dict_entry
-
-    def getExtensionDefinition(self):
+    def getMicroscopeControlExtensionDefinition(self):
             return {
             "_rintf": True,
             "type": "bioimageio-chatbot-extension",
             "id": "UC2_microscope",
             "name": "UC2 Microscope Control",
-            "description": "Control the microscope based on the user's request. Now you can move the microscope stage, control the illumination, snap an image and process it.",
+            "description": "Control the microscope based on the user's request. Move the microscope stage, control the illumination, snap an image, and process it. Use the scriptexecutor for executing tasks. Display received images as markdown in the chat window",
             "get_schema": self.get_schema,
+            "config": {"run_in_executor": True},
             "tools": {
-                "move_by_distance": self.move_stage_by_distance,
                 "snap_image": self.snap_image,
+                "record_video": self.record_video,
                 "home_stage": self.home_stage,
-                "move_to_position": self.move_to_position,
+                "move_stage": self.move_stage,
                 "set_illumination": self.set_illumination,
-                "set_message_dict": self.set_message_dict,
-                "get_message_dict": self.get_message_dict,
-                "script_executor": self.script_executor
+                #"set_message_dict": self.set_message_dict,
+                #"get_message_dict": self.get_message_dict,
+                "script_executor": self.script_executor, 
+                "lightsheet_scan": self.scan_lightsheet, 
+                "stage_scan": self.stage_scan, 
+                "create_qttabwidget": self.create_qttabwidget, 
+                "autofocus": self.autofocus,
             }
         }
             
@@ -395,23 +616,15 @@ class MessagingExchange(BaseModel):
       
 class ScriptExecutor(BaseModel):
     """
-    Executes a Python script within the HyphaController class to control a microscope, accessible via 'self' or 'scope'. Scripts can orchestrate complex workflows using methods provided for microscope manipulation, incorporating loops and conditions. The script, a string of safe Python code, must not contain malicious elements, manipulate local files, or access the network. Key methods include:
-    - "move_to_position" using MoveToPositionInput.schema() for xyz movement in absolute or relative terms.
-    - "set_illumination" using SetIlluminationInput.schema() to adjust illumination between 0 and 1023.
-    - "snap_image" using SnapImageInput.schema() to capture or process images. 
-    Execution results are stored in a 'result' variable for feedback to the chatbot. Scripts have access to HyphaController's methods and local variables.
-    The script must be safe to execute!
+    Executes a Python script within the HyphaController class to control a microscope, accessible via 'self'. Scripts can orchestrate complex workflows using methods provided for microscope manipulation, incorporating loops and conditions. The script must be safe, without malicious elements, local file manipulation, or network access. Key methods include e.g.:
+    - `self.move_stage(kwargs)` using MoveToPositionInput.schema() for xyz movement.
+    - `self.set_illumination(kwargs)` using SetIlluminationInput.schema() to adjust illumination (0-1023).
+    - `self.snap_image(kwargs)` using SnapImageInput.schema() to capture or process images.
+    Execution results are stored in a 'result' variable for chatbot feedback. Scripts can import known libraries (e.g., time, numpy) for additional functionality.
     """   
     script: str = Field(description="The Python script to execute.")
     context: dict = Field(description="Context information containing user details.")
-
-
-class MoveByDistanceInput(BaseModel):
-    """Move the stage by a specified distance, the unit of distance is millimeters, so you need to input the distance in millimeters."""
-    x: float = Field(description="Move the stage along X axis.")
-    y: float = Field(description="Move the stage along Y axis.")
-    z: float = Field(description="Move the stage along Z axis.")
-
+    
 class SnapImageInput(BaseModel):
     #TODO: Docstring should be below 4000 characters
     #TODO: individual elements should be below 1024
@@ -441,25 +654,88 @@ class SnapImageInput(BaseModel):
             where 'image' is a 2D numpy array input and 'processedImage' is the output.
     '''
     exposure: int = Field(description="Set the microscope camera's exposure time. and the time unit is ms, so you need to input the time in miliseconds.")
-    filepath: str = Field(description="The path to save the captured image. It will be a tif, so the extension does not need to be added. ")
-    imageProcessingFunction: str = Field(description="The Python function to use for processing the image. Default is empty. image is the 2D array from the detector Example: def processImage(image): return cv2.cvtColor(image, cv2.COLOR_BGR2GRAY")                        
-    returnAsNumpy: bool = Field(description="Return the image as a numpy array. Default is False and the image will be saved under filepath.")
-                                         
+    gain: int = Field(description="Set the microscope camera's gain. A higher gain can increase sensitivity, especailly helpful in low light settings ")
+    filepath: Optional[str]  = Field(description="The path to save the captured image. It will be a tif, so the extension does not need to be added. If None, it is not saved")
+    imageProcessingFunction: str = Field(description="The Python function to use for processing the image. Default is empty. image is the 2D array from the detector Example: def processImage(image): return cv2.cvtColor(image, cv2.COLOR_BGR2GRAY). Avoid returning images since this is too much bandwidth. Return parameters from the function instead. Avoid using cv2") 
+    returnAsNumpy: bool = Field(description="Return the image as a numpy array if True, else return the URl to the image in the Hypha DataStore. If you need to display it in the chat, keep it False to return the datastore ")
+                 
+class RecordingVideo(BaseModel):
+    '''
+    Record a video from the microscope camera for a specified duration and save it to a specified file path.
+    '''    
+    duration: int = Field(description="The duration of the video recording in seconds.")
+    filepath: str = Field(description="The path to save the recorded video. It will be a tif, so the extension does not need to be added. If None, it is not saved.")
+    framerate: int = Field(description="The frame rate of the video. Default is 30 fps.")
+    stop: bool = Field(description="Stop any ongoing video.")
+    
+class LightsheetScan(BaseModel):
+    '''
+    This performs a light-sheet volumetric scan 
+    '''                        
+    startX: float = Field(description="The starting position in the lightsheet scanning  direction. Example: startX=-1000")
+    endX: float = Field(description="The end position in the lightsheet scanning direction. Example: startX=1000")
+    speed: float = Field(description="The speed of the scan. Example: speed=1000")
+    axis: str = Field(description="The axis to scan. Example: axis='A'")
+    lightsource: str = Field(description="The lightsource to use. Example: lightsource='Laser'")
+    lightsourceIntensity: float = Field(description="The intensity of the lightsource. Example: lightsourceIntensity=100")
+    
+
+class StageScanInput(BaseModel):
+    '''
+    This performs a slide scan 
+    '''
+    #sigStartTileBasedTileScanning = Signal(int, int, int, int, int, int, str, int, int, int, bool, bool, bool) 
+    # (numberTilesX, numberTilesY, stepSizeX, stepSizeY, nTimes, tPeriod, illuSource, initPosX, initPosY, isStitchAshlar, isStitchAshlarFlipX, isStitchAshlarFlipY)
+    numberTilesX: int = Field(description="The number of tiles in the X direction. Example: numberTilesX=3")
+    numberTilesY: int = Field(description="The number of tiles in the Y direction. Example: numberTilesY=3")
+    stepSizeX: int = Field(description="The step size in the X direction. If None, ImSwitch will calculate the correct spacing for you. Example: stepSizeX=None")
+    stepSizeY: int = Field(description="The step size in the Y direction. If None, ImSwitch will calculate the correct spacing for you. Example: stepSizeY=None")
+    nTimes: int = Field(description="The number of times to repeat the scan. Example: nTimes=1")
+    tPeriod: int = Field(description="The time period between each scan. Example: tPeriod=1")
+    illuSource: str = Field(description="The illumination source to use. Example: illuSource=None")
+    initPosX: int = Field(description="The initial position in the X direction. If None the microscope will take the current position. Example: initPosX=None")
+    initPosY: int = Field(description="The initial position in the Y direction. If None the microscope will take the current position. Example: initPosY=None") 
+    isStitchAshlar: bool = Field(description="Stitch the tiles using the software Ashlar. Example isStitchAshlar=True")
+    isStitchAshlarFlipX: bool = Field(description="Flip the tiles along the X axis. Example isStitchAshlarFlipX=True")
+    isStitchAshlarFlipY: bool = Field(description="Flip the tiles along the Y axis. Example isStitchAshlarFlipY=False")
+    
+class AutoFocusInput(BaseModel):
+    """Perform an autofocus of the microscope increase sharpness of the image."""
+    minZ: float = Field(description="The minimum Z position to scan. Example: minZ=-100")
+    maxZ: float = Field(description="The maximum Z position to scan. Example: maxZ=100")
+    stepSize: float = Field(description="The step size to move the stage. Example: stepSize=10")
+    
 class SetIlluminationInput(BaseModel):
     """Set the illumination of the microscope."""
     channel: int = Field(description="Set the channel of the illumination. The value should choosed from this list: [0, 1, 2, 3] ")
     intensity: float = Field(description="Set the intensity of the illumination. The value should be between 0 and 100; ")
 
-class HomeStage(BaseModel):
+class HomeStageInput(BaseModel):
     """Home the stage."""
-    home: int = Field(description="Home the stage and set position to zero.")
     axis: str = Field(description="The axis to home. Default is X. Available options are: X, Y, Z, A.")
-class MoveToPositionInput(BaseModel):
-    """Move the stage to a specified position, the unit of distance is millimeters. The limit of """
-    x: float = Field(description="Move the stage to the specified position along X axis.")
-    y: float = Field(description="Move the stage to the specified position along Y axis.")
-    z: float = Field(description="Move the stage to the specified position along Z axis.")
+    
+class MovePositionerInput(BaseModel):
+    """Move the stage either to a specific position or relative, the unit of distance is micrometers. """
+    distance: float = Field(description="The distance to move the stage if is_absolute is false, otherwise the position in absolute coordinates. The unit is micrometers.")
+    is_absolute: bool = Field(description="Move the stage to an absolute position if True, otherwise move by a relative distance.")
+    axis: str = Field(description="The axis to move. Default is X. Available options are: X, Y, Z, A.")
+    speed: float = Field(description="The speed of the stage movement. The unit is micrometers per second. Default is 1000")
 
+class CreateQTTabWidget(BaseModel):
+    """Create a QT widget that executes a formely created function string on a button press.
+    an example widget:
+    from qtpy import QtWidgets 
+    def _execute(): 
+        self.start_service("UC2_microscope") 
+    self._widget.tab3 = QtWidgets.QWidget() 
+    self._widget.mButtonExecute = QtWidgets.QPushButton('Execute') 
+    self._widget.mButtonExecute.clicked.connect(_execute)
+    self._widget.tab3_layout = QtWidgets.QVBoxLayout(self._widget.tab3) 
+    self._widget.tab3_layout.addWidget(self._widget.mButtonExecute)"""
+    functionString: str = Field(description="The function string to execute.")
+    qtWidgetFunctionString: str = Field(description="The function string to define the QT Widget that triggers the execution of the function coming from the chat bot. The widget has to be integrated into: self._widget.tab3")
+    buttonText: str = Field(description="The text to display on the button.")
+    
 class VideoTransformTrack(MediaStreamTrack):
     """
     A video stream track that transforms frames from an another track.
@@ -497,6 +773,11 @@ class VideoTransformTrack(MediaStreamTrack):
         return new_frame
 
 
+if __name__ == "__main__":
+    # connect to hypha service
+    mHyphaController = HyphaController()
+    mHyphaController._loginHypha()
+    
 
 # Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.

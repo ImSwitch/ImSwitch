@@ -17,7 +17,7 @@ class PositionerManager(ABC):
             initialPosition: The initial position for each axis. This is a dict
               in the format ``{ axis: position }``.
         """
-
+        
         self._positionerInfo = positionerInfo
         self._position = initialPosition
         self.__axes = positionerInfo.axes

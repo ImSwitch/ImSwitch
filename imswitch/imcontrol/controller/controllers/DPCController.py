@@ -45,11 +45,12 @@ class DPCController(ImConWidgetController):
             return
 
         # define patterns
+        # TODO: Brush up the LEDMatrix manager
         self.nPattern = 4
-        #self.brightfieldPattern = {"0": [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23]}
         self.brightfieldPattern = {"0": [1,2,4,5,6,7,8,9,10,11,13,14]}
         self.allDPCPatternNames = ("top", "bottom", "right", "left")
         if False:
+            #self.brightfieldPattern = {"0": [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23]}
             self.allDPCPatterns = {self.allDPCPatternNames[0]: [0,1,2,7,8,9,10,11,12,21,22,23,24], 
                                     self.allDPCPatternNames[1]: [3,4,5,6,13,14,15,16,17,18,19,20,21,22], 
                                     self.allDPCPatternNames[2]: [0,5,6,7,8,18,19,20,21,22,23,24], 

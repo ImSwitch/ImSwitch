@@ -48,13 +48,14 @@ class ImScrMainView(QtWidgets.QMainWindow):
         python_exec_path = os.path.dirname(sys.executable)
         execname = os.path.join(python_exec_path, 'jupyter-notebook')
 
+        # check if jupyter notebook is installed
         if not testnotebook(execname):
-            while True:
-                QMessageBox.information(None, "Error", "It appears that Jupyter Notebook isn't where it usually is. " +
-                                        "Ensure you've installed Jupyter correctly and then press Ok to " +
-                                        "find the executable 'jupyter-notebook'", QMessageBox.Ok)
-                if testnotebook(execname):
-                    break
+            QMessageBox.information(None, "Error", "It appears that Jupyter Notebook isn't where it usually is. " +
+                                    "Ensure you've installed Jupyter correctly in your current environment "+
+                                    "test it by running  'jupyter-notebook' in your terminal"+ 
+                                    "ImSwitch will run without it now. If you don't wanted to "+
+                                    "use imnotebook module in the firstplace, remove it from the config.json", QMessageBox.Ok)
+            return
                 
         # setup logging
         # try to write to a log file, or redirect to stdout if debugging

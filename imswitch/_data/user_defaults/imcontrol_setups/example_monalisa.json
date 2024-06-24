@@ -2,7 +2,7 @@
     "detectors": {
         "Green": {
             "analogChannel": null,
-            "digitalLine": "Dev1/port0/line4",
+            "digitalLine": 4,
             "managerName": "HamamatsuManager",
             "managerProperties": {
                 "cameraListIndex": 0,
@@ -23,7 +23,7 @@
         },
         "Red": {
             "analogChannel": null,
-            "digitalLine": "Dev1/port0/line5",
+            "digitalLine": 5,
             "managerName": "HamamatsuManager",
             "managerProperties": {
                 "cameraListIndex": 1,
@@ -46,9 +46,10 @@
     "lasers": {
         "488 (OFF)": {
             "analogChannel": null,
-            "digitalLine": "Dev1/port0/line3",
-            "managerName": "Cobolt0601LaserManager",
+            "digitalLine": 3,
+            "managerName": "CoboltLaserManager",
             "managerProperties": {
+                "digitalDriver": "cobolt.cobolt0601.Cobolt0601_f2",
                 "digitalPorts": [
                     "COM12"
                 ]
@@ -59,9 +60,10 @@
         },
         "488 (EXC)": {
             "analogChannel": null,
-            "digitalLine": "Dev1/port0/line1",
-            "managerName": "Cobolt0601LaserManager",
+            "digitalLine": 1,
+            "managerName": "CoboltLaserManager",
             "managerProperties": {
+                "digitalDriver": "cobolt.cobolt0601.Cobolt0601_f2",
                 "digitalPorts": [
                     "COM4"
                 ]
@@ -72,9 +74,10 @@
         },
         "405 (ON)": {
             "analogChannel": null,
-            "digitalLine": "Dev1/port0/line2",
-            "managerName": "Cobolt0601LaserManager",
+            "digitalLine": 2,
+            "managerName": "CoboltLaserManager",
             "managerProperties": {
+                "digitalDriver": "cobolt.cobolt0601.Cobolt0601_f2",
                 "digitalPorts": [
                     "COM11"
                 ]
@@ -84,8 +87,8 @@
             "valueRangeMax": 200
         },
         "592 (EXC)": {
-            "analogChannel": "Dev1/ao3",
-            "digitalLine": "Dev1/port0/line0",
+            "analogChannel": 3,
+            "digitalLine": 0,
             "managerName": "NidaqLaserManager",
             "managerProperties": {},
             "wavelength": 592,
@@ -94,7 +97,7 @@
         },
         "592 (OFF)": {
             "analogChannel": null,
-            "digitalLine": "Dev1/port0/line6",
+            "digitalLine": 6,
             "managerName": "NidaqLaserManager",
             "managerProperties": {},
             "wavelength": 592,
@@ -104,7 +107,7 @@
     },
     "positioners": {
         "X": {
-            "analogChannel": "Dev1/ao0",
+            "analogChannel": 0,
             "digitalLine": null,
             "managerName": "NidaqPositionerManager",
             "managerProperties": {
@@ -117,7 +120,7 @@
             "forPositioning": true
         },
         "Y": {
-            "analogChannel": "Dev1/ao1",
+            "analogChannel": 1,
             "digitalLine": null,
             "managerName": "NidaqPositionerManager",
             "managerProperties": {
@@ -130,7 +133,7 @@
             "forPositioning": true
         },
         "Z": {
-            "analogChannel": "Dev1/ao2",
+            "analogChannel": 2,
             "digitalLine": null,
             "managerName": "NidaqPositionerManager",
             "managerProperties": {
@@ -144,7 +147,6 @@
         }
     },
     "scan": {
-        "scanWidgetType": "MoNaLISA",
         "scanDesigner": "BetaScanDesigner",
         "scanDesignerParams": {
             "return_time": 0.01

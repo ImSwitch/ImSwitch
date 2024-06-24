@@ -75,7 +75,6 @@ class AutofocusController(ImConWidgetController):
     @APIExport(runOnUIThread=True)
     # Update focus lock
     def autoFocus(self, rangez=100, resolutionz=10, defocusz=0):
-
         '''
         The stage moves from -rangez...+rangez with a resolution of resolutionz
         For every stage-position a camera frame is captured and a contrast curve is determined

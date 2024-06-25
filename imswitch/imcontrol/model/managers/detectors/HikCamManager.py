@@ -47,7 +47,7 @@ class HikCamManager(DetectorManager):
         for propertyName, propertyValue in detectorInfo.managerProperties['hikcam'].items():
             self._camera.setPropertyValue(propertyName, propertyValue)
 
-        fullShape = (self._camera.SensorWidth,
+        fullShape = (self._camera.SensorWidth, #TODO: This can be zero if loaded from Windows, why?
                      self._camera.SensorHeight)
 
         model = self._camera.model

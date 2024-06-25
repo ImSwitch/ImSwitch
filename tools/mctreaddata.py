@@ -77,7 +77,7 @@ class HDF5Reader:
             dset = file['ImageData']
             return len(dset.shape)
 
-def create_video_from_hdf5(reader, output_video='output.mp4', reduction_factor=4, frame_rate=20):
+def create_video_from_hdf5(reader, output_video='output.mp4', reduction_factor=4, frame_rate=20, outputFolder=''):
     """
     Creates an MP4 video from monochrome images stored in an HDF5 file using an HDF5Reader instance.
 
@@ -105,9 +105,11 @@ def create_video_from_hdf5(reader, output_video='output.mp4', reduction_factor=4
             # Read image, assuming the reader returns a 2D numpy array for each frame
             import time
             mTime = time.time()
-            img = reader.read_slice(time_idx=iFrame, channel_idx=iChannel)
+            img = reader.read_slice(time_idx=iFrame, channel_idx=iChannel).copy()
             print("1: "+str(mTime-time.time()))
-            img = cv2.resize(img.copy(), dsize = None, fx = 1/reduction_factor, fy=1/reduction_factor, interpolation=cv2.INTER_AREA)
+            # Reduce dimensions
+            #img = cv2.resize(img.copy(), dsize = None, fx = 1/reduction_factor, fy=1/reduction_factor, interpolation=cv2.INTER_AREA)
+            img = img[:,::reduction_factor,::reduction_factor]
             print("2: "+str(mTime-time.time()))
             img = np.std(img, axis=0)  # Compute standard deviation along z axis
             print("3: "+str(mTime-time.time()))
@@ -121,12 +123,12 @@ def create_video_from_hdf5(reader, output_video='output.mp4', reduction_factor=4
         if mChannels is not None and out.isOpened():
             # convert frame to rgb
             if 0:
-                tif.imsave("test.tif", mChannels, append=True)
+                tif.imsave(outputFolder+"test.tif", mChannels, append=True)
             else:
                 # if folder not created create test folder
-                if not os.path.exists('test'):
-                    os.makedirs('test')
-                plt.imsave("test/test"+str(iFrame)+".png", mChannels, cmap='gray')
+                if not os.path.exists(outputFolder+'/test'):
+                    os.makedirs(outputFolder+'/test')
+                plt.imsave(outputFolder+"/test/test"+str(iFrame)+".png", mChannels, cmap='gray')
             mResult = out.write(cv2.cvtColor(np.uint8(mChannels*255), cv2.COLOR_GRAY2BGR))
             print("Frame written: "+str(mResult))
         else:
@@ -145,9 +147,10 @@ def create_video_from_hdf5(reader, output_video='output.mp4', reduction_factor=4
 mFilename = 'C:\\Users\\user\\Documents\\ImSwitchConfig\\recordings\\2024_04_18-02-05-01_PM\\2024_04_18-02-05-01_PM_MCT.h5'
 mFilename = '/Users/bene/Downloads/2024_04_16-01-50-08_PM_MCT.h5'
 mFilename = 'C:\\Users\\diederichbenedict\\Dropbox\LENA\\2024_04_18-05-24-16_PM\\2024_04_18-05-24-16_PM_MCT.h5'
+outputFolder = 'F:\\'
 reader = HDF5Reader(mFilename)
 
-create_video_from_hdf5(reader)
+create_video_from_hdf5(reader, outputFolder=outputFolder)
 
 
 # Getting the number of dimensions of the dataset

@@ -104,7 +104,7 @@ class MCTController(ImConWidgetController):
             self._widget.mctShowLastButton.setEnabled(False)
 
             # setup gui limits for sliders
-            if len(self.availableIlliminations) == 1:
+            if len(self.availableIlliminations) > 0:
                 self._widget.sliderIllu1.setMaximum(self.availableIlliminations[0].valueRangeMax)
                 self._widget.sliderIllu1.setMinimum(self.availableIlliminations[0].valueRangeMin)           
             if len(self.availableIlliminations) > 1:
@@ -394,7 +394,7 @@ class MCTController(ImConWidgetController):
             downScaleFactor = 4
             nTilesX = int(np.ceil((self.xScanMax-self.xScanMin)/self.xScanStep))
             nTilesY = int(np.ceil((self.yScanMax-self.yScanMin)/self.yScanStep))
-            imageDimensions = self.detector.getLatestFrame().shape
+            imageDimensions = self.detector.getLatestFrame().shape # self.detector._camera.CameraWidth TODO not good!
             imageDimensionsDownscaled = (imageDimensions[1]//downScaleFactor, imageDimensions[0]//downScaleFactor) # Y/X
             tiledImageDimensions = (nTilesX*imageDimensions[1]//downScaleFactor, nTilesY*imageDimensions[0]//downScaleFactor)
             self.tiledImage = np.zeros(tiledImageDimensions)
@@ -466,7 +466,25 @@ class MCTController(ImConWidgetController):
                     mIllumination.setValue(illuValue)
                     mIllumination.setEnabled(True)
                     time.sleep(self.tWait)
-                    allChannelFrames.append(self.detector.getLatestFrame().copy())
+                    # Todo: Need to ensure thatwe have the right pattern displayed and the buffer is free - this heavily depends on the exposure time..
+                    mFrame = None
+                    lastFrameNumber = -1
+                    timeoutFrameRequest = .3 # seconds # TODO: Make dependent on exposure time
+                    cTime = time.time()
+                
+                    while(1):
+                        # something went wrong while capturing the frame
+                        if time.time()-cTime> timeoutFrameRequest:
+                            break
+                        mFrame, currentFrameNumber = self.detector.getLatestFrame(returnFrameNumber=True)
+                        if currentFrameNumber <= lastFrameNumber:
+                            time.sleep(0.01)
+                            continue  
+                        print(f"Frame number used for stack: {currentFrameNumber}") 
+                        lastFrameNumber = currentFrameNumber
+                        break
+                                    
+                    allChannelFrames.append(mFrame.copy())
                     
                     # store positions
                     mPositions = self.positioner.getPosition()

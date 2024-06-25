@@ -30,11 +30,7 @@ class PositionerController(ImConWidgetController):
             for axis in pManager.axes:
                 self.setSharedAttr(pName, axis, _positionAttr, pManager.position[axis])
                 if hasSpeed:
-                    if pManager.speed[axis]== 0:
-                        mSpeed = 10000
-                    else:
-                        mSpeed = pManager.speed[axis]
-                    self.setSharedAttr(pName, axis, _speedAttr, mSpeed)
+                    self.setSharedAttr(pName, axis, _speedAttr, pManager.speed[axis])
                 if hasHome:
                     self.setSharedAttr(pName, axis, _homeAttr, pManager.home[axis])
                 if hasStop:
@@ -57,13 +53,8 @@ class PositionerController(ImConWidgetController):
             condition = lambda p: p.resetOnClose
         )
 
-    def getPos(self, fromDevice:bool=False):
-        if bool(fromDevice):
-            # need to retreive positions e.g. over USB-serial
-            # return self._master.positionersManager.execOnAll(lambda p: p.getPosition)
-            return self._master.positionersManager["ESP32Stage"].getPosition()
-        else:
-            return self._master.positionersManager.execOnAll(lambda p: p.position)
+    def getPos(self):
+        return self._master.positionersManager.execOnAll(lambda p: p.position)
 
     def getSpeed(self):
         return self._master.positionersManager.execOnAll(lambda p: p.speed)
@@ -149,7 +140,8 @@ class PositionerController(ImConWidgetController):
         self._master.positionersManager[positionerName].doHome(axis, isBlocking=isBlocking)
         self.updatePosition(positionerName, axis)
         self._commChannel.sigUpdateMotorPosition.emit()
-
+    
+    @APIExport()
     def stopAxis(self, positionerName, axis):
         self.__logger.debug(f"Stopping axis {axis}")
         self._master.positionersManager[positionerName].forceStop(axis)
@@ -190,7 +182,6 @@ class PositionerController(ImConWidgetController):
         except:
             pass
 
-
     @APIExport()
     def getPositionerNames(self) -> List[str]:
         """ Returns the device names of all positioners. These device names can
@@ -198,9 +189,9 @@ class PositionerController(ImConWidgetController):
         return self._master.positionersManager.getAllDeviceNames()
 
     @APIExport()
-    def getPositionerPositions(self, fromDevice=False) -> Dict[str, Dict[str, float]]:
+    def getPositionerPositions(self) -> Dict[str, Dict[str, float]]:
         """ Returns the positions of all positioners. """
-        return self.getPos(fromDevice)
+        return self.getPos()
 
     @APIExport(runOnUIThread=True)
     def setPositionerStepSize(self, positionerName: str, stepSize: float) -> None:
@@ -210,9 +201,11 @@ class PositionerController(ImConWidgetController):
 
     @APIExport(runOnUIThread=True)
     @expose
-    def movePositioner(self, positionerName: str, axis: str, dist: Optional[float] = None, isAbsolute: bool = False, isBlocking: bool=False, speed: float=None) -> None:
+    def movePositioner(self, positionerName: Optional[str]=None, axis: Optional[str]="X", dist: Optional[float] = None, isAbsolute: bool = False, isBlocking: bool=False, speed: float=None) -> None:
         """ Moves the specified positioner axis by the specified number of
         micrometers. """
+        if positionerName is None:
+            positionerName = self._master.positionersManager.getAllDeviceNames()[0]
         try: # uc2 only
             self.move(positionerName, axis, dist, isAbsolute=isAbsolute, isBlocking=isBlocking, speed=speed)
         except Exception as e:

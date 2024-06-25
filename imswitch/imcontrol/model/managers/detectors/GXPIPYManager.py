@@ -134,7 +134,7 @@ class GXPIPYManager(DetectorManager):
             elif triggerSource == 2 and triggerMode == 1:
                 self.setParameter('Trigger source', 'External "frame-trigger"')
 
-    def getLatestFrame(self, is_resize=True, returnFrameNumber=False):
+    def getLatestFrame(self, is_save=None, is_resize=True, returnFrameNumber=False):
         if returnFrameNumber:
             frame, frameNumber = self._camera.getLast(returnFrameNumber=returnFrameNumber)
             return frame, frameNumber

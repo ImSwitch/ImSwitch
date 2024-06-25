@@ -212,7 +212,7 @@ def calibrate_backlash_1d(
         move(starting_stage_pos - sensible_step * (i + 1))
         #print(".", end="")
         stage_pos, image_pos = tracker.append_point()
-        print("Stage pos FWD: %s, Image pos: %s" % (stage_pos, image_pos))
+        print("Stage pos FWD: %s, Image pos: %s" % (stage_pos - starting_stage_pos, image_pos))
         if (i > 3 and tracker.moving_away_from_centre 
             and norm(image_pos) > 0.65 * tracker.max_safe_displacement):
             break # Stop once we have moved far enough
@@ -226,7 +226,7 @@ def calibrate_backlash_1d(
         move(starting_stage_pos + sensible_step * (i + 1))
         #print(".", end="")
         stage_pos, image_pos = tracker.append_point()
-        print("Stage pos BWD: %s, Image pos: %s" % (stage_pos, image_pos))
+        print("Stage pos BWD: %s, Image pos: %s" % (stage_pos - starting_stage_pos, image_pos))
         if (i > 3 and tracker.moving_away_from_centre 
             and norm(image_pos) > 0.65 * tracker.max_safe_displacement):
             break # Stop once we have moved far enough

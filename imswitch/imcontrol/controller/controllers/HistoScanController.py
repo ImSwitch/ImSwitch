@@ -166,7 +166,7 @@ class HistoScanController(LiveUpdatedController):
             self._widget.buttonTurnOffLEDArray.clicked.connect(self.turnOffLEDArray)
         
     def computeOptimalScanStepSize(self, overlap = 0.75):
-        mFrameSize = self.microscopeDetector.getLatestFrame().shape
+        mFrameSize = (self.microscopeDetector._camera.SensorHeight, self.microscopeDetector._camera.SensorWidth)
         bestScanSizeX = mFrameSize[1]*self.microscopeDetector.pixelSizeUm[-1]*overlap
         bestScanSizeY = mFrameSize[0]*self.microscopeDetector.pixelSizeUm[-1]*overlap     
         return bestScanSizeX, bestScanSizeY
@@ -432,7 +432,6 @@ class HistoScanController(LiveUpdatedController):
         self._widget.stopButton3.setText("Stop")
         self._widget.stopButton3.setStyleSheet("background-color: red")
         self._widget.startButton3.setStyleSheet("background-color: green")
-        illuSource = self._widget.getIlluminationSource()
         initialPosition = self.stages.getPosition()        
         minPosX = np.min(self.mCamScanCoordinates, axis=0)[0]
         maxPosX = np.max(self.mCamScanCoordinates, axis=0)[0]
@@ -442,7 +441,7 @@ class HistoScanController(LiveUpdatedController):
         nTimes = 1
         tPeriod = 0
         
-        self.startStageScanning(minPosX=minPosX, minPosY=minPosY, maxPosX=maxPosX, maxPosY=maxPosY, positionList=self.mCamScanCoordinates, nTimes=nTimes, tPeriod=tPeriod, illuSource=illuSource)
+        self.startStageScanning(minPosX=minPosX, minPosY=minPosY, maxPosX=maxPosX, maxPosY=maxPosY, positionList=self.mCamScanCoordinates, nTimes=nTimes, tPeriod=tPeriod)
                 
     
     def stophistoscanCamerabased(self):
@@ -538,9 +537,8 @@ class HistoScanController(LiveUpdatedController):
         self._widget.stopButton.setStyleSheet("background-color: red")
         self._widget.startButton.setStyleSheet("background-color: green")
         overlap = 0.75
-        illuSource = self._widget.getIlluminationSource()
         # start stage scanning without provision of stage coordinate list
-        self.startStageScanning(minPosX, maxPosX, minPosY, maxPosY, overlap, nTimes, tPeriod, illuSource)
+        self.startStageScanning(minPosX, maxPosX, minPosY, maxPosY, overlap, nTimes, tPeriod)
 
     def starthistoscanTilebased(self):
         numberTilesX, numberTilesY = self._widget.getNumberTiles()
@@ -553,7 +551,6 @@ class HistoScanController(LiveUpdatedController):
         self._widget.stopButton2.setText("Stop")
         self._widget.stopButton2.setStyleSheet("background-color: red")
         self._widget.startButton2.setStyleSheet("background-color: green")
-        illuSource = self._widget.getIlluminationSource()
         initialPosition = self.stages.getPosition()
         initPosX = initialPosition["X"]
         initPosY = initialPosition["Y"]
@@ -562,7 +559,7 @@ class HistoScanController(LiveUpdatedController):
         isStitchAshlarFlipX = self._widget.stitchAshlarFlipXCheckBox.isChecked()
         isStitchAshlarFlipY = self._widget.stitchAshlarFlipYCheckBox.isChecked()
         
-        self.startHistoScanTileBasedByParameters(numberTilesX, numberTilesY, stepSizeX, stepSizeY, nTimes, tPeriod, illuSource, initPosX, initPosY, 
+        self.startHistoScanTileBasedByParameters(numberTilesX, numberTilesY, stepSizeX, stepSizeY, nTimes, tPeriod, initPosX, initPosY, 
                                                  isStitchAshlar, isStitchAshlarFlipX, isStitchAshlarFlipY)
 
         
@@ -579,7 +576,7 @@ class HistoScanController(LiveUpdatedController):
             self._logger.debug("histoscan scanning stopped.")
 
     @APIExport()
-    def startHistoScanTileBasedByParameters(self, numberTilesX:int=2, numberTilesY:int=2, stepSizeX:int=100, stepSizeY:int=100, nTimes:int=1, tPeriod:int=1, illuSource:str=None, initPosX:int=0, initPosY:int=0, 
+    def startHistoScanTileBasedByParameters(self, numberTilesX:int=2, numberTilesY:int=2, stepSizeX:int=100, stepSizeY:int=100, nTimes:int=1, tPeriod:int=1, initPosX:int=0, initPosY:int=0, 
                                             isStitchAshlar:bool=False, isStitchAshlarFlipX:bool=False, isStitchAshlarFlipY:bool=False):
         def computePositionList(numberTilesX, numberTilesY, stepSizeX, stepSizeY, initPosX, initPosY):
             positionList = []
@@ -591,9 +588,6 @@ class HistoScanController(LiveUpdatedController):
                 for j in rangeY:
                     positionList.append((i*stepSizeX+initPosX-numberTilesX//2*stepSizeX, j*stepSizeY+initPosY-numberTilesY//2*stepSizeY))
             return positionList
-        if illuSource is None or illuSource not in self._master.lasersManager.getAllDeviceNames():
-            try:illuSource = self._master.lasersManager.getAllDeviceNames()[0]
-            except: illuSource = None
         # compute optimal step size if not provided
         if stepSizeX<=0 or stepSizeX is None:
             stepSizeX, _ = self.computeOptimalScanStepSize()
@@ -607,7 +601,7 @@ class HistoScanController(LiveUpdatedController):
         maxPosY = np.max(positionList, axis=0)[1]
         
         # start stage scanning with positionlist 
-        self.startStageScanning(minPosX=minPosX, minPosY=minPosY, maxPosX=maxPosX, maxPosY=maxPosY, positionList=positionList, nTimes=nTimes, tPeriod=tPeriod, illuSource=illuSource, 
+        self.startStageScanning(minPosX=minPosX, minPosY=minPosY, maxPosX=maxPosX, maxPosY=maxPosY, positionList=positionList, nTimes=nTimes, tPeriod=tPeriod, 
                                 isStitchAshlar=isStitchAshlar, isStitchAshlarFlipX=isStitchAshlarFlipX, isStitchAshlarFlipY=isStitchAshlarFlipY)
         
     def stophistoscanTilebased(self):
@@ -621,13 +615,12 @@ class HistoScanController(LiveUpdatedController):
         self._logger.debug("histoscan scanning stopped.")
 
     @APIExport()
-    def startStageScanningPositionlistbased(self, positionList:str, nTimes:int=1, tPeriod:int=0, illuSource:str=None):
+    def startStageScanningPositionlistbased(self, positionList:str, nTimes:int=1, tPeriod:int=0):
         '''
         Start a stage scanning based on a list of positions
         positionList: list of tuples with X/Y positions (e.g. "[(10, 10, 100), (100, 100, 100)]")
         nTimes: number of times to repeat the scan
         tPeriod: time between scans
-        illuSource: illumination source        
         '''
         
         positionList = np.array(ast.literal_eval(positionList))
@@ -636,10 +629,10 @@ class HistoScanController(LiveUpdatedController):
         maxPosY = np.max(positionList[:,1])
         minPosY = np.min(positionList[:,1])
         return self.startStageScanning(minPosX=minPosX, maxPosX=maxPosX, minPosY=minPosY, maxPosY=maxPosY, overlap=None, 
-                                nTimes=nTimes, tPeriod=tPeriod, illuSource=illuSource, positionList=positionList)
+                                nTimes=nTimes, tPeriod=tPeriod, positionList=positionList)
             
     def startStageScanning(self, minPosX:float=None, maxPosX:float=None, minPosY:float=None, maxPosY:float=None, 
-                           overlap:float=None, nTimes:int=1, tPeriod:int=0, illuSource:str=None, positionList:list=None, 
+                           overlap:float=None, nTimes:int=1, tPeriod:int=0, positionList:list=None, 
                            isStitchAshlar:bool=False, isStitchAshlarFlipX:bool=False, isStitchAshlarFlipY:bool=False):
         if not self.ishistoscanRunning:
             self.ishistoscanRunning = True
@@ -648,7 +641,7 @@ class HistoScanController(LiveUpdatedController):
                 del self.histoscanTask
             # Launch the XY scan in the background 
             self.histoscanTask = threading.Thread(target=self.histoscanThread, args=(minPosX, maxPosX, minPosY, 
-                                                                                     maxPosY, overlap, nTimes, tPeriod, illuSource, positionList, 
+                                                                                     maxPosY, overlap, nTimes, tPeriod, positionList, 
                                                                                      isStitchAshlarFlipX, isStitchAshlarFlipY, 0.05,
                                                                                      isStitchAshlar))
             self.histoscanTask.start()
@@ -676,7 +669,7 @@ class HistoScanController(LiveUpdatedController):
         return {"ishistoscanRunning": bool(self.ishistoscanRunning)}
         
     def histoscanThread(self, minPosX, maxPosX, minPosY, maxPosY, overlap=0.75, nTimes=1, 
-                        tPeriod=0, illuSource=None, positionList=None,
+                        tPeriod=0, positionList=None,
                         flipX=False, flipY=False, tSettle=0.05, 
                         isStitchAshlar=False):
         self._logger.debug("histoscan thread started.")
@@ -731,10 +724,6 @@ class HistoScanController(LiveUpdatedController):
             # move to the first position
             self.stages.move(value=positionList[0], axis="XY", is_absolute=True, is_blocking=True, acceleration=(self.acceleration,self.acceleration))
             # move to all coordinates and take an image   
-            if illuSource is not None: 
-                self._master.lasersManager[illuSource].setEnabled(1)
-                #self._master.lasersManager[illuSource].setValue(255)
-                time.sleep(.5)
             
             # we try an alternative way to move the stage and take images:
             # We move the stage in the background from min to max X and take
@@ -788,9 +777,6 @@ class HistoScanController(LiveUpdatedController):
 
                 except Exception as e:
                     self._logger.error(e)
-            # we are done and switch off the ligth
-            if illuSource is not None:
-                self._master.lasersManager[illuSource].setEnabled(0)
 
             # wait until we go for the next timelapse
             while 1:

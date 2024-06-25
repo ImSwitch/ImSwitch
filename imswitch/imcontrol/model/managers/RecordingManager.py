@@ -127,7 +127,7 @@ class PNGStorer(Storer):
             cv2.imwrite(path, image)
             del image
             logger.info(f"Saved image to png file {path}")
-            del image 
+
 
 class JPGStorer(Storer):
     """ A storer that stores the images in a series of jpg files """
@@ -270,7 +270,7 @@ class RecordingManager(SignalInterface):
 
             # Acquire data
             for detectorName in detectorNames:
-                images[detectorName] = self.__detectorsManager[detectorName].getLatestFrame(is_save=True)
+                images[detectorName] = self.__detectorsManager[detectorName].getLatestFrame()
                 image = images[detectorName]
 
             if saveFormat:

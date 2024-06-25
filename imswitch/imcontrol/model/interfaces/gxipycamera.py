@@ -202,7 +202,7 @@ class CameraGXIPY:
         # only return fresh frames
         # print(self.lastFrameId, self.frameNumber)
         cTime = time.time()
-        while(self.lastFrameId >= self.frameNumber and self.frame is None):
+        while(self.lastFrameId > self.frameNumber and self.frame is None):
             time.sleep(.01) # wait for fresh frame
             if time.time()-cTime > timeout:
                 self.__logger.warning("Timeout in getLast")

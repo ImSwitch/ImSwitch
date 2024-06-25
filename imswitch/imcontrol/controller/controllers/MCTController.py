@@ -71,7 +71,6 @@ class MCTController(ImConWidgetController):
         # select detectors
         allDetectorNames = self._master.detectorsManager.getAllDeviceNames()
         self.detector = self._master.detectorsManager[allDetectorNames[0]]
-        self.detectorWidth, self.detectorHeight = self.detector._camera.SensorWidth, self.detector._camera.SensorHeight
         self.isRGB = self.detector._camera.isRGB
         self.detectorPixelSize = self.detector.pixelSizeUm
         
@@ -124,8 +123,8 @@ class MCTController(ImConWidgetController):
         # get active illuminations 
         self.activeIlluminations = []
         if self.Illu1Value>0: self.activeIlluminations.append(self.availableIlliminations[0])
-        if self.Illu2Value>0: self.activeIlluminations.append(self.availableIlliminations[1])
-        if self.Illu3Value>0: self.activeIlluminations.append(self.availableIlliminations[2])
+        if self.Illu2Value>0 and len(self.availableIlliminations)>1: self.activeIlluminations.append(self.availableIlliminations[1])
+        if self.Illu3Value>0 and len(self.availableIlliminations)>2: self.activeIlluminations.append(self.availableIlliminations[2])
         
         # start the timelapse
         if not self.isMCTrunning and len(self.activeIlluminations)>0:
@@ -255,12 +254,15 @@ class MCTController(ImConWidgetController):
         self._commChannel.sigAutoFocus.emit(int(params["valueRange"]), int(params["valueSteps"]))
         self.isAutofocusRunning = True
 
-        while self.isAutofocusRunning:
-            time.sleep(0.1)
-            t0 = time.time()
-            if not self.isAutofocusRunning or time.time()-t0>timeout:
-                self._logger.info("Autofocusing done.")
-                return
+        try:
+            while self.isAutofocusRunning:
+                time.sleep(0.1)
+                t0 = time.time()
+                if not self.isAutofocusRunning or time.time()-t0>timeout:
+                    self._logger.info("Autofocusing done.")
+                    return
+        except Exception as e:
+            self._logger.error(e)
 
 
     def takeTimelapseThread(self, tperiod, nImagesToCapture, 
@@ -288,6 +290,7 @@ class MCTController(ImConWidgetController):
         fileName = self.getSaveFilePath(date=MCTDate,
                                 filename=MCTFilename,
                                 extension=fileExtension)
+        self.detectorWidth, self.detectorHeight = self.detector._camera.SensorWidth, self.detector._camera.SensorHeight
         if self.isRGB:
             init_dims = (1, len(self.activeIlluminations), nZStack, self.detectorWidth, self.detectorHeight, 3) # time, channels, z, y, x, RGB
             max_dims = (None, 3, nZStack, None, None, 3)  # Allow unlimited time points and z slices
@@ -461,7 +464,7 @@ class MCTController(ImConWidgetController):
                         illuValue = self.Illu3Value
                     
                     mIllumination.setValue(illuValue)
-                    mIllumination.setEnabled(True, getReturn=True)
+                    mIllumination.setEnabled(True)
                     time.sleep(self.tWait)
                     allChannelFrames.append(self.detector.getLatestFrame().copy())
                     

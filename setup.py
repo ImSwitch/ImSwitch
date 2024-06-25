@@ -41,21 +41,15 @@ setup(
         "coloredlogs >= 15",
         "colour-science >= 0.3",
         "dataclasses-json >= 0.5",
-        "h5py >= 3",
+        "h5py >= 2.10",
         "pyvisa-py==0.4.1",
         "lantzdev[qt] >= 0.5.2",
         "luddite >= 1",
-        "napari[pyqt5]",
         "nidaqmx >= 0.5.7",
         "numpy >= 1.19",
         "packaging >= 19",
         "psutil >= 5.4.8",
-        "PyQt5 >= 5.15.2",
-        "pyqtgraph >= 0.12.1",
-        "microscope",
         "pyserial >= 3.4",
-        "QDarkStyle >= 3",
-        "QScintilla >= 2.12",
         "qtpy >= 1.9",
         "requests >= 2.25",
         "scikit-image >= 0.18",
@@ -68,21 +62,31 @@ setup(
         "matplotlib >= 3.6",
         "websockets >= 10.0",
         "websocket-client >= 1.2", 
-        "zeroconf >= 0.30", 
         "opencv-python", 
         "imjoy_rpc",
         "imjoy",
         "aiortc >= 1.3.0",
-        "juliacall",
-        "UC2-REST", 
-        "rpyc",
-        "PyQtWebEngine >= 5.15.2"
+        "UC2-REST",
+        "tk >= 0.1.0", 
+        "jupyter", 
+        "python-multipart >= 0.0.5", 
+        "piexif >= 1.1.3", 
+        "NanoImagingPack==2.1.3.dev1"
     ],
-     extras_require={
+     extras_require={ # we assume that this is installed in a conda environment or via apt-get
         'PyQt5': [
             "PyQt5 >= 5.15.2",
-            "QtWebEngineWidgets >= 5.15.2"
-        ]},
+            "QDarkStyle >= 3",
+            "QScintilla >= 2.12",
+            "PyQtWebEngine >= 5.15.2",
+            "pyqtgraph >= 0.12.1",
+            "napari[pyqt5]"
+        ], 
+        'arkitet':
+            [
+            "arkitekt==0.7.8"
+        ],},
+     
     entry_points={
         "console_scripts": [
             "imswitch = imswitch.__main__:main",

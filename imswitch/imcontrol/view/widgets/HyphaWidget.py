@@ -78,6 +78,10 @@ class HyphaWidget(Widget):
 
         # Add the second tab to the tab widget
         self.tabWidget.addTab(self.tab2, "Chat")
+        
+        # add a dummy tab for future code execution by button press
+        self.tab3 = QtWidgets.QWidget()
+        self.tabWidget.addTab(self.tab3, "Execute Invention")
 
         # set layout 
         # Add the self.tabWidget to the main layout of the widget

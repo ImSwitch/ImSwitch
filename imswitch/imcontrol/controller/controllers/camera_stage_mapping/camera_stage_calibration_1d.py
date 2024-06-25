@@ -152,6 +152,7 @@ def calibrate_backlash_1d(
         direction: np.ndarray = np.array([1,0,0]),
         return_data_on_failure: bool = False,
         logger: Optional[logging.Logger] = None,
+        isStop: Optional[bool]=False
     ):
     """Figure out reasonable step sizes for calibration, and estimate the backlash.
     
@@ -206,6 +207,8 @@ def calibrate_backlash_1d(
     starting_stage_pos, starting_camera_pos = tracker.append_point()
     nBacklashDetectionSteps = 15
     for i in range(nBacklashDetectionSteps):
+        if isStop:
+            return
         move(starting_stage_pos - sensible_step * (i + 1))
         #print(".", end="")
         stage_pos, image_pos = tracker.append_point()
@@ -218,6 +221,8 @@ def calibrate_backlash_1d(
     # Move forwards again, in 10 steps
     starting_stage_pos, starting_camera_pos = tracker.append_point()
     for i in range(nBacklashDetectionSteps):
+        if isStop:
+            return
         move(starting_stage_pos + sensible_step * (i + 1))
         #print(".", end="")
         stage_pos, image_pos = tracker.append_point()
@@ -236,6 +241,8 @@ def calibrate_backlash_1d(
         tracker.reset_history()
         stage_pos, camera_pos = tracker.append_point()
         while np.dot(stage_pos - sensible_step - original_stage_pos, sensible_step) > 0:
+            if isStop:
+                return
             move(stage_pos - sensible_step - backlash_correction)
             move(stage_pos - sensible_step)
             stage_pos, camera_pos = tracker.append_point()

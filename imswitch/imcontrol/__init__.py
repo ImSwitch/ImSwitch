@@ -1,3 +1,4 @@
+import imswitch
 __imswitch_module__ = True
 __title__ = 'Hardware Control'
 
@@ -38,6 +39,9 @@ def getMainViewAndController(moduleCommChannel, *_args,
 
     if overrideSetupInfo is None:
         try:
+            if imswitch.DEFAULT_SETUP_FILE is not None:
+                try:options.setupFileName = imswitch.DEFAULT_SETUP_FILE
+                except:print("Error setting default setup file from commandline.." )
             setupInfo = configfiletools.loadSetupInfo(options, ViewSetupInfo)
         except FileNotFoundError:
             # Have user pick setup anyway

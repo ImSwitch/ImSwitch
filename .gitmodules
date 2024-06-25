@@ -1,3 +1,0 @@
-[submodule "imswitch/app"]
-	path = imswitch/app
-	url = https://github.com/beniroquai/ImSwitch-fastapi-gui

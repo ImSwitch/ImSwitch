@@ -1,0 +1,119 @@
+FROM --platform=linux/amd64 ubuntu:22.04 AS napari
+# if you change the Ubuntu version, remember to update
+# the APT definitions for Xpra below so it reflects the
+# new codename (e.g. 20.04 was focal, 22.04 had jammy)
+
+# docker build --platform linux/arm64/v8 -f dockerfileNapari -t imswitch .
+# docker run -it --rm -p 9876:9876 -p 8001:8001 -p 2222:22 imswitch
+# docker exec -it agitated_dhawan  /bin/bash # to enter the container
+# start ssh server
+# service ssh start
+
+# below env var required to install libglib2.0-0 non-interactively
+ENV TZ=America/Los_Angeles
+ARG DEBIAN_FRONTEND=noninteractive
+ARG NAPARI_COMMIT=main
+
+# install python resources + graphical libraries used by qt and vispy
+RUN apt-get update && \
+    apt-get install -qqy  \
+        build-essential \
+        python3.9 \
+        python3-pip \
+        git \
+        mesa-utils \
+        x11-utils \
+        libegl1-mesa \
+        libopengl0 \
+        libgl1-mesa-glx \
+        libglib2.0-0 \
+        libfontconfig1 \
+        libxrender1 \
+        libdbus-1-3 \
+        libxkbcommon-x11-0 \
+        libxi6 \
+        libxcb-icccm4 \
+        libxcb-image0 \
+        libxcb-keysyms1 \
+        libxcb-randr0 \
+        libxcb-render-util0 \
+        libxcb-xinerama0 \
+        libxcb-xinput0 \
+        libxcb-xfixes0 \
+        libxcb-shape0 \
+        openssh-server \
+        && apt-get clean
+
+# install napari from repo
+# see https://github.com/pypa/pip/issues/6548#issuecomment-498615461 for syntax
+RUN pip install --upgrade pip 
+RUN git clone https://github.com/openUC2/ImSwitch && \
+    cd ImSwitch && \
+    git pull && \
+    pip install -e .[PyQt5] && \
+    git rev-parse HEAD
+#pip install "https://github.com/openUC2/ImSwitch/archive/refs/heads/master.zip"
+    
+ENTRYPOINT ["python3", "-m", "imswitch"]
+
+#########################################################
+# Extend napari with a preconfigured Xpra server target #
+#########################################################
+
+FROM napari AS napari-xpra
+
+ARG DEBIAN_FRONTEND=noninteractive
+
+# Install Xpra and dependencies
+RUN apt-get update && apt-get install -y wget gnupg2 apt-transport-https \
+    software-properties-common ca-certificates && \
+    wget -O "/usr/share/keyrings/xpra.asc" https://xpra.org/xpra.asc && \
+    wget -O "/etc/apt/sources.list.d/xpra.sources" https://raw.githubusercontent.com/Xpra-org/xpra/master/packaging/repos/jammy/xpra.sources
+
+
+RUN apt-get update && \
+    apt-get install -yqq \
+        xpra \
+        xvfb \
+        xterm \
+        sshfs && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Clean up
+# RUN conda clean -a -y
+
+# Set up SSH server
+RUN mkdir /var/run/sshd
+RUN echo 'root:password' | chpasswd
+RUN sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
+RUN sed -i 's/PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
+RUN sed -i 's/#PasswordAuthentication yes/PasswordAuthentication yes/' /etc/ssh/sshd_config
+
+# Expose SSH port
+EXPOSE 22
+
+# Start SSH service and Mamba environment
+CMD ["/usr/sbin/sshd", "-D"]
+
+ENV DISPLAY=:100
+ENV XPRA_PORT=9876
+ENV XPRA_START="python3 -m imswitch --headless 1 --config-file example_virtual_microscope.json"
+ENV XPRA_EXIT_WITH_CLIENT="yes"
+ENV XPRA_XVFB_SCREEN="1920x1080x24+32"
+EXPOSE 9876
+
+CMD echo "Launching napari on Xpra. Connect via http://localhost:$XPRA_PORT or $(hostname -i):$XPRA_PORT"; \
+    xpra start \
+    --bind-tcp=0.0.0.0:$XPRA_PORT \
+    --html=on \
+    --start="$XPRA_START" \
+    --exit-with-client="$XPRA_EXIT_WITH_CLIENT" \
+    --daemon=no \
+    --xvfb="/usr/bin/Xvfb +extension Composite -screen 0 $XPRA_XVFB_SCREEN -nolisten tcp -noreset" \
+    --pulseaudio=no \
+    --notifications=no \
+    --bell=no \
+    $DISPLAY
+
+ENTRYPOINT []

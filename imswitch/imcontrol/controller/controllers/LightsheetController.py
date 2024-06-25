@@ -43,11 +43,12 @@ class LightsheetController(ImConWidgetController):
         self._widget.setAvailableStageAxes(self.stages.axes)
         self.isLightsheetRunning = False
         
+        # connect signals
         self._widget.sigSliderIlluValueChanged.connect(self.valueIlluChanged)
         self.sigImageReceived.connect(self.displayImage)
-        
+        self._commChannel.sigStartLightSheet.connect(self.performScanningRecording)
+        self._commChannel.sigStopLightSheet.connect(self.stopLightsheet)
         self._commChannel.sigUpdateMotorPosition.connect(self.updateAllPositionGUI)
-        
         
         # Connect all GUI elements from the SCAN tab
         self._widget.button_scan_xyz_start.clicked.connect(self.onButtonScanStart)
@@ -192,9 +193,10 @@ class LightsheetController(ImConWidgetController):
         self._widget.set_scan_z_max(mPosition)
         
     def updateAllPositionGUI(self):
-        allPositions = self.stages.getPosition()
-        mPositionsXYZ = (allPositions["X"], allPositions["Y"], allPositions["Z"])
-        self._widget.updatePosition(mPositionsXYZ)
+        #allPositions = self.stages.getPosition() # TODO: Necesllary?
+        #mPositionsXYZ = (allPositions["X"], allPositions["Y"], allPositions["Z"])
+        #self._widget.updatePosition(mPositionsXYZ)
+        self._commChannel.sigUpdateMotorPosition.emit()
         
     def displayImage(self):
         # a bit weird, but we cannot update outside the main thread
@@ -232,22 +234,31 @@ class LightsheetController(ImConWidgetController):
 
         self.performScanningRecording(minPos, maxPos, speed, stageAxis, illuSource, 0)
 
-    def performScanningRecording(self, minPos, maxPos, speed, axis, illusource, illuvalue):
+    @APIExport()
+    def performScanningRecording(self, minPos=0, maxPos=1000, speed=1000, axis="A", illusource=None, illuvalue=512):
         if not self.isLightsheetRunning:
-            
-            initialPosition = self.stages.getPosition()[axis]
+            if maxPos - minPos <= 0: return
+            if speed < 100: speed = 100 
+            # check parameters
+            if axis not in ("A", "X", "Y", "Z"):
+                axis = "A"
+            # use default illumination source if not selectd 
+            if illusource is None or illusource=="None" or illusource not in self._master.lasersManager.getAllDeviceNames():
+                illusource = self._master.lasersManager.getAllDeviceNames()[0]
+        
+            #initialPosition = self.stages.getPosition()[axis]
         
             self.isLightsheetRunning = True
             if self.lightsheetTask is not None:
                 self.lightsheetTask.join()
                 del self.lightsheetTask
-            self.lightsheetTask = threading.Thread(target=self.lightsheetThread, args=(minPos, maxPos, speed, axis, illusource, illuvalue))
+            self.lightsheetTask = threading.Thread(target=self.lightsheetThread, args=(minPos, maxPos, None, None, speed, axis, illusource, illuvalue))
             self.lightsheetTask.start()
         
         
-    def lightsheetThread(self, minPosZ, maxPosZ, posX=None, posY=None, speed=10000, axis="A", illusource=None, illuvalue=None, isSave=False):
+    def lightsheetThread(self, minPosZ, maxPosZ, posX=None, posY=None, speed=10000, axis="A", illusource=None, illuvalue=None, isSave=True):
         self._logger.debug("Lightsheet thread started.")
-        
+        # TODO Have button for is save
         if posX is not None:
             self.stages.move(value=posX, axis="X", is_absolute=True, is_blocking=True)
         if posY is not None:
@@ -297,7 +308,7 @@ class LightsheetController(ImConWidgetController):
                 break 
             
             iFrame += 1
-            self._logger.debug(iFrame)
+            # self._logger.debug(iFrame)
         
 
         # move back to initial position
@@ -320,7 +331,8 @@ class LightsheetController(ImConWidgetController):
             if isSave:
                 # save image stack with metadata
                 tif.imsave(f"lightsheet_stack_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}_x_{posX}_y_{posY}_z_{posZ}_pz_{pixelSizeZ}_pxy_{pixelSizeXY}.tif", self.lightsheetStack)
-        threading.Thread(displayAndSaveImageStack(isSave)).start()
+        saveImageThread = threading.Thread(target=displayAndSaveImageStack, args =(isSave,))
+        saveImageThread.start()
         self.stopLightsheet()
         
         

@@ -5,6 +5,9 @@ lsusb
 # Start SSH server
 /usr/sbin/sshd -D &
 
+# List imSwitchConfig
+ls /root/ImSwitchConfig
+
 # Update the repository if needed
 if [ "$UPDATE_GIT" = "true" ]; then
     cd /tmp/ImSwitch
@@ -13,7 +16,7 @@ if [ "$UPDATE_GIT" = "true" ]; then
 fi
 
 if [ "$UPDATE_CONFIG" = "true" ]; then
-    cd /tmp/ImSwitchConfig
+    cd /root/ImSwitchConfig
     git pull origin main
 fi
 

@@ -12,6 +12,7 @@ from .FocusLockWidget import FocusLockWidget
 from .ImageWidget import ImageWidget
 from .LaserWidget import LaserWidget
 from .MotCorrWidget import MotCorrWidget
+from .OptWidget import OptWidget
 from .PositionerWidget import PositionerWidget
 from .RecordingWidget import RecordingWidget
 from .RotationScanWidget import RotationScanWidget
@@ -20,7 +21,6 @@ from .SLMWidget import SLMWidget
 from .ScanWidgetBase import ScanWidgetBase
 from .ScanWidgetMoNaLISA import ScanWidgetMoNaLISA
 from .ScanWidgetPointScan import ScanWidgetPointScan
-from .ScanWidgetOpt import ScanWidgetOpt
 from .SettingsWidget import SettingsWidget
 from .SLMWidget import SLMWidget
 from .TilingWidget import TilingWidget

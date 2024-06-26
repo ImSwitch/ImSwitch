@@ -17,7 +17,7 @@ __maintainer__ = "David Palecek"
 __email__ = "david@stanka.de"
 
 
-class ScanWidgetOpt(NapariHybridWidget):
+class OptWidget(NapariHybridWidget):
     """ Widget controlling OPT experiments where a rotation stage is triggered
     """
     sigRotStepDone = QtCore.Signal()

@@ -1,11 +1,11 @@
 import pytest
 import napari
 import numpy as np
-from imswitch.imcontrol.controller.controllers.ScanControllerOpt import (
-    ScanControllerOpt,
+from imswitch.imcontrol.controller.controllers.OptController import (
+    OptController,
     FBPliveRecon,
 )
-from imswitch.imcontrol.view.widgets.ScanWidgetOpt import ScanWidgetOpt
+from ImSwitchOpt.imswitch.imcontrol.view.widgets.OptWidget import OptWidget
 from imswitch.imcontrol.controller.CommunicationChannel import CommunicationChannel
 from imswitch.imcontrol.controller.MasterController import MasterController
 from imswitch.imcommon.controller import (
@@ -31,9 +31,9 @@ def test_opt_scan_controller(opt_settings, expected):
     self._master = MasterController(self._setupInfo, self._comm,
                                     self._moduleCommChannel)
     viewer = napari.Viewer(show=False)
-    widget = ScanWidgetOpt(options=None, napariViewer=viewer)
+    widget = OptWidget(options=None, napariViewer=viewer)
 
-    optController = ScanControllerOpt(
+    optController = OptController(
                         self._setupInfo,
                         self._comm,
                         self._master,

@@ -758,14 +758,14 @@ class HistoScanController(LiveUpdatedController):
                     # Todo: Need to ensure thatwe have the right pattern displayed and the buffer is free - this heavily depends on the exposure time..
                     mFrame = None
                     lastFrameNumber = -1
-                    timeoutFrameRequest = .3 # seconds
+                    timeoutFrameRequest = 3 # seconds
                     cTime = time.time()
                     
                     while(1):
                         # something went wrong while capturing the frame
                         if time.time()-cTime> timeoutFrameRequest:
                             break
-                        mFrame, currentFrameNumber = self.detector.getLatestFrame(returnFrameNumber=True)
+                        mFrame, currentFrameNumber = self.microscopeDetector.getLatestFrame(returnFrameNumber=True)
                         if currentFrameNumber <= lastFrameNumber:
                             time.sleep(0.01)
                             continue  

@@ -16,11 +16,12 @@ class IC_GrabberDLL:
     
     GrabberHandlePtr = POINTER(structs.GrabberHandle)
     
-    # win32
-    os.add_dll_directory("C:\\Users\\David Palecek\\Documents\\Python_projects\\optac\\optac\\src\\optac\\dll")
+    # win64
     if sys.maxsize > 2**32:
         # _ic_grabber_dll = windll.LoadLibrary(ctypes.util.find_library('tisgrabber_x64.dll'))
         _ic_grabber_dll = cdll.LoadLibrary("tisgrabber_x64.dll")
+
+    # win32
     else:
         _ic_grabber_dll = windll.LoadLibrary(ctypes.util.find_library('tisgrabber.dll'))
 

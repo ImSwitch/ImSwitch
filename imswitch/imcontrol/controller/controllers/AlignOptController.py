@@ -6,7 +6,7 @@ from ..basecontrollers import ImConWidgetController
 from imswitch.imcommon.framework import Thread
 from typing import List
 
-from .ScanControllerOpt import ScanOPTWorker
+from .OptController import ScanOPTWorker
 
 __author__ = "David Palecek", "Jacopo Abramo"
 __credits__ = []

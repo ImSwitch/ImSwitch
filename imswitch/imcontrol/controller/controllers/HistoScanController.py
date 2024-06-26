@@ -744,7 +744,25 @@ class HistoScanController(LiveUpdatedController):
                         break
                     self.stages.move(value=iPos, axis="XY", is_absolute=True, is_blocking=True, acceleration=(self.acceleration,self.acceleration))
                     time.sleep(self.tSettle)
-                    mFrame = self.microscopeDetector.getLatestFrame()  
+                    
+                    # Todo: Need to ensure thatwe have the right pattern displayed and the buffer is free - this heavily depends on the exposure time..
+                    mFrame = None
+                    lastFrameNumber = -1
+                    timeoutFrameRequest = .3 # seconds
+                    cTime = time.time()
+                    
+                    while(1):
+                        # something went wrong while capturing the frame
+                        if time.time()-cTime> timeoutFrameRequest:
+                            break
+                        mFrame, currentFrameNumber = self.detector.getLatestFrame(returnFrameNumber=True)
+                        if currentFrameNumber <= lastFrameNumber:
+                            time.sleep(0.01)
+                            continue  
+                        print(f"Frame number used for stack: {currentFrameNumber}") 
+                        lastFrameNumber = currentFrameNumber
+                        break
+                    #mFrame = self.microscopeDetector.getLatestFrame()  
 
                     def addImage(mFrame, positionList):
                         metadata = {'Pixels': {
@@ -897,6 +915,9 @@ class ImageStitcher:
         from ashlar.scripts.ashlar import process_images
         print("Stitching tiles with ashlar..")
         # Process numpy arrays
+        if len(arrays[0].shape)>4:
+            print("We can do Monochrome for now only") 
+            arrays = [np.mean(arrays[0], axis=-1)]
         process_images(filepaths=arrays,
                         output=output_filename,
                         align_channel=0,

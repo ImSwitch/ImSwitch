@@ -1,13 +1,15 @@
 # Use an appropriate base image for Jetson Nano
-# sudo docker build -t hik_driver_jetson_nano .
-# sudo docker run -it --privileged  hik_driver_jetson_nano
-# docker stop hik_driver_jetson_nano
-# sudo docker inspect hik_driver_jetson_nano
-# docker run --privileged -it hik_driver_jetson_nano
+# sudo docker build -t imswitch_hik .
+# sudo docker run -it --privileged  imswitch_hik
+# docker stop imswitch_hik
+# sudo docker inspect imswitch_hik
+# docker run --privileged -it imswitch_hik
+# sudo docker run -it --rm -p 8001:8001 -p 2222:22 -e HEADLESS=1 -e HTTP_PORT=8001 -e CONFIG_FILE=example_virtual_microscope.json -e UPDATE_GIT=0 -e UPDATE_CONFIG=0 --privileged imswitch_hik
+# sudo docker run -it --rm -p 8001:8001 -p 2222:22 -e HEADLESS=1 -e HTTP_PORT=8001 -e CONFIG_FILE=example_uc2_hik_flowstop.json -e UPDATE_GIT=0 -e UPDATE_CONFIG=0 --privileged imswitch_hik
 # performs python3 /opt/MVS/Samples/aarch64/Python/MvImport/GrabImage.py
 
 # Use an appropriate base image for Jetson Nano
-# docker build -t hik_driver_jetson_nano .
+# docker build -t imswitch_hik .
 #
 
 FROM --platform=linux/arm64/v8 ubuntu:22.04
@@ -60,11 +62,9 @@ ENV PATH=/opt/conda/bin:$PATH
 
 # Create conda environment and install packages
 RUN /opt/conda/bin/conda create -y --name imswitch python=3.10
-RUN /opt/conda/bin/conda install -n imswitch -y -c conda-forge h5py && \
-    conda clean --all -f -y
 
 # Clone the config folder
-RUN git clone https://github.com/openUC2/imSwitch /tmp/ImSwitchConfig 
+RUN git clone https://github.com/openUC2/ImSwitchConfig /root/ImSwitchConfig 
 
 # Clone the repository and install dependencies
 RUN git clone https://github.com/openUC2/imSwitch /tmp/ImSwitch && \

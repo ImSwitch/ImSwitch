@@ -196,7 +196,9 @@ class LightsheetController(ImConWidgetController):
         #allPositions = self.stages.getPosition() # TODO: Necesllary?
         #mPositionsXYZ = (allPositions["X"], allPositions["Y"], allPositions["Z"])
         #self._widget.updatePosition(mPositionsXYZ)
-        self._commChannel.sigUpdateMotorPosition.emit()
+        #self._commChannel.sigUpdateMotorPosition.emit()
+        pass 
+        #TODO: This needs an update!
         
     def displayImage(self):
         # a bit weird, but we cannot update outside the main thread

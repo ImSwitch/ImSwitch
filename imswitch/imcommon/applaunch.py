@@ -2,7 +2,6 @@ import logging
 import os
 import sys
 import traceback
-import pdb
 
 from qtpy import QtCore, QtGui, QtWidgets
 
@@ -42,7 +41,6 @@ def launchApp(app, mainView, moduleMainControllers):
     # Show app
     mainView.showMaximized()
     mainView.show()
-    # pdb.set_trace()
     exitCode = app.exec_()
 
     # Clean up

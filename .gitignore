@@ -69,7 +69,6 @@ target/
 # Specific files
 imswitch/imcontrol/model/managers/lasers/KatanaLaserManager.py
 imswitch/imcontrol/model/managers/stands/LeicaDMIManager.py
-imswitch/imcontrol/model/interfaces/tis4_tester.py
 
 # Mac Files
 .DS_Store

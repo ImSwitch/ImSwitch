@@ -6,7 +6,6 @@ from imswitch.imcommon import prepareApp, launchApp
 from imswitch.imcommon.controller import ModuleCommunicationChannel, MultiModuleWindowController
 from imswitch.imcommon.model import modulesconfigtools, pythontools, initLogger
 from imswitch.imcommon.view import MultiModuleWindow, ModuleLoadErrorView
-import pdb
 
 
 def main():
@@ -37,7 +36,6 @@ def main():
 
     # Register modules
     for modulePkg in modulePkgs:
-        # add to __registeredModules set
         moduleCommChannel.register(modulePkg)
 
     # Load modules
@@ -70,7 +68,6 @@ def main():
             # Update loading progress
             multiModuleWindow.updateLoadingProgress(i / len(modulePkgs))
             app.processEvents()  # Draw window before continuing
-    # pdb.set_trace()
 
     launchApp(app, multiModuleWindow, moduleMainControllers.values())
 

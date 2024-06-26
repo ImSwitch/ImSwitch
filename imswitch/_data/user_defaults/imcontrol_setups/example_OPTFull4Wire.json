@@ -35,16 +35,6 @@
             }
         }
     },
-    "scan": {
-        "scanWidgetType": "Opt",
-        "scanDesigner": "BetaScanDesigner",
-        "scanDesignerParams": {
-            "return_time": 0.01
-        },
-        "TTLCycleDesigner": "BetaTTLCycleDesigner",
-        "TTLCycleDesignerParams": {},
-        "sampleRate": 100000
-    },
     "optInfo": {
         "detectors": ["DMK"],
         "rotator": "ArduinoStepper"
@@ -63,7 +53,7 @@
         "Recording",
         "Image",
         "Rotator",
-        "Scan",
+        "Opt",
         "AlignOpt"
     ]
 }

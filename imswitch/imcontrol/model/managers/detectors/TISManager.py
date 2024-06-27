@@ -22,7 +22,8 @@ class TISManager(DetectorManager):
     def __init__(self, detectorInfo, name, **_lowLevelManagers):
         self.__logger = initLogger(self, instanceName=name)
 
-        self._camera = self._getTISObj(detectorInfo.managerProperties['cameraListIndex'])
+        self._camera = self._getTISObj(
+                            detectorInfo.managerProperties['cameraListIndex'])
 
         self._running = False
         self._adjustingParameters = False
@@ -37,32 +38,37 @@ class TISManager(DetectorManager):
 
         # Prepare parameters
         parameters = {
-            'exposure': DetectorNumberParameter(group='Misc', value=100,
+            'exposure': DetectorNumberParameter(group='Misc',
+                                                value=100,
                                                 valueUnits='ms',
                                                 editable=True),
-            'gain': DetectorNumberParameter(group='Misc', value=1,
+
+            'gain': DetectorNumberParameter(group='Misc',
+                                            value=1,
                                             valueUnits='arb.u.',
                                             editable=True),
-            'brightness': DetectorNumberParameter(group='Misc', value=1,
+
+            'brightness': DetectorNumberParameter(group='Misc',
+                                                  value=1,
                                                   valueUnits='arb.u.',
                                                   editable=True),
-            # Fix NO2, it seems to change the frame size, but not the
-            # bit depth. I am not sure switching Y800 and Y16 can be done without
-            # reinitializing the camera.
-            'video_format': DetectorListParameter(group='Misc',
-                                                  value='Y16 (320x240)',
-                                                  options=self._camera.get_video_formats(),
-                                                  editable=True),
+
+            'video_format': DetectorListParameter(
+                                group='Misc',
+                                value='Y16 (320x240)',
+                                options=self._camera.get_video_formats(),
+                                editable=True),
         }
 
         # Prepare actions
         actions = {
-            'More properties': DetectorAction(group='Misc',
-                                              func=self._camera.openPropertiesGUI),
-        # DP potential fix NO1, reinitialize camera from the dialog,
-        # but it throws AttributeError from __getattr__ in IC_Camera.py 
-            'Device selection': DetectorAction(group='Misc',
-                                               func=self._camera.openDevSelectionGUI),
+            'More properties': DetectorAction(
+                                    group='Misc',
+                                    func=self._camera.openPropertiesGUI),
+
+            'Device selection': DetectorAction(
+                                    group='Misc',
+                                    func=self._camera.openDevSelectionGUI),
         }
 
         super().__init__(detectorInfo, name, fullShape=fullShape,
@@ -89,7 +95,8 @@ class TISManager(DetectorManager):
         Retrieves the latest frame from the camera.
 
         Args:
-            is_save (bool, optional): Indicates whether to save the frame. Defaults to False.
+            is_save (bool, optional): Indicates whether to save the frame.
+                Defaults to False.
 
         Returns:
             numpy.ndarray: The latest frame captured by the camera.
@@ -102,8 +109,7 @@ class TISManager(DetectorManager):
         """Sets a parameter value and returns the value.
         If the parameter doesn't exist, i.e. the parameters field doesn't
         contain a key with the specified parameter name, an error will be
-        raised."""        
-
+        raised."""
         super().setParameter(name, value)
 
         if name not in self._DetectorManager__parameters:
@@ -181,17 +187,18 @@ class TISManager(DetectorManager):
         try:
             from imswitch.imcontrol.model.interfaces.tiscamera import CameraTIS
             camera = CameraTIS(cameraId)
-            # pdb.set_trace()
         except Exception:
-            self.__logger.warning(f'Failed to initialize TIS camera {cameraId}, loading mocker')
+            self.__logger.warning(
+                f'Failed to initialize TIS camera {cameraId}, loading mocker')
             from imswitch.imcontrol.model.interfaces.tiscamera_mock import MockCameraTIS
             camera = MockCameraTIS()
 
         self.__logger.info(f'Initialized camera, model: {camera.model}')
         return camera
-    
+
     def close(self):
-        self.__logger.info(f'Shutting down camera, model: {self._camera.model}')
+        self.__logger.info(
+                f'Shutting down camera, model: {self._camera.model}')
         pass
 
 

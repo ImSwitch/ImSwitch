@@ -162,11 +162,12 @@ class ScanOPTWorker(Worker):
     def preStart(self, resolution: int = 128) -> None:
         """
         Utility method to be called before the start of the OPT scan.
-        Generates the the sinogram for the demo experiment, if the demo mode is enabled,
-        and updates the UI progress bar.
+        Generates the the sinogram for the demo experiment, if the demo
+        mode is enabled, and updates the UI progress bar.
 
         Args:
-            resolution (`int`): resolution of resulting sinogram, equivalent to the number of steps in the OPT scan.
+            resolution (`int`): resolution of resulting sinogram, equivalent
+                to the number of steps in the OPT scan.
         """
         def generateSyntheticSinogram(resolution: int) -> np.ndarray:
             """Generates sinogram of a 3D shepp logan phantom. The resuling
@@ -191,7 +192,7 @@ class ScanOPTWorker(Worker):
             self.__logger.info('Synthetic data ready.')
             # normalize and return
             mx = np.amax(sinogram)
-            return np.rollaxis((sinogram/mx*255).astype(np.uint8), 2)
+            return np.rollaxis((sinogram / mx * 255).astype(np.uint8), 2)
 
         # generate sinogram only if demo experiment chosen
         if self.demoEnabled:
@@ -218,8 +219,12 @@ class ScanOPTWorker(Worker):
         self.master.detectorsManager[self.detectorName].startAcquisition()
 
         # mock is caught in the prepareOPTScan in controller
-        self.waitConst = self.master.detectorsManager[self.detectorName].getExposure()
-        self.__logger.info(f'Wait constant equals exposure time: {self.waitConst} us.')
+        self.waitConst = self.master.detectorsManager[
+                                self.detectorName,
+                                ].getExposure()
+        self.__logger.info(
+            f'Wait constant equals exposure time: {self.waitConst} us.',
+            )
 
         self.isOPTScanRunning = True
 
@@ -355,7 +360,10 @@ class ScanOPTWorker(Worker):
             frame (`np.ndarray`): the incoming frame
             step (`int`): the current step of the OPT scan
         """
-        stepsList, intensityDict = self.signalStability.processStabilityTraces(frame, step)
+        stepsList, intensityDict = self.signalStability.processStabilityTraces(
+                                                            frame,
+                                                            step,
+                                                            )
         self.sigNewStabilityTrace.emit(stepsList, intensityDict)
 
     def saveCurrentFrame(self, frame: np.ndarray) -> None:
@@ -418,7 +426,10 @@ class ScanOPTWorker(Worker):
                 frame[self.reconIdx, :],
                 self.currentStep)
         except AttributeError:  # in the first step, new recon object created.
-            self.__logger.info(f'Creating a new reconstruction object. {len(self.optSteps)}')
+            self.__logger.info(
+                f'Creating a new reconstruction object. {len(self.optSteps)}',
+                )
+
             self.currentLiveRecon = FBPliveRecon(
                 frame[self.reconIdx, :],
                 len(self.optSteps),
@@ -518,7 +529,9 @@ class OptController(ImConWidgetController):
             self.__logger.error('No detector for OPT found.')
 
         # update detector list in the widget and connect update method
-        self._widget.scanPar['Detector'].currentIndexChanged.connect(self.updateDetector)
+        self._widget.scanPar['Detector'].currentIndexChanged.connect(
+                                            self.updateDetector,
+                                            )
         self.updateDetector()
 
         for detector in self.forOptDetectorsList:
@@ -528,9 +541,11 @@ class OptController(ImConWidgetController):
         self.rotatorsList = self._master.rotatorsManager.getAllDeviceNames()
         self.rotator = None         # from rotatorsManager by rotatorName
         self.rotatorName = None     # from rotatorsManager
-        self.stepsPerTurn = 0       # rotator steps per turn (maximum steps for the OPT)
+        self.stepsPerTurn = 0  # rotator steps per turn (upper limit for OPT)
 
-        self._widget.scanPar['Rotator'].currentIndexChanged.connect(self.updateRotator)
+        self._widget.scanPar['Rotator'].currentIndexChanged.connect(
+                                            self.updateRotator,
+                                            )
         self.updateRotator()
 
         for rotator in self.rotatorsList:
@@ -544,9 +559,9 @@ class OptController(ImConWidgetController):
         self._widget.scanPar['OptStepsEdit'].valueChanged.connect(self.updateOptSteps) # noqa
 
         # Scan loop control
-        self._widget.scanPar['StartButton'].clicked.connect(self.prepareOPTScan)
-        self._widget.scanPar['StopButton'].clicked.connect(self.requestInterruption)
-        self._widget.scanPar['PlotReportButton'].clicked.connect(self.plotReport)
+        self._widget.scanPar['StartButton'].clicked.connect(self.prepareOPTScan) # noqa
+        self._widget.scanPar['StopButton'].clicked.connect(self.requestInterruption) # noqa
+        self._widget.scanPar['PlotReportButton'].clicked.connect(self.plotReport) # noqa
 
         # OPT worker thread
         self.optThread = Thread()
@@ -557,9 +572,10 @@ class OptController(ImConWidgetController):
         self.optWorker.moveToThread(self.optThread)
         self.updateLiveReconFlag()  # has to be after optWorker init
 
-        # live recon, needs to be after worker init (DP: not so elegant to put all
-        # flags to the worker no?)
-        self._widget.scanPar['LiveReconIdxEdit'].valueChanged.connect(self.getLiveReconIdx)
+        # live recon, needs to be after worker init (DP: not so elegant
+        # to put all flags to the worker no?)
+        self._widget.scanPar['LiveReconIdxEdit'].valueChanged.connect(
+                                                    self.getLiveReconIdx)
 
         # noRAM flag
         self._widget.scanPar['noRamButton'].clicked.connect(self.updateRamFlag)
@@ -579,7 +595,8 @@ class OptController(ImConWidgetController):
         self.optWorker.sigNewFrameCaptured.connect(self.displayImage)
         self.optWorker.sigNewStabilityTrace.connect(self.updateStabilityPlot)
         self.optWorker.sigScanDone.connect(self.postScanEnd)
-        self.optWorker.sigNewSinogramDataPoint.connect(self.checkSinogramProgress)
+        self.optWorker.sigNewSinogramDataPoint.connect(
+                                        self.checkSinogramProgress)
         self.optWorker.sigUpdateReconIdx.connect(self.setLiveReconIdx)
         self.optWorker.sigNewLiveRecon.connect(self.updateLiveReconPlot)
 
@@ -614,7 +631,8 @@ class OptController(ImConWidgetController):
             # TODO: Not HW agnostic, so added try except
             try:
                 if self.detector.name == 'mock' or self.rotator.name == 'mock':
-                    self.__logger.error('Select Demo, OPT cannot run with mock HW.')
+                    self.__logger.error(
+                        'Select Demo, OPT cannot run with mock HW.')
                     return
             except:
                 pass
@@ -627,7 +645,9 @@ class OptController(ImConWidgetController):
                     return
 
         self.setSharedAttr('scan', 'demo', self.optWorker.demoEnabled)
-        self.optWorker.saveSubfolder = datetime.now().strftime("%Y_%m_%d-%H-%M-%S")
+        self.optWorker.saveSubfolder = datetime.now().strftime(
+                                            "%Y_%m_%d-%H-%M-%S",
+                                            )
         self.sigImageReceived.connect(self.displayImage)
 
         # equidistant steps for the OPT scan in absolute values.
@@ -653,7 +673,9 @@ class OptController(ImConWidgetController):
         # save metadata
         # Camera settings 
         self.setSharedAttr(self.detectorName, 'name', self.detector.name)
-        self.setSharedAttr(self.detectorName, 'exposure', self.detector.getExposure())
+        self.setSharedAttr(self.detectorName,
+                           'exposure',
+                           self.detector.getExposure())
         self.setSharedAttr(self.detectorName, 'exposure unit', 'us')
 
         stab = self.optWorker.signalStability.getStabilityTraces()
@@ -663,7 +685,7 @@ class OptController(ImConWidgetController):
         self.saveMetadata()
 
         self._logger.info('OPT scan finished.')
-        self.optWorker.isInterruptionRequested = False  # reset interruption flag
+        self.optWorker.isInterruptionRequested = False  # reset interrupt flag
         self.optThread.quit()  # stop the worker thread
         self.optWorker.waitConst = None  # reset wait constant
         self._widget.updateCurrentStep(0)
@@ -851,13 +873,17 @@ class OptController(ImConWidgetController):
         self.rotatorName = self.rotatorsList[self._widget.getRotatorIdx()]
         self.rotator = self._master.rotatorsManager[self.rotatorName]
         self.stepsPerTurn = self.rotator._stepsPerTurn
-        self._widget.scanPar['StepsPerRevLabel'].setText(f'{self.stepsPerTurn:d} steps/rev')
+        self._widget.scanPar['StepsPerRevLabel'].setText(
+                                f'{self.stepsPerTurn:d} steps/rev',
+                                )
 
     def updateDetector(self):
         """ Update detector attributes when detector is changed.
         Setting detectorName and detector object.
         """
-        self.detectorName = self.forOptDetectorsList[self._widget.getDetectorIdx()]
+        self.detectorName = self.forOptDetectorsList[
+                                self._widget.getDetectorIdx(),
+                                ]
         self.detector = self._master.detectorsManager[self.detectorName]
 
     def getOptSteps(self):
@@ -888,9 +914,12 @@ class OptController(ImConWidgetController):
 
     def updateLiveReconFlag(self):
         """ Update live reconstruction flag based on the widget value """
-        self.optWorker.isLiveRecon = self._widget.scanPar['LiveReconButton'].isChecked()
+        self.optWorker.isLiveRecon = self._widget.scanPar[
+                                        'LiveReconButton'].isChecked()
         # enable/disable live-recon index
-        self._widget.scanPar['LiveReconIdxEdit'].setEnabled(self.optWorker.isLiveRecon)
+        self._widget.scanPar['LiveReconIdxEdit'].setEnabled(
+                                        self.optWorker.isLiveRecon,
+                                        )
 
     def updateSaveFlag(self):
         """ Update saving flag from the widget value """
@@ -920,7 +949,8 @@ class OptController(ImConWidgetController):
         Args:
             value (int): camera line index
         """
-        self._widget.setLiveReconIdx(value)  # triggers getLiveReconIdx via valueChange
+        # triggers getLiveReconIdx via valueChange
+        self._widget.setLiveReconIdx(value)
 
     ###################
     # Message windows #
@@ -1113,7 +1143,8 @@ class Stability:
     """
 
     def __init__(self, n_pixels: int = 50) -> None:
-        self.n_pixels = n_pixels  # rectangle size in pxs to monitor mean intensity at 4 corners
+        # rectangle size in pxs to monitor mean intensity at 4 corners
+        self.n_pixels = n_pixels
         self.clear()
 
     def clear(self):

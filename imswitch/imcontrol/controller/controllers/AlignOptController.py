@@ -178,7 +178,7 @@ class AlignOptController(ImConWidgetController):
         Args:
             arr (np.ndarray): two-frame array
         """
-        self.cor = AlignCOR('alignOPT', arr, self.xShift)
+        self.cor = AlignCOR(arr, self.xShift)
         self.cor.merge()
         self._widget.plotCounterProj(self.cor.merged)
 
@@ -211,12 +211,11 @@ class AlignCOR():
     """Class to visualize alignment of the two 180 deg tomographic
     projections
     """
-    def __init__(self, name: str, img_stack: np.ndarray, shift: int) -> None:
+    def __init__(self,img_stack: np.ndarray, shift: int) -> None:
         """Init class, check validity of the img_stack shape and calculate
         shifted overlay stack
 
         Args:
-            name (str): object name
             img_stack (np.ndarray): stack od two counter-projections
             shift (int): shift of one of the projections in respect to the
                 other one, in pixels.
@@ -224,7 +223,6 @@ class AlignCOR():
         Raises:
             IndexError: In case of wrong array shape
         """
-        self.name = name
         if len(img_stack) != 2:
             raise IndexError('Stack must contain exactly two images.')
         # img_stack is opt acquired at 0 and 180 deg

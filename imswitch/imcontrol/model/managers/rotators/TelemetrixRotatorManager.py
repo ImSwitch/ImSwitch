@@ -60,12 +60,20 @@ class TelemetrixRotatorManager(RotatorManager):
         self.motorID = None
         self.__setupBoardConnection()
 
+    def position(self) -> float:
+        """ Return the position as a float (angles). """
+        return self.board.currentPosition[1]
+
+    def get_position(self) -> Tuple[int, float]:
+        """ Return the position as a tuple of (steps, angle). """
+        return self.board.currentPosition
+
     def __setupBoardConnection(self):
         """ Initializes the handle to the hardware interface.
         If no hardware is found, a mock object is used instead.
         """
         self.__logger.info(f'Trying to initialize Arduino stepper motor (interface: {self.interface.name})')
-        self.board = self.__initializeBoard()        
+        self.board = self.__initializeBoard()
         self.board.stepsPerTurn = self._stepsPerTurn
         self.board.currentPosition = (0, 0)
         self.__initializeMotor()
@@ -91,7 +99,8 @@ class TelemetrixRotatorManager(RotatorManager):
             board = TelemetrixInterface()
             self.__logger.info('Telemetrix interface initialized')
         except Exception:
-            self.__logger.warning('Failed to initialize Telemetrix board. Setting up mock object.')
+            self.__logger.warning(
+                'Failed to initialize Telemetrix board. Setting up mock object.')
             board = MockTelemetrixBoard()
         return board
 
@@ -99,7 +108,8 @@ class TelemetrixRotatorManager(RotatorManager):
         """ Initializes the board motor pin configuration.
         If the board handle is a mock object, it will call placeholder methods.
         """
-        self.motorID = self.board.set_pin_mode_stepper(interface=self.interface.value, **self.pinConfig)
+        self.motorID = self.board.set_pin_mode_stepper(
+                            interface=self.interface.value, **self.pinConfig)
         self.board.stepper_set_max_speed(self.motorID, self.maximumspeed)
         self.board.stepper_set_current_position(self.motorID, 0)
 
@@ -150,9 +160,6 @@ class TelemetrixRotatorManager(RotatorManager):
         self.board.stepper_move(self.motorID,
                                 int(steps - self.board.currentPosition[0]))
         self.board.stepper_run(self.motorID, self.__moveFinishedCallback)
-
-    def get_position(self) -> Tuple[int, int]:
-        return self.board.currentPosition
 
     #######################
     # Continuous rotation #

@@ -18,7 +18,6 @@ from .SLMController import SLMController
 from .ScanControllerBase import ScanControllerBase
 from .ScanControllerMoNaLISA import ScanControllerMoNaLISA
 from .ScanControllerPointScan import ScanControllerPointScan
-# from .ScanControllerOpt import ScanControllerOpt
 from .RotationScanController import RotationScanController
 from .RotatorController import RotatorController
 from .SettingsController import SettingsController

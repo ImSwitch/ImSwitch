@@ -160,4 +160,4 @@ class ImSwitchREST(PositionerManager):
         if self.homeXenabled and self.homeYenabled and self.homeZenabled:
             for iAxis in ("X", "Y", "Z"):
                 self._imswitch_client.positionersManager.homeAxis(positioner_name=self.positioner_name, axis=iAxis, is_blocking=1)
-                self.setPosition(axis=iAxis, value=0
+                self.setPosition(axis=iAxis, value=0)

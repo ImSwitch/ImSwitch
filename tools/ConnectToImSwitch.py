@@ -46,7 +46,7 @@ for ix in range(3):
         plt.imshow(lastFrame)
         plt.show()
         
-        newX, newY = process(lastFrame)
+        #newX, newY = process(lastFrame)
         
 # Return the positioner to its initial position
 client.positionersManager.movePositioner(positioner_name, "X", initialPosition[0], is_absolute=True, is_blocking=True)

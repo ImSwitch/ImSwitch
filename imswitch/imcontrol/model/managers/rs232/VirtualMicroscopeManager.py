@@ -79,14 +79,14 @@ class Camera:
         
         self.image /= np.max(self.image)
         self.lock = threading.Lock()
-        self.SensorWidth = 512 #self.image.shape[1]
-        self.SensorHeight = 512 #self.image.shape[0]
+        self.SensorHeight = 300 #self.image.shape[1]
+        self.SensorWidth = 400 #self.image.shape[0]
         self.model = "VirtualCamera"
         self.PixelSize = 1.0
         self.isRGB = False
         self.frameNumber = 0
         # precompute noise so that we will save energy and trees
-        self.noiseStack = np.random.randn(self.SensorHeight,self.SensorWidth,100)*2
+        self.noiseStack = np.abs(np.random.randn(self.SensorHeight,self.SensorWidth,100)*2)
         
     def produce_frame(self, x_offset=0, y_offset=0, light_intensity=1.0, defocusPSF=None):
         """Generate a frame based on the current settings."""
@@ -95,7 +95,7 @@ class Camera:
             image = self.image.copy()
             # Adjust image based on offsets
             image = np.roll(np.roll(image, int(x_offset), axis=1), int(y_offset), axis=0)
-            image = nip.extract(image, (self.SensorWidth, self.SensorHeight))
+            image = nip.extract(image, (self.SensorHeight, self.SensorWidth))
 
             # do all post-processing on cropped image
             if IS_NIP and defocusPSF is not None and not defocusPSF.shape == ():
@@ -126,7 +126,7 @@ class Positioner:
     def __init__(self, parent):
         self._parent = parent
         self.position = {'X': 0, 'Y': 0, 'Z': 0, 'A': 0}
-        self.mDimensions = (self._parent.camera.SensorWidth, self._parent.camera.SensorHeight)
+        self.mDimensions = (self._parent.camera.SensorHeight, self._parent.camera.SensorWidth)
         self.lock = threading.Lock()
         if IS_NIP:
             self.psf = self.compute_psf(dz=0)

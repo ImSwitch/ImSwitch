@@ -1,5 +1,15 @@
+import os
+import cv2
+import math
+import time
+import imswitch
+import threading
+import numpy as np
+import matplotlib.pyplot as plt
+
+from skimage.draw import line
+from scipy.signal import convolve2d
 from imswitch.imcommon.model import initLogger
-from imswitch.imcommon.model import APIExport
 
 try:
     import NanoImagingPack as nip
@@ -7,20 +17,8 @@ try:
     IS_NIP = True
 except:
     IS_NIP = False
-import numpy as np
-import matplotlib.pyplot as plt
-import threading
-import time
-import numpy as np
-import cv2
-import threading
-import time
-import numpy as np
-import imswitch
-import os
-import math
 
-# workaround to not break if numba is not installed
+# Makes sure code still executes without numba, albeit extremely slow
 try:
     from numba import njit, prange
 except ModuleNotFoundError:
@@ -32,15 +30,6 @@ except ModuleNotFoundError:
 
         return wrapper
 
-# workaroung to not break if nanopyx is not installed
-try:
-    from nanopyx import eSRRF
-except ModuleNotFoundError:
-    def eSRRF(img, **kwargs):
-        # if nanopyx is not installed just returns the input image
-        return img
-
-from scipy.signal import convolve2d
 
 class VirtualMicroscopeManager:
     """A low-level wrapper for TCP-IP communication (ESP32 REST API)"""
@@ -49,27 +38,29 @@ class VirtualMicroscopeManager:
         self.__logger = initLogger(self, instanceName=name)
         self._settings = rs232Info.managerProperties
         self._name = name
-        availableImageModalities  = ["simplant"]
+        availableImageModalities = ["simplant", "smlm"]
         try:
-            self._mode = rs232Info.managerProperties["mode"]
-            self._imagePath = rs232Info.managerProperties['imagePath']
-            if not self._imagePath in availableImageModalities :
+            self._imagePath = rs232Info.managerProperties["imagePath"]
+            if not self._imagePath in availableImageModalities:
                 raise NameError
         except:
-            self._mode = "example"
             package_dir = os.path.dirname(os.path.abspath(imswitch.__file__))
-            self._imagePath = os.path.join(package_dir, "_data/images/histoASHLARStitch.jpg")
-            self.__logger.info("If you want to use the plant, use 'imagePath': 'simplant' in your setup.json")
-            defaultJSON=  {"rs232devices": {
-                                "VirtualMicroscope": {
-                                "managerName": "VirtualMicroscopeManager",
-                                "managerProperties": {
-                                    "imagePath":"simplant"
-                                }
-                                }
-                            }}
-            self.__logger.info("Default JSON:" +str(defaultJSON))
-            
+            self._imagePath = os.path.join(
+                package_dir, "_data/images/histoASHLARStitch.jpg"
+            )
+            self.__logger.info(
+                "If you want to use the plant, use 'imagePath': 'simplant' in your setup.json"
+            )
+            defaultJSON = {
+                "rs232devices": {
+                    "VirtualMicroscope": {
+                        "managerName": "VirtualMicroscopeManager",
+                        "managerProperties": {"imagePath": "simplant"},
+                    }
+                }
+            }
+            self.__logger.info("Default JSON:" + str(defaultJSON))
+
         self._virtualMicroscope = VirtualMicroscopy(self._imagePath)
         self._positioner = self._virtualMicroscope.positioner
         self._camera = self._virtualMicroscope.camera
@@ -92,50 +83,68 @@ class VirtualMicroscopeManager:
 
 
 class Camera:
-    def __init__(self, parent, mode, imagePath):
+    def __init__(self, parent, filePath="path_to_image.jpeg"):
         self._parent = parent
-        if filePath == "simplant":
+        self.filePath = filePath
+
+        if self.filePath == "simplant":
             self.image = createBranchingTree(width=5000, height=5000)
+            self.image /= np.max(self.image)
+        elif self.filePath == "smlm":
+            tmp = createBranchingTree(width=5000, height=5000)
+            tmp_min = np.min(tmp)
+            tmp_max = np.max(tmp)
+            self.image = (
+                1 - ((tmp - tmp_min) / (tmp_max - tmp_min)) > 0
+            )  # generating binary image
         else:
             self.image = np.mean(cv2.imread(filePath), axis=2)
-        
-        self.image /= np.max(self.image)
+            self.image /= np.max(self.image)
+
         self.lock = threading.Lock()
-        self.SensorHeight = 300 #self.image.shape[1]
-        self.SensorWidth = 400 #self.image.shape[0]
+        self.SensorHeight = 300  # self.image.shape[1]
+        self.SensorWidth = 400  # self.image.shape[0]
         self.model = "VirtualCamera"
         self.PixelSize = 1.0
         self.isRGB = False
         self.frameNumber = 0
-        self.return_raw = False
-        self.smlm_density = 0.05
         # precompute noise so that we will save energy and trees
-        self.noiseStack = np.abs(np.random.randn(self.SensorHeight,self.SensorWidth,100)*2)
-        
-    def produce_frame(self, x_offset=0, y_offset=0, light_intensity=1.0, defocusPSF=None):
-        """Generate a frame based on the current settings."""
-        with self.lock:
-            # add moise
-            image = self.image.copy()
-            # Adjust image based on offsets
-            image = np.roll(np.roll(image, int(x_offset), axis=1), int(y_offset), axis=0)
-            image = nip.extract(image, (self.SensorHeight, self.SensorWidth))
+        self.noiseStack = np.abs(
+            np.random.randn(self.SensorHeight, self.SensorWidth, 100) * 2
+        )
 
-            # do all post-processing on cropped image
-            if IS_NIP and defocusPSF is not None and not defocusPSF.shape == ():
-                print("Defocus:" + str(defocusPSF.shape))
-                image = np.array(np.real(nip.convolve(image, defocusPSF)))
-            image = np.float32(image)/np.max(image) * np.float32(light_intensity)+ self.noiseStack[:,:,np.random.randint(0,100)]
-
-            # Adjust illumination
-            image = image.astype(np.uint16)
-            time.sleep(0.1)
-            return np.array(image)
-
-    def produce_smlm_frame(
-        self, x_offset: int = 0, y_offset: int  = 0, n_photons: int = 5000, n_photons_std:int = 50
+    def produce_frame(
+        self, x_offset=0, y_offset=0, light_intensity=1.0, defocusPSF=None
     ):
         """Generate a frame based on the current settings."""
+        if self.filePath == "smlm": # There is likely a better way of handling this
+            return self.produce_smlm_frame(x_offset, y_offset, light_intensity)
+        else:
+            with self.lock:
+                # add moise
+                image = self.image.copy()
+                # Adjust image based on offsets
+                image = np.roll(
+                    np.roll(image, int(x_offset), axis=1), int(y_offset), axis=0
+                )
+                image = nip.extract(image, (self.SensorHeight, self.SensorWidth))
+
+                # do all post-processing on cropped image
+                if IS_NIP and defocusPSF is not None and not defocusPSF.shape == ():
+                    print("Defocus:" + str(defocusPSF.shape))
+                    image = np.array(np.real(nip.convolve(image, defocusPSF)))
+                image = (
+                    np.float32(image) / np.max(image) * np.float32(light_intensity)
+                    + self.noiseStack[:, :, np.random.randint(0, 100)]
+                )
+
+                # Adjust illumination
+                image = image.astype(np.uint16)
+                time.sleep(0.1)
+                return np.array(image)
+
+    def produce_smlm_frame(self, x_offset=0, y_offset=0, light_intensity=5000):
+        """Generate a SMLM frame based on the current settings."""
         with self.lock:
             # add moise
             image = self.image.copy()
@@ -143,116 +152,66 @@ class Camera:
             image = np.roll(
                 np.roll(image, int(x_offset), axis=1), int(y_offset), axis=0
             )
-            image = nip.extract(image, (self.SensorWidth, self.SensorHeight))
+            image = nip.extract(image, (self.SensorHeight, self.SensorWidth))
 
-            yc_array, xc_array = self.binary2locs(image, density=self.smlm_density)
-            photon_array = np.random.normal(n_photons, n_photons_std, size=len(xc_array))
+            yc_array, xc_array = binary2locs(image, density=0.05)
+            photon_array = np.random.normal(
+                light_intensity * 5, light_intensity * 0.05, size=len(xc_array)
+            )
 
             wavelenght = 6  # change to get it from microscope settings
             wavelenght_std = 0.5  # change to get it from microscope settings
             NA = 1.2  # change to get it from microscope settings
-            sigma = 0.21*wavelenght / NA  # change to get it from microscope settings
-            sigma_std = 0.21*wavelenght_std / NA  # change to get it from microscope settings
+            sigma = 0.21 * wavelenght / NA  # change to get it from microscope settings
+            sigma_std = (
+                0.21 * wavelenght_std / NA
+            )  # change to get it from microscope settings
             sigma_array = np.random.normal(sigma, sigma_std, size=len(xc_array))
 
             ADC_per_photon_conversion = 1.0  # change to get it from microscope settings
             readout_noise = 50  # change to get it from microscope settings
             ADC_offset = 100  # change to get it from microscope settings
 
-            out = FromLoc2Image_MultiThreaded(xc_array, yc_array, photon_array, sigma_array, self.SensorHeight, self.PixelSize)
-            out = ADC_per_photon_conversion * np.random.poisson(out) + readout_noise * np.random.normal(size=(self.SensorHeight, self.SensorWidth)) + ADC_offset
+            out = FromLoc2Image_MultiThreaded(
+                xc_array,
+                yc_array,
+                photon_array,
+                sigma_array,
+                self.SensorHeight,
+                self.SensorWidth,
+                self.PixelSize,
+            )
+            out = (
+                ADC_per_photon_conversion * np.random.poisson(out)
+                + readout_noise
+                * np.random.normal(size=(self.SensorHeight, self.SensorWidth))
+                + ADC_offset
+            )
             time.sleep(0.1)
             return np.array(out)
-
-    def binary2locs(self, img: np.ndarray, density: float):
-        """
-        Given a binary image `img` and a `density` value, this function returns a subset of the locations where the image is non-zero.
-        Parameters:
-            img (np.ndarray): A binary image.
-            density (float): The density of the subset of locations to be returned.
-        Returns:
-            tuple: A tuple containing two numpy arrays representing the x and y coordinates of the subset of locations.
-        """
-        all_locs = np.nonzero(img == 1)
-        n_points = int(len(all_locs[0]) * density)
-        selected_idx = np.random.choice(len(all_locs[0]), n_points, replace=False)
-        filtered_locs = all_locs[0][selected_idx], all_locs[1][selected_idx]
-        return filtered_locs
 
     def getLast(self, returnFrameNumber=False):
         position = self._parent.positioner.get_position()
         defocusPSF = np.squeeze(self._parent.positioner.get_psf())
         intensity = self._parent.illuminator.get_intensity(1)
         self.frameNumber += 1
-        if self.mode == "example":
-            if returnFrameNumber:
-                return (
-                    self.produce_frame(
-                        x_offset=position["X"],
-                        y_offset=position["Y"],
-                        light_intensity=intensity,
-                        defocusPSF=defocusPSF,
-                    ),
-                    self.frameNumber,
-                )
-            else:
-                return self.produce_frame(
+        if returnFrameNumber:
+            return (
+                self.produce_frame(
                     x_offset=position["X"],
                     y_offset=position["Y"],
                     light_intensity=intensity,
                     defocusPSF=defocusPSF,
-                )
-        elif self.mode == "SMLM":
-            if returnFrameNumber:
-                return (
-                    self.produce_smlm_frame(
-                        x_offset=position["X"],
-                        y_offset=position["Y"],
-                        n_photons=intensity,
-                        n_photons_std=intensity*0.01
-                    ),
-                    self.frameNumber,
-                )
-            else:
-                return self.produce_smlm_frame(
-                    x_offset=position["X"],
-                    y_offset=position["Y"],
-                    n_photons=intensity,
-                    n_photons_std=intensity*0.01
-                )
-        elif self.mode == "eSRRF":
-            # this should likely be changed so that rgc maps and esrrf images are generated outside of this class
-            current_frame = self.produce_smlm_frame(
+                ),
+                self.frameNumber,
+            )
+        else:
+            return self.produce_frame(
                 x_offset=position["X"],
                 y_offset=position["Y"],
-                n_photons=intensity,
-                n_photons_std=intensity*0.01
+                light_intensity=intensity,
+                defocusPSF=defocusPSF,
             )
-            rgc_frame = np.asarray([eSRRF(current_frame, magnification=2, _force_run_type="threaded")[0]])
-            rows, cols = rgc_frame.shape[-2:]
-            rgc_frame = np.squeeze(rgc_frame).reshape(1, rows, cols)
-            #previous_frames = self._parent.get_rgc_maps() 
-            previous_tempCorr=self._parent.get_tempCorr() #HSH added this
-            #if previous_frames is not None:
-            if previous_tempCorr is not None:  #HSH added this
-                tempCorr_all = (previous_tempCorr*((self.frameNumber-1)/self.frameNumber))+(rgc_frame/self.frameNumber) #HSH added this
-                #combined_rgc = np.concatenate((previous_frames, rgc_frame))
-                self._parent.set_acquired_frames(np.concatenate((self._parent.get_acquired_frames(), current_frame))) 
-                self._parent.set_tempCorr(tempCorr_all)
-                if self.return_raw:
-                    #return np.mean(combined_rgc, axis=0), np.squeeze(self._parent.get_acquired_frames())
-                    return np.squeeze(tempCorr_all),np.squeeze(self._parent.get_acquired_frames()) #HSH added this
-                else:
-                #   return np.mean(combined_rgc, axis=0)
-                    return np.squeeze(tempCorr_all) #HSH added this
-
-            else:
-                self._parent.set_acquired_frames(current_frame)
-                self._parent.set_tempCorr(rgc_frame)
-                if self.return_raw:
-                    return np.squeeze(rgc_frame), np.squeeze(self._parent.get_acquired_frames())
-                else:
-                    return np.squeeze(rgc_frame)
 
     def setPropertyValue(self, propertyName, propertyValue):
         pass
@@ -261,8 +220,11 @@ class Camera:
 class Positioner:
     def __init__(self, parent):
         self._parent = parent
-        self.position = {'X': 0, 'Y': 0, 'Z': 0, 'A': 0}
-        self.mDimensions = (self._parent.camera.SensorHeight, self._parent.camera.SensorWidth)
+        self.position = {"X": 0, "Y": 0, "Z": 0, "A": 0}
+        self.mDimensions = (
+            self._parent.camera.SensorHeight,
+            self._parent.camera.SensorWidth,
+        )
         self.lock = threading.Lock()
         if IS_NIP:
             self.psf = self.compute_psf(dz=0)
@@ -270,9 +232,6 @@ class Positioner:
             self.psf = None
 
     def move(self, x=None, y=None, z=None, a=None, is_absolute=False):
-        self._parent.acquired_frames = None
-        self._parent.rgc_maps = None
-        self._parent.tempCorr = None
         with self.lock:
             if is_absolute:
                 if x is not None:
@@ -320,31 +279,6 @@ class Positioner:
         return self.psf
 
 
-@njit(parallel=True)
-def FromLoc2Image_MultiThreaded(xc_array, yc_array, photon_array, sigma_array, image_size, pixel_size):
-    """
-    Function to generate an image from a list of emitter locations.
-    Based on the DeepStorm notebook on ZeroCostDL4Mic.
-    https://colab.research.google.com/github/HenriquesLab/ZeroCostDL4Mic/blob/master/Colab_notebooks/Deep-STORM_2D_ZeroCostDL4Mic.ipynb
-    """
-    Image = np.zeros((image_size, image_size))
-    for ij in prange(image_size*image_size):
-        j = int(ij/image_size)
-        i = ij - j*image_size
-        for (xc, yc, photon, sigma) in zip(xc_array, yc_array, photon_array, sigma_array):
-            # Don't bother if the emitter has photons <= 0 or if Sigma <= 0
-            if (photon > 0) and (sigma > 0):
-                S = sigma*math.sqrt(2)
-                x = i*pixel_size - xc
-                y = j*pixel_size - yc
-                # Don't bother if the emitter is further than 4 sigma from the centre of the pixel
-                if (x+pixel_size/2)**2 + (y+pixel_size/2)**2 < 16*sigma**2:
-                    ErfX = math.erf((x+pixel_size)/S) - math.erf(x/S)
-                    ErfY = math.erf((y+pixel_size)/S) - math.erf(y/S)
-                    Image[j][i] += 0.25*photon*ErfX*ErfY
-    return Image
-
-
 class Illuminator:
     def __init__(self, parent):
         self._parent = parent
@@ -361,44 +295,109 @@ class Illuminator:
 
 
 class VirtualMicroscopy:
-    def __init__(self, mode, imagePath):  # changed to now also take a mode: example (previous one), SMLM or eSRRF
-        self.camera = Camera(self, mode, imagePath)
+    def __init__(self, filePath="path_to_image.jpeg"):
+        self.camera = Camera(self, filePath)
         self.positioner = Positioner(self)
         self.illuminator = Illuminator(self)
-        self.acquired_frames = None
-        self.rgc_maps = None
-        self.tempCorr = None # HSH: added this
-
 
     def stop(self):
         pass
 
-    # Methods to clear and get the stored frames and rgc_maps
-    def set_acquired_frames(self, img):
-        self.acquired_frames = img
 
-    def get_acquired_frames(self):
-        return self.acquired_frames
+@njit(parallel=True)
+def FromLoc2Image_MultiThreaded(
+    xc_array: np.ndarray, yc_array: np.ndarray, photon_array: np.ndarray, sigma_array: np.ndarray, image_height: int, image_width: int, pixel_size: float
+):
+    """
+    Generate an image from localized emitters using multi-threading.
 
-    def set_rgc_maps(self, img):
-        self.rgc_maps = img
+    Parameters
+    ----------
+    xc_array : array_like
+        Array of x-coordinates of the emitters.
+    yc_array : array_like
+        Array of y-coordinates of the emitters.
+    photon_array : array_like
+        Array of photon counts for each emitter.
+    sigma_array : array_like
+        Array of standard deviations (sigmas) for each emitter.
+    image_height : int
+        Height of the output image in pixels.
+    image_width : int
+        Width of the output image in pixels.
+    pixel_size : float
+        Size of each pixel in the image.
 
-    def get_rgc_maps(self):
-        return self.rgc_maps
-    
-    def set_tempCorr(self, img): # HSH: added this function
-        self.tempCorr = img
+    Returns
+    -------
+    Image : ndarray
+        2D array representing the generated image.
 
-    def get_tempCorr(self): # HSH: added this function
-        return self.tempCorr
+    Notes
+    -----
+    The function utilizes multi-threading for parallel processing using Numba's
+    `njit` decorator with `parallel=True`. Emitters with non-positive photon
+    counts or non-positive sigma values are ignored. Only emitters within a
+    distance of 4 sigma from the center of the pixel are considered to save
+    computation time.
+
+    The calculation involves error functions (`erf`) to determine the contribution
+    of each emitter to the pixel intensity.
+
+    Originally from: https://colab.research.google.com/github/HenriquesLab/ZeroCostDL4Mic/blob/master/Colab_notebooks/Deep-STORM_2D_ZeroCostDL4Mic.ipynb
+    """
+    Image = np.zeros((image_height, image_width))
+    for ij in prange(image_height * image_width):
+        j = int(ij / image_width)
+        i = ij - j * image_width
+        for xc, yc, photon, sigma in zip(xc_array, yc_array, photon_array, sigma_array):
+            # Don't bother if the emitter has photons <= 0 or if Sigma <= 0
+            if (photon > 0) and (sigma > 0):
+                S = sigma * math.sqrt(2)
+                x = i * pixel_size - xc
+                y = j * pixel_size - yc
+                # Don't bother if the emitter is further than 4 sigma from the centre of the pixel
+                if (x + pixel_size / 2) ** 2 + (
+                    y + pixel_size / 2
+                ) ** 2 < 16 * sigma**2:
+                    ErfX = math.erf((x + pixel_size) / S) - math.erf(x / S)
+                    ErfY = math.erf((y + pixel_size) / S) - math.erf(y / S)
+                    Image[j][i] += 0.25 * photon * ErfX * ErfY
+    return Image
 
 
-import matplotlib.pyplot as plt
-import numpy as np
-# Use the line function from skimage
-from skimage.draw import line
+def binary2locs(img: np.ndarray, density: float):
+    """
+    Selects a subset of locations from a binary image based on a specified density.
 
-def createBranchingTree(width=5000, height=5000, lineWidth = 3):
+    Parameters
+    ----------
+    img : np.ndarray
+        2D binary image array where 1s indicate points of interest.
+    density : float
+        Proportion of points to randomly select from the points of interest.
+        Should be a value between 0 and 1.
+
+    Returns
+    -------
+    filtered_locs : tuple of np.ndarray
+        Tuple containing two arrays. The first array contains the row indices
+        and the second array contains the column indices of the selected points.
+
+    Notes
+    -----
+    The function identifies all locations in the binary image where the value is 1.
+    It then randomly selects a subset of these locations based on the specified
+    density and returns their coordinates.
+    """
+    all_locs = np.nonzero(img == 1)
+    n_points = int(len(all_locs[0]) * density)
+    selected_idx = np.random.choice(len(all_locs[0]), n_points, replace=False)
+    filtered_locs = all_locs[0][selected_idx], all_locs[1][selected_idx]
+    return filtered_locs
+
+
+def createBranchingTree(width=5000, height=5000, lineWidth=3):
     np.random.seed(0)  # Set a random seed for reproducibility
     # Define the dimensions of the image
     width, height = 5000, 5000
@@ -409,68 +408,78 @@ def createBranchingTree(width=5000, height=5000, lineWidth = 3):
     # Function to draw a line (blood vessel) on the image
     def draw_vessel(start, end, image):
         rr, cc = line(start[0], start[1], end[0], end[1])
-        try:image[rr, cc] = 0  # Draw a black line
+        try:
+            image[rr, cc] = 0  # Draw a black line
         except:
-            end=0
+            end = 0
             return
 
     # Recursive function to draw a tree-like structure
     def draw_tree(start, angle, length, depth, image, reducer, max_angle=40):
         if depth == 0:
             return
-        
+
         # Calculate the end point of the branch
         end = (
             int(start[0] + length * np.sin(np.radians(angle))),
-            int(start[1] + length * np.cos(np.radians(angle)))
+            int(start[1] + length * np.cos(np.radians(angle))),
         )
-        
+
         # Draw the branch
         draw_vessel(start, end, image)
-        
+
         # change the angle slightly to add some randomness
         angle += np.random.uniform(-10, 10)
-        
+
         # Recursively draw the next level of branches
         new_length = length * reducer  # Reduce the length for the next level
         new_depth = depth - 1
-        draw_tree(end, angle - max_angle*np.random.uniform(-1, 1), new_length, new_depth, image, reducer)
-        draw_tree(end, angle + max_angle*np.random.uniform(-1, 1), new_length, new_depth, image, reducer)
+        draw_tree(
+            end,
+            angle - max_angle * np.random.uniform(-1, 1),
+            new_length,
+            new_depth,
+            image,
+            reducer,
+        )
+        draw_tree(
+            end,
+            angle + max_angle * np.random.uniform(-1, 1),
+            new_length,
+            new_depth,
+            image,
+            reducer,
+        )
 
     # Starting point and parameters
     start_point = (height - 1, width // 2)
     initial_angle = -90  # Start by pointing upwards
-    initial_length = np.max((width, height))*.15  # Length of the first branch
+    initial_length = np.max((width, height)) * 0.15  # Length of the first branch
     depth = 7  # Number of branching levels
-    reducer = .9
+    reducer = 0.9
     # Draw the tree structure
     draw_tree(start_point, initial_angle, initial_length, depth, image, reducer)
-    
-    # convolve image with rectangle 
-    rectangle = np.ones((lineWidth,lineWidth))
-    image = convolve2d(image, rectangle, mode='same', boundary='fill', fillvalue=0)
+
+    # convolve image with rectangle
+    rectangle = np.ones((lineWidth, lineWidth))
+    image = convolve2d(image, rectangle, mode="same", boundary="fill", fillvalue=0)
 
     return image
 
 
-
 if __name__ == "__main__":
-    image = createBranchingTree(width=5000, height=5000, lineWidth=5)
-    # Display the image
-    plt.imshow(image, cmap='gray')
-    plt.axis('off')  # Hide the axis
-    plt.show()
-
-    import matplotlib.pyplot as plt
 
     # Read the image locally
-    mFWD = os.path.dirname(os.path.realpath(__file__)).split("imswitch")[0]
-    imagePath = mFWD + "imswitch/_data/images/binary2.jpg"
-    microscope = VirtualMicroscopy("eSRRF", imagePath)
-    microscope.illuminator.set_intensity(intensity=5000)
+    # mFWD = os.path.dirname(os.path.realpath(__file__)).split("imswitch")[0]
+    # imagePath = mFWD + "imswitch/_data/images/histoASHLARStitch.jpg"
+    imagePath = "smlm"
+    microscope = VirtualMicroscopy(filePath=imagePath)
+    microscope.illuminator.set_intensity(intensity=1000)
 
-    for i in range(10):
-        microscope.positioner.move(x=i, y=i, z=i, is_absolute=True)
+    for i in range(5):
+        microscope.positioner.move(
+            x=1400 + i * (-200), y=-800 + i * (-10), z=0, is_absolute=True
+        )
         frame = microscope.camera.getLast()
         plt.imsave(f"frame_{i}.png", frame)
     cv2.destroyAllWindows()

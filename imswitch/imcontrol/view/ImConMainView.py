@@ -105,7 +105,6 @@ class ImConMainView(QtWidgets.QMainWindow):
             'STORMRecon': _DockInfo(name='STORM Recon Tool', yPosition=2),
             'HoliSheet': _DockInfo(name='HoliSheet Tool', yPosition=3),
             'FlowStop': _DockInfo(name='FlowStop Tool', yPosition=3),
-            'FLIMLabs': _DockInfo(name='FLIMLabs Tool', yPosition=3),
             'ObjectiveRevolver': _DockInfo(name='Objective Revolver', yPosition=3),
             'Temperature': _DockInfo(name='Temperature Controller', yPosition=3),
             'SquidStageScan': _DockInfo(name='SquidStageScan Tool', yPosition=3),

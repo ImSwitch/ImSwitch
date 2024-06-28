@@ -84,16 +84,26 @@ class LightsheetWidget(NapariHybridWidget):
         self.layer = None
         
         # add mesospim tab
-        self.mesoSPIMWidget = self.createMesoSPIMTab()
+        self.mesoSPIMScrollArea = QtWidgets.QScrollArea()
+        self.mesoSPIMScrollArea.setWidgetResizable(True)  # Erlaubt das Widget innerhalb der ScrollArea, seine Größe zu ändern
+        self.mesoSPIMScrollArea.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)  # Zeigt horizontale ScrollBar bei Bedarf
+        self.mesoSPIMScrollArea.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)  # Zeigt vertikale ScrollBar bei Bedarf
+
+        # Setzen Sie self.mesoSPIMTab als das Widget der ScrollArea
         self.mesoSPIMTab = QtWidgets.QWidget()
+        self.mesoSPIMWidget = self.createMesoSPIMTab()
         self.mesoSPIMTab.setLayout(self.mesoSPIMWidget)
+        self.mesoSPIMScrollArea.setWidget(self.mesoSPIMTab)
+        
         
         # Create the second tab for the 3D viewer
         self.viewerTab = QtWidgets.QWidget()
         self.viewerLayout = QtWidgets.QVBoxLayout(self.viewerTab)
         self.tabWidget.addTab(self.controlsTab, "Controls")
         self.tabWidget.addTab(self.viewerTab, "3D Viewer")
-        self.tabWidget.addTab(self.mesoSPIMTab, "MesoSPIM")
+        self.tabWidget.addTab(self.mesoSPIMScrollArea, "MesoSPIM")        
+        
+        #self.tabWidget.addTab(self.mesoSPIMTab, "MesoSPIM")
 
         # Initialize GLViewWidget and add it to the viewer layout
         self.glWidget = gl.GLViewWidget()

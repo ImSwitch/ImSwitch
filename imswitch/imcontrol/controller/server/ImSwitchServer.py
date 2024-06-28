@@ -33,32 +33,12 @@ from fastapi.openapi.docs import (
     get_swagger_ui_oauth2_redirect_html,
 )
 from fastapi.staticfiles import StaticFiles
-try:
-    from rpyc import Service
-    from rpyc.utils.server import ThreadedServer, OneShotServer
-    IS_RPYC = True
-except:
-    IS_RPYC = False
-    class Service:
-        pass
-IS_RPYC = False
 
 
 import logging
 
 PORT = imswitch.__httpport__ 
 IS_SSL = imswitch.__ssl__
-
-class RPYCService(Service):
-    def on_connect(self, conn):
-        logging.info("Connection established")
-
-    def on_disconnect(self, conn):
-        logging.info("Connection closed")
-
-    pass  # Additional methods will be added based on the @APIExport decorator
-
-
 
 current_dir = os.path.dirname(os.path.realpath(__file__))
 static_dir = os.path.join(current_dir,  'static')
@@ -85,7 +65,6 @@ app.add_middleware(
 )
 
 _baseDataFilesDir = os.path.join(os.path.dirname(os.path.realpath(imswitch.__file__)), '_data')
-print(os.path.join(_baseDataFilesDir,"ssl", "key.cert"))
         
 class ServerThread(threading.Thread):
     def __init__(self):
@@ -128,9 +107,6 @@ class ImSwitchServer(Worker):
         
 
     def run(self):
-        # Erstellen Sie eine Instanz des Dienstes
-        self.mRPYCService = RPYCService()
-
         # serve the fastapi
         self.createAPI()
         
@@ -141,37 +117,8 @@ class ImSwitchServer(Worker):
         # Create and start the server thread
         self.server_thread = ServerThread()
         self.server_thread.start()        
-        if IS_RPYC:
-            # Registrieren Sie den Dienst bei RPyC
-            def run_rpyc_server():
-                # print all methods inside the self.mRPYCService object
-                # https://github.com/tomerfiliba-org/rpyc/issues/350#issuecomment-539218873
-                print("Exposed methods:")
-                print(self.mRPYCService.__dict__)
-                
-                session_path = '/tmp/rpycsession'
-                if os.path.exists(session_path):
-                    os.remove(session_path)
-
-                for method in dir(self.mRPYCService):
-                    #if not method.startswith("_"):
-                        print(method)
-                server = OneShotServer(self.mRPYCService, port=18861, protocol_config={'allow_public_attrs': True, 'allow_pickle': True})                        
-                '''
-                server = ThreadedServer(self.mRPYCService, 
-                                   #port=18861,
-                                   socket_path=session_path,
-                                   auto_register=False,
-                                    protocol_config={ "allow_pickle": True, 
-                                                     'allow_public_attrs': True})
-                '''
-                self.__logger.debug("Starting RPyC server")
-                server.start()
-                
-            rpyc_thread = threading.Thread(target=run_rpyc_server)
-            rpyc_thread.start()
-        
         self.__logger.debug("Started server with URI -> PYRO:" + self._name + "@" + self._host + ":" + str(self._port))
+
         return 
         try:
             Pyro5.config.SERIALIZER = "msgpack"
@@ -254,19 +201,8 @@ class ImSwitchServer(Worker):
                 module = func.__module__.split('.')[-1]
             self.func = includePyro(includeAPI("/"+module+"/"+f, func))
             
-            # Add the function to the RPYC service
-            setattr(self.mRPYCService, "exposed_" + f, func)
 
 
-# Dynamically add functions to the exposed object
-#https://chat.openai.com/c/40db1be0-b85c-4043-8f1a-074dcb70bc09
-'''
-for func_name in dir(my_module):
-    if not func_name.startswith("_"):  # Filter out magic methods or private methods
-        func = getattr(my_module, func_name)
-        if callable(func):
-            setattr(RPYCService.exposed_MyExposedObject, 'exposed_' + func_name, staticmethod(func))
-'''
 # Copyright (C) 2020-2024 ImSwitch developers
 # This file is part of ImSwitch.
 #

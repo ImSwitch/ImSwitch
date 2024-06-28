@@ -153,6 +153,7 @@ class HistoScanWidget(NapariHybridWidget):
         self.numTilesYLineEdit = QtWidgets.QLineEdit("10")
         self.stepSizeXLineEdit = QtWidgets.QLineEdit("1.0")
         self.stepSizeYLineEdit = QtWidgets.QLineEdit("1.0")
+        self.resizeFactorLineEdit = QtWidgets.QLineEdit("0.25")
 
         secondTabLayout.addWidget(QtWidgets.QLabel("Number of Tiles X:"), 0, 0)
         secondTabLayout.addWidget(self.numTilesXLineEdit, 0, 1)
@@ -162,16 +163,26 @@ class HistoScanWidget(NapariHybridWidget):
         secondTabLayout.addWidget(self.stepSizeXLineEdit, 2, 1)
         secondTabLayout.addWidget(QtWidgets.QLabel("Step Size Y:"), 3, 0)
         secondTabLayout.addWidget(self.stepSizeYLineEdit, 3, 1)
+        secondTabLayout.addWidget(QtWidgets.QLabel("Resize Factor:"), 4, 0)
+        secondTabLayout.addWidget(self.resizeFactorLineEdit, 4, 1)
         self.startButton2 = QtWidgets.QPushButton("Start")
         self.stopButton2 = QtWidgets.QPushButton("Stop")
         self.stitchAshlarCheckBox = QtWidgets.QCheckBox("Stitch Ashlar")
         self.stitchAshlarFlipXCheckBox = QtWidgets.QCheckBox("Flip X")
         self.stitchAshlarFlipYCheckBox = QtWidgets.QCheckBox("Flip Y")
-        secondTabLayout.addWidget(self.stitchAshlarCheckBox, 4, 0)
-        secondTabLayout.addWidget(self.stitchAshlarFlipXCheckBox, 4, 1)
-        secondTabLayout.addWidget(self.stitchAshlarFlipYCheckBox, 4, 2)
-        secondTabLayout.addWidget(self.startButton2, 5, 0)
-        secondTabLayout.addWidget(self.stopButton2, 5, 1)
+        self.loadingBarText = QtWidgets.QLabel("Loading Bar")
+        self.loadingBar = QtWidgets.QProgressBar()
+        self.loadingBar.setRange(0, 100)
+        self.loadingBar.setValue(0)
+        secondTabLayout.addWidget(self.stitchAshlarCheckBox, 5, 0)
+        secondTabLayout.addWidget(self.stitchAshlarFlipXCheckBox, 5, 1)
+        secondTabLayout.addWidget(self.stitchAshlarFlipYCheckBox, 5, 2)
+        secondTabLayout.addWidget(self.startButton2, 6, 0)
+        secondTabLayout.addWidget(self.stopButton2, 6, 1)
+        secondTabLayout.addWidget(self.loadingBarText, 7, 0)
+        secondTabLayout.addWidget(self.loadingBar, 7, 1, 1, 2)
+        
+        
         
         # Create a scroll area and set the second tab widget as its content
         secondTabscrollArea = QtWidgets.QScrollArea()
@@ -239,6 +250,16 @@ class HistoScanWidget(NapariHybridWidget):
         thirdTabLayout.setColumnStretch(1, 1)
         # Add the third tab
         self.tabWidget.addTab(thirdTabWidget, "Camera-based Scan")
+
+        # add tabwidget for stage calibration
+        self.stageCalibrationWidget = QtWidgets.QWidget()
+        self.tabWidget.addTab(self.stageCalibrationWidget, "Stage Calibration")
+        self.buttonStartCalibration = QtWidgets.QPushButton("Start Calibration")
+        self.buttonStopCalibration = QtWidgets.QPushButton("Stop Calibration")   
+        fourthTabLayout = QtWidgets.QGridLayout(self.stageCalibrationWidget)     
+        fourthTabLayout.addWidget(self.buttonStartCalibration, 0, 0)
+        fourthTabLayout.addWidget(self.buttonStopCalibration, 0, 1)
+        self.tabWidget.addTab(self.stageCalibrationWidget, "Stage Calibration")
         
         
         # 4th Calibration:
@@ -284,6 +305,10 @@ class HistoScanWidget(NapariHybridWidget):
         self.imageLayer = None
         self.shapeLayer = None
         
+    def setLoadingBarAndText(self, current, total): 
+        self.loadingBar.setValue(int((current+1)/total*100))
+        self.loadingBarText.setText("Images: "+str(current)+"/"+str(total))
+        
     def setCameraScanParameters(self, nTilesX, nTilesY, minPosX, maxPosX, minPosY, maxPosY):
         self.nTilesXLabel.setText("Number of Tiles X: " + str(nTilesX))
         self.nTilesYLabel.setText("Number of Tiles Y: " + str(nTilesY))
@@ -312,6 +337,9 @@ class HistoScanWidget(NapariHybridWidget):
             
     def getNumberTiles(self):
         return int(self.numTilesXLineEdit.text()), int(self.numTilesYLineEdit.text())
+    
+    def getResizeFactor(self):
+        return float(self.resizeFactorLineEdit.text())
     
     def getStepSize(self):
         return float(self.stepSizeXLineEdit.text()), float(self.stepSizeYLineEdit.text())

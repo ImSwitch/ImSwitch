@@ -197,12 +197,17 @@ class CameraGXIPY:
         self.camera.BinningVertical.set(binning)
         self.binning = binning
 
-    def getLast(self, is_resize=True, returnFrameNumber=False):
+    def getLast(self, is_resize=True, returnFrameNumber=False, timeout=1):
         # get frame and save
         # only return fresh frames
         # print(self.lastFrameId, self.frameNumber)
-        while(self.lastFrameId >= self.frameNumber and self.frame is None):
+        cTime = time.time()
+        while(self.lastFrameId > self.frameNumber and self.frame is None):
             time.sleep(.01) # wait for fresh frame
+            if time.time()-cTime > timeout:
+                self.__logger.warning("Timeout in getLast")
+                if returnFrameNumber:
+                    return None, -1
         if self.isFlatfielding and self.flatfieldImage is not None:
             self.frame = self.frame/self.flatfieldImage
         self.lastFrameId = self.frameNumber

@@ -31,6 +31,8 @@ class VirtualCameraManager(DetectorManager):
         parameters = {
             'exposure': DetectorNumberParameter(group='Misc', value=1, valueUnits='ms',
                                                 editable=True),
+            'exposure_mode': DetectorListParameter(group='Misc', value='Auto', options=['Auto', 'Manual'],
+                                                    editable=True),
             'gain': DetectorNumberParameter(group='Misc', value=5, valueUnits='arb.u.',
                                             editable=True),
             'blacklevel': DetectorNumberParameter(group='Misc', value=0, valueUnits='arb.u.',

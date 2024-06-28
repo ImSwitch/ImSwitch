@@ -2,6 +2,7 @@ import json
 import os
 
 import imswitch
+from  imswitch.imcontrol.controller.controllers.camera_stage_mapping import OFMStageMapping
 from imswitch.imcommon.model import initLogger, ostools
 import numpy as np
 import time
@@ -19,35 +20,22 @@ import ast
 import skimage.transform
 import skimage.util
 import skimage
-from ashlar import utils
-
-# todo: better have it relative?
-from  imswitch.imcontrol.controller.controllers.camera_stage_mapping import OFMStageMapping
+from ashlarUC2 import utils
 import datetime 
 from itertools import product
-
-try:
-    from ashlar import utils, fileseries, thumbnail, reg
-    IS_ASHLAR = True
-except:
-    print("Ashlar not installed")
-    IS_ASHLAR = False
-
 import numpy as np
-
 from imswitch.imcommon.model import dirtools, initLogger, APIExport
 from ..basecontrollers import ImConWidgetController
 from imswitch.imcommon.framework import Signal, Thread, Worker, Mutex, Timer
 import time
 from ..basecontrollers import LiveUpdatedController
 
-# TODO: Move this to a plugin!
-
 class HistoScanController(LiveUpdatedController):
     """Linked to HistoScanWidget."""
 
     sigImageReceived = Signal()
     sigUpdatePartialImage = Signal()
+    sigUpdateLoadingBar = Signal(int, int) # current, total
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -140,7 +128,8 @@ class HistoScanController(LiveUpdatedController):
             self._widget.sigGoToPosition.connect(self.goToPosition)
             self._widget.sigCurrentOffset.connect(self.calibrateOffset)        
             self._widget.setDefaultSavePath(self._master.HistoScanManager.defaultConfigPath)
-            
+            self.sigUpdateLoadingBar.connect(self._widget.setLoadingBarAndText)
+        
             self._widget.startCalibrationButton.clicked.connect(self.startStageMapping)
             self._widget.stopCalibrationButton.clicked.connect(self.stopStageMapping)
             
@@ -715,7 +704,6 @@ class HistoScanController(LiveUpdatedController):
             file_name = "test_"+t
             extension = ".ome.tif"
             folder = self._widget.getDefaulSavePath()
-
             t0 = time.time()
             
             # create a new image stitcher          
@@ -755,7 +743,10 @@ class HistoScanController(LiveUpdatedController):
                         lastStagePositionX = currentPosX
                         
             # Scan over all positions in XY 
-            for iPos in positionList:
+            for mIndex, iPos in enumerate(positionList):
+                # update the loading bar
+                self.sigUpdateLoadingBar.emit(mIndex, len(positionList))
+            
                 try:
                     if not self.ishistoscanRunning:
                         break
@@ -823,6 +814,7 @@ class HistoScanController(LiveUpdatedController):
             mDate = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
             largeImage = stitcher.get_stitched_image()
             dirPath  = os.path.join(dirtools.UserFileDirs.Root, 'recordings', mDate)
+            os.makedirs(dirPath, exist_ok=True)
             tifffile.imsave(os.path.join(dirPath, "stitchedImage.tif"), largeImage, append=False) 
             self.setImageForDisplay(largeImage, "histoscanStitch"+mDate)
         threading.Thread(target=getStitchedResult).start()

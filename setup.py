@@ -71,7 +71,8 @@ setup(
         "jupyter", 
         "python-multipart >= 0.0.5", 
         "piexif >= 1.1.3", 
-        "NanoImagingPack==2.1.3.dev1"
+        "NanoImagingPack==2.1.3.dev1", 
+        "ashlarUC2"
     ],
      extras_require={ # we assume that this is installed in a conda environment or via apt-get
         'PyQt5': [

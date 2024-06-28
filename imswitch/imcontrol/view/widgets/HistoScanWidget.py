@@ -170,11 +170,19 @@ class HistoScanWidget(NapariHybridWidget):
         self.stitchAshlarCheckBox = QtWidgets.QCheckBox("Stitch Ashlar")
         self.stitchAshlarFlipXCheckBox = QtWidgets.QCheckBox("Flip X")
         self.stitchAshlarFlipYCheckBox = QtWidgets.QCheckBox("Flip Y")
+        self.loadingBarText = QtWidgets.QLabel("Loading Bar")
+        self.loadingBar = QtWidgets.QProgressBar()
+        self.loadingBar.setRange(0, 100)
+        self.loadingBar.setValue(0)
         secondTabLayout.addWidget(self.stitchAshlarCheckBox, 5, 0)
         secondTabLayout.addWidget(self.stitchAshlarFlipXCheckBox, 5, 1)
         secondTabLayout.addWidget(self.stitchAshlarFlipYCheckBox, 5, 2)
         secondTabLayout.addWidget(self.startButton2, 6, 0)
         secondTabLayout.addWidget(self.stopButton2, 6, 1)
+        secondTabLayout.addWidget(self.loadingBarText, 7, 0)
+        secondTabLayout.addWidget(self.loadingBar, 7, 1, 1, 2)
+        
+        
         
         # Create a scroll area and set the second tab widget as its content
         secondTabscrollArea = QtWidgets.QScrollArea()
@@ -296,6 +304,10 @@ class HistoScanWidget(NapariHybridWidget):
         # Initialize Layers
         self.imageLayer = None
         self.shapeLayer = None
+        
+    def setLoadingBarAndText(self, current, total): 
+        self.loadingBar.setValue(int((current+1)/total*100))
+        self.loadingBarText.setText("Images: "+str(current)+"/"+str(total))
         
     def setCameraScanParameters(self, nTilesX, nTilesY, minPosX, maxPosX, minPosY, maxPosY):
         self.nTilesXLabel.setText("Number of Tiles X: " + str(nTilesX))

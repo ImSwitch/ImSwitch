@@ -63,8 +63,14 @@ class HistoScanWidget(NapariHybridWidget):
         self.stageAxisComboBox = QtWidgets.QComboBox()
         self.stageAxisLabel = QtWidgets.QLabel("Stage Axis:")
         self.stageAxisComboBox.addItems(["X", "Y", "Z", "A"])
+        self.stitchAshlarCheckBox = QtWidgets.QCheckBox("Stitch Ashlar")
+        self.stitchAshlarFlipXCheckBox = QtWidgets.QCheckBox("Flip X")
+        self.stitchAshlarFlipYCheckBox = QtWidgets.QCheckBox("Flip Y")        
         self.grid.addWidget(self.illuminationSourceComboBox, 3, 0, 1, 1)
         self.grid.addWidget(self.illuminationSlider, 3, 1, 1, 1)
+        self.grid.addWidget(self.stitchAshlarCheckBox, 1, 0)
+        self.grid.addWidget(self.stitchAshlarFlipXCheckBox, 1, 1)
+        self.grid.addWidget(self.stitchAshlarFlipYCheckBox, 1, 2)
         #self.grid.addWidget(self.stageAxisLabel, 4, 0, 1, 1)
         #self.grid.addWidget(self.stageAxisComboBox, 4, 1, 1, 1)
         self.buttonSelectPath = guitools.BetterPushButton('Select Path')
@@ -76,10 +82,10 @@ class HistoScanWidget(NapariHybridWidget):
         self.numberOfScansField = QtWidgets.QLineEdit()
         self.numberOfScansField.setPlaceholderText("Number of Scans")
 
-
         # Text fields for minimum and maximum position for X
         self.minPositionXLineEdit = QtWidgets.QLineEdit("-1000")
         self.maxPositionXLineEdit = QtWidgets.QLineEdit("1000")
+        
         self.grid.addWidget(QtWidgets.QLabel("Min Position (X):"), 5, 0, 1, 1)
         self.grid.addWidget(self.minPositionXLineEdit, 5, 1, 1, 1)
         self.grid.addWidget(QtWidgets.QLabel("Max Position (X):"), 6, 0, 1, 1)
@@ -104,6 +110,7 @@ class HistoScanWidget(NapariHybridWidget):
         self.calibrationButton =  QtWidgets.QPushButton('Calibrate Position')
         self.calibrationButton.setCheckable(True)
         self.speedTextedit = QtWidgets.QLineEdit("1000")
+        
         #self.grid.addWidget(self.speedLabel, 10, 0, 1, 1)
         #self.grid.addWidget(self.speedTextedit, 10, 1, 1, 1)
 
@@ -167,16 +174,17 @@ class HistoScanWidget(NapariHybridWidget):
         secondTabLayout.addWidget(self.resizeFactorLineEdit, 4, 1)
         self.startButton2 = QtWidgets.QPushButton("Start")
         self.stopButton2 = QtWidgets.QPushButton("Stop")
-        self.stitchAshlarCheckBox = QtWidgets.QCheckBox("Stitch Ashlar")
-        self.stitchAshlarFlipXCheckBox = QtWidgets.QCheckBox("Flip X")
-        self.stitchAshlarFlipYCheckBox = QtWidgets.QCheckBox("Flip Y")
+
         self.loadingBarText = QtWidgets.QLabel("Loading Bar")
         self.loadingBar = QtWidgets.QProgressBar()
         self.loadingBar.setRange(0, 100)
         self.loadingBar.setValue(0)
-        secondTabLayout.addWidget(self.stitchAshlarCheckBox, 5, 0)
-        secondTabLayout.addWidget(self.stitchAshlarFlipXCheckBox, 5, 1)
-        secondTabLayout.addWidget(self.stitchAshlarFlipYCheckBox, 5, 2)
+        self.stitchAshlarCheckBoxTileBased = QtWidgets.QCheckBox("Stitch Ashlar")
+        self.stitchAshlarFlipXCheckBoxTileBased = QtWidgets.QCheckBox("Flip X")
+        self.stitchAshlarFlipYCheckBoxTileBased = QtWidgets.QCheckBox("Flip Y")  
+        secondTabLayout.addWidget(self.stitchAshlarCheckBoxTileBased, 5, 0)
+        secondTabLayout.addWidget(self.stitchAshlarFlipXCheckBoxTileBased, 5, 1)
+        secondTabLayout.addWidget(self.stitchAshlarFlipYCheckBoxTileBased, 5, 2)
         secondTabLayout.addWidget(self.startButton2, 6, 0)
         secondTabLayout.addWidget(self.stopButton2, 6, 1)
         secondTabLayout.addWidget(self.loadingBarText, 7, 0)

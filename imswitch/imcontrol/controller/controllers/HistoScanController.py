@@ -548,9 +548,9 @@ class HistoScanController(LiveUpdatedController):
         initPosX = initialPosition["X"]
         initPosY = initialPosition["Y"]
         # check if we want to stitch the images
-        isStitchAshlar = self._widget.stitchAshlarCheckBox.isChecked()
-        isStitchAshlarFlipX = self._widget.stitchAshlarFlipXCheckBox.isChecked()
-        isStitchAshlarFlipY = self._widget.stitchAshlarFlipYCheckBox.isChecked()
+        isStitchAshlar = self._widget.stitchAshlarCheckBoxTileBased.isChecked()
+        isStitchAshlarFlipX = self._widget.stitchAshlarFlipXCheckBoxTileBased.isChecked()
+        isStitchAshlarFlipY = self._widget.stitchAshlarFlipYCheckBoxTileBased.isChecked()
         
         self.startHistoScanTileBasedByParameters(numberTilesX, numberTilesY, stepSizeX, stepSizeY, nTimes, tPeriod, initPosX, initPosY, 
                                                  isStitchAshlar, isStitchAshlarFlipX, isStitchAshlarFlipY, resizeFactor=resizeFactor)

@@ -1,6 +1,11 @@
 import numpy as np
 import datetime
 import tifffile as tif
+import os
+import subprocess
+import numpy as np
+import cv2 
+
 try:
     import NanoImagingPack as nip
     isNIP = True
@@ -56,10 +61,13 @@ class FlowStopController(LiveUpdatedController):
         # start live and adjust camera settings to auto exposure
         self.changeAutoExposureTime('auto')
         
+        # detect potential external drives
+        self.externalDrives = self.detect_external_drives()
+        
         # Connect FlowStopWidget signals
         if not imswitch.IS_HEADLESS:
             # Connect CommunicationChannel signals
-            self._commChannel.sigUpdateImage.connect(self.update)
+            #self._commChannel.sigUpdateImage.connect(self.update)
             self._widget.sigSnapClicked.connect(self.snapImageFlowCam)
             self._widget.sigSliderFocusValueChanged.connect(self.changeFocus)
             self._widget.sigSliderPumpSpeedValueChanged.connect(self.changePumpSpeed)
@@ -193,7 +201,13 @@ class FlowStopController(LiveUpdatedController):
         self.is_measure = True
         if numImages < 0: numImages = np.inf
         self.imagesTaken = 0
-        dirPath  = os.path.join(dirtools.UserFileDirs.Root, 'recordings', timeStamp)
+        if len(self.externalDrives)>0:
+            self._logger.debug("Create folder on an external drive")
+            drivePath = self.externalDrives[0]
+            dirPath  = os.path.join(drivePath, 'recordings', timeStamp)
+            self._logger.debug(dirPath)
+        else:
+            dirPath  = os.path.join(dirtools.UserFileDirs.Root, 'recordings', timeStamp)
         if not os.path.exists(dirPath):
             os.makedirs(dirPath)
         while True:
@@ -239,21 +253,33 @@ class FlowStopController(LiveUpdatedController):
             self.settingAttr = False
 
     @APIExport(runOnUIThread=True)
-    def snapImageFlowCam(self, fileName=None, metaData={}):
+    def snapImageFlowCam(self, fileName=None, metaData={}, fileFormat="JPG"):
         """ Snap image. """
         if fileName is None or not fileName:
             fileName = datetime.datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
 
-        if 1:
+        if fileFormat == "TIF":
+            # save as tif 
             mFrame = self.detectorFlowCam.getLatestFrame()  
             if mFrame is None:
                 self._logger.warning("No frame received from the camera.")
                 return
             tif.imsave(fileName, mFrame, append=False)
-        else:
+        elif fileFormat == "JPG":
+            # save as JPEG 
+            mFrame = self.detectorFlowCam.getLatestFrame()  
+            if mFrame is None:
+                self._logger.warning("No frame received from the camera.")
+                return
+            if not cv2.imwrite(fileName+".jpg", mFrame):
+                self._logger.warning("Frame could not be saved using cv2 jpeg")
+                return
+        elif fileFormat == "PNG":
             pngFormat = SaveFormat.PNG
             saveMode = SaveMode.Disk
             self._master.recordingManager.snap([self.detectorFlowCam], saveMode=saveMode, saveFormat=pngFormat, savename=fileName, attrs=metaData)
+        else:
+            self._logger.warning("Nothing saved, no fileformat selected")
 
     def movePumpPos(self):
         self.positioner.moveRelative((0,0,1*self.directionPump))
@@ -298,17 +324,29 @@ class FlowStopController(LiveUpdatedController):
         """ Displays the image in the view. """
         self._widget.setImage(im)
 
-    def update(self, detectorName, im, init, isCurrentDetector):
-        """ Update with new detector frame. """
-        if not isCurrentDetector or not self.active:
-            return
+    # we have to run this script as root
+    def detect_external_drives(self):
+        # Run 'df' command to get disk usage and filter only mounted devices
+        df_result = subprocess.run(['df', '-h'], stdout=subprocess.PIPE)
+        output = df_result.stdout.decode('utf-8')
 
-        if self.it == self.updateRate:
-            self.it = 0
-            self.imageComputationWorker.prepareForNewImage(im)
-            self.sigImageReceived.emit()
-        else:
-            self.it += 1
+        # Split the output by lines
+        lines = output.splitlines()
+
+        external_drives = []
+
+        # Iterate through each line
+        for line in lines:
+            # Check if the line contains '/media' (common mount point for external drives)
+            if '/media/' in line:
+                # Split the line by spaces and get the second column (which contains the mount point)
+                drive_info = line.split()
+                mount_point = " ".join(drive_info[5:])  # Assuming the mount point is at index 5
+                external_drives.append(mount_point)
+
+        return external_drives
+
+
 
 
 _attrCategory = 'Laser'

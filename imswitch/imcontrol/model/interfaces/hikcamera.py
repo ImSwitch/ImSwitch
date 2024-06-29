@@ -262,7 +262,7 @@ class CameraHIK:
         except Exception as e:
             self._logger.error(e)
 
-    def getLast(self, returnFrameNumber=False, timeout=10):
+    def getLast(self, returnFrameNumber=False, timeout=1):
         # get frame and save 
         '''
         t0 = time.time()
@@ -275,6 +275,11 @@ class CameraHIK:
         self.lastFrameId = self.frameNumber
         print(self.frameNumber)
         '''
+        cTime = time.time()
+        while len(self.frame_buffer)==0:
+            time.sleep(0.02)
+            if time.time() - cTime > timeout:
+                return None
         frame = self.frame_buffer[-1]
         frameNumber = self.frameid_buffer[-1]
         if returnFrameNumber:

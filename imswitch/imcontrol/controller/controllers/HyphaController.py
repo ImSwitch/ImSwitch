@@ -292,14 +292,16 @@ class HyphaController(LiveUpdatedController):
 
         # initialize datastorer for image saving and data handling outside the chat prompts, resides on the hypha server
         self.datastore.setup(server, service_id="data-store")
-        svc = server.register_service(self.getMicroscopeControlExtensionDefinition())
+        svc = await server.register_service(self.getMicroscopeControlExtensionDefinition())
         self.hyphaURL = f"https://bioimage.io/chat?server={server_url}&extension={svc.id}"
         try:
             # open the chat window in the browser to interact with the herin created connection
             webbrowser.open(self.hyphaURL)
-            self._widget.setChatURL(url=f"https://bioimage.io/chat?token={token}&assistant=Skyler&server={server_url}&extension={svc.id}")
             self._isConnected = True
-        except:
+            if not imswitch.IS_HEADLESS: self._widget.setChatURL(url=f"https://bioimage.io/chat?token={token}&assistant=Skyler&server={server_url}&extension={svc.id}")
+            
+        except Exception as e:
+            self._logger.error(e)
             pass
         print(f"Extension service registered with id: {svc.id}, you can visit the chatbot at {self.hyphaURL}, and the service at: {server_url}/{server.config.workspace}/services/{svc.id.split(':')[1]}")
 
@@ -370,7 +372,7 @@ class HyphaController(LiveUpdatedController):
                 )
         # initialize datastorer for image saving and data handling outside the chat prompts, resides on the hypha server
         self.datastore.setup(server, service_id="data-store")
-        svc = server.register_service(self.getMicroscopeControlExtensionDefinition())
+        svc =  server.register_service(self.getMicroscopeControlExtensionDefinition())
         self.hyphaURL = f"https://bioimage.io/chat?server={server_url}&extension={svc.id}"
         try:
             # open the chat window in the browser to interact with the herin created connection

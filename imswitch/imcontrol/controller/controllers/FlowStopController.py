@@ -125,10 +125,19 @@ class FlowStopController(LiveUpdatedController):
         self._widget.buttonStart.setStyleSheet("background-color: grey")
         self.startFlowStopExperiment(timeStamp, experimentName, experimentDescription, uniqueId, numImages, volumePerImage, timeToStabilize)
 
-    @APIExport(runOnUIThread=True)
-    def getStatus(self):
-        return self.is_measure, self.imagesTaken
+    @APIExport()
+    def getStatus(self) -> list:
+        return [self.is_measure, self.imagesTaken]
 
+    @APIExport()
+    def getExperimentParameters(self) -> dict:
+        self.mExperimentParameters = self._widget.getAutomaticImagingParameters()
+        return self.mExperimentParameters 
+    
+    @APIExport()
+    def isRunning(self) -> bool:
+        return self.is_measure
+    
     @APIExport(runOnUIThread=True)
     def startFlowStopExperiment(self, timeStamp: str, experimentName: str, experimentDescription: str, 
                                 uniqueId: str, numImages: int, volumePerImage: float, timeToStabilize: float, 
@@ -196,7 +205,7 @@ class FlowStopController(LiveUpdatedController):
 
         '''
         self._logger.debug("Starting the FlowStop experiment thread in {delayToStart} seconds.")
-        time.sleep(delayToStart)
+        time.sleep(abs(delayToStart))
         self._commChannel.sigStartLiveAcquistion.emit(True)
         self.is_measure = True
         if numImages < 0: numImages = np.inf
@@ -234,7 +243,8 @@ class FlowStopController(LiveUpdatedController):
                 mFileName = f'{timeStamp}_{experimentName}_{uniqueId}_{self.imagesTaken}'
                 mFilePath = os.path.join(dirPath, mFileName)
                 self.snapImageFlowCam(mFilePath, metaData)
-                
+                self._logger.debug(f"Image {self.imagesTaken} saved to {mFilePath}")
+
                 # maintain framerate
                 while (time.time()-currentTime)<(1/frameRate):
                     time.sleep(0.05)

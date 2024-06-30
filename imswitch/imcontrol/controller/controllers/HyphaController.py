@@ -41,6 +41,9 @@ import numpy as np
 from pydantic import BaseModel, Field
 import tifffile as tif
 import time
+from imswitch.imcommon.model import dirtools
+from datetime import datetime
+from typing import Optional
 
 ROOT = os.path.dirname(__file__)
 
@@ -69,16 +72,16 @@ class MyMicroscope(object):
         self.specialFcts = specialFcts
 
     def move_stage(self, distance, is_absolute, axis, speed):
-        return self.stage.move(distance, is_absolute, axis, speed)
+        return self.stage.move(value=distance, is_absolute=is_absolute, axis=axis, speed=speed)
 
     def set_illumination(self, channel, intensity):
         # TODO: implement mChannel
         self.illumination.setEnabled(True*bool(intensity))
         return self.illumination.setValue(intensity)
 
-    def snap_image(self, exposure, gain):
+    def snap_image(self, exposure=None, gain=None):
         # TODO: Implement the epxosure/gain values
-        return self.detector.getLatestFrame()
+        return self.camera.getLatestFrame()
 
     def home(self, axis):
         return self.stage.home(axis)
@@ -86,7 +89,9 @@ class MyMicroscope(object):
     def autofocus(self, minZ, maxZ, stepSize):
         try:
             self.autofocus = self.specialFcts["autofocus"]
-            return self.autofocus(minZ, maxZ, stepSize)
+            valueRange = (maxZ-minZ)
+            valueSteps = stepSize
+            return self.autofocus(valueRange, valueSteps)
         except Exception as e:
             return e
 
@@ -253,13 +258,13 @@ class HyphaController(LiveUpdatedController):
             @track.on("ended")
             def on_ended():
                 self.__logger.debug(f"Track {track.kind} ended")
-                
+
     @APIExport()
     def start_hypha_service(self, service_id="UC2ImSwitch", server_url="https://chat.bioimage.io", workspace=None, token=None):
         #mThread = threading.Thread(target=self.start_service, args=(service_id, server_url, workspace, token))
         #mThread.start()
         self.start_service(service_id, server_url, workspace, token, is_async=True)
-        
+
     def start_service(self, service_id="UC2ImSwitch", server_url="https://chat.bioimage.io", workspace=None, token=None, is_async=False):
         '''
         This logs into the Hypha Server and starts the service.
@@ -278,7 +283,7 @@ class HyphaController(LiveUpdatedController):
             # automatically open default browser and return the login token
             webbrowser.open(message['login_url']) # TODO: pass login token to qtwebview
             print(f"Please open your browser and login at: {message['login_url']}")
-            
+
         try:
             if is_async:
                 token = login_async({"server_url": server_url,
@@ -378,8 +383,8 @@ class HyphaController(LiveUpdatedController):
 
     def move_stage(self, kwargs=None):
         '''Move the stage to a specified position, the unit of distance is micrometers.'''
-        if kwargs is not None:
-            config = MovePositionerInputop(**kwargs)
+        if kwargs is not None:            
+            config = MovePositionerInput(**kwargs)
         distance = config.distance
         is_absolute = config.is_absolute
         axis = config.axis
@@ -415,6 +420,7 @@ class HyphaController(LiveUpdatedController):
         config = ScriptExecutor(**kwargs)
         locals_dict = locals()
         try:
+            print(config.script)
             result = await execute_code(self.datastore, config.script, locals_dict)
             if 0:
                 exec(config.script, globals(), locals_dict)
@@ -424,7 +430,6 @@ class HyphaController(LiveUpdatedController):
             print(f"Script execution failed: {e}")
             result = f"Script execution failed: {e}"
         return result
-
 
     def set_illumination(self, kwargs):
         '''
@@ -532,6 +537,7 @@ class HyphaController(LiveUpdatedController):
         imageProcessingFunction = config.imageProcessingFunction
         return_image = config.returnAsNumpy
         mImage = self.mMicroscope.snap_image(mExposureTime)
+        returnMessage = {}
 
         def packImageToDatastore(mImage):
             '''
@@ -548,14 +554,20 @@ class HyphaController(LiveUpdatedController):
             return self.datastore.get_url(file_id)
 
         if mFilePath:
-            # check if the file exists and if it has a tif extension
-            if not mFilePath.endswith(".tif"):
-                mFilePath = mFilePath + ".tif"
-            # if the folder does not exist, create it
-            if not os.path.exists(os.path.dirname(mFilePath)):
-                os.makedirs(os.path.dirname(mFilePath))
-            # save an image as a tif
-            tif.imsave(mFilePath, mImage)
+            try:
+                # check if the file exists and if it has a tif extension
+                if not mFilePath.endswith(".tif"):
+                    mFilePath = mFilePath + ".tif"
+                # if the folder does not exist, create it
+                dirPath  = os.path.join(dirtools.UserFileDirs.Root, 'recordings', datetime.now().strftime("%Y_%m_%d-%I-%M-%S_%p") )
+                if not os.path.exists(dirPath):
+                    os.makedirs(dirPath)
+                # save an image as a tif
+                tif.imsave(os.path.join(dirPath,mFilePath), mImage)
+                returnMessage["imagePath"] = os.path.join(dirPath,mFilePath)
+                self.__logger.debug(f"Image saved as {os.path.join(dirPath,mFilePath)}")
+            except Exception as e:
+                return "Error saving image: "+str(e)
 
         try:
             if imageProcessingFunction and imageProcessingFunction !=  "":
@@ -574,6 +586,9 @@ class HyphaController(LiveUpdatedController):
             else:
                 processedImage = mImage
 
+            # directly return the image
+            imageURL = packImageToDatastore(processedImage)
+            returnMessage["imageURL"] = imageURL
             if return_image:
                 # directly return the image
                 return packImageToDatastore(processedImage)
@@ -675,9 +690,9 @@ class SnapImageInput(BaseModel):
     '''
     exposure: int = Field(description="Set the microscope camera's exposure time. and the time unit is ms, so you need to input the time in miliseconds.")
     gain: int = Field(description="Set the microscope camera's gain. A higher gain can increase sensitivity, especailly helpful in low light settings ")
-    filepath: str = Field(description="The path to save the captured image. It will be a tif, so the extension does not need to be added. If None, it is not saved")
+    filepath: Optional[str]  = Field(description="The path to save the captured image. It will be a tif, so the extension does not need to be added. If None, it is not saved")
     imageProcessingFunction: str = Field(description="The Python function to use for processing the image. Default is empty. image is the 2D array from the detector Example: def processImage(image): return cv2.cvtColor(image, cv2.COLOR_BGR2GRAY). Avoid returning images since this is too much bandwidth. Return parameters from the function instead. Avoid using cv2")
-    returnAsNumpy: bool = Field(description="Return the image as a numpy array if True, else return the URl to the image in the Hypha DataStore. ")
+    returnAsNumpy: bool = Field(description="Return the image as a numpy array if True, else return the URl to the image in the Hypha DataStore. If you need to display it in the chat, keep it False to return the datastore ")
 
 class RecordingVideo(BaseModel):
     '''

@@ -19,7 +19,7 @@ class UC2ConfigController(ImConWidgetController):
         except Exception as e:
             self.__logger.error("No Stages found in the config file? " +e )
             self.stages = None
-        # update the gui elements 
+        # update the gui elements
         self._commChannel.sigUpdateMotorPosition.emit()
 
         '''
@@ -39,10 +39,12 @@ class UC2ConfigController(ImConWidgetController):
             self.stages.move(-1, "A", is_absolute=False, is_blocking=True)
         '''
         self._commChannel.sigUpdateMotorPosition.emit()
-        
+
+        self._widget.setBaudRateGui(self._master.UC2ConfigManager.ESP32.serial.baudrate)
+
         # register the callback to take a snapshot triggered by the ESP32
         self.registerCaptureCallback()
-        
+
         # Connect buttons to the logic handlers
         if imswitch.IS_HEADLESS:
             return
@@ -50,13 +52,13 @@ class UC2ConfigController(ImConWidgetController):
         self._widget.setPositionYBtn.clicked.connect(self.set_positionY)
         self._widget.setPositionZBtn.clicked.connect(self.set_positionZ)
         self._widget.setPositionABtn.clicked.connect(self.set_positionA)
-        
+
         self._widget.autoEnableBtn.clicked.connect(self.set_auto_enable)
         self._widget.unsetAutoEnableBtn.clicked.connect(self.unset_auto_enable)
         self._widget.reconnectButton.clicked.connect(self.reconnect)
         self._widget.btpairingButton.clicked.connect(self.btpairing)
         self._widget.stopCommunicationButton.clicked.connect(self.interruptSerialCommunication)
-        
+
 
 
     def registerCaptureCallback(self):
@@ -65,23 +67,23 @@ class UC2ConfigController(ImConWidgetController):
             self.detector_names = self._master.detectorsManager.getAllDeviceNames()
             self.detector = self._master.detectorsManager[self.detector_names[0]]
             mImage = self.detector.getLatestFrame()
-            # save image 
+            # save image
             #tif.imsave()
             self._commChannel.sigDisplayImageNapari.emit('Image', mImage, False) # layername, image, isRGB
-        
+
         def printCallback(value):
             self.__logger.debug(f"Callback called with value: {value}")
         try:
-            
+
             self.__logger.debug("Registering callback for snapshot")
             # register default callback
             self._master.UC2ConfigManager.ESP32.message.register_callback(0, snapImage) # FIXME: Too hacky?
             for i in range(1, self._master.UC2ConfigManager.ESP32.message.nCallbacks):
                 self._master.UC2ConfigManager.ESP32.message.register_callback(i, printCallback)
-            
+
         except Exception as e:
             self.__logger.error(f"Could not register callback: {e}")
-            
+
     def set_motor_positions(self, a, x, y, z):
         # Add your logic to set motor positions here.
         self.__logger.debug(f"Setting motor positions: A={a}, X={x}, Y={y}, Z={z}")
@@ -90,7 +92,7 @@ class UC2ConfigController(ImConWidgetController):
         if x is not None:  self.stages.setPositionOnDevice(value=float(x), axis="X")
         if y is not None: self.stages.setPositionOnDevice(value=float(y), axis="Y")
         if z is not None: self.stages.setPositionOnDevice(value=float(z), axis="Z")
-        
+
         # retrieve the positions from the motor controller
         positions = self.stages.getPosition()
         if not imswitch.IS_HEADLESS: self._widget.reconnectDeviceLabel.setText("Motor positions: A="+str(positions["A"])+", X="+str(positions["X"])+", \n Y="+str(positions["Y"])+", Z="+str(positions["Z"]))
@@ -100,7 +102,7 @@ class UC2ConfigController(ImConWidgetController):
     def interruptSerialCommunication(self):
         self._master.UC2ConfigManager.interruptSerialCommunication()
         if not imswitch.IS_HEADLESS: self._widget.reconnectDeviceLabel.setText("We are intrrupting the last command")
-        
+
     def set_auto_enable(self):
         # Add your logic to auto-enable the motors here.
         # get motor controller
@@ -117,30 +119,33 @@ class UC2ConfigController(ImConWidgetController):
     def set_positionY(self):
         if not imswitch.IS_HEADLESS: y = self._widget.motorYEdit.text()
         self.set_motor_positions(None, None, y, None)
-        
+
     def set_positionZ(self):
         if not imswitch.IS_HEADLESS: z = self._widget.motorZEdit.text()
         self.set_motor_positions(None, None, None, z)
-        
+
     def set_positionA(self):
         if not imswitch.IS_HEADLESS: a = self._widget.motorAEdit.text()
         self.set_motor_positions(a, None, None, None)
-        
-    def reconnectThread(self):
-        self._master.UC2ConfigManager.initSerial()
+
+    def reconnectThread(self, baudrate=None):
+        self._master.UC2ConfigManager.initSerial(baudrate=baudrate)
         if not imswitch.IS_HEADLESS: self._widget.reconnectDeviceLabel.setText("We are connected: "+str(self._master.UC2ConfigManager.isConnected()))
-    
+
     @APIExport(runOnUIThread=True)
     def reconnect(self):
         self._logger.debug('Reconnecting to ESP32 device.')
         if not imswitch.IS_HEADLESS: self._widget.reconnectDeviceLabel.setText("Reconnecting to ESP32 device.")
-        mThread = threading.Thread(target=self.reconnectThread)
+        baudrate = self._widget.getBaudRateGui()
+        if baudrate not in (115200, 500000):
+            baudrate = None
+        mThread = threading.Thread(target=self.reconnectThread, args=(baudrate,))
         mThread.start()
-    
+
     @APIExport(runOnUIThread=True)
     def is_connected(self):
         return self._master.UC2ConfigManager.isConnected()
-    
+
     @APIExport(runOnUIThread=True)
     def btpairing(self):
         self._logger.debug('Pairing BT device.')

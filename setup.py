@@ -65,19 +65,19 @@ setup(
         "imjoy_rpc",
         "imjoy",
         "aiortc >= 1.3.0",
-        "rpyc",
+        "UC2-REST",
         "tk >= 0.1.0",
         "jupyter",
         "python-multipart >= 0.0.5",
-        "psygnal==0.11.1",
-        "piexif >= 1.1.3", 
-        "NanoImagingPack==2.1.3.dev1"
+        "piexif >= 1.1.3",
+        "NanoImagingPack==2.1.3.dev1",
+        "ashlarUC2"
     ],
         #"juliacall",
-        # "microscope", 
+        # "microscope",
         #"https://github.com/openUC2/UC2-REST/archive/refs/heads/master.zip",
         #"https://gitlab.com/bionanoimaging/nanoimagingpack/-/archive/master/nanoimagingpack-master.zip",
-        
+
      extras_require={ # we assume that this is installed in a conda environment or via apt-get
         'PyQt5': [
             "qtpy >= 1.9",
@@ -87,7 +87,12 @@ setup(
             "PyQtWebEngine >= 5.15.2",
             "pyqtgraph >= 0.12.1",
             "napari[pyqt5]"
-        ]},
+        ],
+        'arkitet':
+            [
+            "arkitekt==0.7.8"
+        ],},
+
     entry_points={
         "console_scripts": [
             "imswitch = imswitch.__main__:main",

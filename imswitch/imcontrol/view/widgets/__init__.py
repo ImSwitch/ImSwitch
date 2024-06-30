@@ -1,6 +1,6 @@
 import imswitch
-if not imswitch.IS_HEADLESS: 
-    # FIXME: hacky way to do that I guess..    
+if not imswitch.IS_HEADLESS:
+    # FIXME: hacky way to do that I guess..
     from .AlignAverageWidget import AlignAverageWidget
     from .AlignmentLineWidget import AlignmentLineWidget
     from .AlignXYWidget import AlignXYWidget

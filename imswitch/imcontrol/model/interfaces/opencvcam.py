@@ -94,9 +94,11 @@ class CameraOpenCV:
         self.pixelformat = format
         self.__logger.debug("Error setting pixelformat time in opencv camera")
 
-    def getLast(self, is_resize=True):
+    def getLast(self, is_resize=True, returnFrameNumber=False):
         # get frame and save
         #TODO: Napari only displays 8Bit?
+        if returnFrameNumber:
+            return self.frame, self.frame_id_last
         return self.frame
 
     def getLastChunk(self):
@@ -184,6 +186,7 @@ class CameraOpenCV:
         while(self.camera_is_open):
             try:
                 self.frame = self.camera.read()[1]
+                self.frame_id_last += 1
                 if not isRGB and len(self.frame.shape)>2:
                     self.frame = np.uint8(np.mean(self.frame, -1))
                 self.frame = np.flip(self.frame)

@@ -7,13 +7,15 @@ from imswitch.imcommon.framework import Mutex, Signal, SignalInterface
 class APIExport:
     """ Decorator for methods that should be exported to API. """
 
-    def __init__(self, *, runOnUIThread=False):
+    def __init__(self, *, runOnUIThread=False, asyncExecution=False):
         self._APIExport = True
         self._APIRunOnUIThread = runOnUIThread
+        self._APIAsyncExecution = asyncExecution
 
     def __call__(self, func):
         func._APIExport = self._APIExport
         func._APIRunOnUIThread = self._APIRunOnUIThread
+        func._APIAsyncExecution = self._APIAsyncExecution
         return func
 
 

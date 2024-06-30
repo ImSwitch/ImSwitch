@@ -202,7 +202,6 @@ class PositionerController(ImConWidgetController):
         if not imswitch.IS_HEADLESS: self._widget.setStepSize(positionerName, stepSize)
 
     @APIExport(runOnUIThread=True)
-    @expose
     def movePositioner(self, positionerName: Optional[str]=None, axis: Optional[str]="X", dist: Optional[float] = None, isAbsolute: bool = False, isBlocking: bool=False, speed: float=None) -> None:
         """ Moves the specified positioner axis by the specified number of
         micrometers. """

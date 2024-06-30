@@ -40,7 +40,6 @@ class UC2ConfigController(ImConWidgetController):
         '''
         self._commChannel.sigUpdateMotorPosition.emit()
 
-        self._widget.setBaudRateGui(self._master.UC2ConfigManager.ESP32.serial.baudrate)
 
         # register the callback to take a snapshot triggered by the ESP32
         self.registerCaptureCallback()
@@ -48,6 +47,7 @@ class UC2ConfigController(ImConWidgetController):
         # Connect buttons to the logic handlers
         if imswitch.IS_HEADLESS:
             return
+        self._widget.setBaudRateGui(self._master.UC2ConfigManager.ESP32.serial.baudrate)
         self._widget.setPositionXBtn.clicked.connect(self.set_positionX)
         self._widget.setPositionYBtn.clicked.connect(self.set_positionY)
         self._widget.setPositionZBtn.clicked.connect(self.set_positionZ)

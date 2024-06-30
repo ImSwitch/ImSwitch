@@ -52,6 +52,8 @@ class UC2ConfigController(ImConWidgetController):
         '''
         self._commChannel.sigUpdateMotorPosition.emit()
         
+        self._widget.setBaudRateGui(self._master.UC2ConfigManager.ESP32.serial.baudrate)
+        
         # register the callback to take a snapshot triggered by the ESP32
         self.registerCaptureCallback()
 
@@ -122,15 +124,18 @@ class UC2ConfigController(ImConWidgetController):
         a = self._widget.motorAEdit.text()
         self.set_motor_positions(a, None, None, None)
         
-    def reconnectThread(self):
-        self._master.UC2ConfigManager.initSerial()
+    def reconnectThread(self, baudrate=None):
+        self._master.UC2ConfigManager.initSerial(baudrate=baudrate)
         self._widget.reconnectDeviceLabel.setText("We are connected: "+str(self._master.UC2ConfigManager.isConnected()))
     
     @APIExport(runOnUIThread=True)
     def reconnect(self):
         self._logger.debug('Reconnecting to ESP32 device.')
         self._widget.reconnectDeviceLabel.setText("Reconnecting to ESP32 device.")
-        mThread = threading.Thread(target=self.reconnectThread)
+        baudrate = self._widget.getBaudRateGui()
+        if baudrate not in (115200, 500000):
+            baudrate = None
+        mThread = threading.Thread(target=self.reconnectThread, args=(baudrate,))
         mThread.start()
     
     @APIExport(runOnUIThread=True)

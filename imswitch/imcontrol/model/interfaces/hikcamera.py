@@ -275,6 +275,8 @@ class CameraHIK:
         self.lastFrameId = self.frameNumber
         print(self.frameNumber)
         '''
+        if len(self.frame_buffer) == 0:
+            return None
         frame = self.frame_buffer[-1]
         frameNumber = self.frameid_buffer[-1]
         if returnFrameNumber:

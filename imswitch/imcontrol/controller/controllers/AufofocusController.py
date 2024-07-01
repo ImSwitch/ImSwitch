@@ -1,11 +1,9 @@
 import time
 
 import numpy as np
-from time import perf_counter
 import scipy.ndimage as ndi
-from scipy.ndimage.filters import laplace
 
-from imswitch.imcommon.framework import Thread, Timer
+from imswitch.imcommon.framework import Thread
 from imswitch.imcommon.model import initLogger, APIExport
 from ..basecontrollers import ImConWidgetController
 

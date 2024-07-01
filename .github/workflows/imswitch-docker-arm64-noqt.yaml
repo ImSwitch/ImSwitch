@@ -48,5 +48,5 @@ jobs:
           file: docker/dockerfileImSwitchARMNoQT
           push: true
           platforms: linux/arm64
-          tags: ghcr.io/${{ env.REPO }}-docker-arm64:latest
+          tags: ghcr.io/openuc2/imswitch-docker-arm64-noqt:latest
           labels: ${{ steps.meta.outputs.labels }}

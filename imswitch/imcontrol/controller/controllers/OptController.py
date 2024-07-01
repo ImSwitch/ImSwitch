@@ -219,9 +219,7 @@ class ScanOPTWorker(Worker):
         self.master.detectorsManager[self.detectorName].startAcquisition()
 
         # mock is caught in the prepareOPTScan in controller
-        self.waitConst = self.master.detectorsManager[
-                                self.detectorName,
-                                ].getExposure()
+        self.waitConst = self.master.detectorsManager[self.detectorName].getExposure()
         self.__logger.info(
             f'Wait constant equals exposure time: {self.waitConst} us.',
             )
@@ -529,9 +527,7 @@ class OptController(ImConWidgetController):
             self.__logger.error('No detector for OPT found.')
 
         # update detector list in the widget and connect update method
-        self._widget.scanPar['Detector'].currentIndexChanged.connect(
-                                            self.updateDetector,
-                                            )
+        self._widget.scanPar['Detector'].currentIndexChanged.connect(self.updateDetector)
         self.updateDetector()
 
         for detector in self.forOptDetectorsList:
@@ -882,7 +878,7 @@ class OptController(ImConWidgetController):
         Setting detectorName and detector object.
         """
         self.detectorName = self.forOptDetectorsList[
-                                self._widget.getDetectorIdx(),
+                                self._widget.getDetectorIdx()
                                 ]
         self.detector = self._master.detectorsManager[self.detectorName]
 

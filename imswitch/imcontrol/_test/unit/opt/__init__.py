@@ -83,16 +83,6 @@ setupInfoOPTBasic = ViewSetupInfo.from_json("""
             }
         }
     },
-    "scan": {
-        "scanWidgetType": "Opt",
-        "scanDesigner": "BetaScanDesigner",
-        "scanDesignerParams": {
-            "return_time": 0.01
-        },
-        "TTLCycleDesigner": "BetaTTLCycleDesigner",
-        "TTLCycleDesignerParams": {},
-        "sampleRate": 100000
-    },
     "optInfo": {
         "detectors": ["DMK"],
         "rotator": "ArduinoStepper"
@@ -111,7 +101,7 @@ setupInfoOPTBasic = ViewSetupInfo.from_json("""
         "Recording",
         "Image",
         "Rotator",
-        "Scan"
+        "Opt"
     ]
 }
 """, infer_missing=True)

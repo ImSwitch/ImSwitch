@@ -5,7 +5,7 @@ from imswitch.imcontrol.controller.controllers.OptController import (
     OptController,
     FBPliveRecon,
 )
-from ImSwitchOpt.imswitch.imcontrol.view.widgets.OptWidget import OptWidget
+from imswitch.imcontrol.view.widgets.OptWidget import OptWidget
 from imswitch.imcontrol.controller.CommunicationChannel import CommunicationChannel
 from imswitch.imcontrol.controller.MasterController import MasterController
 from imswitch.imcommon.controller import (

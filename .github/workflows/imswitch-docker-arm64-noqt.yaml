@@ -48,5 +48,5 @@ jobs:
           file: docker/dockerfileImSwitchARMNoQT
           push: true
           platforms: linux/arm64
-          tags: ghcr.io/${{ env.IMAGE_NAME }}:latest
+          tags: ghcr.io/${{ env.REPO }}-docker-arm64:latest
           labels: ${{ steps.meta.outputs.labels }}

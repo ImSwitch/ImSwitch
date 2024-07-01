@@ -243,7 +243,7 @@ class HyphaController(LiveUpdatedController):
             def on_ended():
                 self.__logger.debug(f"Track {track.kind} ended")
     
-    @APIExport(runOnUIThread=True) 
+    #@APIExport(runOnUIThread=True) 
     def start_service(self, service_id, server_url="https://chat.bioimage.io", workspace=None, token=None):
         '''
         This logs into the Hypha Server and starts the service.
@@ -275,7 +275,7 @@ class HyphaController(LiveUpdatedController):
             {
             "server_url": server_url,
             "token": token}
-            )
+            ) 
         # initialize datastorer for image saving and data handling outside the chat prompts, resides on the hypha server
         self.datastore.setup(server, service_id="data-store")
         svc = server.register_service(self.getMicroscopeControlExtensionDefinition())

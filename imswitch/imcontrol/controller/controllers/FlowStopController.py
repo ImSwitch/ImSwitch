@@ -13,7 +13,7 @@ from imswitch.imcommon.framework import Signal, Worker, Mutex, Timer
 from imswitch.imcontrol.view import guitools
 from imswitch.imcommon.model import initLogger
 from ..basecontrollers import LiveUpdatedController
-import imswitch
+from imswitch import IS_HEADLESS
 from threading import Thread
 from imswitch.imcontrol.model import RecMode, SaveMode, SaveFormat
 
@@ -57,7 +57,7 @@ class FlowStopController(LiveUpdatedController):
         self.changeAutoExposureTime('auto')
         
         # Connect FlowStopWidget signals
-        if not imswitch.IS_HEADLESS:
+        if not IS_HEADLESS:
             # Connect CommunicationChannel signals
             self._commChannel.sigUpdateImage.connect(self.update)
             self._widget.sigSnapClicked.connect(self.snapImageFlowCam)
@@ -177,7 +177,7 @@ class FlowStopController(LiveUpdatedController):
     @APIExport(runOnUIThread=True)
     def stopFlowStopExperiment(self):
         self.is_measure=False
-        if not imswitch.IS_HEADLESS:
+        if not IS_HEADLESS:
             self._widget.buttonStart.setEnabled(True)
             self._widget.buttonStop.setEnabled(False)
             self._widget.buttonStop.setStyleSheet("background-color: grey")
@@ -234,7 +234,7 @@ class FlowStopController(LiveUpdatedController):
                 # maintain framerate
                 while (time.time()-currentTime)<(1/frameRate):
                     time.sleep(0.05)
-                if not imswitch.IS_HEADLESS:
+                if not IS_HEADLESS:
                     self._widget.labelStatusValue.setText(f'Running: {self.imagesTaken+1}/{numImages}')
             else:
                 break

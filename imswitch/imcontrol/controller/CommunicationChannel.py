@@ -88,8 +88,6 @@ class CommunicationChannel(SignalInterface):
 
     sigSendScanFreq = Signal(float)  # (scanPeriod)
 
-    sigDisplayImageNapari = Signal(str, np.ndarray, bool)  # (layername, image, isRGB)
-
     #sigRequestScannersInScan = Signal()
 
     #sigSendScannersInScan = Signal(object)  # (scannerList)

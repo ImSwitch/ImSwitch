@@ -2,7 +2,7 @@ import webbrowser
 
 import psutil
 
-import imswitch
+from imswitch import IS_HEADLESS
 from imswitch.imcommon.framework import Timer
 from imswitch.imcommon.model import dirtools, modulesconfigtools, ostools, APIExport
 from imswitch.imcommon.view import guitools

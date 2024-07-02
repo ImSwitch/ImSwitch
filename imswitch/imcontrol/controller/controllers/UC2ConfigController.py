@@ -65,7 +65,9 @@ class UC2ConfigController(ImConWidgetController):
             mImage = self.detector.getLatestFrame()
             # save image 
             #tif.imsave()
-            self._commChannel.sigDisplayImageNapari.emit('Image', mImage, False) # layername, image, isRGB
+                
+            # (detectorName, image, init, scale, isCurrentDetector)
+            self._commChannel.sigUpdateImage.emit('Image', mImage, True, 1, False
         
         def printCallback(value):
             self.__logger.debug(f"Callback called with value: {value}")

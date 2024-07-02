@@ -7,7 +7,7 @@ from typing import List
 
 from dataclasses_json import dataclass_json
 
-import imswitch
+from imswitch import IS_HEADLESS
 from imswitch.imcommon.model import dirtools
 
 

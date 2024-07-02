@@ -1,6 +1,6 @@
 from qtpy import QtCore, QtWidgets
 
-import imswitch
+from imswitch import IS_HEADLESS, __version__
 
 
 class AboutDialog(QtWidgets.QDialog):
@@ -13,7 +13,7 @@ class AboutDialog(QtWidgets.QDialog):
         self.setMinimumWidth(480)
 
         self.label = QtWidgets.QLabel(
-            f'<strong>ImSwitch {imswitch.__version__}</strong>'
+            f'<strong>ImSwitch {__version__}</strong>'
             f'<br /><br />Code available at: '
             f'<a href="https://github.com/openUC2/ImSwitch" style="color: orange">'
             f'https://github.com/openUC2/ImSwitch'

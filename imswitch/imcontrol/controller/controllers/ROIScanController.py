@@ -10,7 +10,7 @@ import scipy.ndimage as ndi
 import scipy.signal as signal
 import skimage.transform as transform
 import tifffile as tif
-import imswitch
+from imswitch import IS_HEADLESS
 
 from imswitch.imcommon.framework import Signal, Thread, Worker, Mutex, Timer
 from imswitch.imcommon.model import dirtools, initLogger, APIExport
@@ -33,7 +33,7 @@ class ROIScanController(ImConWidgetController):
 
 
         # connect GUI
-        if not imswitch.IS_HEADLESS:
+        if not IS_HEADLESS:
             self._widget.upButton.clicked.connect(lambda: self.move_stage(0, 1, 0))
             self._widget.downButton.clicked.connect(lambda: self.move_stage(0, -1, 0))
             self._widget.leftButton.clicked.connect(lambda: self.move_stage(-1, 0, 0))

@@ -2,7 +2,7 @@ import os
 import cv2
 import math
 import time
-import imswitch
+from imswitch import IS_HEADLESS, __file__
 import threading
 import numpy as np
 import matplotlib.pyplot as plt
@@ -44,7 +44,7 @@ class VirtualMicroscopeManager:
             if not self._imagePath in availableImageModalities:
                 raise NameError
         except:
-            package_dir = os.path.dirname(os.path.abspath(imswitch.__file__))
+            package_dir = os.path.dirname(os.path.abspath(__file__))
             self._imagePath = os.path.join(
                 package_dir, "_data/images/histoASHLARStitch.jpg"
             )

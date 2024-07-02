@@ -1,4 +1,4 @@
-import imswitch
+from imswitch import IS_HEADLESS
 from dataclasses import dataclass
 
 from pyqtgraph.dockarea import Dock, DockArea
@@ -29,7 +29,7 @@ class ImConMainView(QtWidgets.QMainWindow):
         self.shortcuts = {}
 
         self.viewSetupInfo = viewSetupInfo
-        if not imswitch.IS_HEADLESS:
+        if not IS_HEADLESS:
             self.pickSetupDialog = PickSetupDialog(self)
             self.pickDatasetsDialog = PickDatasetsDialog(self, allowMultiSelect=False)
 
@@ -131,7 +131,7 @@ class ImConMainView(QtWidgets.QMainWindow):
         elif enabledDockKeys is True:
             enabledDockKeys = allDockKeys
 
-        if 'Image' in enabledDockKeys and not imswitch.IS_HEADLESS:
+        if 'Image' in enabledDockKeys and not IS_HEADLESS:
             self.docks['Image'] = Dock('Image Display', size=(1, 1))
             self.widgets['Image'] = self.factory.createWidget(widgets.ImageWidget)
             self.docks['Image'].addWidget(self.widgets['Image'])
@@ -156,7 +156,7 @@ class ImConMainView(QtWidgets.QMainWindow):
         )
 
     # Add dock area to layout
-        if not imswitch.IS_HEADLESS:
+        if not IS_HEADLESS:
             layout.addWidget(dockArea)
 
         '''
@@ -185,7 +185,7 @@ class ImConMainView(QtWidgets.QMainWindow):
             self.docks['Image'].setStretch(1, 1)
         '''
     def addShortcuts(self, shortcuts):
-        if not imswitch.IS_HEADLESS:
+        if not IS_HEADLESS:
             for s in shortcuts.values():
                 action = QtWidgets.QAction(s["name"], self)
                 action.setShortcut(s["key"])

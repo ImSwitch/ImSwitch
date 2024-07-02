@@ -1,7 +1,7 @@
 import json
 import os
 
-import imswitch
+from imswitch import IS_HEADLESS
 from  imswitch.imcontrol.controller.controllers.camera_stage_mapping import OFMStageMapping
 from imswitch.imcommon.model import initLogger, ostools
 import numpy as np
@@ -106,7 +106,7 @@ class HistoScanController(LiveUpdatedController):
             self.flatfieldManager = None
         
 
-        if not imswitch.IS_HEADLESS:
+        if not IS_HEADLESS:
             '''
             Set up the GUI
             '''
@@ -559,7 +559,7 @@ class HistoScanController(LiveUpdatedController):
     @APIExport()
     def stopHistoScan(self):
         self.ishistoscanRunning = False
-        if imswitch.IS_HEADLESS:
+        if IS_HEADLESS:
             self._widget.startButton.setEnabled(True)
             self._widget.stopButton.setEnabled(False)
             self._widget.startButton.setText("Start")

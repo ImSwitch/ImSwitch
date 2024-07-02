@@ -2,7 +2,7 @@ from imswitch.imcontrol.controller.controllers.hypha.hypha_storage import HyphaD
 from imswitch.imcontrol.controller.controllers.hypha.hypha_executor import execute_code
 from imswitch.imcontrol.controller.basecontrollers import LiveUpdatedController
 from imswitch.imcommon.model import initLogger, APIExport
-import imswitch 
+from imswitch import IS_HEADLESS
 try:
     import NanoImagingPack as nip
     isNIP = True
@@ -154,7 +154,7 @@ class HyphaController(LiveUpdatedController):
         self.datastore = HyphaDataStore()
         
         # connect signals 
-        if not imswitch.IS_HEADLESS: 
+        if not IS_HEADLESS: 
             self._widget.sigLoginHypha.connect(self._loginHypha)
             
 

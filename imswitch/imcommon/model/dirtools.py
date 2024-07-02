@@ -3,8 +3,8 @@ import os
 from abc import ABC
 from pathlib import Path
 from shutil import copy2
-
 import imswitch
+from imswitch import IS_HEADLESS, __file__
 
 
 def getSystemUserDir():
@@ -27,7 +27,7 @@ def getSystemUserDir():
     return os.path.expanduser('~')  # Non-Windows system, return home directory
 
 
-_baseDataFilesDir = os.path.join(os.path.dirname(os.path.realpath(imswitch.__file__)), '_data')
+_baseDataFilesDir = os.path.join(os.path.dirname(os.path.realpath(__file__)), '_data')
 _baseUserFilesDir = os.path.join(getSystemUserDir(), 'ImSwitchConfig')
 
 

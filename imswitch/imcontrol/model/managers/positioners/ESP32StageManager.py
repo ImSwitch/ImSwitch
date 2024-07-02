@@ -48,6 +48,13 @@ class ESP32StageManager(PositionerManager):
         self.backlashY = positionerInfo.managerProperties.get('backlashY', 0)
         self.backlashZ = positionerInfo.managerProperties.get('backlashZ', 0)
         self.backlashA = positionerInfo.managerProperties.get('backlashA', 0)
+        
+        # maximum speed per Axis
+        self.maxSpeed = {}
+        self.maxSpeed["X"] = positionerInfo.managerProperties.get('maxSpeedX', 10000)
+        self.maxSpeed["Y"] = positionerInfo.managerProperties.get('maxSpeedY', 10000)
+        self.maxSpeed["Z"] = positionerInfo.managerProperties.get('maxSpeedZ', 10000)
+        self.maxSpeed["A"] = positionerInfo.managerProperties.get('maxSpeedA', 10000)
 
         # Setup homing coordinates and speed
         # X

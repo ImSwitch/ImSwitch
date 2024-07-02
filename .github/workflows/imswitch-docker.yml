@@ -1,9 +1,6 @@
 name: imswitch-docker
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - master
 
 env:
   REGISTRY: ghcr.io

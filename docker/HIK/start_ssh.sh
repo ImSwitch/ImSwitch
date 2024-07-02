@@ -26,7 +26,7 @@ source /opt/conda/bin/activate imswitch
 # Set default values if not provided
 HEADLESS=${HEADLESS:-1}
 HTTP_PORT=${HTTP_PORT:-8001}
-CONFIG_FILE=${CONFIG_FILE:-/tmp/ImSwitchConfig/imcontrol_setup/example_virtual_microscope.json}
+CONFIG_FILE=${CONFIG_FILE:-/root/ImSwitchConfig/imcontrol_setup/example_virtual_microscope.json}
 USB_DEVICE_PATH=${USB_DEVICE_PATH:-/dev/bus/usb}
 
 

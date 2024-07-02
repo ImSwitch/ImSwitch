@@ -42,8 +42,8 @@ jobs:
         uses: docker/build-push-action@v2
         with:
           context: docker
-          file: docker/dockerfileImSwitchARMNoQT
+          file: docker/HIK/dockerfile
           push: true
           platforms: linux/arm64
-          tags: ghcr.io/${{ env.IMAGE_NAME }}:latest
+          tags: ghcr.io/openuc2/imswitch-docker-arm64-noqt:latest
           labels: ${{ steps.meta.outputs.labels }}

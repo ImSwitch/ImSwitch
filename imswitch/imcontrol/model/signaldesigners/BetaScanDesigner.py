@@ -56,6 +56,9 @@ class BetaScanDesigner(ScanDesigner):
         [fast_axis_start, middle_axis_start, slow_axis_start] = \
             [(parameterDict['axis_startpos'][i][0] / convFactors[i]) for i in range(3)]
 
+        # fast_axis_positions = 1 + int(np.ceil(fast_axis_size / fast_axis_step_size))
+        # middle_axis_positions = 1 + int(np.ceil(middle_axis_size / middle_axis_step_size))
+        # slow_axis_positions = 1 + int(np.ceil(slow_axis_size / slow_axis_step_size))
         fast_axis_positions = 1 if fast_axis_size == 0 or fast_axis_step_size == 0 else \
             1 + int(np.ceil(fast_axis_size / fast_axis_step_size))
         middle_axis_positions = 1 if middle_axis_size == 0 or middle_axis_step_size == 0 else \
@@ -91,7 +94,8 @@ class BetaScanDesigner(ScanDesigner):
                     rampSignal[end - smooth - settling: end - settling] = self.__smoothRamp(rampValues[s], rampValues[s + 1], smooth)
                     rampSignal[end - settling:end] = rampValues[s + 1]
 
-        returnRamp = self.__smoothRamp(fast_axis_size, fast_axis_start, returnSamples)
+        #rampSignal = self.__makeRamp(fast_axis_start, fast_axis_size, rampSamples)
+        returnRamp = self.__smoothRamp(fast_axis_size+fast_axis_start, fast_axis_start, returnSamples)
         fullLineSignal = np.concatenate((rampSignal, returnRamp))
 
         fastAxisSignal = np.tile(fullLineSignal, middle_axis_positions * slow_axis_positions)
@@ -138,11 +142,13 @@ class BetaScanDesigner(ScanDesigner):
             'return_time': parameterDict['return_time']
         }
 
-        self.__plot_curves(plot=True, signals=[fastAxisSignal, middleAxisSignal, slowAxisSignal])
+        self.__plot_curves(plot=False, signals=[fastAxisSignal, middleAxisSignal, slowAxisSignal])
 
         return sig_dict, scanInfoDict['positions'], scanInfoDict
 
-    def __makeRamp(self, start, end, samples):
+    def __makeRamp(self, start, size, samples):
+        #return np.linspace(start, end, num=samples)
+        end = start + size
         return np.linspace(float(start), float(end), num=samples)
 
     def __smoothRamp(self, start, end, samples):

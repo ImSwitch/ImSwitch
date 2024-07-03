@@ -67,7 +67,7 @@ class UC2ConfigController(ImConWidgetController):
             #tif.imsave()
                 
             # (detectorName, image, init, scale, isCurrentDetector)
-            self._commChannel.sigUpdateImage.emit('Image', mImage, True, 1, False
+            self._commChannel.sigUpdateImage.emit('Image', mImage, True, 1, False)
         
         def printCallback(value):
             self.__logger.debug(f"Callback called with value: {value}")

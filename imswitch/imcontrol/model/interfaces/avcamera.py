@@ -37,8 +37,11 @@ class CameraAV:
         self.hpos = 0 
         self.vpos = 0 
 
+
         
         # reserve some space for the framebuffer
+        self.buffersize = 60
+        self.frame_buffer = collections.deque(maxlen=self.buffersize)
         self.buffersize = 60
         self.frame_buffer = collections.deque(maxlen=self.buffersize)
         

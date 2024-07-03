@@ -15,8 +15,8 @@ class AboutDialog(QtWidgets.QDialog):
         self.label = QtWidgets.QLabel(
             f'<strong>ImSwitch {__version__}</strong>'
             f'<br /><br />Code available at: '
-            f'<a href="https://github.com/openUC2/ImSwitch" style="color: orange">'
-            f'https://github.com/openUC2/ImSwitch'
+            f'<a href="https://github.com/ImSwitch/ImSwitch" style="color: orange">'
+            f'https://github.com/ImSwitch/ImSwitch'
             f'</a>'
             f'<br />Licensed under the GNU General Public License v3.0.'
         )

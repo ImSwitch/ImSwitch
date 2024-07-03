@@ -2,6 +2,7 @@ from imswitch.imcommon.model import initLogger
 from .LaserManager import LaserManager
 
 
+
 class ESP32LightsheetManager(LaserManager):
 
     def __init__(self, LighsheetInfo, name, **lowLevelManagers):

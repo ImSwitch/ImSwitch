@@ -103,13 +103,13 @@ class WatcherFrameController(ImRecWidgetController):
                 os.rename(self.recPath + '.tmp', self.recPath)
                 tiff.imwrite(self.recPath.split('.')[0] + ".tiff", image)
             if extension == 'hdf5':
-                h = h5py.File(self.recPath + '.tmp', 'w')
-                dset = h.create_dataset('data', data=image)
-                self.__logger.debug(type(self.attrs))
-                for k in self.attrs.keys():
-                    dset.attrs[k] = self.attrs[k]
-                h.close()
-                os.rename(self.recPath + '.tmp', self.recPath)
+                # h = h5py.File(self.recPath + '.tmp', 'w')
+                # dset = h.create_dataset('data', data=image)
+                # self.__logger.debug(type(self.attrs))
+                # for k in self.attrs.keys():
+                #     dset.attrs[k] = self.attrs[k]
+                # h.close()
+                # os.rename(self.recPath + '.tmp', self.recPath)
                 tiff.imwrite(self.recPath.split('.')[0] + ".tiff", image)
 
 

@@ -121,10 +121,11 @@ class ImageController(LiveUpdatedController):
         #self._master.detectorsManager[detectorName].setParameter('Readout time', exp)
 
     @APIExport(runOnUIThread=True)
+    def setImageLayer(self, layerName, image, isRGB=False): #(layername, image, isRGB)
+        """ Set image layer to widget. """
+        self._commChannel.sigUpdateImage.emit(layerName, image, True, (1,1), True) 
+        ## (detectorName, image, init, scale, isCurrentDetector)
     
-            sigUpdateImage = Signal(
-        str, np.ndarray, bool, list, bool
-    )  # (detectorName, image, init, scale, isCurrentDetector)
 
 
 # Copyright (C) 2020-2023 ImSwitch developers

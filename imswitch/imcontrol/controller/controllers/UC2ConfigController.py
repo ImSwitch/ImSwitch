@@ -72,7 +72,6 @@ class UC2ConfigController(ImConWidgetController):
         def printCallback(value):
             self.__logger.debug(f"Callback called with value: {value}")
         try:
-            
             self.__logger.debug("Registering callback for snapshot")
             # register default callback
             self._master.UC2ConfigManager.ESP32.message.register_callback(0, snapImage) # FIXME: Too hacky?

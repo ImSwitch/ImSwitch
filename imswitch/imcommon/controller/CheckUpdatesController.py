@@ -55,7 +55,7 @@ class CheckUpdatesThread(Thread):
         self.__logger = initLogger(self, tryInheritParent=True)
 
     def run(self):
-        currentVersion =.__version__
+        currentVersion = __version__
         try:
             if 'IMSWITCH_IS_BUNDLE' in os.environ and os.environ['IMSWITCH_IS_BUNDLE'] == '1':
                 # Installed from bundle - check GitHub

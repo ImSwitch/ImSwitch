@@ -5,15 +5,8 @@ from .DetectorManager import DetectorManager, DetectorAction, DetectorNumberPara
 
 
 class VirtualCameraManager(DetectorManager):
-    """ DetectorManager that deals with TheImagingSource cameras and the
+    """ DetectorManager that deals with a virtual camera and the
     parameters for frame extraction from them.
-
-    Manager properties:
-
-    - ``cameraListIndex`` -- the camera's index in the Allied Vision camera list (list
-      indexing starts at 0); set this string to an invalid value, e.g. the
-      string "mock" to load a mocker
-    - ``av`` -- dictionary of Allied Vision camera properties
     """
 
     def __init__(self, detectorInfo, name, **_lowLevelManagers):
@@ -26,7 +19,7 @@ class VirtualCameraManager(DetectorManager):
         
         # assign the camera from the Virtual Microscope
         self._camera = self.VirtualMicroscope._camera
-
+        
         # get the pixel size from the camera
         fullShape = (self._camera.SensorWidth,
                 self._camera.SensorHeight)
@@ -38,6 +31,8 @@ class VirtualCameraManager(DetectorManager):
         parameters = {
             'exposure': DetectorNumberParameter(group='Misc', value=1, valueUnits='ms',
                                                 editable=True),
+            'exposure_mode': DetectorListParameter(group='Misc', value='Auto', options=['Auto', 'Manual'],
+                                                    editable=True),
             'gain': DetectorNumberParameter(group='Misc', value=5, valueUnits='arb.u.',
                                             editable=True),
             'blacklevel': DetectorNumberParameter(group='Misc', value=0, valueUnits='arb.u.',
@@ -90,10 +85,22 @@ class VirtualCameraManager(DetectorManager):
             elif triggerSource == 2 and triggerMode == 1:
                 self.setParameter('Trigger source', 'External "frame-trigger"')
 
-    def getLatestFrame(self, is_save=False):
-        frame = self._camera.getLast()
-        return frame
+    def getLatestFrame(self, is_resize=True, returnFrameNumber=False):
+        if returnFrameNumber:
+            frame, frameNumber = self._camera.getLast(returnFrameNumber=returnFrameNumber)
+            return frame, frameNumber
+        else:
+            frame = self._camera.getLast()
+            return frame
 
+    def getLatestFrame(self, is_resize=True, returnFrameNumber=False):
+        if returnFrameNumber:
+            frame, frameNumber = self._camera.getLast(returnFrameNumber=returnFrameNumber)
+            return frame, frameNumber
+        else:
+            frame = self._camera.getLast(returnFrameNumber=returnFrameNumber)
+            return frame
+        
     def setParameter(self, name, value):
         """Sets a parameter value and returns the value.
         If the parameter doesn't exist, i.e. the parameters field doesn't

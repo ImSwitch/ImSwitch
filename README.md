@@ -4,6 +4,10 @@
 
 ``ImSwitch`` is a software solution in Python that aims at generalizing microscope control by using an architecture based on the model-view-presenter (MVP) to provide a solution for flexible control of multiple microscope modalities.
 
+## News 
+
+🎥 Watch this intro video from Jacopo about ImSwitch on [YouTube](https://www.youtube.com/watch?v=B54QCt5OQPI&ab_channel=Euro-BioImagingCommunication)
+
 ## Statement of need
 
 The constant development of novel microscopy methods with an increased number of dedicated
@@ -185,45 +189,118 @@ cd installLXDE
 sudo reboot
 ```
 
+Disable GUI on bootup 
+
+```bash
+sudo systemctl set-default multi-user.target
+```
+
+To enable GUI again issue the command:
+
+```bash
+sudo systemctl set-default graphical.target
+```
+
+to start Gui session on a system without a current GUI just execute:
+```bash
+sudo systemctl start gdm3.service
+```
+
+
+### Use Mamba instead
+
+```bash
+cd ~/Downloads
+wget https://github.com/conda-forge/miniforge/releases/latest/download/Mambaforge-pypy3-Linux-aarch64.sh .
+bash Mambaforge-pypy3-Linux-aarch64.sh
+# logoff/in
+mamba create -n imswitch python=3.9 -y
+mamba activate imswitch
+cd ~/Downloads
+git clone https://github.com/openUC2/ImSwitch/
+git clone https://github.com/openUC2/UC2-REST
+cd ~/Downloads/UC2-REST
+pip install -e .
+cd ~/Downloads/ImSwitch
+sudo apt-get install python3-pyqt5 -y
+pip install -r requirements-jetsonorin.txt
+pip install -e . --no-deps
+mamba install pyqt
+```
+
+
+### Autostart as SystemD Service
+
+in `sudo nano /etc/systemd/system/imswitch.service`
+
+add 
+```bash
+[Unit]
+Description=Start ImSwitch Python script
+After=network.target
+
+[Service]
+Type=simple
+User=uc2
+WorkingDirectory=/home/uc2/Downloads/ImSwitch
+ExecStart=/bin/bash -c 'export DISPLAY=:0; /home/uc2/mambaforge-pypy3/envs/imswitch/bin/python  -m imswitch'
+
+[Install]
+WantedBy=multi-user.target
+```
+
+After making these changes, run `sudo systemctl daemon-reload` to reload the systemd manager configuration. Then try starting your service again with `sudo systemctl start imswitch.service` then
+
+```bash
+sudo systemctl enable imswitch.service 
+sudo systemctl start imswitch.service
+```
+
+### Misc Jetson
 
 Add environment
 
 ```
 wget https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-aarch64.sh
 bash ./Miniforge3-Linux-aarch64.sh
-#./anaconda3/bin/conda init
+#~/miniforge3/bin/conda init 
 #restart
 conda create -n imswitch  python=3.9 -y
 conda activate imswitch
 ```
 
-Now lets add pyqt5 via conda
-
+Keep clock up to date 
+```bash
+sudo timedatectl set-ntp off
+sudo timedatectl set-ntp on
 ```
-conda install pyqt=5.12.3 -y
-```
 
-Make sure you install this repo without `pyqt` in `setup.cfg`
-
-```
-install imswitch without pyqt
-sudo apt-get install python3-pyqt5.qsci
-
+Adjust the date
+```bash
 sudo date -s "8 MAR 2023"
 ```
 
 ```
+sudo apt-get install libxml2-dev libxslt-dev
+
 conda create -n imswitch python=3.9 -y
 conda activate imswitch
-conda install pyqt5==5.12.3
+conda install -c anaconda pyqt
 cd ~
 git clone https://github.com/openUC2/ImSwitch
-conda install pyqt5==5.12.3
 cd ~/ImSwitch
+pip install -r requirements-jetsonorin.txt
+pip install -e . --no-deps
+cd ~
+git clone https://github.com/openUC2/UC2-REST
+cd UC2-REST
 pip install -e .
 cd ~
 git clone https://github.com/openUC2/ImSwitchConfig
-
+cd ~/ImSwitch 
+python3 main.py
+#OR
+python3 -m imswitch
 ```
 
 rotate the screen
@@ -265,6 +342,9 @@ cd imswitch
 pip3 install -r requirements-jetsonorin.txt
 pip3 install -e . --no-deps
 export DISPLAY=:0
+sudo apt-get install xvfb
+export QT_QPA_PLATFORM=offscreen
+
 cd imswitch
 pyton3 main.py
 ```
@@ -272,17 +352,27 @@ pyton3 main.py
 ### install drivers for daheng
 
 ```
-cd ~/Downlodas
+cd ~/Downloads
 git clone https://github.com/hongquanli/octopi-research
-cd octopi-research/software/drivers and libraries/daheng camera/Galaxy_Linux-armhf_Gige-U3_32bits-64bits_1.3.1911.9271
+cd octopi-research/software/drivers\ and\ libraries/daheng\ camera/Galaxy_Linux-armhf_Gige-U3_32bits-64bits_1.3.1911.9271/
 chmod +x Galaxy_camera.run
 sudo ./Galaxy_camera.run
+sudo reboot
 ```
 
 ### install drivers for hik (jetson)
 
 Download the Linux zip (MVS2.1)
-https://www.hikrobotics.com/cn/machinevision/service/download
+https://www.hikrobotics.com/cn/machinevision/service/download or 
+
+Examples will be in  `/opt/MVS/Samples/aarch64/Python/GrabImage/`
+```bash
+cd ~/Downloads
+wget https://www.hikrobotics.com/cn2/source/support/software/MVS_STD_GML_V2.1.2_231116.zip
+unzip MVS_STD_GML_V2.1.2_231116.zip
+sudo dpkg -i MVS-2.1.2_aarch64_20231116.deb
+source ~/.bashrc
+```
 
 ```
 sudo dpkg -i MVS-2.1.2_aarch64_20221208.deb
@@ -294,6 +384,83 @@ source ~/.bashrc
 ```
 sudo usermod -a -G dialout $USER
 ```
+
+## Install on Raspberry PI
+
+**WIP**
+```bash
+wget https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-aarch64.sh
+bash Miniforge3-Linux-aarch64.sh
+# ENTER, yes, enter
+conda create -n imswitch python=3.11 -y
+conda activate imswitch
+cd Downloads
+git clone https://github.com/openUC2/UC2-REST
+cd UC2-REST
+pip install -e .
+cd ..
+git clone git clone https://github.com/openUC2/imswitch
+cd imswitch
+# nano setup.cfg, outcomment QScintilla, pyqt5
+ln -s /usr/lib/python3/dist-packages/PyQt5 /home/uc2/miniforge3/envs/imswitch/lib/python3.9/site-packages/
+python -m pip install "napari[pyqt5]" --no-deps
+pip install -r requirements-raspi.txt
+ pip install -e . --no-deps
+
+
+# start with raspberyy pi 64 bit lite
+wget https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-aarch64.sh
+bash Miniforge3-Linux-aarch64.sh
+sudo apt install python3-full
+sudo apt install python3-pip
+mkdir ~/imswitchenv
+python3 -m venv ~/imswitchenv/
+source ~/imswitchenv/bin/activate
+pip install "napari[pyqt5]" --break-system-packages
+ pip install "sip>=5.0.1,<6" --break-system-packages
+ conda install -c anaconda pyqtard
+
+#### PiCamera2
+
+```bash
+sudo apt install -y python3-libcamera python3-kms++
+sudo apt install -y python3-prctl libatlas-base-dev ffmpeg libopenjp2-7 python3-pip
+sudo apt install -y python3-libcamera python3-kms++ libcap-dev
+pip3 install numpy --upgrade
+pip3 install picamera2
+ln -s /usr/lib/python3/dist-packages/pykms /home/uc2/miniforge3/envs/picamera2/lib/python3.11/site-packages/pykms
+ln -s /usr/lib/python3/dist-packages/pylibcamera /home/uc2/miniforge3/envs/picamera2/lib/python3.11/site-packages/libcamera
+```
+
+### Autostart as SystemD Service
+
+
+in `sudo nano /etc/systemd/system/imswitch.service`
+
+add 
+```bash
+[Unit]
+Description=Start ImSwitch Python script
+After=network.target
+
+[Service]
+Type=simple
+User=uc2
+WorkingDirectory=/home/uc2/Downloads/imswitch
+ExecStart=/bin/bash -c 'export DISPLAY=:0; export QT_QPA_PLATFORM=offscreen; /home/uc2/miniforge3/envs/imswitch/bin/python -m imswitch'
+
+[Install]
+WantedBy=multi-user.target
+```
+
+After making these changes, run `sudo systemctl daemon-reload` to reload the systemd manager configuration. Then try starting your service again with `sudo systemctl start imswitch.service` then
+
+```bash
+sudo systemctl enable imswitch.service 
+sudo systemctl start imswitch.service
+```
+
+
 
 
 ### Run ImSwitch on Ubuntu

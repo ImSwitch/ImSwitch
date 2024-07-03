@@ -16,8 +16,12 @@ class UC2ConfigWidget(Widget):
         reconnectLayout = QHBoxLayout()
         self.reconnectDeviceLabel = QLabel("State:", self)
         self.reconnectButton = QPushButton("Reconnect to Device", self)
+        self.reconnectBaudrateLabel = QLabel("Baudrate:", self)
+        self.reconnectBaudrateEdit = QLineEdit(self)
         reconnectLayout.addWidget(self.reconnectButton)
         reconnectLayout.addWidget(self.reconnectDeviceLabel)
+        reconnectLayout.addWidget(self.reconnectBaudrateLabel)
+        reconnectLayout.addWidget(self.reconnectBaudrateEdit)
 
         self.stopCommunicationButton = QPushButton("Interrupt communication", self)
         reconnectLayout.addWidget(self.stopCommunicationButton)
@@ -79,6 +83,12 @@ class UC2ConfigWidget(Widget):
 
         self.setLayout(mainLayout)
 
+    def setBaudRateGui(self, baudrate):
+        self.reconnectBaudrateEdit.setText(str(baudrate))
+        
+    def getBaudRateGui(self):
+        try:return int(self.reconnectBaudrateEdit.text())
+        except:return None
 
             
 # Copyright (C) 2020-2023 ImSwitch developers

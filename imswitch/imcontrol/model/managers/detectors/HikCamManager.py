@@ -3,7 +3,6 @@ import numpy as np
 from imswitch.imcommon.model import initLogger
 from .DetectorManager import DetectorManager, DetectorAction, DetectorNumberParameter, DetectorListParameter, DetectorBooleanParameter
 
-
 class HikCamManager(DetectorManager):
     """ DetectorManager that deals with TheImagingSource cameras and the
     parameters for frame extraction from them.
@@ -27,23 +26,34 @@ class HikCamManager(DetectorManager):
         except:
             pixelSize = 1
             
+        try:
+            self._mockstackpath = detectorInfo.managerProperties['mockstackpath']
+        except:
+            self._mockstackpath = None
+            
         try: # FIXME: get that form the real camera
             isRGB = detectorInfo.managerProperties['isRGB']  
         except:
             isRGB = False
+            
+        try:
+            self._mocktype = detectorInfo.managerProperties['mocktype']
+        except:
+            self._mocktype = "normal"
+            
 
         self._camera = self._getHikObj(cameraId, isRGB, binning)
 
         for propertyName, propertyValue in detectorInfo.managerProperties['hikcam'].items():
             self._camera.setPropertyValue(propertyName, propertyValue)
 
-        fullShape = (self._camera.SensorWidth,
+        fullShape = (self._camera.SensorWidth, #TODO: This can be zero if loaded from Windows, why?
                      self._camera.SensorHeight)
 
         model = self._camera.model
         self._running = False
         self._adjustingParameters = False
-
+        
         # TODO: Not implemented yet
         self.crop(hpos=0, vpos=0, hsize=fullShape[0], vsize=fullShape[1])
 
@@ -61,6 +71,8 @@ class HikCamManager(DetectorManager):
                         editable=False),
             'frame_rate': DetectorNumberParameter(group='Misc', value=-1, valueUnits='fps',
                                     editable=True),
+            'exposure_mode': DetectorListParameter(group='Misc', value='manual', 
+                            options=['manual', 'auto', 'single'], editable=True),
             'flat_fielding': DetectorBooleanParameter(group='Misc', value=True, editable=True),            
             'trigger_source': DetectorListParameter(group='Acquisition mode',
                             value='Continous',
@@ -84,10 +96,10 @@ class HikCamManager(DetectorManager):
 
     def setFlatfieldImage(self, flatfieldImage, isFlatfielding):
         self._camera.setFlatfieldImage(flatfieldImage, isFlatfielding)
-        
-    def getLatestFrame(self, is_save=False):
-        return self._camera.getLast()
 
+    def getLatestFrame(self, is_resize=True, returnFrameNumber=False):
+        return self._camera.getLast(returnFrameNumber=returnFrameNumber)
+        
     def setParameter(self, name, value):
         """Sets a parameter value and returns the value.
         If the parameter doesn't exist, i.e. the parameters field doesn't
@@ -188,7 +200,8 @@ class HikCamManager(DetectorManager):
             self.__logger.error(e)
             self.__logger.warning(f'Failed to initialize CameraHik {cameraId}, loading TIS mocker')
             from imswitch.imcontrol.model.interfaces.tiscamera_mock import MockCameraTIS
-            camera = MockCameraTIS()
+            camera = MockCameraTIS(mocktype=self._mocktype, mockstackpath=self._mockstackpath,  isRGB=isRGB)
+            
 
         self.__logger.info(f'Initialized camera, model: {camera.model}')
         return camera

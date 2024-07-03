@@ -27,63 +27,34 @@ class SIMManager(SignalInterface):
         self.__angleMount = self.__simInfo.angleMount
         self.__simSize = (self.__simInfo.width, self.__simInfo.height)
         self.__patternsDir = self.__simInfo.patternsDir
-        self.isSimulation = self.__simInfo.isSimulation
         self.nRotations = self.__simInfo.nRotations
         self.nPhases = self.__simInfo.nPhases
         self.simMagnefication = self.__simInfo.nPhases
+        self.isFastAPISIM = self.__simInfo.isFastAPISIM
         self.simPixelsize = self.__simInfo.simPixelsize
         self.simNA = self.__simInfo.simNA
         self.simN = self.__simInfo.simN # refr
         self.simETA = self.__simInfo.simETA
-        self.simN = self.__simInfo.simN
-        
-        self.isHamamatsuSLM = self.__simInfo.isHamamatsuSLM
 
         # Load all patterns
         if type(self.__patternsDir) is not list:
             self.__patternsDir = [self.__patternsDir]
-        self.allPatterns = self.loadPatterns(self.__patternsDir)
 
         # define paramerters for fastAPI (optional)
         fastAPISIM_host = self.__simInfo.fastAPISIM_host
         fastAPISIM_port = self.__simInfo.fastAPISIM_port
-        self.fastAPISIMParams = {"host":fastAPISIM_host, "port":fastAPISIM_port}
+        fastAPISIM_tWaitSequence = self.__simInfo.tWaitSequence
+        self.fastAPISIMParams = {"host":fastAPISIM_host,
+                                 "port":fastAPISIM_port,
+                                 "tWaitSquence":fastAPISIM_tWaitSequence}
+
         self.isFastAPISIM = self.__simInfo.isFastAPISIM
 
-    def loadPatterns(self, patternsDir, filetype="bmp"):
-        # sort filenames numerically
-        allPatterns = []
-        allPatternsPerWavelength = []
-        for iPatternDir in patternsDir:
-            allPatternPaths = sorted(glob.glob(os.path.join(iPatternDir, "*."+filetype)))
-            for iPatternPath in allPatternPaths:
-                mImage = cv2.imread(iPatternPath)
-                mImage = cv2.cvtColor(mImage, cv2.COLOR_BGR2GRAY)
-
-                allPatternsPerWavelength.append(mImage)
-            allPatterns.append(allPatternsPerWavelength)
-                
-        return allPatterns
-        
-        
-    def saveState(self, state_general=None, state_pos=None, state_aber=None):
-        if state_general is not None:
-            self.state_general = state_general
-        if state_pos is not None:
-            self.state_pos = state_pos
-        if state_aber is not None:
-            self.state_aber = state_aber
 
     def update(self):
-        #self.allPatternsPaths
-        #self.maskDouble = self.__masks[0].concat(self.__masks[1])
-        #self.maskCombined = self.maskDouble 
-        #self.sigSIMMaskUpdated.emit(self.maskCombined)
+        pass
 
-        #returnmask = self.maskDouble 
-        return None #returnmask.image()
-
-# Copyright (C) 2020-2023 ImSwitch developers
+# Copyright (C) 2020-2024 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

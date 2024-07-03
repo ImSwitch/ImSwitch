@@ -1,6 +1,4 @@
-from imswitch.__main__ import main
-#sudo usermod -a -G dialout bene
-import subprocess
-subprocess.run(["export", "DISPLAY=:0"], shell=True)
+if __name__ == '__main__':
 
-main()
+    from imswitch.__main__ import main
+    main()

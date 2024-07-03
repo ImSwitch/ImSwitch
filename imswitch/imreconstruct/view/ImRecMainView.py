@@ -1,5 +1,6 @@
 import numpy as np
 import pyqtgraph as pg
+from imswitch import IS_HEADLESS
 from pyqtgraph.dockarea import Dock, DockArea
 from pyqtgraph.parametertree import Parameter, ParameterTree
 from qtpy import QtCore, QtWidgets
@@ -36,6 +37,7 @@ class ImRecMainView(QtWidgets.QMainWindow):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        
         self.setWindowTitle('Image Reconstruction')
 
         # self parameters
@@ -47,42 +49,44 @@ class ImRecMainView(QtWidgets.QMainWindow):
         self.n_text = 'neg'
 
         # Actions in menubar
-        menuBar = self.menuBar()
-        file = menuBar.addMenu('&File')
+        if not IS_HEADLESS:
+            menuBar = self.menuBar()
+            file = menuBar.addMenu('&File')
 
-        quickLoadAction = QtWidgets.QAction('Quick load data…', self)
-        quickLoadAction.setShortcut('Ctrl+T')
-        quickLoadAction.triggered.connect(self.sigQuickLoadData)
-        file.addAction(quickLoadAction)
+            quickLoadAction = QtWidgets.QAction('Quick load data…', self)
+            quickLoadAction.setShortcut('Ctrl+T')
+            quickLoadAction.triggered.connect(self.sigQuickLoadData)
+            file.addAction(quickLoadAction)
 
-        file.addSeparator()
+            file.addSeparator()
 
-        saveReconAction = QtWidgets.QAction('Save reconstruction…', self)
-        saveReconAction.setShortcut('Ctrl+D')
-        saveReconAction.triggered.connect(self.sigSaveReconstruction)
-        file.addAction(saveReconAction)
-        saveReconAllAction = QtWidgets.QAction('Save all reconstructions…', self)
-        saveReconAllAction.setShortcut('Ctrl+Shift+D')
-        saveReconAllAction.triggered.connect(self.sigSaveReconstructionAll)
-        file.addAction(saveReconAllAction)
-        saveCoeffsAction = QtWidgets.QAction('Save coefficients of reconstruction…', self)
-        saveCoeffsAction.setShortcut('Ctrl+A')
-        saveCoeffsAction.triggered.connect(self.sigSaveCoeffs)
-        file.addAction(saveCoeffsAction)
-        saveCoeffsAllAction = QtWidgets.QAction('Save all coefficients…', self)
-        saveCoeffsAllAction.setShortcut('Ctrl+Shift+A')
-        saveCoeffsAllAction.triggered.connect(self.sigSaveCoeffsAll)
-        file.addAction(saveCoeffsAllAction)
 
-        file.addSeparator()
+            saveReconAction = QtWidgets.QAction('Save reconstruction…', self)
+            saveReconAction.setShortcut('Ctrl+D')
+            saveReconAction.triggered.connect(self.sigSaveReconstruction)
+            file.addAction(saveReconAction)
+            saveReconAllAction = QtWidgets.QAction('Save all reconstructions…', self)
+            saveReconAllAction.setShortcut('Ctrl+Shift+D')
+            saveReconAllAction.triggered.connect(self.sigSaveReconstructionAll)
+            file.addAction(saveReconAllAction)
+            saveCoeffsAction = QtWidgets.QAction('Save coefficients of reconstruction…', self)
+            saveCoeffsAction.setShortcut('Ctrl+A')
+            saveCoeffsAction.triggered.connect(self.sigSaveCoeffs)
+            file.addAction(saveCoeffsAction)
+            saveCoeffsAllAction = QtWidgets.QAction('Save all coefficients…', self)
+            saveCoeffsAllAction.setShortcut('Ctrl+Shift+A')
+            saveCoeffsAllAction.triggered.connect(self.sigSaveCoeffsAll)
+            file.addAction(saveCoeffsAllAction)
 
-        setDataFolder = QtWidgets.QAction('Set default data folder…', self)
-        setDataFolder.triggered.connect(self.sigSetDataFolder)
-        file.addAction(setDataFolder)
+            file.addSeparator()
 
-        setSaveFolder = QtWidgets.QAction('Set default save folder…', self)
-        setSaveFolder.triggered.connect(self.sigSetSaveFolder)
-        file.addAction(setSaveFolder)
+            setDataFolder = QtWidgets.QAction('Set default data folder…', self)
+            setDataFolder.triggered.connect(self.sigSetDataFolder)
+            file.addAction(setDataFolder)
+
+            setSaveFolder = QtWidgets.QAction('Set default save folder…', self)
+            setSaveFolder.triggered.connect(self.sigSetSaveFolder)
+            file.addAction(setSaveFolder)
 
         self.dataFrame = DataFrame()
         self.multiDataFrame = MultiDataFrame()
@@ -94,8 +98,8 @@ class ImRecMainView(QtWidgets.QMainWindow):
         btnFrame.sigReconstructMultiIndividual.connect(self.sigReconstructMultiIndividual)
         btnFrame.sigQuickLoadData.connect(self.sigQuickLoadData)
         btnFrame.sigUpdate.connect(self.sigUpdate)
-
-        self.reconstructionWidget = ReconstructionView()
+        if not IS_HEADLESS:
+            self.reconstructionWidget = ReconstructionView()
 
         self.parTree = ReconParTree()
         self.showPatBool = self.parTree.p.param('Show pattern')
@@ -148,7 +152,8 @@ class ImRecMainView(QtWidgets.QMainWindow):
         leftContainer.addWidget(parameterFrame, 1)
         leftContainer.addWidget(btnFrame, 0)
         leftContainer.addWidget(DataDock, 1)
-        rightContainer.addWidget(self.reconstructionWidget)
+        if not IS_HEADLESS:
+            rightContainer.addWidget(self.reconstructionWidget)
 
         layout.addLayout(leftContainer, 1)
         layout.addLayout(rightContainer, 3)

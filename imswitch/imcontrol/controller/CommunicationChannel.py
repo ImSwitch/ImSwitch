@@ -97,6 +97,9 @@ class CommunicationChannel(SignalInterface):
     sigAutoFocus =  Signal(float, float) # scanrange and stepsize
     sigAutoFocusRunning = Signal(bool) # indicate if autofocus is running or not
 
+    sigStartLiveAcquistion = Signal(bool)
+    sigStopLiveAcquisition = Signal(bool)
+    
     sigInitialFocalPlane = Signal(float) # initial focal plane for DeckScanController
 
     sigBroadcast = Signal(str, str, object)
@@ -112,13 +115,25 @@ class CommunicationChannel(SignalInterface):
     sigSetSyncInMovementSettings = Signal(str, float)  # (rotatorName, position)
 
     sigNewFrame = Signal()
+    
+    # signal to control actions from the ESP32
+    sigESP32Message = Signal(str, str)  # (key, message)
 
     # useq-schema related signals
     sigSetXYPosition = Signal(float, float)
     sigSetZPosition = Signal(float)
     sigSetExposure = Signal(float)
     sigSetSpeed = Signal(float)
-
+    
+    # light-sheet related signals
+    sigStartLightSheet = Signal(float, float, float, str, str, float) # (startX, startY, speed, axis, lightsource, lightsourceIntensity)
+    sigStopLightSheet = Signal()
+    
+    # scanning-related signals
+    sigStartTileBasedTileScanning = Signal(int, int, int, int, int, int, str, int, int, bool, bool, bool) # (numb erTilesX, numberTilesY, stepSizeX, stepSizeY, nTimes, tPeriod, illuSource, initPosX, initPosY, isStitchAshlar, isStitchAshlarFlipX, isStitchAshlarFlipY)
+    sigStopTileBasedTileScanning = Signal()
+    
+    
     @property
     def sharedAttrs(self):
         return self.__sharedAttrs
@@ -156,46 +171,8 @@ class CommunicationChannel(SignalInterface):
     def get_image(self, detectorName=None):
         return self.__main.controllers['View'].get_image(detectorName)
 
-
     def move(self, positionerName, axis="X", dist=0):
         return self.__main.controllers['Positioner'].move(positionerName, axis=axis, dist=dist)
-
-
-    @APIExport(runOnUIThread=False)
-    def get_image(self) -> StreamingResponse:
-        # Generate a NumPy array representing an image
-
-        img_arr = np.zeros((100, 100, 3), dtype=np.uint8)
-        img_arr[:, :, 0] = 255  # set red channel to max value
-
-        # Convert NumPy array to PIL Image
-        img = Image.fromarray(img_arr)
-
-        # Save PIL Image to BytesIO buffer
-        img_bytes = BytesIO()
-        img.save(img_bytes, format="png")
-
-        # Return image as StreamingResponse
-        img_bytes.seek(0)
-        return StreamingResponse(img_bytes, media_type="image/png")
-
-    @APIExport(runOnUIThread=False)
-    def video_feed(response: Response):
-        # Set headers for video streaming
-
-        frames = [np.random.randint(0, 255, (480, 640, 3), dtype=np.uint8) for _ in range(100)]
-
-        response.headers["Content-Type"] = "multipart/x-mixed-replace; boundary=frame"
-        while True:
-            # Encode frame as jpg
-            frame = cv2.imencode('.jpg', frames.pop(0))[1].tobytes()
-            # Write encoded frame to response
-            response.body = (b'--frame\r\n'
-                            b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
-            # Wait for a short time to simulate real-time streaming
-            asyncio.sleep(0.1)
-
-
 
     @APIExport(runOnUIThread=True)
     def acquireImage(self) -> None:

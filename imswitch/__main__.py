@@ -1,86 +1,121 @@
 import importlib
 import traceback
+import logging
+import argparse
+import os 
 
 import imswitch
+from imswitch import IS_HEADLESS
 from imswitch.imcommon import prepareApp, launchApp
 from imswitch.imcommon.controller import ModuleCommunicationChannel, MultiModuleWindowController
 from imswitch.imcommon.model import modulesconfigtools, pythontools, initLogger
 from imswitch.imcommon.view import MultiModuleWindow, ModuleLoadErrorView
 
 # FIXME: Add to configuration file
-global IS_HEADLESS 
-IS_HEADLESS = False
+# python main.py --headless or 
+# python -m imswitch --headless 1 --config-file example_virtual_microscope.json
+
 def main():
-    logger = initLogger('main')
-    logger.info(f'Starting ImSwitch {imswitch.__version__}')    
-
-    app = prepareApp()
-    enabledModuleIds = modulesconfigtools.getEnabledModuleIds()
+    parser = argparse.ArgumentParser(description='Process some integers.')
     
-    if 'imscripting' in enabledModuleIds:
-        # Ensure th at imscripting is added last
-        
-        enabledModuleIds.append(enabledModuleIds.pop(enabledModuleIds.index('imscripting')))
-
-
-    modulePkgs = [importlib.import_module(pythontools.joinModulePath('imswitch', moduleId))
-                  for moduleId in enabledModuleIds]
-
-    moduleCommChannel = ModuleCommunicationChannel()
-
-    if not IS_HEADLESS:
-        multiModuleWindow = MultiModuleWindow('ImSwitch')
-        multiModuleWindowController = MultiModuleWindowController.create(
-            multiModuleWindow, moduleCommChannel
-        )
-        multiModuleWindow.show(showLoadingScreen=True)
-    else: 
-        multiModuleWindow = None
-        multiModuleWindowController = None
+    # specify if run in headless mode
+    parser.add_argument('--headless', dest='headless', type=bool, default=0,
+                        help='run in headless mode')
     
-    app.processEvents()  # Draw window before continuing
+    # specify config file name - None for default
+    parser.add_argument('--config-file', dest='config_file', type=str, default=None,
+                        help='specify run with config file')
+    
+    args = parser.parse_args()
+    IS_HEADLESS = args.headless
+    imswitch.DEFAULT_SETUP_FILE = args.config_file # e.g. example_virtual_microscope.json
+    
+    if IS_HEADLESS:
+        os.environ["DISPLAY"] = ":0"
+        os.environ["QT_QPA_PLATFORM"] = "offscreen"
 
-    # Register modules
-    for modulePkg in modulePkgs:
-        moduleCommChannel.register(modulePkg)
+    try:
+        logger = initLogger('main')
+        logger.info(f'Starting ImSwitch {imswitch.__version__}')
+        logger.info(f'Headless mode: {IS_HEADLESS}')
+        logger.info(f'Config file: {imswitch.DEFAULT_SETUP_FILE}')
+        app = prepareApp()
+        enabledModuleIds = modulesconfigtools.getEnabledModuleIds()
 
-    # Load modules
-    moduleMainControllers = dict()
+        if 'imscripting' in enabledModuleIds and not IS_HEADLESS:
+            # Ensure that imscripting is added last
+            enabledModuleIds.append(enabledModuleIds.pop(enabledModuleIds.index('imscripting')))
 
-    for i, modulePkg in enumerate(modulePkgs):
-        moduleId = modulePkg.__name__
-        moduleId = moduleId[moduleId.rindex('.') + 1:]  # E.g. "imswitch.imcontrol" -> "imcontrol"
+        if 'imnotebook' in enabledModuleIds and not IS_HEADLESS:
+            # Ensure that imnotebook is added last
+            try:
+                from PyQt5 import QtWebEngine
+                enabledModuleIds.append(enabledModuleIds.pop(enabledModuleIds.index('imnotebook')))
+            except ImportError:
+                logger.error('QtWebEngineWidgets not found, disabling imnotebook')
+                enabledModuleIds.remove('imnotebook')
+            
+        modulePkgs = [importlib.import_module(pythontools.joinModulePath('imswitch', moduleId))
+                    for moduleId in enabledModuleIds]
 
-        # The displayed module name will be the module's __title__, or alternatively its ID if
-        # __title__ is not set
-        moduleName = modulePkg.__title__ if hasattr(modulePkg, '__title__') else moduleId
+        moduleCommChannel = ModuleCommunicationChannel()
 
-        try:
-            view, controller = modulePkg.getMainViewAndController(
-                moduleCommChannel=moduleCommChannel,
-                multiModuleWindowController=multiModuleWindowController,
-                moduleMainControllers=moduleMainControllers
+        if not IS_HEADLESS:
+            multiModuleWindow = MultiModuleWindow('ImSwitch')
+            multiModuleWindowController = MultiModuleWindowController.create(
+                multiModuleWindow, moduleCommChannel
             )
-        except Exception as e:
-            logger.error(f'Failed to initialize module {moduleId}')
-            logger.error(traceback.format_exc())
-            moduleCommChannel.unregister(modulePkg)
-            if not IS_HEADLESS: multiModuleWindow.addModule(moduleId, moduleName, ModuleLoadErrorView(e))
+            multiModuleWindow.show(showLoadingScreen=True)
         else:
-            # Add module to window
-            if not IS_HEADLESS: multiModuleWindow.addModule(moduleId, moduleName, view)
-            moduleMainControllers[moduleId] = controller
+            multiModuleWindow = None
+            multiModuleWindowController = None
 
-            # Update loading progress
-            if not IS_HEADLESS: multiModuleWindow.updateLoadingProgress(i / len(modulePkgs))
-            app.processEvents()  # Draw window before continuing
+        app.processEvents()  # Draw window before continuing
 
-    launchApp(app, multiModuleWindow, moduleMainControllers.values())
+        # Register modules
+        for modulePkg in modulePkgs:
+            moduleCommChannel.register(modulePkg)
+
+        # Load modules
+        moduleMainControllers = dict()
+
+        for i, modulePkg in enumerate(modulePkgs):
+            moduleId = modulePkg.__name__
+            moduleId = moduleId[moduleId.rindex('.') + 1:]  # E.g. "imswitch.imcontrol" -> "imcontrol"
+
+            # The displayed module name will be the module's __title__, or alternatively its ID if
+            # __title__ is not set
+            moduleName = modulePkg.__title__ if hasattr(modulePkg, '__title__') else moduleId
+
+            try:
+                view, controller = modulePkg.getMainViewAndController(
+                    moduleCommChannel=moduleCommChannel,
+                    multiModuleWindowController=multiModuleWindowController,
+                    moduleMainControllers=moduleMainControllers
+                )
+                logger.info(f'initialize module {moduleId}')
+            except Exception as e:
+                logger.error(f'Failed to initialize module {moduleId}')
+                logger.error(e)
+                logger.error(traceback.format_exc())
+                moduleCommChannel.unregister(modulePkg)
+                if not IS_HEADLESS: multiModuleWindow.addModule(moduleId, moduleName, ModuleLoadErrorView(e))
+            else:
+                # Add module to window
+                if not IS_HEADLESS: multiModuleWindow.addModule(moduleId, moduleName, view)
+                moduleMainControllers[moduleId] = controller
+
+                # Update loading progress
+                if not IS_HEADLESS: multiModuleWindow.updateLoadingProgress(i / len(modulePkgs))
+                app.processEvents()  # Draw window before continuing
+        logger.info(f'init done')
+        launchApp(app, multiModuleWindow, moduleMainControllers.values())
+    except Exception as e:
+        logging.error(traceback.format_exc())
 
 
 if __name__ == '__main__':
     main()
-
 
 # Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.

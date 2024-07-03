@@ -1,21 +1,95 @@
 import threading
 import Pyro5
 import Pyro5.server
+from Pyro5.api import expose
+import multiprocessing
 from imswitch.imcommon.framework import Worker
 from imswitch.imcommon.model import initLogger
 from ._serialize import register_serializers
-from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from io import BytesIO
+import numpy as np
+from PIL import Image
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import StreamingResponse
+from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
+from imswitch import IS_HEADLESS
 import uvicorn
 from functools import wraps
 import os
+import socket 
+import os
 
+from imswitch import IS_HEADLESS, __ssl__, __httpport__
+
+import socket
+from fastapi.middleware.cors import CORSMiddleware
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import os
 import threading
+from fastapi.openapi.docs import (
+    get_redoc_html,
+    get_swagger_ui_html,
+    get_swagger_ui_oauth2_redirect_html,
+)
+from fastapi.staticfiles import StaticFiles
 
-app = FastAPI()
 
+import logging
 
+PORT = __httpport__ 
+IS_SSL = __ssl__
+
+current_dir = os.path.dirname(os.path.realpath(__file__))
+static_dir = os.path.join(current_dir,  'static')
+app = FastAPI(docs_url=None, redoc_url=None)
+app.mount("/static", StaticFiles(directory=static_dir), name="static")
+
+if IS_SSL:
+    app.add_middleware(HTTPSRedirectMiddleware)
+
+origins = [
+    "http://localhost:8001",
+    "http://localhost:8000",
+    "http://localhost",
+    "http://localhost:8080",
+    "*"
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+_baseDataFilesDir = os.path.join(os.path.dirname(os.path.realpath(__file__)), '_data')
+        
+class ServerThread(threading.Thread):
+    def __init__(self):
+        super().__init__()
+        self.server = None
+
+    def run(self):
+        try:
+            config = uvicorn.Config(
+                app,
+                host="0.0.0.0",
+                port=PORT,
+                ssl_keyfile=os.path.join(_baseDataFilesDir, "ssl", "key.pem") if IS_SSL else None,
+                ssl_certfile=os.path.join(_baseDataFilesDir, "ssl", "cert.pem") if IS_SSL else None
+            )
+            self.server = uvicorn.Server(config)
+            self.server.run()
+        except Exception as e:
+            print(f"Couldn't start server: {e}")
+
+    def stop(self):
+        if self.server:
+            self.server.should_exit = True
+            self.server.lifespan.shutdown()
+            print("Server is stopping...")
 class ImSwitchServer(Worker):
 
     def __init__(self, api, setupInfo):
@@ -30,22 +104,32 @@ class ImSwitchServer(Worker):
         self._canceled = False
 
         self.__logger =  initLogger(self)
-
+        
 
     def run(self):
-
-        # serve APP
-        self.startAPP()
-
         # serve the fastapi
         self.createAPI()
-        uvicorn.run(app, host="0.0.0.0", port=8000)
+        
+        # To operate remotely we need to provide https
+        # openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365
+        # uvicorn your_fastapi_app:app --host 0.0.0.0 --port 8001 --ssl-keyfile=./key.pem --ssl-certfile=./cert.pem
+
+        # Create and start the server thread
+        self.server_thread = ServerThread()
+        self.server_thread.start()        
         self.__logger.debug("Started server with URI -> PYRO:" + self._name + "@" + self._host + ":" + str(self._port))
+
+        return 
         try:
             Pyro5.config.SERIALIZER = "msgpack"
 
+            def print_exposed_methods(obj):
+                if hasattr(obj, '__pyroExposed__'):
+                    for method in obj.__pyroExposed__:
+                        print(method)
+            print("Exposed methods:")
+            print_exposed_methods(self)
             register_serializers()
-
             Pyro5.server.serve(
                 {self: self._name},
                 use_ns=False,
@@ -53,150 +137,58 @@ class ImSwitchServer(Worker):
                 port=self._port,
             )
 
-        except:
-            self.__loger.error("Couldn't start server.")
-        #self.__logger.debug("Loop Finished")
+        except Exception as e:
+            self.__logger.error("Couldn't start server.")
+        self.__logger.debug("Loop Finished")
+
 
     def stop(self):
         self.__logger.debug("Stopping ImSwitchServer")
-        self._daemon.shutdown()
-
-
-    # SRC: https://code-maven.com/static-server-in-python
-    class StaticServer(BaseHTTPRequestHandler):
-
-        def do_GET(self):
-            root = os.path.dirname(os.path.abspath(__file__).split("imswitch")[0]+"imswitch/app/public/")
-
-            if self.path == '/':
-                filename = root + '/index.html'
-            else:
-                filename = root + self.path
-
-            self.send_response(200)
-            if filename[-4:] == '.css':
-                self.send_header('Content-type', 'text/css')
-            elif filename[-5:] == '.json':
-                self.send_header('Content-type', 'application/javascript')
-            elif filename[-3:] == '.js':
-                self.send_header('Content-type', 'application/javascript')
-            elif filename[-4:] == '.ico':
-                self.send_header('Content-type', 'image/x-icon')
-            else:
-                self.send_header('Content-type', 'text/html')
-            self.end_headers()
-            with open(filename, 'rb') as fh:
-                html = fh.read()
-                #html = bytes(html, 'utf8')
-                self.wfile.write(html)
-
-    def start_server(self, httpd):
-        #print('Starting httpd')
-        httpd.serve_forever()
-
-    def startAPP(self, server_class=HTTPServer, handler_class=StaticServer, port=5001):
-        server_address = ('', port)
         try:
-            httpd = server_class(server_address, handler_class)
-            t = threading.Thread(target=self.start_server, args=(httpd,))
-            t.start()
-
-            print('httpd started on port {}'.format(port))
+            self.server_thread.stop()
+            #self.server_thread.join()
         except Exception as e:
-            print('httpd failed to start on port {}'.format(port))
-            print(e)
-            return
+            self.__logger.error("Couldn't stop server: "+str(e))
 
-
+    def get_ip(self):
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            s.connect(('10.255.255.255', 1))
+            IP = s.getsockname()[0]
+        except Exception:
+            IP = '127.0.0.1'
+        finally:
+            s.close()
+        return IP
+    #@expose: FIXME: Remove
+    def testMethod(self):
+        return "Hello World"
+    
+    
+    @app.get("/docs", include_in_schema=False)
+    async def custom_swagger_ui_html():
+        return get_swagger_ui_html(
+            openapi_url=app.openapi_url,
+            title=app.title + " - ImSwitch Swagger UI",
+            oauth2_redirect_url=app.swagger_ui_oauth2_redirect_url,
+            swagger_js_url="/static/swagger-ui-bundle.js",
+            swagger_css_url="/static/swagger-ui.css",
+        )
 
     @app.get("/")
     def createAPI(self):
         api_dict = self._api._asdict()
         functions = api_dict.keys()
 
-
         def includeAPI(str, func):
-            #self.__logger.debug(str)
-            #self.__logger.debug(func)
-            @app.get(str)
+            @app.get(str) # TODO: Perhaps we want POST instead?
             @wraps(func)
             async def wrapper(*args, **kwargs):
                 return func(*args, **kwargs)
             return wrapper
 
-
-
-        '''
-            @Pyro5.server.expose
-            def move(self, positionerName=None, axis="X", dist=0) -> np.ndarray:
-                return self._channel.move(positionerName, axis=axis, dist=dist)
-
-            @Pyro5.server.expose
-            def run_mda(self, sequence: MDASequence) -> None:
-                self.__logger.info("MDA Started: {}")
-                self._paused = False
-                paused_time = 0.0
-                t0 = time.perf_counter()  # reference time, in seconds
-
-                def check_canceled():
-                    if self._canceled:
-                        self.__logger.warning("MDA Canceled: ")
-                        self._canceled = False
-                        return True
-                    return False
-
-                for event in sequence:
-                    while self._paused and not self._canceled:
-                        paused_time += 0.1  # fixme: be more precise
-                        time.sleep(0.1)
-
-                    if check_canceled():
-                        break
-
-                    if event.min_start_time:
-                        go_at = event.min_start_time + paused_time
-                        # We need to enter a loop here checking paused and canceled.
-                        # otherwise you'll potentially wait a long time to cancel
-                        to_go = go_at - (time.perf_counter() - t0)
-                        while to_go > 0:
-                            while self._paused and not self._canceled:
-                                paused_time += 0.1  # fixme: be more precise
-                                to_go += 0.1
-                                time.sleep(0.1)
-
-                            if self._canceled:
-                                break
-                            if to_go > 0.5:
-                                time.sleep(0.5)
-                            else:
-                                time.sleep(to_go)
-                            to_go = go_at - (time.perf_counter() - t0)
-
-                    # check canceled again in case it was canceled
-                    # during the waiting loop
-                    if check_canceled():
-                        break
-
-                    self.__logger.info(event.x_pos)
-
-                    # prep hardware
-                    if event.x_pos is not None or event.y_pos is not None:
-                        x = event.x_pos or self.getXPosition()
-                        y = event.y_pos or self.getYPosition()
-                        self._channel.sigSetXYPosition.emit(x, y)
-                    if event.z_pos is not None:
-                        self._channel.sigSetZPosition.emit(event.z_pos)
-                    if event.exposure is not None:
-                        self._channel.sigSetExposure.emit(event.exposure)
-
-                self.__logger.info("MDA Finished: ")
-                pass
-
-        '''
-
-
         def includePyro(func):
-            @Pyro5.server.expose
+            @expose
             def wrapper(*args, **kwargs):
                 return func(*args, **kwargs)
             return wrapper
@@ -207,12 +199,11 @@ class ImSwitchServer(Worker):
                 module = func.module
             else:
                 module = func.__module__.split('.')[-1]
-            #DEBUGGING: self.__logger.debug("/"+module+"/"+f)
             self.func = includePyro(includeAPI("/"+module+"/"+f, func))
+            
 
 
-
-# Copyright (C) 2020-2022 ImSwitch developers
+# Copyright (C) 2020-2024 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

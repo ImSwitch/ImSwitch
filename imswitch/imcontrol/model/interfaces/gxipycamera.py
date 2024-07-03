@@ -14,14 +14,14 @@ class TriggerMode:
     CONTINUOUS = 'Continuous Acqusition'
 
 class CameraGXIPY:
-    def __init__(self,cameraNo=None, exposure_time = 10000, gain = 0, frame_rate=-1, blacklevel=100, binning=1):
+    def __init__(self,cameraNo=None, exposure_time = 10000, gain = 0, frame_rate=-1, blacklevel=100, binning=1, flipImage=(False, False), isRGB=False):
         super().__init__()
         self.__logger = initLogger(self, tryInheritParent=True)
 
         # many to be purged
         self.model = "CameraGXIPY"
         self.shape = (0, 0)
-
+        self.isRGB = isRGB
         self.is_connected = False
         self.is_streaming = False
 
@@ -36,6 +36,7 @@ class CameraGXIPY:
         self.preview_height = 600
         self.frame_rate = frame_rate
         self.cameraNo = cameraNo
+        self.flipImage = flipImage
 
         # reserve some space for the framebuffer
         self.NBuffer = 10
@@ -196,15 +197,22 @@ class CameraGXIPY:
         self.camera.BinningVertical.set(binning)
         self.binning = binning
 
-    def getLast(self, is_resize=True):
+    def getLast(self, is_resize=True, returnFrameNumber=False, timeout=1):
         # get frame and save
         # only return fresh frames
-        while(self.lastFrameId == self.frameNumber and self.frame is None):
+        # print(self.lastFrameId, self.frameNumber)
+        cTime = time.time()
+        while(self.lastFrameId > self.frameNumber and self.frame is None):
             time.sleep(.01) # wait for fresh frame
+            if time.time()-cTime > timeout:
+                self.__logger.warning("Timeout in getLast")
+                if returnFrameNumber:
+                    return None, -1
         if self.isFlatfielding and self.flatfieldImage is not None:
             self.frame = self.frame/self.flatfieldImage
-
         self.lastFrameId = self.frameNumber
+        if returnFrameNumber:
+            return self.frame, self.frameNumber
         return self.frame
 
     def flushBuffer(self):
@@ -379,10 +387,16 @@ class CameraGXIPY:
             self.__logger.error("Got an incomplete frame")
             return
         numpy_image = frame.get_numpy_array()
+
+        # flip image if needed
+        if self.flipImage[0]: # Y
+            numpy_image = np.flip(numpy_image, axis=0)
+        if self.flipImage[1]: # X
+            numpy_image = np.flip(numpy_image, axis=1)
         if numpy_image is None:
             self.__logger.error("Got a None frame")
             return
-        self.frame = numpy_image
+        self.frame = numpy_image.copy()
         self.frameNumber = frame.get_frame_id()
         self.timestamp = time.time()
 

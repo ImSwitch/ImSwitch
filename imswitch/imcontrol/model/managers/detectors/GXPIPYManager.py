@@ -37,8 +37,25 @@ class GXPIPYManager(DetectorManager):
             # returning back to default pixelsize
             pixelSize = 1
 
+        try: 
+            self.flipX = detectorInfo.managerProperties['gxipycam']['flipX']
+        except:
+            self.flipX = False
 
-        self._camera = self._getGXObj(self.cameraId, self.binningValue)
+        try: 
+            self.flipY = detectorInfo.managerProperties['gxipycam']['flipY']
+        except:
+            self.flipY = False
+
+
+        try: 
+            self._isRGB = detectorInfo.managerProperties['gxipycam']['isRGB']
+        except:
+            self._isRGB = False
+
+        self.flipImage = (self.flipX, self.flipY)
+
+        self._camera = self._getGXObj(self.cameraId, self.binningValue, self.flipImage, self._isRGB)
 
         fullShape = (self._camera.SensorWidth,
                 self._camera.SensorHeight)
@@ -65,6 +82,8 @@ class GXPIPYManager(DetectorManager):
                                     editable=True),
             'flat_fielding': DetectorBooleanParameter(group='Misc', value=True, editable=True),            
             'binning': DetectorNumberParameter(group="Misc", value=1, valueUnits="arb.u.", editable=True),
+            'flipX': DetectorBooleanParameter(group="Misc", value=self.flipX, editable=True),
+            'flipY': DetectorBooleanParameter(group="Misc", value=self.flipY, editable=True),
             'trigger_source': DetectorListParameter(group='Acquisition mode',
                             value='Continous',
                             options=['Continous',
@@ -73,6 +92,7 @@ class GXPIPYManager(DetectorManager):
                             editable=True),
             'Camera pixel size': DetectorNumberParameter(group='Miscellaneous', value=pixelSize,
                                                 valueUnits='µm', editable=True)
+                                    
             }
 
         # reading parameters from disk and write them to camrea
@@ -114,9 +134,13 @@ class GXPIPYManager(DetectorManager):
             elif triggerSource == 2 and triggerMode == 1:
                 self.setParameter('Trigger source', 'External "frame-trigger"')
 
-    def getLatestFrame(self, is_save=False):
-        frame = self._camera.getLast()
-        return frame
+    def getLatestFrame(self, is_save=None, is_resize=True, returnFrameNumber=False):
+        if returnFrameNumber:
+            frame, frameNumber = self._camera.getLast(returnFrameNumber=returnFrameNumber)
+            return frame, frameNumber
+        else:
+            frame = self._camera.getLast(returnFrameNumber=returnFrameNumber)
+            return frame
 
     def setParameter(self, name, value):
         """Sets a parameter value and returns the value.
@@ -138,7 +162,7 @@ class GXPIPYManager(DetectorManager):
         contain a key with the specified parameter name, an error will be
         raised."""
 
-        if name not in self._parameters:
+        if name not in self._DetectorManager__parameters:
             raise AttributeError(f'Non-existent parameter "{name}" specified')
 
         value = self._camera.getPropertyValue(name)
@@ -255,7 +279,12 @@ class GXPIPYManager(DetectorManager):
         self.parameters['Camera pixel size'].value = pixelSizeUm
 
     def crop(self, hpos, vpos, hsize, vsize):
-
+        '''
+        hpos - horizontal start position of crop window
+        vpos - vertical start position of crop window
+        hsize - horizontal size of crop window
+        vsize - vertical size of crop window
+        '''
         def cropAction():
             self.__logger.debug(
                 f'{self._camera.model}: crop frame to {hsize}x{vsize} at {hpos},{vpos}.'
@@ -291,7 +320,7 @@ class GXPIPYManager(DetectorManager):
     def openPropertiesDialog(self):
         self._camera.openPropertiesGUI()
 
-    def _getGXObj(self, cameraId, binning=1):
+    def _getGXObj(self, cameraId, binning=1, flipImage=(False, False), isRGB=False):
         try:
             import os
             if os.name == 'darwin':
@@ -300,7 +329,7 @@ class GXPIPYManager(DetectorManager):
             else:
                 from imswitch.imcontrol.model.interfaces.gxipycamera import CameraGXIPY
                 self.__logger.debug(f'Trying to initialize Daheng Imaging camera {cameraId}')
-                camera = CameraGXIPY(cameraNo=cameraId, binning=binning)
+                camera = CameraGXIPY(cameraNo=cameraId, binning=binning, flipImage=flipImage, isRGB=isRGB)
         except Exception as e:
             self.__logger.debug(e)
             self.__logger.warning(f'Failed to initialize CameraGXIPY {cameraId}, loading TIS mocker')

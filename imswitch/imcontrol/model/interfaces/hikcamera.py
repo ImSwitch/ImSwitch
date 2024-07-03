@@ -11,23 +11,27 @@ from ctypes import *
 import collections
 
 from sys import platform
-if platform == "linux" or platform == "linux2":
-    # linux
-    from imswitch.imcontrol.model.interfaces.hikrobotMac.MvCameraControl_class import *
-elif platform == "darwin":
-    # OS X
-    from imswitch.imcontrol.model.interfaces.hikrobotMac.MvCameraControl_class import *
-    pass
-elif platform == "win32":
-    import msvcrt
-    from imswitch.imcontrol.model.interfaces.hikrobotWin.MvCameraControl_class import *
+try:
+    if platform == "linux" or platform == "linux2":
+        # linux
+        from imswitch.imcontrol.model.interfaces.hikrobotMac.MvCameraControl_class import *
+    elif platform == "darwin":
+        # OS X
+        from imswitch.imcontrol.model.interfaces.hikrobotMac.MvCameraControl_class import *
+        pass
+    elif platform == "win32":
+        import msvcrt
+        from imswitch.imcontrol.model.interfaces.hikrobotWin.MvCameraControl_class import *
+except Exception as e:
+    print(e)
+    
     
 
 
 
 
 class CameraHIK:
-    def __init__(self,cameraNo=None, exposure_time = 10000, gain = 0, frame_rate=-1, blacklevel=100, isRGB=False, binning=1):
+    def __init__(self,cameraNo=None, exposure_time = 10000, gain = 0, frame_rate=-1, blacklevel=100, isRGB=False, binning=2):
         super().__init__()
         self.__logger = initLogger(self, tryInheritParent=False)
 
@@ -59,6 +63,8 @@ class CameraHIK:
         self.camera = None
 
         # binning 
+        if platform in ("darwin", "linux2", "linux"):
+            binning = 2
         self.binning = binning
 
         self.SensorHeight = 0
@@ -105,6 +111,8 @@ class CameraHIK:
         ret = self.camera.MV_CC_OpenDevice(MV_ACCESS_Exclusive, 0)
         if ret != 0:
             raise Exception("open device fail! ret[0x%x]", ret)            
+        # bin to speed up?
+        self.setBinning(binning=self.binning)
 
         stBool = c_bool(False)
         ret = self.camera.MV_CC_GetBoolValue("AcquisitionFrameRateEnable", stBool)
@@ -122,6 +130,8 @@ class CameraHIK:
         memset(byref(stFloatParam_height), 0, sizeof(MVCC_INTVALUE))
         stFloatParam_width = MVCC_INTVALUE()
         memset(byref(stFloatParam_width), 0, sizeof(MVCC_INTVALUE))
+        
+        #stOutFrame = MV_FRAME_OUT()  # stOutFrame.stFrameInfo.nHeight
         self.SensorHeight = self.camera.MV_CC_GetIntValue("Height", stFloatParam_height)
         self.SensorWidth = self.camera.MV_CC_GetIntValue("Width", stFloatParam_width)
         #if self.isRGB:
@@ -196,11 +206,21 @@ class CameraHIK:
         ret = self.camera.MV_CC_CloseDevice()
         ret = self.camera.MV_CC_DestroyHandle()
     
-
     def set_exposure_time(self,exposure_time):
         self.exposure_time = exposure_time
         self.camera.MV_CC_SetFloatValue("ExposureTime", self.exposure_time*1000)
         
+    def set_exposure_mode(self, exposure_mode="manual"):
+        if exposure_mode == "manual":
+            self.camera.MV_CC_SetEnumValue("ExposureAuto", MV_EXPOSURE_AUTO_MODE_OFF)
+        elif exposure_mode == "auto":
+            self.camera.MV_CC_SetEnumValue("ExposureAuto", MV_EXPOSURE_AUTO_MODE_CONTINUOUS)
+        elif exposure_mode == "once":
+            self.camera.MV_CC_SetEnumValue("ExposureAuto", MV_EXPOSURE_AUTO_MODE_ONCE)
+        else:
+            self.__logger.warning("Exposure mode not recognized")
+                    
+            
     def set_gain(self,gain):
         self.gain = gain
         self.camera.MV_CC_SetFloatValue("Gain", self.gain)
@@ -235,20 +255,33 @@ class CameraHIK:
 
     def setBinning(self, binning=1):
         # Unfortunately this does not work
-        # self.camera.BinningHorizontal.set(binning)
-        # self.camera.BinningVertical.set(binning)
-        self.binning = binning
+        try:
+            self.camera.MV_CC_SetIntValue("BinningX", binning)
+            self.camera.MV_CC_SetIntValue("BinningY", binning)
+            self.binning = binning
+        except Exception as e:
+            self._logger.error(e)
 
-    def getLast(self, is_resize=True):
-        # get frame and save
-        # only return fresh frames
-        while(self.lastFrameId == self.frameNumber or self.frame is None):
+    def getLast(self, returnFrameNumber=False, timeout=10):
+        # get frame and save 
+        '''
+        t0 = time.time()
+        while(self.lastFrameId >= self.frameNumber and self.frame is None):
             time.sleep(.01) # wait for fresh frame
-        self.lastFrameId = self.frameNumber
-        
+            if time.time()-t0>timeout:
+                return
         if self.isFlatfielding and self.flatfieldImage is not None:
             self.frame = self.frame/self.flatfieldImage
-        return self.frame
+        self.lastFrameId = self.frameNumber
+        print(self.frameNumber)
+        '''
+        if len(self.frame_buffer) == 0:
+            return None
+        frame = self.frame_buffer[-1]
+        frameNumber = self.frameid_buffer[-1]
+        if returnFrameNumber:
+            return np.array(frame), frameNumber
+        return np.array(frame)  
 
     def flushBuffer(self):
         self.frameid_buffer.clear()
@@ -314,6 +347,8 @@ class CameraHIK:
             self.set_gain(property_value)
         elif property_name == "exposure":
             self.set_exposure_time(property_value)
+        elif property_name == "exposure_mode":
+            self.set_exposure_mode(property_value)
         elif property_name == "blacklevel":
             self.set_blacklevel(property_value)
         elif property_name == "roi_size":
@@ -335,6 +370,8 @@ class CameraHIK:
             property_value = self.camera.Gain.get()
         elif property_name == "exposure":
             property_value = self.camera.ExposureTime.get()
+        elif property_name == "exposure_mode":
+            property_value = self.camera.ExposureAuto.get()
         elif property_name == "blacklevel":
             property_value = self.camera.BlackLevel.get()            
         elif property_name == "image_width":
@@ -392,7 +429,7 @@ class CameraHIK:
                         ret = cam.MV_CC_ConvertPixelTypeEx(stConvertParam)
                         if ret != 0:
                             self.__logger.error("convert pixel fail! ret[0x%x]" % ret)
-                            sys.exit()
+                            return
 
                         cam.MV_CC_FreeImageBuffer(stOutFrame)
 
@@ -402,7 +439,7 @@ class CameraHIK:
                             
                             data = np.frombuffer(img_buff, count=int(nRGBSize),dtype=np.uint8)
                             self.frame = data.reshape((stOutFrame.stFrameInfo.nHeight, stOutFrame.stFrameInfo.nWidth, -1))
-                            self.SensorHeight, self.SensorWidth = stOutFrame.stFrameInfo.nHeight, stOutFrame.stFrameInfo.nWidth
+                            self.SensorHeight, self.SensorWidth = self.frame.shape[0], self.frame.shape[1] #stOutFrame.stFrameInfo.nHeight, stOutFrame.stFrameInfo.nWidth
                             self.frameNumber = stOutFrame.stFrameInfo.nFrameNum
                             self.timestamp = time.time()
                             self.frame_buffer.append(self.frame)
@@ -415,7 +452,7 @@ class CameraHIK:
                     
 
             else:
-                stOutFrame = MV_FRAME_OUT()  
+                stOutFrame = MV_FRAME_OUT()  # 
                 memset(byref(stOutFrame), 0, sizeof(stOutFrame))
                 while True:
                     ret = cam.MV_CC_GetImageBuffer(stOutFrame, 1000)
@@ -429,8 +466,8 @@ class CameraHIK:
                                     dtype=np.uint8)
                         self.frame = data.reshape((stOutFrame.stFrameInfo.nHeight, stOutFrame.stFrameInfo.nWidth))
 
-                        self.SensorHeight, self.SensorWidth = stOutFrame.stFrameInfo.nHeight, stOutFrame.stFrameInfo.nWidth
-                        self.frameNumber = stOutFrame.stFrameInfo.nFrameNum
+                        self.SensorHeight, self.SensorWidth = self.frame.shape[0], self.frame.shape[1] #stOutFrame.stFrameInfo.nHeight, stOutFrame.stFrameInfo.nWidth
+                        self.frameNumber = stOutFrame.stFrameInfo.nFrameNum 
                         self.timestamp = time.time()
                         self.frame_buffer.append(self.frame)
                         self.frameid_buffer.append(self.lastFrameId)
@@ -456,7 +493,6 @@ class CameraHIK:
 
             ret = cam.MV_CC_GetOneFrameTimeout(byref(data_buf), nPayloadSize, stDeviceList, 1000)
             while True:
-                
                 if self.isRGB:
                     try:
                         stDeviceList = MV_FRAME_OUT_INFO_EX()
@@ -491,17 +527,18 @@ class CameraHIK:
 
                             data = np.frombuffer(img_buff, count=int(nRGBSize),dtype=np.uint8)
                             self.frame = data.reshape((stDeviceList.nHeight, stDeviceList.nWidth, -1))
+                            
 
                     except:
                         pass
                 else:
                     img_buff = (c_ubyte * nPayloadSize)()
-                    ret = cam.MV_CC_GetOneFrameTimeout(byref(data_buf), nPayloadSize, stDeviceList, 1000)
+                    ret = cam.MV_CC_GetOneFrameTimeout(byref(data_buf), nPayloadSize, stDeviceList, 100)
                     data = np.frombuffer(data_buf, count=int(stDeviceList.nWidth * stDeviceList.nHeight), dtype=np.uint8)
                     self.frame = data.reshape((stDeviceList.nHeight, stDeviceList.nWidth))
 
                 self.SensorHeight, self.SensorWidth = stDeviceList.nWidth, stDeviceList.nHeight  
-                self.lastFrameId = stDeviceList.nFrameNum
+                self.frameNumber = stDeviceList.nFrameNum
                 self.timestamp = time.time()
                 self.frame_buffer.append(self.frame)
                 self.frameid_buffer.append(self.lastFrameId)

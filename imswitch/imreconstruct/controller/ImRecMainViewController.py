@@ -3,6 +3,7 @@ import os
 
 import numpy as np
 import tifffile as tiff
+from imswitch import IS_HEADLESS
 
 import imswitch.imreconstruct.view.guitools as guitools
 from imswitch.imcommon.controller import PickDatasetsController
@@ -20,18 +21,21 @@ class ImRecMainViewController(ImRecWidgetController):
         super().__init__(*args, **kwargs)
         self._commChannel.extension = self._widget.extension
         
-        self.dataFrameController = self._factory.createController(
-            DataFrameController, self._widget.dataFrame
-        )
+        if not IS_HEADLESS:
+            self.dataFrameController = self._factory.createController(
+                DataFrameController, self._widget.dataFrame
+            )
         self.multiDataFrameController = self._factory.createController(
             MultiDataFrameController, self._widget.multiDataFrame
         )
         self.watcherFrameController = self._factory.createController(
             WatcherFrameController, self._widget.watcherFrame
         )
-        self.reconstructionController = self._factory.createController(
-            ReconstructionViewController, self._widget.reconstructionWidget
-        )
+
+        if not IS_HEADLESS:
+            self.reconstructionController = self._factory.createController(
+                ReconstructionViewController, self._widget.reconstructionWidget
+            )
         self.scanParamsController = self._factory.createController(
             ScanParamsController, self._widget.scanParamsDialog
         )

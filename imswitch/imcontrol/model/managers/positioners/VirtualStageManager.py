@@ -9,6 +9,7 @@ class VirtualStageManager(PositionerManager):
     def __init__(self, positionerInfo, name, **lowLevelManagers):
         super().__init__(positionerInfo, name, initialPosition={axis: 0 for axis in positionerInfo.axes})
         self.__logger = initLogger(self, instanceName=name)
+        self._commChannel = lowLevelManagers['commChannel']
         try:
             self.VirtualMicroscope = lowLevelManagers["rs232sManager"]["VirtualMicroscope"]
         except:
@@ -27,14 +28,19 @@ class VirtualStageManager(PositionerManager):
         if axis == "Z":
             self._positioner.move(z=value, is_absolute=is_absolute)
         if axis == "A":
-            self._positioner.move(t=value, is_absolute=is_absolute)
+            self._positioner.move(a=value, is_absolute=is_absolute)
         if axis == "XYZ":
             self._positioner.move(x=value[0], y=value[1], z=value[2], is_absolute=is_absolute)
         if axis == "XY":
             self._positioner.move(x=value[0], y=value[1], is_absolute=is_absolute)
+        for axes in ["A","X","Y","Z"]:
+            self._position[axes] = self._positioner.position[axes]
+        self._commChannel.sigUpdateMotorPosition.emit() # TODO: This is a hacky workaround to force Imswitch to update the motor positions in the gui..
 
-        #FIXME: for i, iaxis in enumerate(("A","X","Y","Z")):
-        #    self._position[iaxis] = self._motor._position[i]
+        
+
+    def moveForever(self, speed=(0, 0, 0, 0), is_stop=False):
+        pass
 
     def setSpeed(self, speed, axis=None):
         pass
@@ -46,6 +52,7 @@ class VirtualStageManager(PositionerManager):
         # load position from device
         # t,x,y,z
         allPositionsDict = self._positioner.get_position()
+        self._commChannel.sigUpdateMotorPosition.emit() # TODO: This is a hacky workaround to force Imswitch to update the motor positions in the gui..
 
         return allPositionsDict
 

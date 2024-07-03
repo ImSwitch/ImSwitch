@@ -15,7 +15,10 @@ from imswitch.imcontrol.model.interfaces.hikrobotMac.PixelType_header import *
 
 from sys import platform
 if platform == "linux" or platform == "linux2":
-    MvCamCtrldll = ctypes.cdll.LoadLibrary("/opt/MVS/lib/aarch64/libMvCameraControl.so")
+    try:
+        MvCamCtrldll = ctypes.cdll.LoadLibrary("/opt/MVS/lib/aarch64/libMvCameraControl.so")
+    except OSError as e:
+        print(e);
 elif platform == "darwin":
     MvCamCtrldll = ctypes.cdll.LoadLibrary("/usr/local/lib/libMvCameraControl.dylib")
 

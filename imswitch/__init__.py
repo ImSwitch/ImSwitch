@@ -1,5 +1,12 @@
-__version__ = '2.0.0'
+import glob
+from sys import platform
+# used to be, but actions will replace this with the current release TAG -> >2.1.0
+__version__ = "2.1.0"
+__httpport__ = 8001
+__ssl__ = True
 
+IS_HEADLESS = False
+DEFAULT_SETUP_FILE = None
 
 # Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.

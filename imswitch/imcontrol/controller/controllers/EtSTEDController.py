@@ -15,7 +15,11 @@ from scipy.optimize import least_squares
 import scipy.ndimage as ndi
 import pyqtgraph as pg
 import numpy as np
-from tkinter.filedialog import askopenfilename
+try:
+    from tkinter.filedialog import askopenfilename
+    IS_TKINTER = True
+except:
+    IS_TKINTER = False
 
 from imswitch.imcommon.model import APIExport
 from imswitch.imcontrol.model import configfiletools
@@ -682,7 +686,10 @@ class EtSTEDCoordTransformHelper():
 
     def openFolder(self):
         """ Opens current folder in File Explorer and returns chosen filename. """
-        filename = askopenfilename()
+        if IS_TKINTER:
+            filename = askopenfilename()
+        else: 
+            filename = "" 
         return filename
 
     def updateCalibImage(self, img_data, modality):

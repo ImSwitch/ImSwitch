@@ -19,7 +19,6 @@ class DPCManager(SignalInterface):
         self.__logger = initLogger(self)
 
         if dpcInfo is None:
-            self.__logger.error("No Settings were entered for dpcInfo; Change that by adding dpc")
             return
 
         self.__dpcInfo = dpcInfo

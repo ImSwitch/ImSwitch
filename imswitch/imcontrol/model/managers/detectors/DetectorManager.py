@@ -115,9 +115,9 @@ class DetectorManager(SignalInterface):
 
         self.__forAcquisition = detectorInfo.forAcquisition
         self.__forFocusLock = detectorInfo.forFocusLock
-        if not detectorInfo.forAcquisition and not detectorInfo.forFocusLock:
-            raise ValueError('At least one of forAcquisition and forFocusLock must be set in'
-                             ' DetectorInfo.')
+        #if not detectorInfo.forAcquisition and not detectorInfo.forFocusLock:
+        #    raise ValueError('At least one of forAcquisition and forFocusLock must be set in'
+        #                     ' DetectorInfo.')
     
         # set RGB if information is available 
         try:
@@ -136,7 +136,8 @@ class DetectorManager(SignalInterface):
         except Exception:
             self.__logger.error(traceback.format_exc())
         else:
-            self.sigImageUpdated.emit(self.__image, init, self.scale)
+            if self.__image is not None:
+                self.sigImageUpdated.emit(self.__image, init, self.scale)
 
     def setParameter(self, name: str, value: Any) -> Dict[str, DetectorParameter]:
         """ Sets a parameter value and returns the updated list of parameters.
@@ -292,6 +293,9 @@ class DetectorManager(SignalInterface):
     def recordFlatfieldImage(self, image: np.ndarray) -> np.ndarray:
         """ Performs flatfield correction on the specified image. """
         return image
+    
+    def getIsRGB(self):
+        return self.isRGB
 
 # Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.

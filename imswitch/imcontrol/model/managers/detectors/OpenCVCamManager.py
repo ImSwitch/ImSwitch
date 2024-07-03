@@ -24,6 +24,12 @@ class OpenCVCamManager(DetectorManager):
             isRGB = detectorInfo.managerProperties['isRGB']  
         except:
             isRGB = False
+            
+        try:
+            pixelSize = detectorInfo.managerProperties['cameraEffPixelsize'] # mum
+        except:
+            # returning back to default pixelsize
+            pixelSize = 1
 
         self._camera = self._getOpenCVObj(detectorInfo.managerProperties['cameraListIndex'], isRGB)
 
@@ -48,7 +54,9 @@ class OpenCVCamManager(DetectorManager):
                         editable=False),
             'image_height': DetectorNumberParameter(group='Misc', value=fullShape[1], valueUnits='arb.u.',
                         editable=False),
-            'pixel_format': DetectorListParameter(group='Misc', value='Mono12', options=['Mono8','Mono12'], editable=True)
+            'pixel_format': DetectorListParameter(group='Misc', value='Mono12', options=['Mono8','Mono12'], editable=True), 
+            'Camera pixel size': DetectorNumberParameter(group='Miscellaneous', value=pixelSize,
+                                                valueUnits='µm', editable=True)
             }            
 
         # Prepare actions
@@ -60,7 +68,14 @@ class OpenCVCamManager(DetectorManager):
         super().__init__(detectorInfo, name, fullShape=fullShape, supportedBinnings=[1],
                          model=model, parameters=parameters, actions=actions, croppable=True)
 
-    def getLatestFrame(self, is_save=False):
+    def getLatestFrame(self, is_save=False, returnFrameNumber=False):
+        if returnFrameNumber:
+            frame, frameNumber = self._camera.getLast(returnFrameNumber=returnFrameNumber)
+            return frame, frameNumber
+        else:
+            frame = self._camera.getLast(returnFrameNumber=returnFrameNumber)
+            return frame
+        
         if is_save:
             return self._camera.getLastChunk()
         else:
@@ -79,6 +94,14 @@ class OpenCVCamManager(DetectorManager):
 
         value = self._camera.setPropertyValue(name, value)
         return value
+    
+    @property
+    def pixelSizeUm(self):
+        umxpx = self.parameters['Camera pixel size'].value
+        return [1, umxpx, umxpx]
+
+    def setPixelSizeUm(self, pixelSizeUm):
+        self.parameters['Camera pixel size'].value = pixelSizeUm
 
     def getParameter(self, name):
         """Gets a parameter value and returns the value.
@@ -122,10 +145,6 @@ class OpenCVCamManager(DetectorManager):
         super().finalize()
         self.__logger.debug('Safely disconnecting the camera...')
         self._camera.close()
-
-    @property
-    def pixelSizeUm(self):
-        return [1, 1, 1]
 
     def crop(self, hpos, vpos, hsize, vsize):
         def cropAction():

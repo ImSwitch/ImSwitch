@@ -1,0 +1,391 @@
+"""
+Classes to relate a stage to a camera
+
+This is designed to work nicely with a camera and stage, tagging
+metadata onto each image in a manner compatible with the
+`ImageWithLocation` datatype.  I have endeavoured to expose as
+much functionality as possible through easily-digestible functions,
+rather than imposing a complicated class hierarchy, as done in the
+`nplab` submodule where I originally wrote much of this code.
+
+Calibration information is stored in a `dict` to make it easy to add
+to with other metadata - the important keys are:
+    - `image_to_stage_displacement`: a 2x2 `numpy.ndarray`
+        This array maps image pixels to displacement of the stage. It
+        is required - without it nothing else will work, and you will
+        get a lot of assertion errors.  NB this is not stored as a
+        `numpy.matrix`, as doing so creates a lot of issues (e.g. it
+        would require all positions to be matrices too).
+    - `backlash_vector`: 3 element `numpy.ndarray`
+        If the stage requires backlash correction, specify a vector
+        of estimated backlash amounts for each axis.  This allows
+        some functions to compensate for a less-than-perfect stage.
+    - `image_shape`: 2 element `numpy.ndarray`
+        It is a very good idea to include the shape of the image at
+        calibration time.  This allows a sanity check to make sure
+        the camera hasn't changed its resolution (and thus invalidated
+        our calibration).  In the future, this may become required.
+
+
+(c) Richard Bowman 2019, released under GNU GPL v3
+"""
+import numpy as np
+import collections
+from image_with_location import locate_feature_in_image, ImageWithLocation
+import time
+from numpy.linalg import norm
+from matplotlib import pyplot as plt
+from camera_stage_tracker import Tracker, move_until_motion_detected
+
+#CameraStageCalibration = collections.namedtuple("CameraStageCalibration",
+#    ["image_to_stage_displacement", "backlash_vector", "image_shape"])
+
+def image_to_stage_matrix(calibration):
+    try:
+        M = calibration["image_to_stage_displacement"]
+    except KeyError:
+        raise KeyError("An `image_to_stage_displacement` 2x2 matrix is required in camera_with_location calibration")
+    try:
+        M = np.array(M)
+        assert M.shape == (2, 2)
+    except:
+        raise ValueError("Error in calibration information: `image_to_stage_displacement` must be a 2x2 array")
+    return M
+
+def check_calibration(calibration):
+    """Check required keys are present in a calibration dictionary."""
+    image_to_stage_matrix(calibration)
+
+def iwl_metadata(calibration, stage_position, datum_pixel=None, image_shape=None):
+    """Build metadata suitable for use with an ImageWithLocation.
+
+    NB "datum pixel" or "image_shape" must be specified, or we can't 
+    construct the matrix.
+    """
+    if datum_pixel is None and "datum_pixel" in calibration:
+        datum_pixel = calibration["datum_pixel"]
+    if datum_pixel is None:
+        assert image_shape is not None, "We can't build a pixel to sample matrix without either a datum pixel, or an image shape being specified"
+        datum_pixel = (image_shape - 1)/2
+    if "image_shape" in calibration and image_shape is not None:
+        # TODO: be more forceful about checking!
+        assert np.all(calibration["image_shape"] == image_shape), f"Calibration of camera/stage mapping is only valid for images with shape {calibration["image_shape"]}"
+    A = image_to_stage_matrix(calibration)
+    datum_displacement = ensure_3d(np.dot(ensure_2d(datum_pixel), A))
+    M = np.zeros((4,4))
+    M[0:2, 0:2] = A # We calibrate the conversion of displacements and store it
+    M[2, 2] = 1 # Z coordinates are passed through unchanged
+    M[3, 3] = 1 # Ditto the extra 1 added on to all coordinates to allow translation
+    M[3, 0:3] = here - datum_displacement # Ensure that the datum pixel transforms to here.
+    return {"pixel_to_sample_matrix": M, "datum_pixel": datum_pixel}
+
+def pixel_to_sample_matrix(*args, **kwargs):
+    """Return just the pixel to sample matrix from iwl_metadata"""
+    return iwl_metadata(*args, **kwargs)["pixel_to_sample_matrix"]
+
+def location_of_pixel(calibration, pixel):
+    """
+
+
+
+def ensure_grayscale(image):
+    """Given an image that may be 2D (monochrome) or 3D (colour), return a monochrome version"""
+    if len(image.shape) == 3:
+        return np.mean(image, axis=2).astype(image.dtype)
+    else:
+        return image
+    
+def ensure_color(image):
+    """Ensure an image is 3-dimensional, promoting 2D images to NxMx3"""
+    if len(image.shape) == 2:
+        return np.stack([image]*3, axis=2)
+    else:
+        return image
+
+class CameraWithLocation():
+    """
+    A class wrapping a camera and a stage, allowing them to work together.
+    
+    This 
+    """
+    pixel_to_sample_displacement = None # A 3x3 matrix that relates displacements in pixels to distance units
+    pixel_to_sample_displacement_shape = None # The shape of the images taken to calibrate the stage
+    drift_estimate = None # Reserved for future use, to compensate for drift
+    datum_pixel = None # The position, in pixels in the image, of the "datum point" of the system.
+    settling_time = 0.0 # How long to wait for the stage to stop vibrating.
+    frames_to_discard = 1 # How many frames to discard from the camera after a move.
+    backlash_estimate = None # Future use: keep track of backlash
+    backlash_compensation_amount = None # This should be either a 3-element array or None
+
+    def __init__(self, get_position_fn, move_fn, grab_image_fn):
+        """This class adds location functionality to a camera.
+        
+        It's taken from nplab, and is particularly appropriate for microscopes.
+        
+        get_position_fn must be a function that returns the stage's position as an iterable
+        of (usually) 3 numbers
+        move accepts a 3-element array and does an absolute move to that position
+        grab_image_fn returns an image as a (2 or 3, mostly tested with 3) dimensional array
+        """
+        self._get_position_function = get_position_fn
+        self._move_function = move_fn
+        self._grab_image_function = grab_image_fn
+
+        shape = self._grab_image_function().shape
+        self.datum_pixel = np.array(shape[:2])/2.0 # Default to using the centre of the image as the datum point
+
+    def log(self, message):
+        """This is a standard nplab thing - work around with print statements!"""
+        print("[log]: "+message)
+        
+    @property
+    def pixel_to_sample_matrix(self):
+        here = self.datum_location
+        assert self.pixel_to_sample_displacement is not None, "The CameraWithLocation must be calibrated before use!"
+        datum_displacement = np.dot(ensure_3d(self.datum_pixel), self.pixel_to_sample_displacement)
+        M = np.zeros((4,4)) # NB M is never a matrix; that would create issues, as then all the vectors must be matrices
+        M[0:3, 0:3] = self.pixel_to_sample_displacement # We calibrate the conversion of displacements and store it
+        M[3, 0:3] = here - datum_displacement # Ensure that the datum pixel transforms to here.
+        return M
+
+    def _add_position_metadata(self, image):
+        """Add position metadata to an image, assuming it has just been acquired"""
+        iwl = ImageWithLocation(image)
+        iwl.attrs['datum_pixel'] = self.datum_pixel
+        iwl.attrs['stage_position'] = self.get_stage_position()
+        if self.pixel_to_sample_displacement is not None:
+            #TODO: make sure we check the size of the image matches
+            iwl.attrs['pixel_to_sample_matrix'] = self.pixel_to_sample_matrix
+        else:
+            iwl.attrs['pixel_to_sample_matrix'] = np.identity(4)
+            print('Stage is not yet calibrated')
+        return iwl
+
+
+    ####### Wrapping functions for the camera #######
+    def grab_image(self, *args, **kwargs):
+        """Return an image from the camera, including position metadata"""
+        return self._add_position_metadata(self._grab_image_function(*args, **kwargs))
+    
+    def grab_image_unannotated(self, *args, **kwargs):
+        """Return an image, without adding metadata"""
+        return self._grab_image_function(*args, **kwargs)
+
+    def thumb_image(self,size = (100,100)):
+        """Return a cropped "thumb" from the centre of the CWL with given size"""
+        # TODO: should this use datum_pixel?
+        # TODO: should this be part of imagewithlocation?
+        image = self.grab_image()
+        thumb = image[(image.shape[0]-size[0])//2:(image.shape[0]+size[0])//2,
+                      (image.shape[1]-size[1])//2:(image.shape[1]+size[1])//2,
+                      ...]
+        return thumb
+
+    ###### Wrapping functions for the stage ######
+    def move_stage(self, *args, **kwargs): # TODO: take account of drift
+        """Move the stage to a given position"""
+        self._move_function(*args, **kwargs)
+        
+    def get_stage_position(self):
+        """Return the stage's position as a numpy array"""
+        return np.array(self._get_position_function())
+
+    def move_stage_rel(self, pos, *args, **kwargs):
+        """Move the stage by a given amount"""
+        current_pos = self.get_stage_position()
+        
+        
+    def move_to_pixel(self,x,y):
+        """Move to a given pixel, in a new image obtained from the camera."""
+        iwl = ImageWithLocation(self.grab_image())
+        iwl.attrs['datum_pixel'] = self.datum_pixel
+#        self.use_previous_datum_location = True
+        iwl.attrs['pixel_to_sample_matrix'] = self.pixel_to_sample_matrix
+        if (iwl.pixel_to_sample_matrix != np.identity(4)).any():
+            #check if the image has been calibrated
+            #print('move coords', image.pixel_to_location([x,y]))
+            #print('current position', self.stage.position)
+            self.move_stage(iwl.pixel_to_location([x,y]))
+            #print('post move position', self.stage.position)
+#        self.use_previous_datum_location = False
+    @property
+    def datum_location(self):
+        """The location in the sample of the datum point (i.e. the current stage position, corrected for drift)"""
+        if self.drift_estimate == None:
+            return self.get_stage_position()
+        else:
+            return self.get_stage_position()-self.drift_estimate
+        return self.get_stage_position() - self.drift_estimate
+
+    ####### Useful functions for closed-loop stage control #######
+    def settle(self):
+        """Wait for the stage to stop moving/vibrating, and (unless specified) discard frame(s) from the camera.
+
+        After moving the stage, to get a fresh image from the camera we usually need to both wait for the stage to stop
+        vibrating, and discard one or more frames from the camera, so we have a fresh one.  This function does both of
+        those things (except if flush_camera is False).
+        """
+        time.sleep(self.settling_time)
+        for i in range(self.frames_to_discard):
+            self.grab_image_unannotated()
+
+    def move_to_feature(self, feature, ignore_position=False, ignore_z_pos = False, margin=50, tolerance=0.5, max_iterations = 10, return_moves=False, correct_for_backlash=True):
+        """Bring the feature in the supplied image to the centre of the camera
+
+        Strictly, what this aims to do is move the sample such that the datum pixel of the "feature" image is on the
+        datum pixel of the camera.  It does this by first (unless instructed not to) moving to the datum point as
+        defined by the image.  It then compares the image from the camera with the feature, and adjusts the position.
+
+        feature : ImageWithLocation or numpy.ndarray
+            The feature that we want to move to.
+        ignore_position : bool (optional, default False)
+            Set this to true to skip the initial move using the image's metadata.
+        margin : int (optional)
+            The maximum error, in pixels, that we can cope with (this sets the size of the search area we use to look
+            for the feature in the camera image, it is (2*range + 1) in both X and Y.  Set to 0 to use the maximum
+            possible search area (given by the difference in size between the feature image and the camera image)
+        tolerance : float (optional)
+            Once the error between our current position and the feature's position is below this threshold, we stop.
+        max_iterations : int (optional)
+            The maximum number of moves we make to fine-tune the position.
+        """
+        if (feature.datum_pixel[0]<0 or feature.datum_pixel[0]>np.shape(feature)[0] or 
+            feature.datum_pixel[1]<0 or feature.datum_pixel[1]>np.shape(feature)[1]):
+                self.log('The datum picture of the feature is outside of the image!',level = 'WARN')
+            
+        starting_position = self.get_stage_position()
+        stage_positions = [starting_position]
+        image_positions = []
+        print(f"starting at {starting_position}.")
+        
+        if not ignore_position:
+            try:
+                initial_move = feature.datum_location
+                print(f"the feature should be at {initial_move}")
+                if ignore_z_pos==True:
+                    print("Truncating initial move to avoid Z")
+                    initial_move = initial_move[:2]
+                if correct_for_backlash and self.backlash_compensation_amount is not None:
+                    # We deliberately under/overshoot on the initial move to avoid 
+                    # backlash when we're fine tuning X and Y
+                    initial_move[:2] -= 1.5*self.backlash_compensation_amount[:2]
+                    print(f"we will move instead to {initial_move}")
+                self.move_stage(initial_move) #initial move to where we recorded the feature was
+                if correct_for_backlash and self.backlash_compensation_amount is not None:
+                    # If we've adjusted for backlash, wind forwards again.  This should leave us
+                    # with a small adjustment to make, which ought to be in the forwards direction.
+                    stage_positions.append(self.get_stage_position())
+                    initial_move[:2] += self.backlash_compensation_amount[:2]
+                    print(f"adjusting back to {initial_move}")
+                    self.move_stage(initial_move)
+            except:
+                print("Warning: no position data in feature image, skipping initial move.")
+                
+        last_move = np.infty
+        for i in range(max_iterations):
+            try:
+                self.settle()
+                image = self.grab_image()
+                pixel_position = locate_feature_in_image(image, feature, margin=margin, restrict=margin>0)
+                stage_positions.append(self.get_stage_position())
+                image_positions.append(pixel_position)
+                new_position = image.pixel_to_location(pixel_position)
+                self.move_stage(new_position)
+                last_move = np.sqrt(np.sum((new_position - image.datum_location)**2)) # calculate the distance moved
+                self.log(f"Centering on feature, iteration {i}, moved by {last_move}")
+                if last_move < tolerance:
+                    break
+            except Exception as e:
+                self.log("Error centering on feature, iteration {} raised an exception:\n{}\n".format(i, e) +
+                         "The feature size was {}\n".format(feature.shape) +
+                         "The image size was {}\n".format(image.shape))
+        stage_positions.append(self.get_stage_position())
+        if last_move > tolerance:
+            self.log("Error centering on feature, final move was too large.")
+        if return_moves:
+            return last_move < tolerance, np.array(stage_positions), np.array(image_positions)
+        else:
+            return last_move < tolerance
+        
+    def move_to_feature_pixel(self,x,y,image = None, **kwargs):
+        if self.pixel_to_sample_matrix is not None:
+            if image is None:
+                image = self.grab_image()
+            feature = image.feature_at((x,y))
+            self.last_feature = feature
+            return self.move_to_feature(feature, **kwargs)
+        else:
+            print('CameraWithLocation is not yet calibrated!!')
+            
+    def determine_step_size(self, *args):
+        raise NotImplemented
+    
+    def calibrate_backlash(self, *args):
+        raise NotImplemented
+        
+    def calibrate_xy(self,update_progress=lambda p:p, step = 100, n_steps=4, backlash_compensation=0):
+        """Make a series of moves in X and Y to determine the XY components of the pixel-to-sample matrix.
+
+        Arguments:
+        step : float, optional (default None)
+            The amount to move the stage by.  This should move the sample by approximately 1/10th of the field of view.
+            If it is left as None, we will attempt to auto-determine the step size (see below).
+        min_step : float, optional
+            If we auto-determine the step size, start with this step size.  It's deliberately tiny.
+        max_step : float, optional
+            If we're auto-determining the step size, fail if it looks like it's more than this.
+
+        This starts by gingerly moving the stage a tiny amount.  That is repeated, increasing the distance exponentially
+        until we see a reasonable movement.  This means we shouldn't need to worry too much about setting the distance
+        we use for calibration.
+
+        NB this currently assumes the stage deals with backlash correction for us.
+        """
+        tracker = Tracker(self.grab_image_unannotated, self.get_stage_position, settle=self.settle)
+        tracker.acquire_template()
+        tracker.reset_history() # make sure we get rid of the initial (0,0) point
+        
+        # Deal with backlash compensation
+        if backlash_compensation > 0:
+            move = partial(backlash_corrected_move, self.get_stage_position, self.move_stage, backlash_compensation)
+        else:
+            move = self.move_stage
+        
+        starting_position = self.get_stage_position()
+        # Move the stage in a square, recording the displacement from both the stage and the camera
+        try:
+            for x in (np.arange(n_steps) - n_steps/2.0)*step:
+                for y in (np.arange(n_steps) - n_steps/2.0)*step:
+                    move(starting_position + np.array([x, y, 0]))
+                    tracker.append_point()
+        finally:
+            move(starting_position)
+        # We then use least-squares to fit the XY part of the matrix relating pixels to distance
+        # stage_positions should be the stage positions, with a zero mean.
+        # image_positions also has zero mean for x and y, but is calculated from cross-correlation.
+        stage_positions, image_positions = tracker.history
+        stage_positions = stage_positions.astype(float)
+        stage_positions -= np.mean(stage_positions, axis=0)
+        stage_positions = stage_positions[:,:2] # ensure it's 2d
+        image_positions -= np.mean(image_positions, axis=0)
+        image_positions *= -1 # To get the matrix right, we want the position of each
+                            # image relative to the template, rather than the other way around
+        print(f"The image, stage position arrays are {image_positions.shape},{stage_positions.shape}")
+        A, res, rank, s = np.linalg.lstsq(image_positions, stage_positions) # we solve pixel_shifts*A = location_shifts
+
+        self.pixel_to_sample_displacement = np.zeros((3,3))
+        self.pixel_to_sample_displacement[2,2] = 1 # just pass Z through unaltered
+        self.pixel_to_sample_displacement[:2,:2] = A # A deals with xy only
+        transformed_image_positions = np.dot(image_positions, A)
+        residuals = transformed_image_positions - stage_positions
+        fractional_error = np.sum(residuals**2)**0.5 / np.sum(stage_positions.astype(float)**2)**0.5
+        print(f"Ratio of residuals to RMS displacement is {fractional_error})")
+        if fractional_error > 0.05: # Check it was a reasonably good fit
+            print("Warning: the error fitting measured displacements was %.1f%%" % (fractional_error*100))
+        print(f"Calibrated the pixel-location matrix.\nResiduals were {fractional_error*100:.1f}% of the shift."
+              f"\nStage positions:\n{stage_positions}\nPixel shifts:\n{image_positions}\n"
+              f"Resulting matrix:\n{self.pixel_to_sample_displacement}")
+        #update_progress(7)
+        #self.update_config('pixel_to_sample_displacement',self.pixel_to_sample_displacement)
+        return self.pixel_to_sample_displacement, stage_positions, image_positions, fractional_error
+

@@ -1,7 +1,7 @@
 import dataclasses
-
+import pkg_resources
 import h5py
-
+from imswitch import IS_HEADLESS
 from imswitch.imcommon.controller import MainController, PickDatasetsController
 from imswitch.imcommon.model import (
     ostools, initLogger, generateAPI, generateShortcuts, SharedAttributes
@@ -14,9 +14,8 @@ from . import controllers
 from .CommunicationChannel import CommunicationChannel
 from .MasterController import MasterController
 from .PickSetupController import PickSetupController
-from .PickUC2BoardConfigController import PickUC2BoardConfigController
 from .basecontrollers import ImConWidgetControllerFactory
-
+import threading
 
 class ImConMainController(MainController):
     def __init__(self, options, setupInfo, mainView, moduleCommChannel):
@@ -31,7 +30,6 @@ class ImConMainController(MainController):
         # Connect view signals
         self.__mainView.sigLoadParamsFromHDF5.connect(self.loadParamsFromHDF5)
         self.__mainView.sigPickSetup.connect(self.pickSetup)
-        self.__mainView.sigPickConfig.connect(self.pickUC2Config)
         self.__mainView.sigClosing.connect(self.closeEvent)
 
         # Init communication channel and master controller
@@ -43,22 +41,36 @@ class ImConMainController(MainController):
         self.__factory = ImConWidgetControllerFactory(
             self.__setupInfo, self.__masterController, self.__commChannel, self._moduleCommChannel
         )
-        self.pickSetupController = self.__factory.createController(
-            PickSetupController, self.__mainView.pickSetupDialog
-        )
-        self.pickDatasetsController = self.__factory.createController(
-            PickDatasetsController, self.__mainView.pickDatasetsDialog
-        )
+        
+        if not IS_HEADLESS:
+            self.pickSetupController = self.__factory.createController(
+                PickSetupController, self.__mainView.pickSetupDialog
+            )
+            self.pickDatasetsController = self.__factory.createController(
+                PickDatasetsController, self.__mainView.pickDatasetsDialog
+            )
 
         self.controllers = {}
 
         for widgetKey, widget in self.__mainView.widgets.items():
-            self.controllers[widgetKey] = self.__factory.createController(
-                (getattr(controllers, f'{widgetKey}Controller')
-                if widgetKey != 'Scan' else
-                getattr(controllers, f'{widgetKey}Controller{self.__setupInfo.scan.scanWidgetType}')), widget
-            )
-
+            try:
+                self.controllers[widgetKey] = self.__factory.createController(
+                    (getattr(controllers, f'{widgetKey}Controller')
+                    if widgetKey != 'Scan' else
+                    getattr(controllers, f'{widgetKey}Controller{self.__setupInfo.scan.scanWidgetType}')), widget
+                )
+            except Exception as e:
+                #try to get it from the plugins
+                foundPluginController = False
+                for entry_point in pkg_resources.iter_entry_points(f'imswitch.implugins'):
+                    if entry_point.name == f'{widgetKey}_controller':
+                        packageController = entry_point.load()
+                        self.controllers[widgetKey] = self.__factory.createController(packageController, widget)
+                        foundPluginController = True
+                        break
+                if not foundPluginController:
+                    self.__logger.debug(e)
+                    raise ValueError(f'No controller found for widget {widgetKey}')
         # Generate API
         self.__api = None
         apiObjs = list(self.controllers.values()) + [self.__commChannel]
@@ -78,11 +90,7 @@ class ImConMainController(MainController):
 
         self.__logger.debug("Start ImSwitch Server")
         self._serverWorker = ImSwitchServer(self.__api, setupInfo)
-        self.__logger.debug(self.__api)
-        self._thread = Thread()
-        self._serverWorker.moveToThread(self._thread)
-        self._thread.started.connect(self._serverWorker.run)
-        self._thread.finished.connect(self._serverWorker.stop)
+        self._thread = threading.Thread(target=self._serverWorker.run)
         self._thread.start()
 
     @property
@@ -151,26 +159,8 @@ class ImConMainController(MainController):
         self.__masterController.closeEvent()
         
         # seems like the imswitchserver is not closing from the closing event, need to hard kill it
-        #self._serverWorker.stop()
-        #self._thread.quit()
-        #self._thread.terminate()        
-        #del self._thread
-
-    def pickUC2Config(self):
-        """ Let the user change which UC2 Board config is used. """
-
-        options, _ = configfiletools.loadUC2BoardConfigs()
-
-        self.pickSetupController.setSetups(configfiletools.getBoardConfigList())
-        self.pickSetupController.setSelectedSetup(options.setupFileName)
-        if not self.__mainView.showPickSetupDialogBlocking():
-            return
-        setupFileName = self.pickSetupController.getSelectedSetup()
-        if not setupFileName:
-            return
-
-        guitools.informationDisplay(self.__mainView, "Now select 'load from file' in the UC2 Config Widget and flash the pin-configuration")
-
+        self._serverWorker.stop()
+        self._thread.join()
 
 # Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.

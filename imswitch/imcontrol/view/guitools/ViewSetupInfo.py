@@ -29,12 +29,6 @@ class LEDPresetInfo:
     value: float
     """ LED value. """
 
-# TODO: implement presets for OpentronsDeck
-@dataclass(frozen=True)
-class OpentronsDeckPresetInfo:
-    value: float
-    """ Laser value. """
-
 
 @dataclass
 class ViewSetupInfo(SetupInfo):
@@ -45,11 +39,7 @@ class ViewSetupInfo(SetupInfo):
 
     rois: Dict[str, 'ROIInfo'] = field(default_factory=dict)
     """ Additional ROIs available to select in detector settings. """
-    # TODO: implement presets for OpentronsDeck
-    OpentronsDeckPreset: Dict[str, Dict[str, 'OpentronsDeckPresetInfo']] = field(default_factory=dict)
-    """ LED presets available to select (map preset name -> LED name ->
-    LEDPresetInfo). """
-
+    
     ledPresets: Dict[str, Dict[str, 'LEDPresetInfo']] = field(default_factory=dict)
     """ LED presets available to select (map preset name -> LED name ->
     LEDPresetInfo). """
@@ -81,7 +71,6 @@ class ViewSetupInfo(SetupInfo):
     - ``Laser`` (laser control widget)
     - ``LED`` (LED control widget)
     - ``Deck`` (Deck control widget)
-    - ``OpentronsDeck`` (OpentronsDeck control widget)
     - ``Positioner`` (positioners widget)
     - ``StandaPositioner`` (Standa positioners widget)
     - ``StandaStage`` (Standa Stage widget)

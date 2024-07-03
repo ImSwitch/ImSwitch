@@ -12,19 +12,25 @@ if sys.platform == 'linux2' or sys.platform == 'linux':
     except OSError:
         print("Cannot find libgxiapi.so.")
 elif sys.platform == 'win32':
-    try:
-        os.add_dll_directory("C:\\Program Files\\Daheng Imaging\\GalaxySDK\\APIDll\\Win64\\")
-        #dll = WinDLL('GxIAPI.dll', winmode=0) # https://stackoverflow.com/questions/59330863/cant-import-dll-module-in-python
-        mFWD = os.path.dirname(os.path.realpath(__file__))
-        try:
-            dll = WinDLL(mFWD+'\\dll\\GxIAPI.dll', winmode=0) # https://stackoverflow.com/questions/59330863/cant-import-dll-module-in-python
-        except:
-            dll = WinDLL('GxIAPI.dll', winmode=1) # https://stackoverflow.com/questions/59330863/cant-import-dll-module-in-python
-            
 
-    
-    except OSError:
-        print('Cannot find GxIAPI.dll.')
+    os.add_dll_directory("C:\\Program Files\\Daheng Imaging\\GalaxySDK\\APIDll\\Win64\\")
+    #dll = WinDLL('GxIAPI.dll', winmode=0) # https://stackoverflow.com/questions/59330863/cant-import-dll-module-in-python
+    mFWD = os.path.dirname(os.path.realpath(__file__))
+    try:
+        dll = WinDLL(mFWD+'\\dll\\GxIAPI.dll', winmode=0) # https://stackoverflow.com/questions/59330863/cant-import-dll-module-in-python
+    except:
+        try:
+            dll = WinDLL('GxIAPI.dll', winmode=1) # https://stackoverflow.com/questions/59330863/cant-import-dll-module-in-python
+        except:
+            try:
+                if (sys.version_info.major == 3 and sys.version_info.minor >= 8) or (sys.version_info.major > 3):
+                    dll = WinDLL('GxIAPI.dll', winmode=0)
+                else:
+                    dll = WinDLL('GxIAPI.dll')
+                    
+            except OSError:
+                print('Cannot find GxIAPI.dll.')
+                dll = -1
 else:
     dll = -1
 

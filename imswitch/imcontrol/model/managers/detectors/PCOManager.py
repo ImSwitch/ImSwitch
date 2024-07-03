@@ -19,7 +19,6 @@ class PCOManager(DetectorManager):
         cameraId = detectorInfo.managerProperties['cameraListIndex']
         self._camera = self._getPCOObj(cameraId, binning)
         
-        
         for propertyName, propertyValue in detectorInfo.managerProperties['PCOcam'].items():
             self._camera.setPropertyValue(propertyName, propertyValue)
 
@@ -36,7 +35,7 @@ class PCOManager(DetectorManager):
 
         # Prepare parameters
         parameters = {
-            'exposure': DetectorNumberParameter(group='Misc', value=100, valueUnits='ms',
+            'exposure': DetectorNumberParameter(group='Misc', value=50, valueUnits='ms',
                                                 editable=True),
             'gain': DetectorNumberParameter(group='Misc', value=1, valueUnits='arb.u.',
                                             editable=True),
@@ -47,13 +46,16 @@ class PCOManager(DetectorManager):
             'Height': DetectorNumberParameter(group='Misc', value=fullShape[1], valueUnits='arb.u.',
                         editable=False),
             'frame_rate': DetectorNumberParameter(group='Misc', value=-1, valueUnits='fps',
-                                    editable=True),
+                                    editable=False),
             'trigger_source': DetectorListParameter(group='Acquisition mode',
                             value='Continous',
                             options=['Continous',
                                         'Internal trigger',
-                                        'External trigger'],
-                            editable=True)
+                                        'External start',
+                                        'External control'],
+                            editable=True),
+            "buffer_size": DetectorNumberParameter(group='Misc', value=100, valueUnits='arb.u.',
+                                    editable=True),
             }            
 
         # Prepare actions
@@ -65,7 +67,6 @@ class PCOManager(DetectorManager):
         super().__init__(detectorInfo, name, fullShape=fullShape, supportedBinnings=[1],
                          model=model, parameters=parameters, actions=actions, croppable=True)
         
-
     def getLatestFrame(self, is_save=False):
         return self._camera.getLast()
 
@@ -94,29 +95,12 @@ class PCOManager(DetectorManager):
 
         value = self._camera.getPropertyValue(name)
         return value
-
-
-    def setTriggerSource(self, source):
-        if source == 'Continous':
-            self._performSafeCameraAction(
-                lambda: self._camera.setPropertyValue('trigger_source', 0)
-            )
-        elif source == 'Internal trigger':
-            self._performSafeCameraAction(
-                lambda: self._camera.setPropertyValue('trigger_source', 1)
-            )
-        elif source == 'External trigger':
-            self._performSafeCameraAction(
-                lambda: self._camera.setPropertyValue('trigger_source', 2)
-            )
-        else:
-            raise ValueError(f'Invalid trigger source "{source}"')
-
         
     def getChunk(self):
         try:
             return self._camera.getLastChunk()
-        except:
+        except Exception as e:
+            self.__logger.error(e)
             return None
 
     def flushBuffers(self):
@@ -131,8 +115,8 @@ class PCOManager(DetectorManager):
     def stopAcquisition(self):
         if self._running:
             self._running = False
-            self._camera.suspend_live()
-            self.__logger.debug('suspendlive')
+            self._camera.stop_live()
+            self.__logger.debug('stop_live')
 
     def stopAcquisitionForROIChange(self):
         self._running = False
@@ -147,7 +131,7 @@ class PCOManager(DetectorManager):
     @property
     def pixelSizeUm(self):
         return [1, 1, 1]
-
+    
     def crop(self, hpos, vpos, hsize, vsize):
 
         def cropAction():
@@ -202,6 +186,8 @@ class PCOManager(DetectorManager):
     def closeEvent(self):
         self._camera.close()
 
+    def getFrameId(self):
+        return self._camera.getLastFrameId()
 
     # for simulation only
     def setIlluPatternByID(self, iRot, iPhi):

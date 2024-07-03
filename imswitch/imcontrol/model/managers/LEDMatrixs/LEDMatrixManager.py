@@ -39,7 +39,7 @@ class LEDMatrixManager(ABC):
         """ Sets whether the LEDMatrix is enabled. """
         pass
     
-    def setAll(self, intensity=0) -> None:
+    def setAll(self, intensity=0, getReturn=True) -> None:
         """ Sets the value of the LEDMatrix. """
         pass
 
@@ -59,9 +59,14 @@ class LEDMatrixManager(ABC):
         """ Sets the value of the LEDMatrix. """
         pass
     
-
-
-
+    def setEnabled(self, enabled) -> None:
+        """ Sets the value of the LEDMatrix. """
+        pass
+    
+    def setValue(self, value) -> None:
+        """ Sets the value of the LEDMatrix. """
+        pass
+    
 # Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.
 #

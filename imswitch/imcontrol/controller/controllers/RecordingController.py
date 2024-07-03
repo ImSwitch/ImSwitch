@@ -389,6 +389,12 @@ class RecordingController(ImConWidgetController):
     def getTimelapseFreq(self):
         return self._widget.getTimelapseFreq()
 
+
+    def stop_stream(self):
+        self.streamRunning = False
+        self.streamstarted = False
+        self.manager = None
+        
     def start_stream(self):
         '''
         return a generator that converts frames into jpeg's reads to stream
@@ -398,23 +404,36 @@ class RecordingController(ImConWidgetController):
         detectorNum1 = detectorManager[detectorNum1Name]
         detectorNum1.startAcquisition()
         
-        while True:
-            output_frame = detectorNum1.getLatestFrame()
-            if output_frame is None:
-                continue
-            (flag, encodedImage) = cv2.imencode(".jpg", output_frame)
-            if not flag:
-                continue
-            self.manager.put(encodedImage)
-    
-    
+        self.fx = self.fy = .1
+        
+        try:
+            while self.streamRunning:
+                output_frame = detectorNum1.getLatestFrame()
+                if output_frame is None:
+                    continue
+                try:
+                    # adaptive resize: Keep them below 640x480
+                    if output_frame.shape[0] > 640 or output_frame.shape[1] > 480:
+                        self.fx = self.fy = min(640/output_frame.shape[0], 480/output_frame.shape[1])
+                    else:
+                        self.fx = self.fy = 1
+                    output_frame = cv2.resize(output_frame, dsize=None, fx=self.fx,fy=self.fx)
+                except: 
+                    output_frame = np.zeros((640,460))
+                (flag, encodedImage) = cv2.imencode(".jpg", output_frame)
+                if not flag:
+                    continue
+                self.manager.put(encodedImage)
+        except:
+            self.streamRunning = False
+                
     def streamer(self):
         from multiprocessing import Queue
         if not self.streamstarted:
             import threading
             self.manager = Queue(maxsize=10)
+            self.streamRunning = True
             threading.Thread(target=self.start_stream).start()
-            self.streamstarted = True
         try:
 
             while self.manager:
@@ -425,8 +444,17 @@ class RecordingController(ImConWidgetController):
 
 
     @APIExport(runOnUIThread=False)
-    def video_feeder(self):
-        return StreamingResponse(self.streamer(), media_type="multipart/x-mixed-replace;boundary=frame")
+    def video_feeder(self, startStream: bool = True) -> StreamingResponse:
+        '''
+        return a generator that converts frames into jpeg's reads to stream
+        '''
+        if startStream:
+            return StreamingResponse(self.streamer(), media_type="multipart/x-mixed-replace;boundary=frame")
+        else:
+            self.stop_stream()
+            return "stream stopped"
+
+
 
 
 
@@ -464,7 +492,11 @@ class RecordingController(ImConWidgetController):
     
     @APIExport(runOnUIThread=False)
     def snapImage(self, output: bool = False, toList: bool = True) -> Union[None, list]:
-        """ Take a snap and save it to a .tiff file at the set file path. """
+        """ 
+        Take a snap and save it to a .tiff file at the set file path. 
+        output: if True, return the numpy array of the image as a list if toList is True, or as a numpy array if toList is False
+        toList: if True, return the numpy array of the image as a list, otherwise return it as a numpy array
+        """
         if output:
             numpy_array_list = self.snapNumpy()
             mDetector = list(numpy_array_list.keys())[0]
@@ -472,13 +504,16 @@ class RecordingController(ImConWidgetController):
             if toList:
                 return numpy_array.tolist()  # Convert the numpy array to a list
             else:
-                return numpy_array
+                return np.array(numpy_array)
         else:
             self.snap()
 
     @APIExport(runOnUIThread=False)
     def snapNumpyToFastAPI(self, detectorName: str=None, resizeFactor: float=1) -> Response:
         '''
+        Taking a snap and return it as a FastAPI Response object.
+        detectorName: the name of the detector to take the snap from. If None, take the snap from the first detector.
+        resizeFactor: the factor by which to resize the image. If <1, the image will be downscaled, if >1, nothing will happen.
         '''
         # Create a 2D NumPy array representing the image
         images = self.snapNumpy()
@@ -500,7 +535,9 @@ class RecordingController(ImConWidgetController):
         im = Image.fromarray(image)
         
         # save image to an in-memory bytes buffer
+        # save image to an in-memory bytes buffer
         with io.BytesIO() as buf:
+            im = im.convert('L')  # convert image to 'L' mode
             im.save(buf, format='PNG')
             im_bytes = buf.getvalue()
             

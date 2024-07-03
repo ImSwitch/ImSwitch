@@ -51,11 +51,10 @@ RUN mkdir -p /opt/MVS/bin/fonts
 # Set environment variable for MVCAM_COMMON_RUNENV
 ENV MVCAM_COMMON_RUNENV=/opt/MVS/lib LD_LIBRARY_PATH=/opt/MVS/lib/64:/opt/MVS/lib/32:$LD_LIBRARY_PATH
 
-# Install Miniforge
 RUN if [ "$ARCH" = "arm64" ]; then \
-        MINIFORGE_URL=$MINIFORGE_URL_ARCH; \
+        MINIFORGE_URL=https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-aarch64.sh; \
     elif [ "$ARCH" = "amd64" ]; then \
-        MINIFORGE_URL=$MINIFORGE_URL_AMD64; \
+        MINIFORGE_URL=https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh; \
     fi && \
     wget --quiet $MINIFORGE_URL -O /tmp/miniforge.sh && \
     /bin/bash /tmp/miniforge.sh -b -p /opt/conda && \

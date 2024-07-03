@@ -67,7 +67,7 @@ class EtMonalisaController(ImConWidgetController):
         sys.path.append(self._widget.transformDir)
 
         # create a helper controller for the coordinate transform pop-out widget
-        self.__coordTransformHelper = EtSTEDCoordTransformHelper(self, self._widget.coordTransformWidget, _logsDir)
+        self.__coordTransformHelper = EtMonalisaCoordTransformHelper(self, self._widget.coordTransformWidget, _logsDir)
 
         # Initiate coordinate transform coeffs
         self.__transformCoeffs = np.zeros(20)
@@ -616,13 +616,13 @@ class EtMonalisaController(ImConWidgetController):
         pass
 
 
-class EtSTEDCoordTransformHelper():
+class EtMonalisaCoordTransformHelper():
     """ Coordinate transform help widget controller. """
-    def __init__(self, etSTEDController, coordTransformWidget, saveFolder, *args, **kwargs):
+    def __init__(self, etMonalisaController, coordTransformWidget, saveFolder, *args, **kwargs):
         
         self.__logger = initLogger(self)
 
-        self.etSTEDController = etSTEDController
+        self.etMonalisaController = etMonalisaController
         self._widget = coordTransformWidget
         self.__saveFolder = saveFolder
 
@@ -633,12 +633,13 @@ class EtSTEDCoordTransformHelper():
         self.__loResCoordsPx = list()
         self.__hiResCoordsPx = list()
         self.__hiResPxSize = 1
-        #self.__loResPxSize = 1
+        self.__loResPxSize = 1
         self.__hiResSize = 1
         self.__loResSize = 1
+        self.__MLcenterfov_WFpx = np.zeros([1, 2])
 
         # connect signals from widget
-        self.etSTEDController._widget.coordTransfCalibButton.clicked.connect(self.calibrationLaunch)
+        self.etMonalisaController._widget.coordTransfCalibButton.clicked.connect(self.calibrationLaunch)
         self._widget.saveCalibButton.clicked.connect(self.calibrationFinish)
         self._widget.resetCoordsButton.clicked.connect(self.resetCalibrationCoords)
         self._widget.loadLoResButton.clicked.connect(lambda: self.loadCalibImage('lo'))
@@ -650,46 +651,54 @@ class EtSTEDCoordTransformHelper():
 
     def calibrationLaunch(self):
         """ Launch calibration. """
-        self.etSTEDController._widget.launchHelpWidget(self.etSTEDController._widget.coordTransformWidget, init=True)
+        self.etMonalisaController._widget.launchHelpWidget(self.etMonalisaController._widget.coordTransformWidget, init=True)
 
     def calibrationFinish(self):
         """ Finish calibration. """
         # get annotated coordinates in both images and translate to real space coordinates
         self.__loResCoordsPx = self._widget.pointsLayerLo.data
-        for pos_px in self.__loResCoordsPx:
-            #pos = (np.around(pos_px[0]*self.__loResPxSize, 3), np.around(pos_px[1]*self.__loResPxSize, 3))
-            pos = (np.around(pos_px[0], 3), np.around(pos_px[1], 3))
-            self.__loResCoords.append(pos)
         self.__hiResCoordsPx = self._widget.pointsLayerHi.data
-        for pos_px in self.__hiResCoordsPx:
-            # the following depends on the array viewing/axes order for camera and scan images, works for the current napari viewer (ImSwitch v1.2.1)
-            pos = (np.around((self.__loResSize-pos_px[1])*self.__hiResPxSize - self.__hiResSize/2, 3), np.around((self.__loResSize-pos_px[0])*self.__hiResPxSize - self.__hiResSize/2, 3))
-            self.__hiResCoords.append(pos)
 
-        # calibrate coordinate transform
-        self.coordinateTransformCalibrate()
+        self.__loResCoordsPx = np.flip(self.__loResCoordsPx,1)
+        ratioCoord_list = list()
+        for i in range(self.__loResCoordsPx.shape[0]):
+            for k in range (i+1, self.__loResCoordsPx.shape[0]):
+                num = np.subtract(self.__hiResCoordsPx[i], self.__hiResCoordsPx[k])
+                denom = np.subtract(self.__loResCoordsPx[i], self.__loResCoordsPx[k])
+                ratioCoord_list.append(np.abs(np.divide(num, denom)))
+        ratioCoord = np.mean(np.mean(ratioCoord_list, 0), 0)
+        MLfovSize_WFpx = self.__hiResSize * ratioCoord
+        MLoriginCoord_WFpx = np.mean(np.subtract(self.__hiResCoordsPx, np.multiply(self.__loResCoordsPx, ratioCoord)), 0)
+        self.__MLcenterfov_WFpx = MLoriginCoord_WFpx + 0.5*MLfovSize_WFpx
+        print(self.__loResCoordsPx)
+        print(self.__hiResCoordsPx)
+        print(ratioCoord_list)
+        print(ratioCoord)
+        print(MLfovSize_WFpx)
+        print(MLoriginCoord_WFpx)
+        print(self.__MLcenterfov_WFpx)
+        # save FOV calibration
         name_short = datetime.utcnow().strftime('%Hh%Mm%Ss')
         name_long = datetime.utcnow().strftime('%Y-%m-%d-%Hh%Mm%Ss')
-        filename_txt = os.path.join(self.__saveFolder, name_short+'_transformCoeffs.txt')
-        filename_csv = os.path.join(self.etSTEDController._widget.transformDir, name_long+'.csv')
-        np.savetxt(fname=filename_txt, X=self.__transformCoeffs)
-        with open(filename_csv, 'w', newline='') as csvfile:
-            writer = csv.writer(csvfile, delimiter=' ', quotechar='|', quoting=csv.QUOTE_MINIMAL)
-            for el in self.__transformCoeffs:
-                writer.writerow([str(el)])
+        filename_txt = os.path.join(self.__saveFolder, name_short+'_FOV_calib.txt')
+        filename_csv = os.path.join(self.etMonalisaController._widget.transformDir, name_long+'.csv')
+        np.savetxt(fname=filename_txt, X=self.__MLcenterfov_WFpx)
+        # with open(filename_csv, 'w', newline='') as csvfile:
+        #     writer = csv.writer(csvfile, delimiter=' ', quotechar='|', quoting=csv.QUOTE_MINIMAL)
+        #     writer.writerow([str(self.__MLcenterfov_WFpx)])
 
         # plot the resulting transformed low-res coordinates on the hi-res image
-        coords_transf = []
-        for i in range(0,len(self.__loResCoords)):
-            pos = self.poly_thirdorder_transform(self.__transformCoeffs, self.__loResCoords[i])
-            # the following depends on the array viewing/axes order for camera and scan images, works for the current napari viewer (ImSwitch v1.2.1)
-            pos_px = (np.around(self.__loResSize-(pos[1] + self.__hiResSize/2)/self.__hiResPxSize, 3), np.around(self.__loResSize-(pos[0] + self.__hiResSize/2)/self.__hiResPxSize, 3))
-            coords_transf.append(pos_px)
-        coords_transf = np.array(coords_transf)
-        self._widget.pointsLayerTransf.data = coords_transf
+        # coords_transf = []
+        # for i in range(0,len(self.__loResCoords)):
+        #     pos = self.poly_thirdorder_transform(self.__transformCoeffs, self.__loResCoords[i])
+        #     # the following depends on the array viewing/axes order for camera and scan images, works for the current napari viewer (ImSwitch v1.2.1)
+        #     pos_px = (np.around(self.__loResSize-(pos[1] + self.__hiResSize/2)/self.__hiResPxSize, 3), np.around(self.__loResSize-(pos[0] + self.__hiResSize/2)/self.__hiResPxSize, 3))
+        #     coords_transf.append(pos_px)
+        # coords_transf = np.array(coords_transf)
+        # self._widget.pointsLayerTransf.data = coords_transf
 
         # update list of available coordinate transform coefficients
-        self.etSTEDController._widget.updateCoordTransformCoeffPar()
+        self.etMonalisaController._widget.updateCoordTransformCoeffPar()
 
     def resetCalibrationCoords(self):
         """ Reset all selected coordinates. """
@@ -719,8 +728,8 @@ class EtSTEDCoordTransformHelper():
             self.__hiResSize = imgsize
         elif modality == 'lo':
             self.__loResCoords = list()
-            self.__loResSize = np.shape(img_data)[1]
-            #self.__loResPxSize = pixelsize
+            self.__loResSize = imgsize
+            self.__loResPxSize = pixelsize
 
     def openFolder(self):
         """ Opens current folder in File Explorer and returns chosen filename. """
@@ -733,8 +742,8 @@ class EtSTEDCoordTransformHelper():
             viewer = self._widget.napariViewerHi
         elif modality == 'lo':
             viewer = self._widget.napariViewerLo
-            if self.etMonalisaController.getFlipWf():
-                img_data = np.moveaxis(img_data, 0, 1)
+            # if self.etMonalisaController.getFlipWf():
+            #     img_data = np.moveaxis(img_data, 0, 1)
         viewer.add_image(img_data)
         viewer.layers.unselect_all()
         viewer.layers.move_selected(len(viewer.layers)-1,0)

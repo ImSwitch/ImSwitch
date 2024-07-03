@@ -1,9 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import ctypes.util
 from ctypes import *
-import os
 import sys
 
 from . import IC_Structures as structs
@@ -23,7 +21,8 @@ class IC_GrabberDLL:
 
     # win32
     else:
-        _ic_grabber_dll = windll.LoadLibrary(ctypes.util.find_library('tisgrabber.dll'))
+        # windll.LoadLibrary(ctypes.util.find_library('tisgrabber.dll'))  # win 32 library
+        _ic_grabber_dll = cdll.LoadLibrary("tisgrabber.dll")
 
 
     #//////////////////////////////////////////////////////////////////////////

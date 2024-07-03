@@ -3,7 +3,7 @@ import numpy as np
 from imswitch.imcommon.model import initLogger
 from .DetectorManager import (
     DetectorManager, DetectorAction,
-    DetectorNumberParameter, DetectorListParameter,
+    DetectorNumberParameter,
     ExposureTimeToUs)
 
 
@@ -52,12 +52,6 @@ class TISManager(DetectorManager):
                                                   value=1,
                                                   valueUnits='arb.u.',
                                                   editable=True),
-
-            'video_format': DetectorListParameter(
-                                group='Misc',
-                                value='Y16 (320x240)',
-                                options=self._camera.get_video_formats(),
-                                editable=True),
         }
 
         # Prepare actions
@@ -65,10 +59,6 @@ class TISManager(DetectorManager):
             'More properties': DetectorAction(
                                     group='Misc',
                                     func=self._camera.openPropertiesGUI),
-
-            'Device selection': DetectorAction(
-                                    group='Misc',
-                                    func=self._camera.openDevSelectionGUI),
         }
 
         super().__init__(detectorInfo, name, fullShape=fullShape,

@@ -43,6 +43,9 @@ class FocusLockController(ImConWidgetController):
         self._widget.zStackBox.stateChanged.connect(self.zStackVarChange)
         self._widget.twoFociBox.stateChanged.connect(self.twoFociVarChange)
 
+        #self._commChannel.sigScanStarted.connect(self.scanUnlockFocus)
+        #self._commChannel.sigScanDone.connect(self.scanLockFocus)
+
         self.setPointSignal = 0
         self.locked = False
         self.aboutToLock = False
@@ -76,6 +79,15 @@ class FocusLockController(ImConWidgetController):
         self.__focusCalibThread.wait()
         if hasattr(super(), '__del__'):
             super().__del__()
+
+
+    #def scanUnlockFocus(self):
+        #print('unlock')
+        #self.locked = False
+    #def scanLockFocus(self):
+        #print('lock')
+        #if self._widget.lockButton.isChecked():
+            #self.locked = True
 
     def unlockFocus(self):
         if self.locked:

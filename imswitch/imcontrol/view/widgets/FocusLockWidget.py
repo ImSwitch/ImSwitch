@@ -12,7 +12,7 @@ class FocusLockWidget(Widget):
         super().__init__(*args, **kwargs)
 
         # Focus lock
-        self.kpEdit = QtWidgets.QLineEdit('0')
+        self.kpEdit = QtWidgets.QLineEdit('-1')
         self.kpLabel = QtWidgets.QLabel('kp')
         self.kiEdit = QtWidgets.QLineEdit('0')
         self.kiLabel = QtWidgets.QLabel('ki')
@@ -32,9 +32,9 @@ class FocusLockWidget(Widget):
 
         # Focus lock calibration
         self.calibFromLabel = QtWidgets.QLabel('From (µm)')
-        self.calibFromEdit = QtWidgets.QLineEdit('49')
+        self.calibFromEdit = QtWidgets.QLineEdit('-1')
         self.calibToLabel = QtWidgets.QLabel('To (µm)')
-        self.calibToEdit = QtWidgets.QLineEdit('51')
+        self.calibToEdit = QtWidgets.QLineEdit('1')
         self.focusCalibButton = guitools.BetterPushButton('Calib')
         self.focusCalibButton.setSizePolicy(QtWidgets.QSizePolicy.Preferred,
                                             QtWidgets.QSizePolicy.Expanding)

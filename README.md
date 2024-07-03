@@ -6,7 +6,7 @@
 
 ## News 
 
-🎥 Watch this intro video from Jacopo about ImSwitch on [YouTube](https://www.youtube.com/watch?v=B54QCt5OQPI&ab_channel=Euro-BioImagingCommunication
+🎥 Watch this intro video from Jacopo about ImSwitch on [YouTube](https://www.youtube.com/watch?v=B54QCt5OQPI&ab_channel=Euro-BioImagingCommunication)
 
 ## Statement of need
 

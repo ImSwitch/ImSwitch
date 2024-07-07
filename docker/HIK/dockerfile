@@ -64,15 +64,17 @@ RUN /bin/bash -c "source ~/.bashrc"
 #    fi
 
 
-RUN if [ "$ARCH" = "arm64" ]; then \
-        MINIFORGE_URL=https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-aarch64.sh; \
+# Download and install Miniforge based on architecture
+RUN MINIFORGE_URL=""; \
+    if [ "$ARCH" = "arm64" ]; then \
+        MINIFORGE_URL=${MINIFORGE_URL_ARCH}; \
     elif [ "$ARCH" = "amd64" ]; then \
-        MINIFORGE_URL=https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh; \
+        MINIFORGE_URL=${MINIFORGE_URL_AMD64}; \
     fi && \
     wget --quiet $MINIFORGE_URL -O /tmp/miniforge.sh && \
     /bin/bash /tmp/miniforge.sh -b -p /opt/conda && \
     rm /tmp/miniforge.sh
-
+    
 # Update PATH environment variable
 ENV PATH=/opt/conda/bin:$PATH
 

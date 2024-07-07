@@ -17,10 +17,15 @@
 FROM ubuntu:22.04
 
 ARG ARCH
-ENV MINIFORGE_URL_ARCH = https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-aarch64.sh
-ENV MINIFORGE_URL_AMD64 = https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh
+ENV MINIFORGE_URL_ARCH=https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-aarch64.sh
+ENV MINIFORGE_URL_AMD64=https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh
 
 ENV TZ=America/Los_Angeles
+
+# Set environment variable for MVCAM_COMMON_RUNENV
+ENV MVCAM_COMMON_RUNENV=/opt/MVS/lib
+ENV LD_LIBRARY_PATH=/opt/MVS/lib/64:/opt/MVS/lib/32:$LD_LIBRARY_PATH
+
 
 # Install necessary dependencies
 RUN apt-get update && apt-get install -y \
@@ -56,8 +61,6 @@ RUN /bin/bash -c "source ~/.bashrc"
 RUN cd /opt/MVS/Samples/aarch64/Python/ && \
     cp GrabImage/GrabImage.py MvImport/GrabImage.py    
 
-# Set environment variable for MVCAM_COMMON_RUNENV
-ENV MVCAM_COMMON_RUNENV=/opt/MVS/lib LD_LIBRARY_PATH=/opt/MVS/lib/64:/opt/MVS/lib/32:$LD_LIBRARY_PATH
 
 RUN if [ "$ARCH" = "arm64" ]; then \
         MINIFORGE_URL=https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-aarch64.sh; \

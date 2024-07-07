@@ -54,10 +54,11 @@ RUN mkdir -p /opt/MVS/bin/fonts
 
 # Download and install Miniforge based on architecture
 RUN if [ "$ARCH" = "arm64" ]; then \
-        wget --quiet ${MINIFORGE_URL_ARCH} -O /tmp/miniforge.sh; \
+        wget --quiet $MINIFORGE_URL_ARCH -O /tmp/miniforge.sh; \
     elif [ "$ARCH" = "amd64" ]; then \
-        wget --quiet ${MINIFORGE_URL_AMD64} -O /tmp/miniforge.sh; \
+        wget --quiet $MINIFORGE_URL_AMD64 -O /tmp/miniforge.sh; \
     fi && \
+    chmod +x /tmp/miniforge.sh && \
     /bin/bash /tmp/miniforge.sh -b -p /opt/conda && \
     rm /tmp/miniforge.sh
 

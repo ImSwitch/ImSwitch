@@ -49,3 +49,5 @@ jobs:
           tags: |
             ghcr.io/${{ env.IMAGE_NAME }}:latest
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            ARCH=${{ matrix.arch }}

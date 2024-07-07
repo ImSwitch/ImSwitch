@@ -13,6 +13,7 @@
 #  docker run -it --rm -p 8001:8001 -p 2222:22 -e HEADLESS=1 -e HTTP_PORT=8001 -e CONFIG_FILE=example_virtual_microscope.json -e UPDATE_GIT=0 -e UPDATE_CONFIG=0 --privileged imswitch_hik_amd64
 # 
 
+
 # Use an appropriate base image
 FROM ubuntu:22.04
 
@@ -21,11 +22,8 @@ ENV MINIFORGE_URL_ARCH=https://github.com/conda-forge/miniforge/releases/latest/
 ENV MINIFORGE_URL_AMD64=https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh
 
 ENV TZ=America/Los_Angeles
-
-# Set environment variable for MVCAM_COMMON_RUNENV
 ENV MVCAM_COMMON_RUNENV=/opt/MVS/lib
-ENV LD_LIBRARY_PATH=/opt/MVS/lib/64:/opt/MVS/lib/32:$LD_LIBRARY_PATH
-
+ENV LD_LIBRARY_PATH=/opt/MVS/lib/64:/opt/MVS/lib/32
 
 # Install necessary dependencies
 RUN apt-get update && apt-get install -y \
@@ -53,28 +51,16 @@ RUN cd /tmp && \
     fi
 
 RUN mkdir -p /opt/MVS/bin/fonts
-# Source the bashrc file
-RUN echo "source ~/.bashrc" >> ~/.bashrc
-RUN /bin/bash -c "source ~/.bashrc"
-
-# Copy the necessary Python script
-#RUN if [ "$ARCH" = "arm64" ]; then \
-#    cd /opt/MVS/Samples/aarch64/Python/ && \
-#    cp GrabImage/GrabImage.py MvImport/GrabImage.py  \
-#    fi
-
 
 # Download and install Miniforge based on architecture
-RUN MINIFORGE_URL=""; \
-    if [ "$ARCH" = "arm64" ]; then \
-        MINIFORGE_URL=${MINIFORGE_URL_ARCH}; \
+RUN if [ "$ARCH" = "arm64" ]; then \
+        wget --quiet ${MINIFORGE_URL_ARCH} -O /tmp/miniforge.sh; \
     elif [ "$ARCH" = "amd64" ]; then \
-        MINIFORGE_URL=${MINIFORGE_URL_AMD64}; \
+        wget --quiet ${MINIFORGE_URL_AMD64} -O /tmp/miniforge.sh; \
     fi && \
-    wget --quiet $MINIFORGE_URL -O /tmp/miniforge.sh && \
     /bin/bash /tmp/miniforge.sh -b -p /opt/conda && \
     rm /tmp/miniforge.sh
-    
+
 # Update PATH environment variable
 ENV PATH=/opt/conda/bin:$PATH
 
@@ -104,20 +90,17 @@ RUN mkdir /var/run/sshd && \
     sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config && \
     sed 's@session\s*required\s*pam_loginuid.so@session optional pam_loginuid.so@g' -i /etc/pam.d/sshd
 
-    
-
-
 # Start SSH server and run the ImSwitch application
 CMD ["/bin/bash", "-c", "\
     echo 'LSUSB' && lsusb && \
     /usr/sbin/sshd -D & \
     ls /root/ImSwitchConfig && \
-    if [ '$UPDATE_GIT' = 'true' ]; then \
+    if [ \"$UPDATE_GIT\" = \"true\" ]; then \
         cd /tmp/ImSwitch && \
         git pull && \
         /bin/bash -c 'source /opt/conda/bin/activate imswitch && pip install -e /tmp/ImSwitch'; \
     fi && \
-    if [ '$UPDATE_CONFIG' = 'true' ]; then \
+    if [ \"$UPDATE_CONFIG\" = \"true\" ]; then \
         cd /root/ImSwitchConfig && \
         git pull origin main; \
     fi && \

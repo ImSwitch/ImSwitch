@@ -1,3 +1,17 @@
+# Use an appropriate base image for Jetson Nano
+# sudo docker build -t imswitch_hik .
+# sudo docker run -it --privileged  imswitch_hik
+# docker stop imswitch_hik
+# sudo docker inspect imswitch_hik
+# docker run --privileged -it imswitch_hik
+# sudo docker run -it --rm -p 8001:8001 -p 2222:22 -e HEADLESS=1 -e HTTP_PORT=8001 -e CONFIG_FILE=example_virtual_microscope.json -e UPDATE_GIT=0 -e UPDATE_CONFIG=0 --privileged imswitch_hik
+# sudo docker run -it --rm -p 8001:8001 -p 2222:22 -e HEADLESS=1 -e HTTP_PORT=8001 -e CONFIG_FILE=example_uc2_hik_flowstop.json -e UPDATE_GIT=1 -e UPDATE_CONFIG=0 --privileged imswitch_hik
+# performs python3 /opt/MVS/Samples/aarch64/Python/MvImport/GrabImage.py
+#
+# docker build --build-arg ARCH=arm64  -t imswitch_hik_arm64 .
+# docker build --build-arg ARCH=amd64  -t imswitch_hik_amd64 .
+#  docker run -it --rm -p 8001:8001 -p 2222:22 -e HEADLESS=1 -e HTTP_PORT=8001 -e CONFIG_FILE=example_virtual_microscope.json -e UPDATE_GIT=0 -e UPDATE_CONFIG=0 --privileged imswitch_hik_amd64
+#
 # Use an appropriate base image
 FROM ubuntu:22.04
 
@@ -31,22 +45,25 @@ RUN cd /tmp && \
     unzip MVS_STD_GML_V2.1.2_231116.zip && \
     if [ "$ARCH" = "arm64" ]; then \
         dpkg --force-architecture -i MVS-2.1.2_aarch64_20231116.deb; \
-    elif [ "$ARCH" = "amd64" ]; then \
+    else \
         dpkg --force-architecture -i MVS-2.1.2_x86_64_20231116.deb; \
     fi
 
 RUN mkdir -p /opt/MVS/bin/fonts
 
 # Download and install Miniforge based on architecture
-RUN if [ "$ARCH" = "arm64" ]; then \
-        wget --quiet $MINIFORGE_URL_ARCH -O /tmp/miniforge.sh; \
-    elif [ "$ARCH" = "amd64" ]; then \
-        wget --quiet $MINIFORGE_URL_AMD64 -O /tmp/miniforge.sh; \
-    fi && \
-    chmod +x /tmp/miniforge.sh && \
+RUN cd /tmp && \
+    if [ "$ARCH" = "arm64" ]; then \
+        wget https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-aarch64.sh -O miniforge.sh; \
+    else \
+        wget https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh -O miniforge.sh; \
+    fi 
+    
+RUN ls /tmp && \
     /bin/bash /tmp/miniforge.sh -b -p /opt/conda && \
     rm /tmp/miniforge.sh
 
+    
 # Update PATH environment variable
 ENV PATH=/opt/conda/bin:$PATH
 

@@ -10,7 +10,8 @@
 # 
 # docker build --build-arg ARCH=arm64  -t imswitch_hik_arm64 .
 # docker build --build-arg ARCH=amd64  -t imswitch_hik_amd64 .
-
+#  docker run -it --rm -p 8001:8001 -p 2222:22 -e HEADLESS=1 -e HTTP_PORT=8001 -e CONFIG_FILE=example_virtual_microscope.json -e UPDATE_GIT=0 -e UPDATE_CONFIG=0 --privileged imswitch_hik_amd64
+# 
 
 # Use an appropriate base image
 FROM ubuntu:22.04
@@ -96,12 +97,26 @@ RUN mkdir /var/run/sshd && \
     sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config && \
     sed 's@session\s*required\s*pam_loginuid.so@session optional pam_loginuid.so@g' -i /etc/pam.d/sshd
 
-# Create a startup script
-COPY start_ssh.sh /start_ssh.sh
-RUN chmod +x /start_ssh.sh
+    
 
-# Expose SSH port and HTTP port
-EXPOSE 22 8001
 
-# Set the entrypoint to the startup script
-ENTRYPOINT ["/start_ssh.sh"]
+# Start SSH server and run the ImSwitch application
+CMD ["/bin/bash", "-c", "\
+    echo 'LSUSB' && lsusb && \
+    /usr/sbin/sshd -D & \
+    ls /root/ImSwitchConfig && \
+    if [ '$UPDATE_GIT' = 'true' ]; then \
+        cd /tmp/ImSwitch && \
+        git pull && \
+        /bin/bash -c 'source /opt/conda/bin/activate imswitch && pip install -e /tmp/ImSwitch'; \
+    fi && \
+    if [ '$UPDATE_CONFIG' = 'true' ]; then \
+        cd /root/ImSwitchConfig && \
+        git pull origin main; \
+    fi && \
+    source /opt/conda/bin/activate imswitch && \
+    HEADLESS=${HEADLESS:-1} && \
+    HTTP_PORT=${HTTP_PORT:-8001} && \
+    CONFIG_FILE=${CONFIG_FILE:-/root/ImSwitchConfig/imcontrol_setup/example_virtual_microscope.json} && \
+    USB_DEVICE_PATH=${USB_DEVICE_PATH:-/dev/bus/usb} && \
+    python3 -m imswitch --headless $HEADLESS --config-file $CONFIG_FILE --http-port $HTTP_PORT --ssl 1"]

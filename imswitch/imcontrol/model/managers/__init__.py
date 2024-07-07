@@ -5,6 +5,7 @@ from .LasersManager import LasersManager
 from .LEDsManager import LEDsManager
 from .LEDMatrixsManager import LEDMatrixsManager
 from .MultiManager import MultiManager
+from .NidaqManager import NidaqManager
 from .PositionersManager import PositionersManager
 from .RS232sManager import RS232sManager
 from .OFMsManager import OFMsManager
@@ -19,7 +20,6 @@ from .UC2ConfigManager import UC2ConfigManager
 from .SIMManager import SIMManager
 from .DPCManager import DPCManager
 from .MCTManager import MCTManager
-from .nidaqManager import NidaqManager
 from .ROIScanManager import ROIScanManager
 from .LightsheetManager import LightsheetManager
 from .WebRTCManager import WebRTCManager

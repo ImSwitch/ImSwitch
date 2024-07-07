@@ -38,7 +38,7 @@ class WebcamManager(DetectorManager):
         self.__logger = initLogger(self, instanceName=name)
         self.detectorInfo = detectorInfo
         cameraId = detectorInfo.managerProperties['cameraListIndex']
-        cameraPixelSize = detectorInfo.managerProperties['cameraPixelSize']
+        
         # initialize the camera
         self._camera = cv2.VideoCapture(cameraId)
         fullShape = (self._camera.get(cv2.CAP_PROP_FRAME_WIDTH),
@@ -70,13 +70,13 @@ class WebcamManager(DetectorManager):
             self._camera.set(cv2.CAP_PROP_AUTO_EXPOSURE, 15.6*1e-3)
         parameters['Camera pixel size'] = DetectorNumberParameter(
             group='Misc',
-            value=cameraPixelSize,
+            value=10,
             valueUnits='um',
             editable=True
         )
 
         super().__init__(detectorInfo, name, fullShape=fullShape, supportedBinnings=[1],
-                         model="OpenCV", parameters=parameters, croppable=False)
+                         model="OpenCV", parameters=parameters, croppable=True)
 
     @property
     def pixelSizeUm(self):
@@ -87,7 +87,7 @@ class WebcamManager(DetectorManager):
         return [1, umxpx, umxpx]
         
     def getLatestFrame(self, is_save=False):
-        frame = self._camera.read()[1]#[self._frameStart[1]:, self._frameStart[0]:]
+        frame = self._camera.read()[1][self._frameStart[1]:, self._frameStart[0]:]
         return cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
     def setParameter(self, name, value):
@@ -120,7 +120,14 @@ class WebcamManager(DetectorManager):
         self.parameters['Camera pixel size'].value = pixelSizeUm
 
     def crop(self, hpos, vpos, hsize, vsize):
-        pass
+        try:
+            self._camera.set(cv2.CAP_PROP_FRAME_WIDTH, hsize)
+            self._camera.set(cv2.CAP_PROP_FRAME_HEIGHT, vsize)
+            self._shape = (hsize, vsize)
+            self._frameStart = (hpos, vpos)
+        except:
+            raise ValueError(f"Camera does not support {hsize}x{vsize} resolution")
+
 # Copyright (C) ImSwitch developers 2023
 # This file is part of ImSwitch.
 #

@@ -39,21 +39,23 @@ RUN apt-get update && apt-get install -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
+RUN echo "ARCH is $ARCH" 
+
 # Download and install the appropriate Hik driver based on architecture
 RUN cd /tmp && \
     wget https://www.hikrobotics.com/cn2/source/support/software/MVS_STD_GML_V2.1.2_231116.zip && \
     unzip MVS_STD_GML_V2.1.2_231116.zip && \
     if [ "$ARCH" = "arm64" ]; then \
-        dpkg -i MVS-2.1.2_aarch64_20231116.deb; \
+        dpkg --force-architecture -i MVS-2.1.2_aarch64_20231116.deb; \
     elif [ "$ARCH" = "amd64" ]; then \
-        dpkg -i MVS-2.1.2_x86_64_20231116.deb; \
+        dpkg --force-architecture -i MVS-2.1.2_x86_64_20231116.deb; \
     fi
 
 RUN mkdir -p /opt/MVS/bin/fonts
 
+
 # Download and install Miniforge based on architecture
-RUN echo "ARCH is $ARCH" && \
-    if [ "$ARCH" = "arm64" ]; then \
+RUN if [ "$ARCH" = "arm64" ]; then \
         wget --quiet $MINIFORGE_URL_ARCH -O /tmp/miniforge.sh; \
     elif [ "$ARCH" = "amd64" ]; then \
         wget --quiet $MINIFORGE_URL_AMD64 -O /tmp/miniforge.sh; \

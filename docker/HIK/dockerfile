@@ -58,10 +58,10 @@ RUN echo "source ~/.bashrc" >> ~/.bashrc
 RUN /bin/bash -c "source ~/.bashrc"
 
 # Copy the necessary Python script
-RUN if [ "$ARCH" = "arm64" ]; then \
-    cd /opt/MVS/Samples/aarch64/Python/ && \
-    cp GrabImage/GrabImage.py MvImport/GrabImage.py  \
-    fi
+#RUN if [ "$ARCH" = "arm64" ]; then \
+#    cd /opt/MVS/Samples/aarch64/Python/ && \
+#    cp GrabImage/GrabImage.py MvImport/GrabImage.py  \
+#    fi
 
 
 RUN if [ "$ARCH" = "arm64" ]; then \

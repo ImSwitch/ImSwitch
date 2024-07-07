@@ -47,6 +47,13 @@ RUN cd /tmp && \
     fi
 
 RUN mkdir -p /opt/MVS/bin/fonts
+# Source the bashrc file
+RUN echo "source ~/.bashrc" >> ~/.bashrc
+RUN /bin/bash -c "source ~/.bashrc"
+
+# Copy the necessary Python script
+RUN cd /opt/MVS/Samples/aarch64/Python/ && \
+    cp GrabImage/GrabImage.py MvImport/GrabImage.py    
 
 # Set environment variable for MVCAM_COMMON_RUNENV
 ENV MVCAM_COMMON_RUNENV=/opt/MVS/lib LD_LIBRARY_PATH=/opt/MVS/lib/64:/opt/MVS/lib/32:$LD_LIBRARY_PATH

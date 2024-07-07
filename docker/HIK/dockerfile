@@ -1,18 +1,3 @@
-
-# Use an appropriate base image for Jetson Nano
-# sudo docker build -t imswitch_hik .
-# sudo docker run -it --privileged  imswitch_hik
-# docker stop imswitch_hik
-# sudo docker inspect imswitch_hik
-# docker run --privileged -it imswitch_hik
-# sudo docker run -it --rm -p 8001:8001 -p 2222:22 -e HEADLESS=1 -e HTTP_PORT=8001 -e CONFIG_FILE=example_virtual_microscope.json -e UPDATE_GIT=0 -e UPDATE_CONFIG=0 --privileged imswitch_hik
-# sudo docker run -it --rm -p 8001:8001 -p 2222:22 -e HEADLESS=1 -e HTTP_PORT=8001 -e CONFIG_FILE=example_uc2_hik_flowstop.json -e UPDATE_GIT=1 -e UPDATE_CONFIG=0 --privileged imswitch_hik
-# performs python3 /opt/MVS/Samples/aarch64/Python/MvImport/GrabImage.py
-#
-# docker build --build-arg ARCH=arm64  -t imswitch_hik_arm64 .
-# docker build --build-arg ARCH=amd64  -t imswitch_hik_amd64 .
-#  docker run -it --rm -p 8001:8001 -p 2222:22 -e HEADLESS=1 -e HTTP_PORT=8001 -e CONFIG_FILE=example_virtual_microscope.json -e UPDATE_GIT=0 -e UPDATE_CONFIG=0 --privileged imswitch_hik_amd64
-#
 # Use an appropriate base image
 FROM ubuntu:22.04
 
@@ -24,7 +9,7 @@ ENV TZ=America/Los_Angeles
 ENV MVCAM_COMMON_RUNENV=/opt/MVS/lib
 ENV LD_LIBRARY_PATH=/opt/MVS/lib/64:/opt/MVS/lib/32
 
-# Install necessary dependencies
+# Install necessary dependencies and qemu-user-static for cross-building
 RUN apt-get update && apt-get install -y \
     wget \
     unzip \
@@ -36,10 +21,9 @@ RUN apt-get update && apt-get install -y \
     openssh-server \
     libhdf5-dev \
     usbutils \
+    qemu-user-static \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
-
-RUN echo "ARCH is $ARCH" 
 
 # Download and install the appropriate Hik driver based on architecture
 RUN cd /tmp && \
@@ -52,7 +36,6 @@ RUN cd /tmp && \
     fi
 
 RUN mkdir -p /opt/MVS/bin/fonts
-
 
 # Download and install Miniforge based on architecture
 RUN if [ "$ARCH" = "arm64" ]; then \

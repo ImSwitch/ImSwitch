@@ -4,7 +4,7 @@ from scipy.signal import correlate
 from imswitch.imcommon.model import initLogger
 from ..basecontrollers import ImConWidgetController
 from imswitch.imcommon.framework import Thread
-from typing import List
+from typing import List, Tuple
 
 from .OptController import ScanOPTWorker
 
@@ -107,9 +107,10 @@ class AlignOptController(ImConWidgetController):
         curPos = self._master.rotatorsManager[
                                 self.rotatorName
                                 ].get_position()[0]
-        counterPos = (curPos + self.stepsPerTurn//2) % self.stepsPerTurn
-        self.optWorker.optSteps = [curPos, counterPos]
-        self.optSteps = 2
+
+        step = self.stepsPerTurn//4
+        self.optWorker.optSteps = [curPos, curPos + step, curPos + 2*step, curPos + 3*step]
+        self.optSteps = 4
 
         # starting scan
         self.enableWidget(False)
@@ -172,6 +173,7 @@ class AlignOptController(ImConWidgetController):
         if self.optWorker.isOPTScanRunning:
             self.allFrames.append(np.uint16(frame))
 
+    # TODO Needs to change from here
     def processAlign(self, arr: np.ndarray) -> None:
         """Plot counter projection using AlignCOR class
 
@@ -208,10 +210,138 @@ class AlignOptController(ImConWidgetController):
 
 
 class AlignCOR():
+    """Class to visualize alignment of the two pairs of 180 deg tomographic
+    projections, i.e. 0, 90, 180, 270 deg. The class is used to calculate
+    cummulative sums of the two projections
+
+    and their cross-correlation.
+    """
+    def __init__(self, img_stack: np.ndarray, shift: int) -> None:
+        """Init class, check validity of the img_stack shape and calculate
+        shifted overlay stack
+
+        Args:
+            img_stack (np.ndarray): stack od two counter-projections
+            shift (int): shift of one of the projections in respect to the
+                other one, in pixels.
+
+        Raises:
+            IndexError: In case of wrong array shape
+        """
+        if len(img_stack) != 4:
+            raise IndexError('Stack must contain exactly two images.')
+        # img_stack is opt acquired at 0, 90, 180, 270 deg
+        self.img_stack_raw = {}
+        self.img_stack_raw['pair1'] = [img_stack[0],
+                                       img_stack[2],
+                                       ]
+        self.img_stack_raw['pair2'] = [img_stack[1],
+                                       img_stack[3],
+                                       ]
+
+        self.shift = shift
+
+        # invert one of the images and do overlay.
+        self.createShiftedStack()
+        self.img_stack = {}
+
+    def createShiftedStack(self):
+        """ This shifts the first of the two projections by self.shift,
+        first image in the stack is also mirrored around vertical center axis
+        """
+        shifted = [np.roll(k, self.shift, axis=1) for k in self.img_stack_raw]
+        self.img_stack['pair1'] = [shifted[0][:, ::-1],
+                                   shifted[2],
+                                   ]
+        self.img_stack['pair2'] = [shifted[1][:, ::-1],
+                                   shifted[3],
+                                   ]
+
+    def processHorCuts(self, idx_list: List[int]) -> None:
+        """Retrieve rows from the camera frames, mirror flip and merge
+        the projections. Second part calculates cross-correlation of the
+        cuts which should be ideally perfectly matching and central ->
+        optimization enabler
+
+        Args:
+            idx_list (List[int]): indices of row for horizontal cuts.
+        """
+        self.valid_idx = []
+        self.horCuts = {'pair1': [], 'pair2': []}
+
+        # evaluate if the idx is in the range of the detector
+        for i in idx_list:  # idx is row of the detector
+            if 0 <= i < self.img_stack['pair1'][0].shape[0]:
+                self.valid_idx.append(i)
+            else:
+                print(f"Index {i} out of camera's range")
+
+        # add rows
+        for i in self.valid_idx:  # idx is row of the detector
+            # append tuple of (first from stack, merged one) at given idx
+            self.horCuts['pair1'].append((self.img_stack['pair1'][0][i],
+                                          self.img_stack['pair1'][1][i],
+                                          ))
+
+        # cumsum metric
+        self.diff_raw = {'pair1': [], 'pair2': []}
+        self.s1_raw = {'pair1': [], 'pair2': []}
+        self.s2_raw = {'pair1': [], 'pair2': []}
+
+        self.diff = {'pair1': [], 'pair2': []}
+        self.s1 = {'pair1': [], 'pair2': []}
+        self.s2 = {'pair1': [], 'pair2': []}
+
+        for i in self.valid_idx:
+            for pair in ['pair1', 'pair2']:
+                diff_raw, s1_raw, s2_raw = self.cumsumDiff(
+                                            self.img_stack_raw[pair][0][i],
+                                            self.img_stack_raw[pair][1][i],
+                                            )
+                self.diff_raw[pair].append(diff_raw)
+                self.s1_raw[pair].append(s1_raw)
+                self.s2_raw[pair].append(s2_raw)
+
+                diff, s1, s2 = self.cumsumDiff(
+                                    self.img_stack[pair][0][i],
+                                    self.img_stack[pair][1][i],
+                                    )
+                self.diff[pair].append(diff)
+                self.s1[pair].append(s1)
+                self.s2[pair].append(s2)
+
+    def cumsumDiff(self, arr1, arr2) -> Tuple[float, np.ndarray, np.ndarray]:
+        """ Calculate sum of difference of cumsums of the counterprojections.
+        This should be minimized for centering for the COR.
+        """
+        s1, s2 = np.cumsum(arr1), np.cumsum(arr2)
+        diff = abs(sum(s1 - s2))
+        return diff, s1, s2
+
+    def _recalcWithShift(self) -> None:
+        """ Called after shift value changes. """
+        # first redo the stack
+        self.createShiftedStack()
+
+        # process cuts
+        self.processHorCuts(self.valid_idx)
+
+    def _updateShift(self, value: int) -> None:
+        """ Updates x-shift value between projections. Triggers
+        recalculation of the merge
+
+        Args:
+            value (int): shift between projections in pixels.
+        """
+        self.shift = value
+        self._recalcWithShift()
+
+
+class AlignCOR_old():
     """Class to visualize alignment of the two 180 deg tomographic
     projections
     """
-    def __init__(self,img_stack: np.ndarray, shift: int) -> None:
+    def __init__(self, img_stack: np.ndarray, shift: int) -> None:
         """Init class, check validity of the img_stack shape and calculate
         shifted overlay stack
 
@@ -250,7 +380,7 @@ class AlignCOR():
         self.merged = np.array(self.img_stack).mean(axis=0).astype(np.int16)
 
     def processHorCuts(self, idx_list: List[int]) -> None:
-        """Retrive rows from the camera frames, mirror flip and merge
+        """Retrieve rows from the camera frames, mirror flip and merge
         the projections. Second part calculates cross-correlation of the
         cuts which should be ideally perfectly matching and central ->
         optimization enabler

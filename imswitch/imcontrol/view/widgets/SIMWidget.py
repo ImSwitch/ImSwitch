@@ -50,11 +50,13 @@ class SIMWidget(NapariHybridWidget):
         if self.layer is not None:
             return self.img.image
         
-    def setImage(self, im, name="SIM Reconstruction"):
+    def setImage(self, im, name="SIM Reconstruction", pixelsize=None):
         if self.layer is None or name not in self.viewer.layers:
             self.layer = self.viewer.add_image(im, rgb=False, name=name, blending='additive')
         else:
             self.viewer.layers[name].data = im
+        if len(im.shape) == 2 and pixelsize is not None:
+            self.viewer.layers[name].scale = (pixelsize, pixelsize)
 
     def create_manual_control_tab(self):
         tab = QWidget()
@@ -202,7 +204,7 @@ class SIMWidget(NapariHybridWidget):
 
         # Label/textedit pairs
         settings = [
-            ("Period", "0"), ("Number of frames", "10")
+            ("Period", "0"), ("Number of frames", "10") , ("Drift correction", "0")
         ]
         
         # create widget per label
@@ -211,6 +213,8 @@ class SIMWidget(NapariHybridWidget):
         self.period_unit = QLabel("s")
         self.frames_label = QLabel(settings[1][0])
         self.frames_textedit = QLineEdit(settings[1][1])
+        self.correction_label = QLabel(settings[2][0])
+        self.correction_textedit = QLineEdit(settings[2][1])        
         row_layout_1 = QHBoxLayout()
         row_layout_1.addWidget(self.period_label)
         row_layout_1.addWidget(self.period_textedit)
@@ -218,8 +222,12 @@ class SIMWidget(NapariHybridWidget):
         row_layout_2 = QHBoxLayout()
         row_layout_2.addWidget(self.frames_label)
         row_layout_2.addWidget(self.frames_textedit)
+        row_layout_3 = QHBoxLayout()
+        row_layout_3.addWidget(self.correction_label)
+        row_layout_3.addWidget(self.correction_textedit)
         layout.addLayout(row_layout_1)
         layout.addLayout(row_layout_2)
+        layout.addLayout(row_layout_3)
         
         layout.addSpacing(20)
         

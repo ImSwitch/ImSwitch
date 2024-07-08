@@ -154,6 +154,8 @@ class ESP32StageManager(PositionerManager):
 
         # try to register the callback
         try:
+            # if event "0" is triggered, the callback function to update the stage positions 
+            # will be called
             self._motor.register_callback(0,callbackfct=self.setPositionFromDevice)
         except Exception as e:
             self.__logger.error(f"Could not register callback: {e}")

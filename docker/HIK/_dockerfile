@@ -7,21 +7,23 @@
 # sudo docker run -it --rm -p 8001:8001 -p 2222:22 -e HEADLESS=1 -e HTTP_PORT=8001 -e CONFIG_FILE=example_virtual_microscope.json -e UPDATE_GIT=0 -e UPDATE_CONFIG=0 --privileged imswitch_hik
 # sudo docker run -it --rm -p 8001:8001 -p 2222:22 -e HEADLESS=1 -e HTTP_PORT=8001 -e CONFIG_FILE=example_uc2_hik_flowstop.json -e UPDATE_GIT=1 -e UPDATE_CONFIG=0 --privileged imswitch_hik
 # performs python3 /opt/MVS/Samples/aarch64/Python/MvImport/GrabImage.py
-# 
+#
 # docker build --build-arg ARCH=arm64  -t imswitch_hik_arm64 .
 # docker build --build-arg ARCH=amd64  -t imswitch_hik_amd64 .
-
-
+#  docker run -it --rm -p 8001:8001 -p 2222:22 -e HEADLESS=1 -e HTTP_PORT=8001 -e CONFIG_FILE=example_virtual_microscope.json -e UPDATE_GIT=0 -e UPDATE_CONFIG=0 --privileged imswitch_hik_amd64
+#
 # Use an appropriate base image
 FROM ubuntu:22.04
 
 ARG ARCH
-ENV MINIFORGE_URL_ARCH = https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-aarch64.sh
-ENV MINIFORGE_URL_AMD64 = https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh
+ENV MINIFORGE_URL_ARCH=https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-aarch64.sh
+ENV MINIFORGE_URL_AMD64=https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh
 
 ENV TZ=America/Los_Angeles
+ENV MVCAM_COMMON_RUNENV=/opt/MVS/lib
+ENV LD_LIBRARY_PATH=/opt/MVS/lib/64:/opt/MVS/lib/32
 
-# Install necessary dependencies
+# Install necessary dependencies and qemu-user-static for cross-building
 RUN apt-get update && apt-get install -y \
     wget \
     unzip \
@@ -33,6 +35,7 @@ RUN apt-get update && apt-get install -y \
     openssh-server \
     libhdf5-dev \
     usbutils \
+    qemu-user-static \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -41,29 +44,23 @@ RUN cd /tmp && \
     wget https://www.hikrobotics.com/cn2/source/support/software/MVS_STD_GML_V2.1.2_231116.zip && \
     unzip MVS_STD_GML_V2.1.2_231116.zip && \
     if [ "$ARCH" = "arm64" ]; then \
-        dpkg -i MVS-2.1.2_aarch64_20231116.deb; \
-    elif [ "$ARCH" = "amd64" ]; then \
-        dpkg -i MVS-2.1.2_x86_64_20231116.deb; \
+        dpkg --force-architecture -i MVS-2.1.2_aarch64_20231116.deb; \
+    else \
+        dpkg --force-architecture -i MVS-2.1.2_x86_64_20231116.deb; \
     fi
 
 RUN mkdir -p /opt/MVS/bin/fonts
-# Source the bashrc file
-RUN echo "source ~/.bashrc" >> ~/.bashrc
-RUN /bin/bash -c "source ~/.bashrc"
 
-# Copy the necessary Python script
-RUN cd /opt/MVS/Samples/aarch64/Python/ && \
-    cp GrabImage/GrabImage.py MvImport/GrabImage.py    
-
-# Set environment variable for MVCAM_COMMON_RUNENV
-ENV MVCAM_COMMON_RUNENV=/opt/MVS/lib LD_LIBRARY_PATH=/opt/MVS/lib/64:/opt/MVS/lib/32:$LD_LIBRARY_PATH
-
-RUN if [ "$ARCH" = "arm64" ]; then \
-        MINIFORGE_URL=https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-aarch64.sh; \
-    elif [ "$ARCH" = "amd64" ]; then \
-        MINIFORGE_URL=https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh; \
-    fi && \
-    wget --quiet $MINIFORGE_URL -O /tmp/miniforge.sh && \
+# Download and install Miniforge based on architecture
+RUN cd /tmp && \
+    if [ "$ARCH" = "arm64" ]; then \
+        wget https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-aarch64.sh -O miniforge.sh; \
+    else \
+        wget https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh -O miniforge.sh; \
+    fi 
+    
+RUN ls /tmp && \
+    chmod +x /tmp/miniforge.sh && \
     /bin/bash /tmp/miniforge.sh -b -p /opt/conda && \
     rm /tmp/miniforge.sh
 
@@ -95,11 +92,6 @@ RUN mkdir /var/run/sshd && \
     echo 'root:password' | chpasswd && \
     sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config && \
     sed 's@session\s*required\s*pam_loginuid.so@session optional pam_loginuid.so@g' -i /etc/pam.d/sshd
-
-
-
-# Expose SSH port and HTTP port
-EXPOSE 22 8001
 
 # Start SSH server and run the ImSwitch application
 CMD ["/bin/bash", "-c", "\

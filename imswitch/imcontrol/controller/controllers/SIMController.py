@@ -648,14 +648,14 @@ class SIMController(ImConWidgetController):
     def performSIMZstackThread(self,sim_parameters,zDis,zStep):
         mStep = 0
         acc = 0    #hardcoded acceleration
-        mspeed = 1000   #hardcoded speed
+        mspeed = 500   #hardcoded speed
         while mStep < zStep:
             mStep += 1
+            time.sleep(0.1)
             self.performSIMTimelapseThread(sim_parameters)
-            self.positioner.move(value=zDis, axis="X", is_absolute=True, is_blocking=False)
-            time.sleep(0.2) # wait for the motor to move # TODO: Make this blocking again!
+            time.sleep(0.1) # wait for the motor to move # TODO: Make this blocking again!
+            self.positioner.move(value=zDis, axis="X", speed=mspeed, is_absolute=False, is_blocking=False)
             #self.positioner.move(zDis,acceleration = acc, speed=mspeed)
-            #time.sleep(0.2)
         self.active = False
         self.lasers[0].setEnabled(False)
         self.lasers[1].setEnabled(False)

@@ -19,13 +19,14 @@ class PositionerWidget(Widget):
         self.pars = {}
         self.grid = QtWidgets.QGridLayout()
         self.setLayout(self.grid)
+        self.axes = []
 
     def addPositioner(self, positionerName, axes, hasSpeed, hasHome=True, hasStop=True):
         for i in range(len(axes)):
             axis = axes[i]
             parNameSuffix = self._getParNameSuffix(positionerName, axis)
             label = f'{axis}' if positionerName != axis else positionerName #f'{positionerName} -- {axis}' if positionerName != axis else positionerName
-
+            self.axes.append(axis)
             self.pars['Label' + parNameSuffix] = QtWidgets.QLabel(f'<strong>{label}</strong>')
             self.pars['Label' + parNameSuffix].setTextFormat(QtCore.Qt.RichText)
             self.pars['Position' + parNameSuffix] = QtWidgets.QLabel(f'<strong>{0:.2f} µm</strong>')
@@ -84,37 +85,45 @@ class PositionerWidget(Widget):
                 lambda *args, axis=axis: self.sigStepAbsoluteClicked.emit(positionerName, axis)
             )
 
-            self.numPositioners += 1
-            
-    
+            self.numPositioners += 1    
 
     def getAbsPosition(self, positionerName, axis):
         """ Returns the absolute position of the  specified positioner axis in
         micrometers. """
+        if axis not in self.axes:
+            return None
         parNameSuffix = self._getParNameSuffix(positionerName, axis)
         return float(self.pars['AbsolutePosEdit' + parNameSuffix].text())
 
     def getStepSize(self, positionerName, axis):
         """ Returns the step size of the specified positioner axis in
         micrometers. """
+        if axis not in self.axes:
+            return None
         parNameSuffix = self._getParNameSuffix(positionerName, axis)
         return float(self.pars['StepEdit' + parNameSuffix].text())
 
     def setStepSize(self, positionerName, axis, stepSize):
         """ Sets the step size of the specified positioner axis to the
         specified number of micrometers. """
+        if axis not in self.axes:
+            return None
         parNameSuffix = self._getParNameSuffix(positionerName, axis)
         self.pars['StepEdit' + parNameSuffix].setText(stepSize)
 
     def getSpeed(self, positionerName, axis):
         """ Returns the step size of the specified positioner axis in
         micrometers. """
+        if axis not in self.axes:
+            return None
         parNameSuffix = self._getParNameSuffix(positionerName, axis)
         return float(self.pars['SpeedEdit' + parNameSuffix].text())
 
     def setSpeedSize(self, positionerName, axis, speedSize):
         """ Sets the step size of the specified positioner axis to the
         specified number of micrometers. """
+        if axis not in self.axes:
+            return None
         parNameSuffix = self._getParNameSuffix(positionerName, axis)
         try:
             self.pars['SpeedEdit' + parNameSuffix].setText(str(speedSize))

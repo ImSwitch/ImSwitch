@@ -2,8 +2,6 @@ from imswitch.imcommon.model import initLogger
 from .PositionerManager import PositionerManager
 import time
 import numpy as np
-from imswitch.imcommon.model import APIExport, generateAPI, initLogger
-import threading
 
 MAX_ACCEL = 500000
 PHYS_FACTOR = 1
@@ -50,6 +48,13 @@ class ESP32StageManager(PositionerManager):
         self.backlashY = positionerInfo.managerProperties.get('backlashY', 0)
         self.backlashZ = positionerInfo.managerProperties.get('backlashZ', 0)
         self.backlashA = positionerInfo.managerProperties.get('backlashA', 0)
+        
+        # maximum speed per Axis
+        self.maxSpeed = {}
+        self.maxSpeed["X"] = positionerInfo.managerProperties.get('maxSpeedX', 10000)
+        self.maxSpeed["Y"] = positionerInfo.managerProperties.get('maxSpeedY', 10000)
+        self.maxSpeed["Z"] = positionerInfo.managerProperties.get('maxSpeedZ', 10000)
+        self.maxSpeed["A"] = positionerInfo.managerProperties.get('maxSpeedA', 10000)
 
         # Setup homing coordinates and speed
         # X
@@ -135,8 +140,11 @@ class ESP32StageManager(PositionerManager):
 
         # optional: hom on startup:
         if self.homeOnStartX: self.home_x()
+        time.sleep(0.5)
         if self.homeOnStartY: self.home_y()
+        time.sleep(0.5)
         if self.homeOnStartZ: self.home_z()
+        time.sleep(0.5)
 
         # set speed for all axes
         self._speed = {"X": positionerInfo.managerProperties.get('speedX', 10000),
@@ -316,11 +324,11 @@ class ESP32StageManager(PositionerManager):
         self.setPosition(value, axis)
         self._motor.set_position(axis, value)
 
-    def setPositionFromDevice(self, poitionArray: np.array):
+    def setPositionFromDevice(self, positionArray: np.array):
         ''' mostly used for he position callback 
         If new positions are coming from the device they will be updated in ImSwitch too'''
         for iAxis, axisName in enumerate(["A", "X", "Y", "Z"]):
-            self.setPosition(poitionArray[iAxis]*self.stepSizes[axisName], axisName)
+            self.setPosition(positionArray[iAxis]*self.stepSizes[axisName], axisName)
         self._commChannel.sigUpdateMotorPosition.emit()
         
         

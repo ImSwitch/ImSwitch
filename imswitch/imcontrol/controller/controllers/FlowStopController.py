@@ -13,7 +13,7 @@ from imswitch.imcommon.framework import Signal, Worker, Mutex, Timer
 from imswitch.imcontrol.view import guitools
 from imswitch.imcommon.model import initLogger
 from ..basecontrollers import LiveUpdatedController
-import imswitch
+from imswitch import IS_HEADLESS
 from threading import Thread
 from imswitch.imcontrol.model import RecMode, SaveMode, SaveFormat
 
@@ -57,7 +57,7 @@ class FlowStopController(LiveUpdatedController):
         self.changeAutoExposureTime('auto')
         
         # Connect FlowStopWidget signals
-        if not imswitch.IS_HEADLESS:
+        if not IS_HEADLESS:
             # Connect CommunicationChannel signals
             self._commChannel.sigUpdateImage.connect(self.update)
             self._widget.sigSnapClicked.connect(self.snapImageFlowCam)
@@ -117,10 +117,19 @@ class FlowStopController(LiveUpdatedController):
         self._widget.buttonStart.setStyleSheet("background-color: grey")
         self.startFlowStopExperiment(timeStamp, experimentName, experimentDescription, uniqueId, numImages, volumePerImage, timeToStabilize)
 
-    @APIExport(runOnUIThread=True)
-    def getStatus(self):
-        return self.is_measure, self.imagesTaken
+    @APIExport()
+    def getStatus(self) -> list:
+        return [self.is_measure, self.imagesTaken]
 
+    @APIExport()
+    def getExperimentParameters(self) -> dict:
+        self.mExperimentParameters = self._widget.getAutomaticImagingParameters()
+        return self.mExperimentParameters 
+    
+    @APIExport()
+    def isRunning(self) -> bool:
+        return self.is_measure
+    
     @APIExport(runOnUIThread=True)
     def startFlowStopExperiment(self, timeStamp: str, experimentName: str, experimentDescription: str, 
                                 uniqueId: str, numImages: int, volumePerImage: float, timeToStabilize: float, 
@@ -168,7 +177,7 @@ class FlowStopController(LiveUpdatedController):
     @APIExport(runOnUIThread=True)
     def stopFlowStopExperiment(self):
         self.is_measure=False
-        if not imswitch.IS_HEADLESS:
+        if not IS_HEADLESS:
             self._widget.buttonStart.setEnabled(True)
             self._widget.buttonStop.setEnabled(False)
             self._widget.buttonStop.setStyleSheet("background-color: grey")
@@ -188,7 +197,7 @@ class FlowStopController(LiveUpdatedController):
 
         '''
         self._logger.debug("Starting the FlowStop experiment thread in {delayToStart} seconds.")
-        time.sleep(delayToStart)
+        time.sleep(abs(delayToStart))
         self._commChannel.sigStartLiveAcquistion.emit(True)
         self.is_measure = True
         if numImages < 0: numImages = np.inf
@@ -220,11 +229,12 @@ class FlowStopController(LiveUpdatedController):
                 mFileName = f'{timeStamp}_{experimentName}_{uniqueId}_{self.imagesTaken}'
                 mFilePath = os.path.join(dirPath, mFileName)
                 self.snapImageFlowCam(mFilePath, metaData)
-                
+                self._logger.debug(f"Image {self.imagesTaken} saved to {mFilePath}")
+
                 # maintain framerate
                 while (time.time()-currentTime)<(1/frameRate):
                     time.sleep(0.05)
-                if not imswitch.IS_HEADLESS:
+                if not IS_HEADLESS:
                     self._widget.labelStatusValue.setText(f'Running: {self.imagesTaken+1}/{numImages}')
             else:
                 break

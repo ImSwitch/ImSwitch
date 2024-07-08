@@ -18,8 +18,22 @@ class PositionerWidget(Widget):
         self.numPositioners = 0
         self.pars = {}
         self.grid = QtWidgets.QGridLayout()
-        self.setLayout(self.grid)
-        self.axes = []
+        #self.setLayout(self.grid)
+    
+        # Schritt 1: Container-Widget erstellen
+        containerWidget = QtWidgets.QWidget()
+
+        # Schritt 2: Grid-Layout dem Container-Widget zuweisen
+        containerWidget.setLayout(self.grid)
+
+        # Schritt 3: QScrollArea erstellen und konfigurieren
+        scrollArea = QtWidgets.QScrollArea()
+        scrollArea.setWidgetResizable(True)  # Erlaubt dem Container-Widget, seine Größe anzupassen
+        scrollArea.setWidget(containerWidget)  # Setzt das Container-Widget in die ScrollArea
+
+        # Schritt 4: ScrollArea als Hauptlayout des übergeordneten Widgets setzen
+        self.setLayout(QtWidgets.QVBoxLayout())  # Erstellt ein neues vertikales Layout für das übergeordnete Widget
+        self.layout().addWidget(scrollArea)  # Fügt die ScrollArea zum Layout des übergeordneten Widgets hinzu
 
     def addPositioner(self, positionerName, axes, hasSpeed, hasHome=True, hasStop=True):
         for i in range(len(axes)):

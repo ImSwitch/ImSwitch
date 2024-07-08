@@ -9,7 +9,7 @@ except:
 from .FilesController import FilesController
 from .OutputController import OutputController
 from .basecontrollers import ImScrWidgetController
-import imswitch
+from imswitch import IS_HEADLESS
 
 class ImScrMainViewController(ImScrWidgetController):
     """ Connected to ImScrMainView. """

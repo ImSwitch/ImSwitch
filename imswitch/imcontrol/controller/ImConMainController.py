@@ -1,7 +1,7 @@
 import dataclasses
 import pkg_resources
 import h5py
-import imswitch
+from imswitch import IS_HEADLESS
 from imswitch.imcommon.controller import MainController, PickDatasetsController
 from imswitch.imcommon.model import (
     ostools, initLogger, generateAPI, generateShortcuts, SharedAttributes
@@ -42,7 +42,7 @@ class ImConMainController(MainController):
             self.__setupInfo, self.__masterController, self.__commChannel, self._moduleCommChannel
         )
         
-        if not imswitch.IS_HEADLESS:
+        if not IS_HEADLESS:
             self.pickSetupController = self.__factory.createController(
                 PickSetupController, self.__mainView.pickSetupDialog
             )
@@ -90,16 +90,8 @@ class ImConMainController(MainController):
 
         self.__logger.debug("Start ImSwitch Server")
         self._serverWorker = ImSwitchServer(self.__api, setupInfo)
-        if False:
-            self.__logger.debug(self.__api)
-            self._thread = Thread()
-            self._serverWorker.moveToThread(self._thread)
-            self._thread.started.connect(self._serverWorker.run)
-            self._thread.finished.connect(self._serverWorker.stop)
-            self._thread.start()
-        else:
-            self._thread = threading.Thread(target=self._serverWorker.run)
-            self._thread.start()
+        self._thread = threading.Thread(target=self._serverWorker.run)
+        self._thread.start()
 
     @property
     def api(self):

@@ -2,7 +2,8 @@
 __pycache__/
 *.py[cod]
 venv
-
+.ipynb_checkpoints/
+tools/
 # mypy
 .mypy_cache/
 
@@ -94,3 +95,7 @@ pip-wheel-metadata/ImSwitch-1.2.1.dist-info/LICENSE
 pip-wheel-metadata/ImSwitch-1.2.1.dist-info/METADATA
 pip-wheel-metadata/ImSwitch-1.2.1.dist-info/top_level.txt
 
+/imswitch/_data/user_defaults/imnotebook/.ipynb_checkpoints
+
+stitchedImage.tif
+/ImTools

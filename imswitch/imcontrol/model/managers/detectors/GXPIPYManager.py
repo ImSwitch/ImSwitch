@@ -134,7 +134,7 @@ class GXPIPYManager(DetectorManager):
             elif triggerSource == 2 and triggerMode == 1:
                 self.setParameter('Trigger source', 'External "frame-trigger"')
 
-    def getLatestFrame(self, is_resize=True, returnFrameNumber=False):
+    def getLatestFrame(self, is_save=None, is_resize=True, returnFrameNumber=False):
         if returnFrameNumber:
             frame, frameNumber = self._camera.getLast(returnFrameNumber=returnFrameNumber)
             return frame, frameNumber
@@ -279,7 +279,12 @@ class GXPIPYManager(DetectorManager):
         self.parameters['Camera pixel size'].value = pixelSizeUm
 
     def crop(self, hpos, vpos, hsize, vsize):
-
+        '''
+        hpos - horizontal start position of crop window
+        vpos - vertical start position of crop window
+        hsize - horizontal size of crop window
+        vsize - vertical size of crop window
+        '''
         def cropAction():
             self.__logger.debug(
                 f'{self._camera.model}: crop frame to {hsize}x{vsize} at {hpos},{vpos}.'

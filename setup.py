@@ -66,13 +66,13 @@ setup(
         "imjoy_rpc",
         "imjoy",
         "aiortc >= 1.3.0",
-        "UC2-REST", 
-        "rpyc >= 5.0.1",
+        "UC2-REST",
         "tk >= 0.1.0", 
         "jupyter", 
         "python-multipart >= 0.0.5", 
         "piexif >= 1.1.3", 
-        "NanoImagingPack==2.1.3.dev1"
+        "NanoImagingPack==2.1.3.dev1", 
+        "ashlarUC2"
     ],
      extras_require={ # we assume that this is installed in a conda environment or via apt-get
         'PyQt5': [

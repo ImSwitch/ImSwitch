@@ -2,7 +2,7 @@ from imswitch.imcontrol.controller.controllers.hypha.hypha_storage import HyphaD
 from imswitch.imcontrol.controller.controllers.hypha.hypha_executor import execute_code
 from imswitch.imcontrol.controller.basecontrollers import LiveUpdatedController
 from imswitch.imcommon.model import initLogger, APIExport
-import imswitch 
+from imswitch import IS_HEADLESS
 try:
     import NanoImagingPack as nip
     isNIP = True
@@ -154,7 +154,7 @@ class HyphaController(LiveUpdatedController):
         self.datastore = HyphaDataStore()
         
         # connect signals 
-        if not imswitch.IS_HEADLESS: 
+        if not IS_HEADLESS: 
             self._widget.sigLoginHypha.connect(self._loginHypha)
             
 
@@ -242,7 +242,8 @@ class HyphaController(LiveUpdatedController):
             @track.on("ended")
             def on_ended():
                 self.__logger.debug(f"Track {track.kind} ended")
-    @APIExport() 
+    
+    #@APIExport(runOnUIThread=True) 
     def start_service(self, service_id, server_url="https://chat.bioimage.io", workspace=None, token=None):
         '''
         This logs into the Hypha Server and starts the service.
@@ -274,7 +275,7 @@ class HyphaController(LiveUpdatedController):
             {
             "server_url": server_url,
             "token": token}
-            )
+            ) 
         # initialize datastorer for image saving and data handling outside the chat prompts, resides on the hypha server
         self.datastore.setup(server, service_id="data-store")
         svc = server.register_service(self.getMicroscopeControlExtensionDefinition())

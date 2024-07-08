@@ -15,7 +15,7 @@ from imswitch.imcommon.framework import Signal, Thread, Worker, Mutex, Timer
 from imswitch.imcommon.model import dirtools, initLogger, APIExport
 from skimage.registration import phase_cross_correlation
 from ..basecontrollers import ImConWidgetController
-import imswitch
+from imswitch import IS_HEADLESS
 
 import h5py
 import numpy as np
@@ -93,7 +93,7 @@ class MCTController(ImConWidgetController):
         self.isMCTrunning = False
 
         # Connect MCTWidget signals
-        if not imswitch.IS_HEADLESS:
+        if not IS_HEADLESS:
             self._widget.mctStartButton.clicked.connect(self.startMCT)
             self._widget.mctStopButton.clicked.connect(self.stopMCT)
             self._widget.mctShowLastButton.clicked.connect(self.showLast)
@@ -132,7 +132,7 @@ class MCTController(ImConWidgetController):
             self.switchOffIllumination()
             
             # GUI updates
-            if not imswitch.IS_HEADLESS:
+            if not IS_HEADLESS:
                 self._widget.mctStartButton.setEnabled(False)
                 self._widget.setMessageGUI("Starting timelapse...")
             

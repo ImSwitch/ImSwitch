@@ -20,7 +20,7 @@ import numpy as np
 from pathlib import Path
 import tifffile
 
-import imswitch
+from imswitch import IS_HEADLESS
 
 from datetime import datetime
 
@@ -150,7 +150,7 @@ class SIMController(ImConWidgetController):
 
         self.initFastAPISIM(self._master.simManager.fastAPISIMParams)
 
-        if imswitch.IS_HEADLESS:
+        if IS_HEADLESS:
             return
         self._widget.start_button.clicked.connect(self.startSIM)
         self._widget.stop_button.clicked.connect(self.stopSIM)

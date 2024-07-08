@@ -6,7 +6,7 @@
 
 ## News 
 
-🎥 Watch this intro video from Jacopo about ImSwitch on [YouTube](https://www.youtube.com/watch?v=B54QCt5OQPI&ab_channel=Euro-BioImagingCommunication
+🎥 Watch this intro video from Jacopo about ImSwitch on [YouTube](https://www.youtube.com/watch?v=B54QCt5OQPI&ab_channel=Euro-BioImagingCommunication)
 
 ## Statement of need
 
@@ -365,6 +365,7 @@ sudo reboot
 Download the Linux zip (MVS2.1)
 https://www.hikrobotics.com/cn/machinevision/service/download or 
 
+Examples will be in  `/opt/MVS/Samples/aarch64/Python/GrabImage/`
 ```bash
 cd ~/Downloads
 wget https://www.hikrobotics.com/cn2/source/support/software/MVS_STD_GML_V2.1.2_231116.zip

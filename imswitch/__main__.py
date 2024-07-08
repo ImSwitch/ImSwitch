@@ -5,6 +5,7 @@ import argparse
 import os 
 
 import imswitch
+from imswitch import IS_HEADLESS
 from imswitch.imcommon import prepareApp, launchApp
 from imswitch.imcommon.controller import ModuleCommunicationChannel, MultiModuleWindowController
 from imswitch.imcommon.model import modulesconfigtools, pythontools, initLogger
@@ -26,26 +27,26 @@ def main():
                         help='specify run with config file')
     
     args = parser.parse_args()
-    imswitch.IS_HEADLESS = args.headless
+    IS_HEADLESS = args.headless
     imswitch.DEFAULT_SETUP_FILE = args.config_file # e.g. example_virtual_microscope.json
     
-    if imswitch.IS_HEADLESS:
+    if IS_HEADLESS:
         os.environ["DISPLAY"] = ":0"
         os.environ["QT_QPA_PLATFORM"] = "offscreen"
 
     try:
         logger = initLogger('main')
         logger.info(f'Starting ImSwitch {imswitch.__version__}')
-        logger.info(f'Headless mode: {imswitch.IS_HEADLESS}')
+        logger.info(f'Headless mode: {IS_HEADLESS}')
         logger.info(f'Config file: {imswitch.DEFAULT_SETUP_FILE}')
         app = prepareApp()
         enabledModuleIds = modulesconfigtools.getEnabledModuleIds()
 
-        if 'imscripting' in enabledModuleIds and not imswitch.IS_HEADLESS:
+        if 'imscripting' in enabledModuleIds and not IS_HEADLESS:
             # Ensure that imscripting is added last
             enabledModuleIds.append(enabledModuleIds.pop(enabledModuleIds.index('imscripting')))
 
-        if 'imnotebook' in enabledModuleIds and not imswitch.IS_HEADLESS:
+        if 'imnotebook' in enabledModuleIds and not IS_HEADLESS:
             # Ensure that imnotebook is added last
             try:
                 from PyQt5 import QtWebEngine
@@ -59,7 +60,7 @@ def main():
 
         moduleCommChannel = ModuleCommunicationChannel()
 
-        if not imswitch.IS_HEADLESS:
+        if not IS_HEADLESS:
             multiModuleWindow = MultiModuleWindow('ImSwitch')
             multiModuleWindowController = MultiModuleWindowController.create(
                 multiModuleWindow, moduleCommChannel
@@ -98,14 +99,14 @@ def main():
                 logger.error(e)
                 logger.error(traceback.format_exc())
                 moduleCommChannel.unregister(modulePkg)
-                if not imswitch.IS_HEADLESS: multiModuleWindow.addModule(moduleId, moduleName, ModuleLoadErrorView(e))
+                if not IS_HEADLESS: multiModuleWindow.addModule(moduleId, moduleName, ModuleLoadErrorView(e))
             else:
                 # Add module to window
-                if not imswitch.IS_HEADLESS: multiModuleWindow.addModule(moduleId, moduleName, view)
+                if not IS_HEADLESS: multiModuleWindow.addModule(moduleId, moduleName, view)
                 moduleMainControllers[moduleId] = controller
 
                 # Update loading progress
-                if not imswitch.IS_HEADLESS: multiModuleWindow.updateLoadingProgress(i / len(modulePkgs))
+                if not IS_HEADLESS: multiModuleWindow.updateLoadingProgress(i / len(modulePkgs))
                 app.processEvents()  # Draw window before continuing
         logger.info(f'init done')
         launchApp(app, multiModuleWindow, moduleMainControllers.values())

@@ -1,6 +1,6 @@
 from typing import List, Union
 from imswitch.imcommon.framework import Signal
-import imswitch
+from imswitch import IS_HEADLESS
 from imswitch.imcommon.model import APIExport
 from imswitch.imcontrol.model import configfiletools
 from imswitch.imcontrol.view import guitools
@@ -18,7 +18,7 @@ class LaserController(ImConWidgetController):
 
         # Set up lasers
         for lName, lManager in self._master.lasersManager:
-            if not imswitch.IS_HEADLESS:
+            if not IS_HEADLESS:
                 self._widget.addLaser(
                     lName, lManager.valueUnits, lManager.valueDecimals, lManager.wavelength,
                     (lManager.valueRangeMin, lManager.valueRangeMax) if not lManager.isBinary else None,
@@ -44,7 +44,7 @@ class LaserController(ImConWidgetController):
         self._commChannel.sigScanEnded.connect(lambda: self.scanChanged(False))
 
         # Load presets
-        if not imswitch.IS_HEADLESS:
+        if not IS_HEADLESS:
             for laserPresetName in self._setupInfo.laserPresets:
                 self._widget.addPreset(laserPresetName)
 
@@ -79,7 +79,7 @@ class LaserController(ImConWidgetController):
         """ Change magnitude. """
         self._master.lasersManager[laserName].setValue(magnitude)
         self.setSharedAttr(laserName, _valueAttr, magnitude)
-        if not imswitch.IS_HEADLESS: self._widget.setValue(laserName, magnitude)
+        if not IS_HEADLESS: self._widget.setValue(laserName, magnitude)
     
     def toggleModulation(self, laserName, enabled):
         """ Enable or disable laser modulation (on/off). """
@@ -90,18 +90,18 @@ class LaserController(ImConWidgetController):
         """ Change modulation frequency. """
         self._master.lasersManager[laserName].setModulationFrequency(frequency)
         self.setSharedAttr(laserName, _freqAttr, frequency)
-        if not imswitch.IS_HEADLESS: self._widget.setModulationFrequency(laserName, frequency)
+        if not IS_HEADLESS: self._widget.setModulationFrequency(laserName, frequency)
     
     def dutyCycleChanged(self, laserName, dutyCycle):
         """ Change modulation duty cycle. """
         self._master.lasersManager[laserName].setModulationDutyCycle(dutyCycle)
         self.setSharedAttr(laserName, _dcAttr, dutyCycle)
-        if not imswitch.IS_HEADLESS: self._widget.setModulationDutyCycle(laserName, dutyCycle)
+        if not IS_HEADLESS: self._widget.setModulationDutyCycle(laserName, dutyCycle)
 
     def presetSelected(self, presetName):
         """ Handles what happens when a preset is selected in the preset list.
         """
-        if not imswitch.IS_HEADLESS:
+        if not IS_HEADLESS:
             if presetName:
                 self._widget.setCurrentPreset(presetName)
 
@@ -262,14 +262,14 @@ class LaserController(ImConWidgetController):
     @APIExport(runOnUIThread=True)
     def setLaserActive(self, laserName: str, active: bool) -> None:
         """ Sets whether the specified laser is powered on. """
-        if not imswitch.IS_HEADLESS: self._widget.setLaserActive(laserName, active)
+        if not IS_HEADLESS: self._widget.setLaserActive(laserName, active)
         else: self.toggleLaser(laserName, active) #TODO: !!! self.laserModules[laserName].sigEnableChanged.emit(laserName, active)
 
     @APIExport(runOnUIThread=True)
     def setLaserValue(self, laserName: str, value: Union[int, float]) -> None:
         """ Sets the value of the specified laser, in the units that the laser
         uses. """
-        if not imswitch.IS_HEADLESS: self._widget.setValue(laserName, value)
+        if not IS_HEADLESS: self._widget.setValue(laserName, value)
         else: self.valueChanged(laserName, value) #TODO: !!! 
 
     @APIExport()

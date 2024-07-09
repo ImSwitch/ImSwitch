@@ -7,7 +7,7 @@ from imswitch.imcommon.framework import Timer
 from imswitch.imcommon.model import dirtools, modulesconfigtools, ostools, APIExport
 from .basecontrollers import WidgetController
 
-if not imswitch.IS_HEADLESS:
+if not IS_HEADLESS:
     from imswitch.imcommon.view import guitools
     from .CheckUpdatesController import CheckUpdatesController
     from .PickModulesController import PickModulesController

@@ -1,5 +1,5 @@
-import imswitch
-if not imswitch.IS_HEADLESS:
+from imswitch import IS_HEADLESS
+if not IS_HEADLESS:
     from .AlignAverageWidget import AlignAverageWidget
     from .AlignmentLineWidget import AlignmentLineWidget
     from .AlignXYWidget import AlignXYWidget

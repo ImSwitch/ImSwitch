@@ -453,7 +453,7 @@ class HistoScanController(LiveUpdatedController):
     
     def updateAllPositionGUI(self):
         allPositions = self.stages.position
-        if not imswitch.IS_HEADLESS: self._widget.updateBoxPosition(allPositions["X"], allPositions["Y"])
+        if not IS_HEADLESS: self._widget.updateBoxPosition(allPositions["X"], allPositions["Y"])
 
     def goToPosition(self, posX, posY):
         # {"task":"/motor_act",     "motor":     {         "steppers": [             { "stepperid": 1, "position": -1000, "speed": 30000, "isabs": 0, "isaccel":1, "isen":0, "accel":500000}     ]}}

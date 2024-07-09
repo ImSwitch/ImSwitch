@@ -5,16 +5,8 @@ import argparse
 import os
 
 import imswitch
-from imswitch import IS_HEADLESS
-from imswitch.imcommon import prepareApp, launchApp
-from imswitch.imcommon.controller import ModuleCommunicationChannel, MultiModuleWindowController
-from imswitch.imcommon.model import modulesconfigtools, pythontools, initLogger
-
-
-# FIXME: Add to configuration file
 # python main.py --headless or
 # python -m imswitch --headless 1 --config-file example_virtual_microscope.json
-
 def main():
     parser = argparse.ArgumentParser(description='Process some integers.')
 
@@ -56,7 +48,7 @@ def main(is_headless:bool=None, default_config:str=None, http_port:int=None, ssl
                                 help='specify ssl')
 
             args = parser.parse_args()
-            imswitch.IS_HEADLESS = args.headless
+            IS_HEADLESS = args.headless
             imswitch.DEFAULT_SETUP_FILE = args.config_file # e.g. example_virtual_microscope.json
             imswitch.__httpport__ = args.http_port
             imswitch.__ssl__ = args.ssl
@@ -79,16 +71,22 @@ def main(is_headless:bool=None, default_config:str=None, http_port:int=None, ssl
 
         logger = initLogger('main')
         logger.info(f'Starting ImSwitch {imswitch.__version__}')
-        logger.info(f'Headless mode: {IS_HEADLESS}')
+        logger.info(f'Headless mode: {imswitch.IS_HEADLESS}')
         logger.info(f'Config file: {imswitch.DEFAULT_SETUP_FILE}')
-        app = prepareApp()
+        
+        if not imswitch.IS_HEADLESS:
+            os.environ["DISPLAY"] = ":0"
+            os.environ["QT_QPA_PLATFORM"] = "offscreen"
+            app = prepareApp()
         enabledModuleIds = modulesconfigtools.getEnabledModuleIds()
 
-        if 'imscripting' in enabledModuleIds and not IS_HEADLESS:
+        if 'imscripting' in enabledModuleIds and not imswitch.IS_HEADLESS:
             # Ensure that imscripting is added last
             enabledModuleIds.append(enabledModuleIds.pop(enabledModuleIds.index('imscripting')))
+        elif imswitch.IS_HEADLESS:
+            enabledModuleIds.remove('imscripting')
 
-        if 'imnotebook' in enabledModuleIds and not IS_HEADLESS:
+        if 'imnotebook' in enabledModuleIds and not imswitch.IS_HEADLESS:
             # Ensure that imnotebook is added last
             try:
                 from PyQt5 import QtWebEngine
@@ -102,7 +100,7 @@ def main(is_headless:bool=None, default_config:str=None, http_port:int=None, ssl
 
         moduleCommChannel = ModuleCommunicationChannel()
 
-        if not IS_HEADLESS:
+        if not imswitch.IS_HEADLESS:
             from imswitch.imcommon.view import MultiModuleWindow, ModuleLoadErrorView
             multiModuleWindow = MultiModuleWindow('ImSwitch')
             multiModuleWindowController = MultiModuleWindowController.create(
@@ -142,16 +140,16 @@ def main(is_headless:bool=None, default_config:str=None, http_port:int=None, ssl
                 logger.error(e)
                 logger.error(traceback.format_exc())
                 moduleCommChannel.unregister(modulePkg)
-                if not IS_HEADLESS:
+                if not imswitch.IS_HEADLESS:
                     from imswitch.imcommon.view import ModuleLoadErrorView
                     multiModuleWindow.addModule(moduleId, moduleName, ModuleLoadErrorView(e))
             else:
                 # Add module to window
-                if not IS_HEADLESS: multiModuleWindow.addModule(moduleId, moduleName, view)
+                if not imswitch.IS_HEADLESS: multiModuleWindow.addModule(moduleId, moduleName, view)
                 moduleMainControllers[moduleId] = controller
 
                 # Update loading progress
-                if not IS_HEADLESS:
+                if not imswitch.IS_HEADLESS:
                     multiModuleWindow.updateLoadingProgress(i / len(modulePkgs))
                     app.processEvents()  # Draw window before continuing
         logger.info(f'init done')

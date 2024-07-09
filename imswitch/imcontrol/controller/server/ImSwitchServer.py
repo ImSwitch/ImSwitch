@@ -7,13 +7,10 @@ from imswitch.imcommon.framework import Worker
 from imswitch.imcommon.model import initLogger
 from ._serialize import register_serializers
 from fastapi.middleware.cors import CORSMiddleware
-from io import BytesIO
-import numpy as np
-from PIL import Image
+
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import StreamingResponse
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
-from imswitch import IS_HEADLESS
+import imswitch
 import uvicorn
 from functools import wraps
 import os
@@ -64,7 +61,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-_baseDataFilesDir = os.path.join(os.path.dirname(os.path.realpath(__file__)), '_data')
+_baseDataFilesDir = os.path.join(os.path.dirname(os.path.realpath(imswitch.__file__)), '_data')
 
 class ServerThread(threading.Thread):
     def __init__(self):

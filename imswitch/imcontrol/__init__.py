@@ -1,6 +1,7 @@
 import imswitch
 import dataclasses
 import sys
+from imswitch import IS_HEADLESS
 
 __imswitch_module__ = True
 __title__ = 'Hardware Control'
@@ -35,7 +36,7 @@ def getMainViewAndController(moduleCommChannel, *_args,
     if overrideOptions is None:
         options, optionsDidNotExist = configfiletools.loadOptions()
         if optionsDidNotExist:
-            if not imswitch.IS_HEADLESS: options = pickSetup(options)  # Setup to use not set, let user pick            
+            if not IS_HEADLESS: options = pickSetup(options)  # Setup to use not set, let user pick            
         configfiletools.saveOptions(options)
     else:
         # force the options to use a specific configuration
@@ -44,7 +45,7 @@ def getMainViewAndController(moduleCommChannel, *_args,
     '''
     load the setup configuration including detectors, stages, etc.
     '''
-    if not imswitch.IS_HEADLESS and overrideSetupInfo is None:
+    if not IS_HEADLESS and overrideSetupInfo is None:
         try:
             setupInfo = configfiletools.loadSetupInfo(options, ViewSetupInfo)
         except FileNotFoundError:
@@ -52,7 +53,7 @@ def getMainViewAndController(moduleCommChannel, *_args,
             options = pickSetup(options)
             configfiletools.saveOptions(options)
             setupInfo = configfiletools.loadSetupInfo(options, ViewSetupInfo)
-    elif imswitch.IS_HEADLESS and overrideSetupInfo is None:
+    elif IS_HEADLESS and overrideSetupInfo is None:
         if imswitch.DEFAULT_SETUP_FILE is not None:
             try:
                 setupFileName = imswitch.DEFAULT_SETUP_FILE
@@ -66,7 +67,7 @@ def getMainViewAndController(moduleCommChannel, *_args,
         raise KeyError # FIXME: !!!!
 
     logger.debug(f'Setup used: {options.setupFileName}')
-    if not imswitch.IS_HEADLESS:
+    if not IS_HEADLESS:
         view = ImConMainView(options, setupInfo)
     else:
         view = ImConMainViewNoQt(options, setupInfo)
@@ -75,7 +76,7 @@ def getMainViewAndController(moduleCommChannel, *_args,
     except Exception as e:
         # TODO: To broad exception
         logger.error('Error initializing controller: %s', e)
-        if not imswitch.IS_HEADLESS: view.close()
+        if not IS_HEADLESS: view.close()
         raise e
 
     return view, controller

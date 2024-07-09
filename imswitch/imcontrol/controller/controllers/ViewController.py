@@ -1,5 +1,5 @@
 from imswitch.imcommon.model import APIExport
-import imswitch
+from imswitch import IS_HEADLESS
 from ..basecontrollers import ImConWidgetController
 
 
@@ -12,7 +12,7 @@ class ViewController(ImConWidgetController):
         self._commChannel.sigStartLiveAcquistion.connect(self.startLiveView)
         self._commChannel.sigStopLiveAcquisition.connect(self.stopLiveView)
         
-        if imswitch.IS_HEADLESS: return
+        if IS_HEADLESS: return
         self._widget.setViewToolsEnabled(False)
 
         # Connect ViewWidget signals
@@ -33,7 +33,7 @@ class ViewController(ImConWidgetController):
         elif not enabled and self._acqHandle is not None:
             self._master.detectorsManager.stopAcquisition(self._acqHandle, liveView=True)
             self._acqHandle = None
-        if not imswitch.IS_HEADLESS:
+        if not IS_HEADLESS:
             self._widget.setViewToolsEnabled(enabled)
             self._widget.setLiveViewActive(enabled)
         
@@ -58,17 +58,17 @@ class ViewController(ImConWidgetController):
     @APIExport(runOnUIThread=True)
     def setLiveViewActive(self, active: bool) -> None:
         """ Sets whether the LiveView is active and updating. """
-        if not imswitch.IS_HEADLESS: self._widget.setLiveViewActive(active)
+        if not IS_HEADLESS: self._widget.setLiveViewActive(active)
 
     @APIExport(runOnUIThread=True)
     def setLiveViewGridVisible(self, visible: bool) -> None:
         """ Sets whether the LiveView grid is visible. """
-        if not imswitch.IS_HEADLESS: self._widget.setLiveViewGridVisible(visible)
+        if not IS_HEADLESS: self._widget.setLiveViewGridVisible(visible)
 
     @APIExport(runOnUIThread=True)
     def setLiveViewCrosshairVisible(self, visible: bool) -> None:
         """ Sets whether the LiveView crosshair is visible. """
-        if not imswitch.IS_HEADLESS: self._widget.setLiveViewCrosshairVisible(visible)
+        if not IS_HEADLESS: self._widget.setLiveViewCrosshairVisible(visible)
 
 
 # Copyright (C) 2020-2023 ImSwitch developers

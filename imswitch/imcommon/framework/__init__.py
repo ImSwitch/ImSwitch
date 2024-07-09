@@ -1,5 +1,5 @@
-import imswitch
-if imswitch.IS_HEADLESS:
+from imswitch import IS_HEADLESS
+if IS_HEADLESS:
     from .noqt import *
 else:
     from .qt import *

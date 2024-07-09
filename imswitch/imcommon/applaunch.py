@@ -3,13 +3,12 @@ import os
 import sys
 import traceback
 
-import imswitch
-if not imswitch.IS_HEADLESS:
+from imswitch import IS_HEADLESS
+if not IS_HEADLESS:
     from qtpy import QtCore, QtGui, QtWidgets
-
-    from .model import dirtools, pythontools, initLogger
     from .view.guitools import getBaseStyleSheet
 
+from .model import dirtools, pythontools, initLogger
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QApplication
 

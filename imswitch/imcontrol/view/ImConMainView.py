@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 # FIXME: We should probably create another file that does not import these files
 from imswitch.imcommon.framework import Signal
-if not imswitch.IS_HEADLESS:
+if not IS_HEADLESS:
     from pyqtgraph.dockarea import Dock, DockArea
     from qtpy import QtCore, QtWidgets
     from qtpy.QtWidgets import QMainWindow

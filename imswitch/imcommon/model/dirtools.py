@@ -3,7 +3,6 @@ import os
 from abc import ABC
 from pathlib import Path
 from shutil import copy2
-import imswitch
 from imswitch import IS_HEADLESS, __file__
 
 

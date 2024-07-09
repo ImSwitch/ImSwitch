@@ -1,5 +1,5 @@
-import imswitch
-if not imswitch.IS_HEADLESS: 
+from imswitch import IS_HEADLESS
+if not IS_HEADLESS: 
     # FIXME: hacky way to do that I guess..
     from .BetterPushButton import BetterPushButton
     from .joystick import Joystick

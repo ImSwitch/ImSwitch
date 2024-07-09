@@ -81,7 +81,7 @@ class ImConMainController(MainController):
                                                   f' hardware setup file.'
         )
         # Generate Shorcuts
-        if not imswitch.IS_HEADLESS:
+        if not IS_HEADLESS:
             self.__shortcuts = None
             shorcutObjs = list(self.__mainView.widgets.values())
             self.__shortcuts = generateShortcuts(shorcutObjs)

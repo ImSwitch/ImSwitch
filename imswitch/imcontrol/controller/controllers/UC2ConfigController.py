@@ -1,7 +1,7 @@
 import json
 import os
 import threading
-import imswitch
+from imswitch import IS_HEADLESS
 import numpy as np
 from imswitch.imcommon.model import APIExport, initLogger
 from ..basecontrollers import ImConWidgetController
@@ -45,7 +45,7 @@ class UC2ConfigController(ImConWidgetController):
         self.registerCaptureCallback()
 
         # Connect buttons to the logic handlers
-        if imswitch.IS_HEADLESS:
+        if IS_HEADLESS:
             return
         self._widget.setBaudRateGui(self._master.UC2ConfigManager.ESP32.serial.baudrate)
         self._widget.setPositionXBtn.clicked.connect(self.set_positionX)
@@ -96,13 +96,13 @@ class UC2ConfigController(ImConWidgetController):
 
         # retrieve the positions from the motor controller
         positions = self.stages.getPosition()
-        if not imswitch.IS_HEADLESS: self._widget.reconnectDeviceLabel.setText("Motor positions: A="+str(positions["A"])+", X="+str(positions["X"])+", \n Y="+str(positions["Y"])+", Z="+str(positions["Z"]))
+        if not IS_HEADLESS: self._widget.reconnectDeviceLabel.setText("Motor positions: A="+str(positions["A"])+", X="+str(positions["X"])+", \n Y="+str(positions["Y"])+", Z="+str(positions["Z"]))
         # update the GUI
         self._commChannel.sigUpdateMotorPosition.emit()
 
     def interruptSerialCommunication(self):
         self._master.UC2ConfigManager.interruptSerialCommunication()
-        if not imswitch.IS_HEADLESS: self._widget.reconnectDeviceLabel.setText("We are intrrupting the last command")
+        if not IS_HEADLESS: self._widget.reconnectDeviceLabel.setText("We are intrrupting the last command")
 
     def set_auto_enable(self):
         # Add your logic to auto-enable the motors here.
@@ -114,29 +114,29 @@ class UC2ConfigController(ImConWidgetController):
         self.stages.enalbeMotors(enable=True, enableauto=False)
 
     def set_positionX(self):
-        if not imswitch.IS_HEADLESS: x = self._widget.motorXEdit.text() # TODO: Should be a signal for all motors
+        if not IS_HEADLESS: x = self._widget.motorXEdit.text() # TODO: Should be a signal for all motors
         self.set_motor_positions(None, x, None, None)
 
     def set_positionY(self):
-        if not imswitch.IS_HEADLESS: y = self._widget.motorYEdit.text()
+        if not IS_HEADLESS: y = self._widget.motorYEdit.text()
         self.set_motor_positions(None, None, y, None)
 
     def set_positionZ(self):
-        if not imswitch.IS_HEADLESS: z = self._widget.motorZEdit.text()
+        if not IS_HEADLESS: z = self._widget.motorZEdit.text()
         self.set_motor_positions(None, None, None, z)
 
     def set_positionA(self):
-        if not imswitch.IS_HEADLESS: a = self._widget.motorAEdit.text()
+        if not IS_HEADLESS: a = self._widget.motorAEdit.text()
         self.set_motor_positions(a, None, None, None)
 
     def reconnectThread(self, baudrate=None):
         self._master.UC2ConfigManager.initSerial(baudrate=baudrate)
-        if not imswitch.IS_HEADLESS: self._widget.reconnectDeviceLabel.setText("We are connected: "+str(self._master.UC2ConfigManager.isConnected()))
+        if not IS_HEADLESS: self._widget.reconnectDeviceLabel.setText("We are connected: "+str(self._master.UC2ConfigManager.isConnected()))
 
     @APIExport(runOnUIThread=True)
     def reconnect(self):
         self._logger.debug('Reconnecting to ESP32 device.')
-        if not imswitch.IS_HEADLESS: self._widget.reconnectDeviceLabel.setText("Reconnecting to ESP32 device.")
+        if not IS_HEADLESS: self._widget.reconnectDeviceLabel.setText("Reconnecting to ESP32 device.")
         baudrate = self._widget.getBaudRateGui()
         if baudrate not in (115200, 500000):
             baudrate = None
@@ -153,7 +153,7 @@ class UC2ConfigController(ImConWidgetController):
         mThread = threading.Thread(target=self._master.UC2ConfigManager.pairBT)
         mThread.start()
         mThread.join()
-        if not imswitch.IS_HEADLESS: self._widget.reconnectDeviceLabel.setText("Bring the PS controller into pairing mode")
+        if not IS_HEADLESS: self._widget.reconnectDeviceLabel.setText("Bring the PS controller into pairing mode")
 
 
 # Copyright (C) 2020-2023 ImSwitch developers

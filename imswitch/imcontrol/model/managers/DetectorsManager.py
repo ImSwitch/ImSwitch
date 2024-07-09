@@ -1,7 +1,7 @@
 from time import sleep
 import threading
 import numpy as np
-
+from imswitch import IS_HEADLESS
 from imswitch.imcommon.framework import Mutex, Signal, SignalInterface, Thread, Timer, Worker
 from .MultiManager import MultiManager
 
@@ -32,7 +32,7 @@ class DetectorsManager(MultiManager, SignalInterface):
                 continue
             # Connect signals
             import imswitch # FXIME: THIS IS NOT CORRECT FIX IT!!!!!!!!
-            if not imswitch.IS_HEADLESS:
+            if not IS_HEADLESS:
                 self._subManagers[detectorName].sigImageUpdated.connect(
                     lambda image, init, scale, detectorName=detectorName: self.sigImageUpdated.emit(
                         detectorName, image, init, scale, detectorName==self._currentDetectorName

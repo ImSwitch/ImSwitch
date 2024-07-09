@@ -10,7 +10,7 @@ import scipy.ndimage as ndi
 import scipy.signal as signal
 import skimage.transform as transform
 import tifffile as tif
-import imswitch
+from imswitch import IS_HEADLESS
 from imswitch.imcommon.framework import Signal, Thread, Worker, Mutex, Timer
 from imswitch.imcommon.model import dirtools, initLogger, APIExport
 from skimage.registration import phase_cross_correlation
@@ -43,7 +43,7 @@ class LightsheetController(ImConWidgetController):
         self._commChannel.sigStopLightSheet.connect(self.stopLightsheet)
         self._commChannel.sigUpdateMotorPosition.connect(self.updateAllPositionGUI)
 
-        if imswitch.IS_HEADLESS: 
+        if IS_HEADLESS: 
             return
         self._widget.startButton.clicked.connect(self.startLightsheet)
         self._widget.stopButton.clicked.connect(self.stopLightsheet)
@@ -77,7 +77,7 @@ class LightsheetController(ImConWidgetController):
 
     # Event handler methods
     def onButtonScanStart(self):
-        if imswitch.IS_HEADLESS: # TODO: implement headless parameters
+        if IS_HEADLESS: # TODO: implement headless parameters
             return
         mScanParams = self._widget.get_scan_parameters()
         # returns => (self.scan_x_min[1].value(), self.scan_x_max[1].value(), self.scan_y_min[1].value(), self.scan_y_max[1].value(), 
@@ -121,7 +121,7 @@ class LightsheetController(ImConWidgetController):
         self.isLightsheetRunning = False
 
     def onButtonXYUp(self):
-        if imswitch.IS_HEADLESS:  # TODO: implement headless parameters
+        if IS_HEADLESS:  # TODO: implement headless parameters
             return
         mStepsizeXY,_ = self._widget.get_step_size_xy_zf()
         self._master.positionersManager.execOn(self.stageName, lambda c: c.move(axis="X", value=mStepsizeXY, is_absolute=False, is_blocking=False))
@@ -213,11 +213,11 @@ class LightsheetController(ImConWidgetController):
         if self.lightsheetStack.shape[0] > 200:
             subsample = 10
             self.lightsheetStack = self.lightsheetStack[::subsample,:,:]
-        if imswitch.IS_HEADLESS: 
+        if IS_HEADLESS: 
             return self._widget.setImage(np.uint16(self.lightsheetStack ), colormap="gray", name=name, pixelsize=(20,1,1), translation=(0,0,0))
 
     def valueIlluChanged(self):
-        if imswitch.IS_HEADLESS: 
+        if IS_HEADLESS: 
             return 
         illuSource = self._widget.getIlluminationSource()
         illuValue = self._widget.illuminationSlider.value()
@@ -229,7 +229,7 @@ class LightsheetController(ImConWidgetController):
         self._master.lasersManager[illuSource].setValue(illuValue)
 
     def startLightsheet(self):
-        if imswitch.IS_HEADLESS: 
+        if IS_HEADLESS: 
             return 
         minPos = self._widget.getMinPosition()
         maxPos = self._widget.getMaxPosition()
@@ -341,7 +341,7 @@ class LightsheetController(ImConWidgetController):
         
     def stopLightsheet(self):
         self.isLightsheetRunning = False
-        if imswitch.IS_HEADLESS: 
+        if IS_HEADLESS: 
             return 
         self._widget.startButton.setEnabled(True)
         self._widget.stopButton.setEnabled(False)

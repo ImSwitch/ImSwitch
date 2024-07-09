@@ -1,6 +1,6 @@
 from typing import Dict, List
 
-import imswitch
+from imswitch import IS_HEADLESS
 from imswitch.imcommon.model import APIExport
 from ..basecontrollers import ImConWidgetController
 from imswitch.imcommon.model import initLogger
@@ -25,7 +25,7 @@ class PositionerController(ImConWidgetController):
             hasSpeed = hasattr(pManager, 'speed')
             hasHome = hasattr(pManager, 'home')
             hasStop = hasattr(pManager, 'stop')
-            if not imswitch.IS_HEADLESS: self._widget.addPositioner(pName, pManager.axes, hasSpeed, hasHome, hasStop)
+            if not IS_HEADLESS: self._widget.addPositioner(pName, pManager.axes, hasSpeed, hasHome, hasStop)
             for axis in pManager.axes:
                 self.setSharedAttr(pName, axis, _positionAttr, pManager.position[axis])
                 if hasSpeed:
@@ -39,7 +39,7 @@ class PositionerController(ImConWidgetController):
         self._commChannel.sharedAttrs.sigAttributeSet.connect(self.attrChanged, check_nargs=False)
 
         # Connect PositionerWidget signals
-        if not imswitch.IS_HEADLESS:
+        if not IS_HEADLESS:
             self._commChannel.sigUpdateMotorPosition.connect(self.updateAllPositionGUI) # force update position in GUI
             self._widget.sigStepUpClicked.connect(self.stepUp)
             self._widget.sigStepDownClicked.connect(self.stepDown)
@@ -66,7 +66,7 @@ class PositionerController(ImConWidgetController):
 
         # get all speed values from the GUI
         if speed is None:
-            if not imswitch.IS_HEADLESS:
+            if not IS_HEADLESS:
                 if axis =="XY":
                     speed = self._widget.getSpeed(positionerName, "X")
                 else:
@@ -111,7 +111,7 @@ class PositionerController(ImConWidgetController):
     def setSpeed(self, positionerName, axis, speed=(1000, 1000, 1000)):
         self._master.positionersManager[positionerName].setSpeed(speed, axis)
         self.setSharedAttr(positionerName, axis, _speedAttr, speed)
-        if not imswitch.IS_HEADLESS: self._widget.setSpeedSize(positionerName, axis, speed)
+        if not IS_HEADLESS: self._widget.setSpeedSize(positionerName, axis, speed)
 
     def updateAllPositionGUI(self):
         # update all positions for all axes in GUI
@@ -125,16 +125,16 @@ class PositionerController(ImConWidgetController):
             for axis in (("X", "Y")):
                 newPos = self._master.positionersManager[positionerName].position[axis]
                 self.setSharedAttr(positionerName, axis, _positionAttr, newPos)
-                if not imswitch.IS_HEADLESS: self._widget.updatePosition(positionerName, axis, newPos)
+                if not IS_HEADLESS: self._widget.updatePosition(positionerName, axis, newPos)
         else:
             newPos = self._master.positionersManager[positionerName].position[axis]
             self.setSharedAttr(positionerName, axis, _positionAttr, newPos)
-            if not imswitch.IS_HEADLESS: self._widget.updatePosition(positionerName, axis, newPos)
+            if not IS_HEADLESS: self._widget.updatePosition(positionerName, axis, newPos)
 
     def updateSpeed(self, positionerName, axis):
         newSpeed = self._master.positionersManager[positionerName].speed[axis]
         self.setSharedAttr(positionerName, axis, _speedAttr, newSpeed)
-        if not imswitch.IS_HEADLESS: self._widget.updateSpeed(positionerName, axis, newSpeed)
+        if not IS_HEADLESS: self._widget.updateSpeed(positionerName, axis, newSpeed)
 
     @APIExport(runOnUIThread=True)
     def homeAxis(self, positionerName, axis, isBlocking=False):
@@ -199,7 +199,7 @@ class PositionerController(ImConWidgetController):
     def setPositionerStepSize(self, positionerName: str, stepSize: float) -> None:
         """ Sets the step size of the specified positioner to the specified
         number of micrometers. """
-        if not imswitch.IS_HEADLESS: self._widget.setStepSize(positionerName, stepSize)
+        if not IS_HEADLESS: self._widget.setStepSize(positionerName, stepSize)
 
     @APIExport(runOnUIThread=True)
     def movePositioner(self, positionerName: Optional[str]=None, axis: Optional[str]="X", dist: Optional[float] = None, isAbsolute: bool = False, isBlocking: bool=False, speed: float=None) -> None:

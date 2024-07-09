@@ -8,7 +8,7 @@ from fastapi import FastAPI, Response, HTTPException
 import cv2
 from PIL import Image
 import io
-import imswitch 
+from imswitch import IS_HEADLESS
 from imswitch.imcommon.framework import Timer
 from imswitch.imcommon.model import ostools, APIExport, initLogger, dirtools
 from imswitch.imcontrol.model import RecMode, SaveMode, SaveFormat
@@ -48,7 +48,7 @@ class RecordingController(ImConWidgetController):
         self._commChannel.sigRequestScanFreq.connect(self.sendScanFreq)
         
 
-        if imswitch.IS_HEADLESS: return
+        if IS_HEADLESS: return
         
         self.untilStop()
         
@@ -103,12 +103,12 @@ class RecordingController(ImConWidgetController):
 
         # by default save as it's noted in the widget
         if mSaveFormat is None:
-            if imswitch.IS_HEADLESS:
+            if IS_HEADLESS:
                 mSaveFormat = SaveFormat(self._widget.getSnapSaveMode())
             else:
                 mSaveFormat = 1 # TIFF
 
-        if imswitch.IS_HEADLESS:
+        if IS_HEADLESS:
             folder = self._widget.getRecFolder()
         else:
             timeStamp = datetime.datetime.now().strftime("%Y_%m_%d-%I-%M-%S_%p")
@@ -332,7 +332,7 @@ class RecordingController(ImConWidgetController):
 
     def getDetectorNamesToCapture(self):
         """ Returns a list of which detectors the user has selected to be captured. """
-        if not imswitch.IS_HEADLESS: detectorMode = self._widget.getDetectorMode()
+        if not IS_HEADLESS: detectorMode = self._widget.getDetectorMode()
         else: detectorMode = -1
         if detectorMode == -1:  # Current detector at start
             return [self._master.detectorsManager.getCurrentDetectorName()]

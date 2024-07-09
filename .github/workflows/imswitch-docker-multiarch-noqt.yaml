@@ -38,7 +38,10 @@ jobs:
         uses: docker/metadata-action@v5.0.0
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-
+      
+      - name: Set architecture to lowercase
+        run: echo "ARCH=$(echo ${{ runner.arch }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+  
       - name: Build and push container image to registry
         uses: docker/build-push-action@v2
         with:
@@ -46,5 +49,5 @@ jobs:
           file: docker/HIK/dockerfile
           push: true
           platforms: linux/amd64,linux/arm64
-          tags: ghcr.io/${{ env.IMAGE_NAME }}-${{ github.action.toLower(runner.arch) }}:latest
+          tags: ghcr.io/${{ env.IMAGE_NAME }}-${{ env.ARCH }}:latest
           labels: ${{ steps.meta.outputs.labels }}

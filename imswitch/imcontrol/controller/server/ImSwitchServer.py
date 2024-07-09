@@ -37,10 +37,12 @@ import logging
 PORT = __httpport__
 IS_SSL = __ssl__
 
-current_dir = os.path.dirname(os.path.realpath(__file__))
-static_dir = os.path.join(current_dir,  'static')
+_baseDataFilesDir = os.path.join(os.path.dirname(os.path.realpath(imswitch.__file__)), '_data')
+static_dir = os.path.join(_baseDataFilesDir,  'static')
+imswitchapp_dir = os.path.join(_baseDataFilesDir,  'static', 'imswitch')
 app = FastAPI(docs_url=None, redoc_url=None)
-app.mount("/static", StaticFiles(directory=static_dir), name="static")
+app.mount("/static", StaticFiles(directory=static_dir), name="static")  # serve static files such as the swagger UI
+app.mount("/imswitch", StaticFiles(directory=imswitchapp_dir), name="imswitch") # serve react app
 
 if IS_SSL:
     app.add_middleware(HTTPSRedirectMiddleware)
@@ -61,7 +63,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-_baseDataFilesDir = os.path.join(os.path.dirname(os.path.realpath(imswitch.__file__)), '_data')
 
 class ServerThread(threading.Thread):
     def __init__(self):

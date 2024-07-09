@@ -15,7 +15,7 @@ from imswitch.imcommon.framework import Signal, Thread, Worker, Mutex, Timer
 from imswitch.imcommon.model import dirtools, initLogger, APIExport
 from skimage.registration import phase_cross_correlation
 from ..basecontrollers import ImConWidgetController
-import imswitch
+from imswitch import IS_HEADLESS
 
 import h5py
 import numpy as np
@@ -93,7 +93,7 @@ class MCTController(ImConWidgetController):
         self.isMCTrunning = False
 
         # Connect MCTWidget signals
-        if not imswitch.IS_HEADLESS:
+        if not IS_HEADLESS:
             self._widget.mctStartButton.clicked.connect(self.startMCT)
             self._widget.mctStopButton.clicked.connect(self.stopMCT)
             self._widget.mctShowLastButton.clicked.connect(self.showLast)
@@ -132,7 +132,7 @@ class MCTController(ImConWidgetController):
             self.switchOffIllumination()
             
             # GUI updates
-            if not imswitch.IS_HEADLESS:
+            if not IS_HEADLESS:
                 self._widget.mctStartButton.setEnabled(False)
                 self._widget.setMessageGUI("Starting timelapse...")
             
@@ -463,10 +463,30 @@ class MCTController(ImConWidgetController):
                     elif mIllumination.name==self.availableIlliminations[2].name:
                         illuValue = self.Illu3Value
                     
+                    # change illumination
                     mIllumination.setValue(illuValue)
                     mIllumination.setEnabled(True)
-                    time.sleep(self.tWait)
-                    allChannelFrames.append(self.detector.getLatestFrame().copy())
+                    
+                    # always mmake sure we get a frame that is not the same as the one with illumination off eventually
+                    timeoutFrameRequest = 1 # seconds # TODO: Make dependent on exposure time
+                    cTime = time.time()
+                    frameSync=3
+                    lastFrameNumber=-1
+                    while(1):
+                        # get frame and frame number to get one that is newer than the one with illumination off eventually
+                        mFrame, currentFrameNumber = self.detector.getLatestFrame(returnFrameNumber=True)
+                        if lastFrameNumber==-1:
+                            # first round
+                            lastFrameNumber = currentFrameNumber
+                        if time.time()-cTime> timeoutFrameRequest:
+                            # in case exposure time is too long we need break at one point 
+                            break
+                        if currentFrameNumber <= lastFrameNumber+frameSync:
+                            time.sleep(0.01) # off-load CPU
+                        else:
+                            break
+                    # store frames
+                    allChannelFrames.append(mFrame)
                     
                     # store positions
                     mPositions = self.positioner.getPosition()

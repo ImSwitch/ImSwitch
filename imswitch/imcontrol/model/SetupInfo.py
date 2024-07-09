@@ -443,6 +443,10 @@ class NidaqInfo:
         else:
             return self.timerCounterChannel
         
+@dataclass(frozen=True)
+class PulseStreamerInfo:
+    ipAddress: Optional[str] = None
+    """ IP address of Pulse Streamer hardware. """
 
 @dataclass(frozen=True)
 class PyroServerInfo:
@@ -558,6 +562,12 @@ class SetupInfo:
 
     microscopeStand: Optional[MicroscopeStandInfo] = field(default_factory=lambda: None)
     """ Microscope stand settings. Required to be defined to use MotCorr widget. """
+
+    nidaq: NidaqInfo = field(default_factory=NidaqInfo)
+    """ NI-DAQ settings. """
+
+    pulseStreamer: PulseStreamerInfo = field(default_factory=PulseStreamerInfo)
+    """ Pulse Streamer settings. """
 
     pyroServerInfo: PyroServerInfo = field(default_factory=PyroServerInfo)
 

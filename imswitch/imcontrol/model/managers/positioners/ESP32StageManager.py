@@ -48,6 +48,13 @@ class ESP32StageManager(PositionerManager):
         self.backlashY = positionerInfo.managerProperties.get('backlashY', 0)
         self.backlashZ = positionerInfo.managerProperties.get('backlashZ', 0)
         self.backlashA = positionerInfo.managerProperties.get('backlashA', 0)
+        
+        # maximum speed per Axis
+        self.maxSpeed = {}
+        self.maxSpeed["X"] = positionerInfo.managerProperties.get('maxSpeedX', 10000)
+        self.maxSpeed["Y"] = positionerInfo.managerProperties.get('maxSpeedY', 10000)
+        self.maxSpeed["Z"] = positionerInfo.managerProperties.get('maxSpeedZ', 10000)
+        self.maxSpeed["A"] = positionerInfo.managerProperties.get('maxSpeedA', 10000)
 
         # Setup homing coordinates and speed
         # X
@@ -147,6 +154,8 @@ class ESP32StageManager(PositionerManager):
 
         # try to register the callback
         try:
+            # if event "0" is triggered, the callback function to update the stage positions 
+            # will be called
             self._motor.register_callback(0,callbackfct=self.setPositionFromDevice)
         except Exception as e:
             self.__logger.error(f"Could not register callback: {e}")

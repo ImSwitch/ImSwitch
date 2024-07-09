@@ -1,4 +1,4 @@
-import imswitch
+from imswitch import IS_HEADLESS
 from dataclasses import dataclass
 
 # FIXME: We should probably create another file that does not import these files
@@ -8,7 +8,7 @@ if not imswitch.IS_HEADLESS:
     from qtpy import QtCore, QtWidgets
     from qtpy.QtWidgets import QMainWindow
     from imswitch.imcommon.view import PickDatasetsDialog
-    from .PickSetupDialog import PickSetupDialog    
+    from .PickSetupDialog import PickSetupDialog
 else:
     Dock = None
     DockArea = None
@@ -39,10 +39,10 @@ class ImConMainView(QMainWindow):
         self.shortcuts = {}
 
         self.viewSetupInfo = viewSetupInfo
-        if not imswitch.IS_HEADLESS:
+        if not IS_HEADLESS:
             self.pickSetupDialog = PickSetupDialog(self)
             self.pickDatasetsDialog = PickDatasetsDialog(self, allowMultiSelect=False)
-            
+
             # Menu Bar
             menuBar = self.menuBar()
             file = menuBar.addMenu('&File')
@@ -69,7 +69,7 @@ class ImConMainView(QMainWindow):
             layout = QtWidgets.QHBoxLayout()
             self.cwidget.setLayout(layout)
             self.setCentralWidget(self.cwidget)
-    
+
         # Dock area
         rightDockInfos = {
             'Autofocus': _DockInfo(name='Autofocus', yPosition=1),
@@ -139,7 +139,7 @@ class ImConMainView(QMainWindow):
         elif enabledDockKeys is True:
             enabledDockKeys = allDockKeys
 
-        if 'Image' in enabledDockKeys and not imswitch.IS_HEADLESS:
+        if 'Image' in enabledDockKeys and not IS_HEADLESS:
             self.docks['Image'] = Dock('Image Display', size=(1, 1))
             self.widgets['Image'] = self.factory.createWidget(widgets.ImageWidget)
             self.docks['Image'].addWidget(self.widgets['Image'])
@@ -163,8 +163,8 @@ class ImConMainView(QMainWindow):
             dockArea, 'left'
         )
 
-        #  Add dock area to layout
-        if not imswitch.IS_HEADLESS:
+    # Add dock area to layout
+        if not IS_HEADLESS:
             layout.addWidget(dockArea)
 
         '''
@@ -193,7 +193,7 @@ class ImConMainView(QMainWindow):
             self.docks['Image'].setStretch(1, 1)
         '''
     def addShortcuts(self, shortcuts):
-        if not imswitch.IS_HEADLESS:
+        if not IS_HEADLESS:
             for s in shortcuts.values():
                 action = QtWidgets.QAction(s["name"], self)
                 action.setShortcut(s["key"])
@@ -331,14 +331,14 @@ class ImConMainViewNoQt(object):
         self._addWidget(
             {k: v for k, v in allDockKeys.items() if k in enabledDockKeys}
         )
-        
-            
+
+
     def closeEvent(self, event):
         self.sigClosing.emit()
         event.accept()
 
     def _addWidget(self, dockInfoDict):
-        
+
         for widgetKey, dockInfo in dockInfoDict.items():
             try:
                 self.widgets[widgetKey] = (widgetKey)
@@ -353,7 +353,7 @@ class ImConMainViewNoQt(object):
                         break
                 if not foundPluginController:
                     self.__logger.error(f"Could not load widget {widgetKey} from imswitch.imcontrol.view.widgets", e)
-            
+
 
 @dataclass
 class _DockInfo:

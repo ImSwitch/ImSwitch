@@ -13,14 +13,14 @@ from PIL import Image
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
-import imswitch
+from imswitch import IS_HEADLESS
 import uvicorn
 from functools import wraps
 import os
 import socket
 import os
 
-import imswitch
+from imswitch import IS_HEADLESS, __ssl__, __httpport__
 
 import socket
 from fastapi.middleware.cors import CORSMiddleware
@@ -37,8 +37,8 @@ from fastapi.staticfiles import StaticFiles
 
 import logging
 
-PORT = imswitch.__httpport__
-IS_SSL = imswitch.__ssl__
+PORT = __httpport__
+IS_SSL = __ssl__
 
 current_dir = os.path.dirname(os.path.realpath(__file__))
 static_dir = os.path.join(current_dir,  'static')
@@ -64,7 +64,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-_baseDataFilesDir = os.path.join(os.path.dirname(os.path.realpath(imswitch.__file__)), '_data')
+_baseDataFilesDir = os.path.join(os.path.dirname(os.path.realpath(__file__)), '_data')
 
 class ServerThread(threading.Thread):
     def __init__(self):
@@ -177,17 +177,17 @@ class ImSwitchServer(Worker):
             swagger_js_url="/static/swagger-ui-bundle.js",
             swagger_css_url="/static/swagger-ui.css",
         )
-        
+
     @app.get("/hyphalogin")
     async def hyphalogin(service_id="UC2ImSwitch", server_url="https://chat.bioimage.io", workspace=None, token=None):
         #mThread = threading.Thread(target=self.start_service, args=(service_id, server_url, workspace, token))
         #mThread.start()
-        # self.start_service(service_id, server_url, workspace, token, is_async=True) 
+        # self.start_service(service_id, server_url, workspace, token, is_async=True)
         from imjoy_rpc.hypha.sync import connect_to_server, register_rtc_service, login
         from imjoy_rpc.hypha import connect_to_server as connect_to_server_async
         from imjoy_rpc.hypha import login as login_async
-        
-        from imjoy_rpc.hypha import connect_to_server, login 
+
+        from imjoy_rpc.hypha import connect_to_server, login
         server_url = "https://chat.bioimage.io"
         token = await login({"server_url": server_url})
         server = await connect_to_server({"server_url": server_url, "token": token})

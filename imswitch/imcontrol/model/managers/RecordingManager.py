@@ -56,7 +56,6 @@ class Storer(abc.ABC):
 
 class ZarrStorer(Storer):
     """ A storer that stores the images in a zarr file store """
-
     def snap(self, images: Dict[str, np.ndarray], attrs: Dict[str, str] = None):
         with AsTemporayFile(f'{self.filepath}.zarr') as path:
             datasets: List[dict] = []
@@ -77,7 +76,6 @@ class HDF5Storer(Storer):
     """ A storer that stores the images in a series of hd5 files """
     def snap(self, images: Dict[str, np.ndarray], attrs: Dict[str, str] = None):
         for channel, image in images.items():
-
             with AsTemporayFile(f'{self.filepath}_{channel}.h5') as path:
                 file = h5py.File(path, 'w')
                 shape = self.detectorManager[channel].shape

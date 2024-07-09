@@ -143,13 +143,13 @@ class HoliSheetWidget(NapariHybridWidget):
         self.layer = None
 
     def updatePumpSpeed(self, speed):
-        self.labelPumpSpeed.setText(f'Speed Pump {speed} [stp\s]')
+        self.labelPumpSpeed.setText(f'Speed Pump {speed} [stp"\"s]')
     
     def updatePumpPressure(self, pressure):
         self.labelPumpPressure.setText(f'Pump Pressure {"{0:.2f}".format(pressure)} [psi]')
 
     def updateRotationSpeed(self, speed):
-        self.labelRotationSpeed.setText(f'Speed Rotation {speed} [stp\s]')
+        self.labelRotationSpeed.setText(f'Speed Rotation {speed} [stp"\"s]')
 
     def getWvl(self):
         return float(self.wvlEdit.text())

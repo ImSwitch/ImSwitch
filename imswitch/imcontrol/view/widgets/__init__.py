@@ -1,6 +1,5 @@
 import imswitch
 if not imswitch.IS_HEADLESS:
-    # FIXME: hacky way to do that I guess..
     from .AlignAverageWidget import AlignAverageWidget
     from .AlignmentLineWidget import AlignmentLineWidget
     from .AlignXYWidget import AlignXYWidget
@@ -16,7 +15,7 @@ if not imswitch.IS_HEADLESS:
     from .STORMReconWidget import STORMReconWidget
     from .HoliSheetWidget import HoliSheetWidget
     from .FlowStopWidget import FlowStopWidget
-    from .FLIMLabsWidget import FLIMLabsWidget
+
     from .ObjectiveRevolverWidget import ObjectiveRevolverWidget
     from .TemperatureWidget import TemperatureWidget
     from .LEDMatrixWidget import LEDMatrixWidget
@@ -55,6 +54,7 @@ if not imswitch.IS_HEADLESS:
     from .SettingsWidget import SettingsWidget
     from .SLMWidget import SLMWidget
     from .TilingWidget import TilingWidget
+    from .basewidgets import WidgetFactory
     from .ULensesWidget import ULensesWidget
     from .ViewWidget import ViewWidget
     from .WatcherWidget import WatcherWidget

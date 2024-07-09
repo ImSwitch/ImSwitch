@@ -10,6 +10,8 @@ if not imswitch.IS_HEADLESS:
     from .model import dirtools, pythontools, initLogger
     from .view.guitools import getBaseStyleSheet
 
+from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import QApplication
 
 def prepareApp():
     """ This function must be called before any views are created. """
@@ -40,7 +42,9 @@ def prepareApp():
     QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_ShareOpenGLContexts)  # Fixes Napari issues
     QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_DisableHighDpiScaling, True) # proper scaling on Mac?
     #QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_UseHighDpiPixmaps, True)
-    app = QtWidgets.QApplication(['', '--no-sandbox']) # https://stackoverflow.com/questions/72131093/pyqt5-qwebengineview-doesnt-load-url
+    # https://stackoverflow.com/questions/72131093/pyqt5-qwebengineview-doesnt-load-url
+    # The following element (sandbox) is to keep the app from crashing when using QWebEngineView    
+    app = QtWidgets.QApplication(['', '--no-sandbox'])
     app.setWindowIcon(QtGui.QIcon(os.path.join(dirtools.DataFileDirs.Root, 'icon.png')))
     app.setStyleSheet(getBaseStyleSheet())
     return app

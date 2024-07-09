@@ -4,7 +4,7 @@ from imswitch.imcommon.framework import Signal, Worker, Mutex, Timer
 from imswitch.imcontrol.view import guitools
 from imswitch.imcommon.model import initLogger
 from imswitch.imcontrol.controller.basecontrollers import LiveUpdatedController
-import imswitch
+from imswitch import IS_HEADLESS
 
 import time
 
@@ -31,7 +31,7 @@ class ObjectiveRevolverController(LiveUpdatedController):
         # initialize revolver 
         self.calibrateObjective()
 
-        if imswitch.IS_HEADLESS:
+        if IS_HEADLESS:
             return
 
         # Connect signals to slots
@@ -55,10 +55,10 @@ class ObjectiveRevolverController(LiveUpdatedController):
         
     @APIExport(runOnUIThread=True)
     def moveToObjectiveID(self, objectiveID, posObjective1=None, posObjective2=None):
-        if posObjective1 is not None and not imswitch.IS_HEADLESS:
+        if posObjective1 is not None and not IS_HEADLESS:
             try:self.posObjective1 = int(self._widget.txtPosObj1.text())
             except:pass
-        if posObjective2 is not None and not imswitch.IS_HEADLESS:
+        if posObjective2 is not None and not IS_HEADLESS:
             try:self.posObjective2 = int(self._widget.txtPosObj2.text())
             except:pass
         # Move the revolver to the objectiveID
@@ -70,7 +70,7 @@ class ObjectiveRevolverController(LiveUpdatedController):
             self.currentObjective = 2
         else:
             self._logger.error("Objective ID not valid")
-        if not imswitch.IS_HEADLESS: self._widget.setCurrentObjectiveInfo(self.currentObjective)
+        if not IS_HEADLESS: self._widget.setCurrentObjectiveInfo(self.currentObjective)
         
     @APIExport(runOnUIThread=True)
     def getCurrentObjective(self):

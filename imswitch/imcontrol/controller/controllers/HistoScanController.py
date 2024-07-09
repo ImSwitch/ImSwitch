@@ -1,7 +1,7 @@
 import json
 import os
 
-import imswitch
+from imswitch import IS_HEADLESS
 from  imswitch.imcontrol.controller.controllers.camera_stage_mapping import OFMStageMapping
 from imswitch.imcommon.model import initLogger, ostools
 import numpy as np
@@ -104,7 +104,7 @@ class HistoScanController(LiveUpdatedController):
             self.flatfieldManager = None
         
 
-        if not imswitch.IS_HEADLESS:
+        if not IS_HEADLESS:
             '''
             Set up the GUI
             '''
@@ -558,7 +558,7 @@ class HistoScanController(LiveUpdatedController):
     @APIExport()
     def stopHistoScan(self):
         self.ishistoscanRunning = False
-        if imswitch.IS_HEADLESS:
+        if IS_HEADLESS:
             self._widget.startButton.setEnabled(True)
             self._widget.stopButton.setEnabled(False)
             self._widget.startButton.setText("Start")
@@ -752,25 +752,25 @@ class HistoScanController(LiveUpdatedController):
                     self.stages.move(value=iPos, axis="XY", is_absolute=True, is_blocking=True, acceleration=(self.acceleration,self.acceleration))
                     time.sleep(self.tSettle)
                     
-                    # Todo: Need to ensure thatwe have the right pattern displayed and the buffer is free - this heavily depends on the exposure time..
-                    mFrame = None
-                    lastFrameNumber = -1
-                    timeoutFrameRequest = 3 # seconds
+                    # always mmake sure we get a frame that is not the same as the one with illumination off eventually
+                    timeoutFrameRequest = 1 # seconds # TODO: Make dependent on exposure time
                     cTime = time.time()
-                    
+                    frameSync=3
+                    lastFrameNumber=-1
                     while(1):
-                        # something went wrong while capturing the frame
+                        # get frame and frame number to get one that is newer than the one with illumination off eventually
+                        mFrame, currentFrameNumber = self.detector.getLatestFrame(returnFrameNumber=True)
+                        if lastFrameNumber==-1:
+                            # first round
+                            lastFrameNumber = currentFrameNumber
                         if time.time()-cTime> timeoutFrameRequest:
+                            # in case exposure time is too long we need break at one point 
                             break
-                        mFrame, currentFrameNumber = self.microscopeDetector.getLatestFrame(returnFrameNumber=True)
-                        if currentFrameNumber <= lastFrameNumber:
-                            time.sleep(0.01)
-                            continue  
-                        print(f"Frame number used for stack: {currentFrameNumber}") 
-                        lastFrameNumber = currentFrameNumber
-                        break
-                    #mFrame = self.microscopeDetector.getLatestFrame()  
-
+                        if currentFrameNumber <= lastFrameNumber+frameSync:
+                            time.sleep(0.01) # off-load CPU
+                        else:
+                            break
+                        
                     def addImage(mFrame, positionList):
                         metadata = {'Pixels': {
                             'PhysicalSizeX': self.microscopeDetector.pixelSizeUm[-1],

@@ -13,7 +13,7 @@ from imswitch.imcommon.model import initLogger
 from ..basecontrollers import LiveUpdatedController
 import threading
 import time
-import imswitch
+from imswitch import IS_HEADLESS
 
 '''
 try:
@@ -74,7 +74,7 @@ class HoloController(LiveUpdatedController):
         # Connect CommunicationChannel signals
         self._commChannel.sigUpdateImage.connect(self.update)
 
-        if imswitch.IS_HEADLESS:
+        if IS_HEADLESS:
             return
         # Connect HoloWidget signals
         self._widget.sigShowInLineToggled.connect(self.setShowInLineHolo)

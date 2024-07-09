@@ -2,7 +2,7 @@ from imswitch.imcontrol.controller.controllers.hypha.hypha_storage import HyphaD
 from imswitch.imcontrol.controller.controllers.hypha.hypha_executor import execute_code
 from imswitch.imcontrol.controller.basecontrollers import LiveUpdatedController
 from imswitch.imcommon.model import initLogger, APIExport
-import imswitch
+from imswitch import IS_HEADLESS
 try:
     import NanoImagingPack as nip
     isNIP = True
@@ -17,15 +17,10 @@ import numpy as np
 import numpy as np
 from av import VideoFrame
 from imjoy_rpc.hypha.sync import connect_to_server, register_rtc_service, login
-from imjoy_rpc.hypha import connect_to_server as connect_to_server_async
-from imjoy_rpc.hypha import login as login_async
 import aiortc
 import cv2
 from aiortc import MediaStreamTrack, RTCPeerConnection, RTCSessionDescription, RTCConfiguration
-from imswitch.imcommon.framework import Signal, Thread, Worker, Mutex
-from imswitch.imcontrol.view import guitools
-from imswitch.imcommon.model import initLogger
-from ..basecontrollers import LiveUpdatedController
+from PyQt5.QtCore import QThread, pyqtSignal
 import asyncio
 import logging
 import os
@@ -121,9 +116,9 @@ class MyMicroscope(object):
             return e
 
 
-class AsyncioThread(Thread):
-    started = Signal()
-
+class AsyncioThread(QThread):
+    # We need this in order to get asynchronous behavior in the HyphaController
+    started = pyqtSignal()
     def __init__(self, loop):
         super().__init__()
         self.loop = loop
@@ -155,22 +150,11 @@ class HyphaController(LiveUpdatedController):
         # storer for message dictionary
         self.message_dict = {}
 
-        # grab all necessary hardware elements
-        self.stages = self._master.positionersManager[self._master.positionersManager.getAllDeviceNames()[0]]
-        self.laserNames = self._master.lasersManager.getAllDeviceNames()
-        self.laser = self._master.lasersManager[self.laserNames[0]]
-        try: self.ledMatrix = self._master.LEDMatrixsManager[self._master.LEDMatrixsManager.getAllDeviceNames()[0]]
-        except: self.ledMatrix = None
-
-        # get the first detector to stream data
-        self.detector_names = self._master.detectorsManager.getAllDeviceNames()
-        self.detector = self._master.detectorsManager[self.detector_names[0]]
-
-        # create datastorer
+        # create datastorer for data transfer between Hypha and the microscope; also serves as long-term memory for data/results
         self.datastore = HyphaDataStore()
 
         # connect signals
-        if not imswitch.IS_HEADLESS:
+        if not IS_HEADLESS:
             self._widget.sigLoginHypha.connect(self._loginHypha)
 
 
@@ -202,8 +186,6 @@ class HyphaController(LiveUpdatedController):
                                         illumination=self.laser,
                                         camera=self.detector,
                                         specialFcts=self.specialFcts)
-        
-        
 
 
     def _loginHypha(self):
@@ -261,72 +243,8 @@ class HyphaController(LiveUpdatedController):
             def on_ended():
                 self.__logger.debug(f"Track {track.kind} ended")
 
-    @APIExport(asyncExecution=True)
-    async def start_hypha_service_async(self, service_id="UC2ImSwitch", server_url="https://chat.bioimage.io", workspace=None, token=None):
-        #mThread = threading.Thread(target=self.start_service, args=(service_id, server_url, workspace, token))
-        #mThread.start()
-        # self.start_service(service_id, server_url, workspace, token, is_async=True) 
-        
-        self.__logger.debug(f"Starting service...")
-        client_id = service_id + "-client"
-
-        async def autoLogin(message):
-            # automatically open default browser and return the login token
-            webbrowser.open(message['login_url'])
-            print(f"Please open your browser and login at: {message['login_url']}") # TODO: Can this be done without human interaction?
-
-        try:
-            token = await login_async({"server_url": server_url,
-                                        "login_timeout": 60, 
-                                        "login_callback": autoLogin})
-        except Exception as e:
-            # probably timeout error - not connected to the Internet?
-            self.__logger.error(e)
-            return "probably timeout error - not connected to the Internet?"
-        
-        server = await connect_to_server_async(
-                {
-                "server_url": server_url,
-                "token": token}
-                )
-
-        # initialize datastorer for image saving and data handling outside the chat prompts, resides on the hypha server
-        self.datastore.setup(server, service_id="data-store")
-        svc = await server.register_service(self.getMicroscopeControlExtensionDefinition())
-        self.hyphaURL = f"https://bioimage.io/chat?server={server_url}&extension={svc.id}"
-        try:
-            # open the chat window in the browser to interact with the herin created connection
-            webbrowser.open(self.hyphaURL)
-            self._isConnected = True
-            if not imswitch.IS_HEADLESS: self._widget.setChatURL(url=f"https://bioimage.io/chat?token={token}&assistant=Skyler&server={server_url}&extension={svc.id}")
-            
-        except Exception as e:
-            self._logger.error(e)
-            pass
-        print(f"Extension service registered with id: {svc.id}, you can visit the chatbot at {self.hyphaURL}, and the service at: {server_url}/{server.config.workspace}/services/{svc.id.split(':')[1]}")
-
-        if 0:
-            # FIXME: WEBRTC-related stuff, need to reimplement this!
-            coturn = server.get_service("coturn")
-            ice_servers = coturn.get_rtc_ice_servers()
-            register_rtc_service(
-                server,
-                service_id=service_id,
-                config={
-                    "visibility": "public",
-                    "ice_servers": ice_servers,
-                    "on_init": self.on_init,
-                },
-            )
-            self.__logger.debug(
-                f"Service (client_id={client_id}, service_id={service_id}) started successfully, available at https://ai.imjoy.io/{server.config.workspace}/services"
-            )
-            self.__logger.debug(f"You can access the webrtc stream at https://oeway.github.io/webrtc-hypha-demo/?service_id={service_id}")
-
-
-
-
-    def start_service(self, service_id="UC2ImSwitch", server_url="https://chat.bioimage.io", workspace=None, token=None, is_async=False):
+    #@APIExport(runOnUIThread=True)
+    def start_service(self, service_id, server_url="https://chat.bioimage.io", workspace=None, token=None):
         '''
         This logs into the Hypha Server and starts the service.
         It also registers the extensions that will hook up the microsocpe to the chatbot
@@ -346,33 +264,21 @@ class HyphaController(LiveUpdatedController):
             print(f"Please open your browser and login at: {message['login_url']}")
 
         try:
-            if is_async:
-                token = login_async({"server_url": server_url,
-                                     "login_callback": autoLogin,
-                                     "timeout": 10})
-            else:
-                token = login({"server_url": server_url,
+            token = login({"server_url": server_url,
                        "login_callback": autoLogin,
                        "timeout": 10})
         except Exception as e:
             # probably timeout error - not connected to the Internet?
             self.__logger.error(e)
             return "probably timeout error - not connected to the Internet?"
-        if is_async:
-            server =  connect_to_server_async(
-                {
-                "server_url": server_url,
-                "token": token}
-                )
-        else:
-            server = connect_to_server(
-                {
-                "server_url": server_url,
-                "token": token}
-                )
+        server = connect_to_server(
+            {
+            "server_url": server_url,
+            "token": token}
+            )
         # initialize datastorer for image saving and data handling outside the chat prompts, resides on the hypha server
         self.datastore.setup(server, service_id="data-store")
-        svc =  server.register_service(self.getMicroscopeControlExtensionDefinition())
+        svc = server.register_service(self.getMicroscopeControlExtensionDefinition())
         self.hyphaURL = f"https://bioimage.io/chat?server={server_url}&extension={svc.id}"
         try:
             # open the chat window in the browser to interact with the herin created connection
@@ -444,7 +350,7 @@ class HyphaController(LiveUpdatedController):
 
     def move_stage(self, kwargs=None):
         '''Move the stage to a specified position, the unit of distance is micrometers.'''
-        if kwargs is not None:            
+        if kwargs is not None:
             config = MovePositionerInput(**kwargs)
         distance = config.distance
         is_absolute = config.is_absolute
@@ -651,10 +557,8 @@ class HyphaController(LiveUpdatedController):
             imageURL = packImageToDatastore(processedImage)
             returnMessage["imageURL"] = imageURL
             if return_image:
-                # directly return the image
-                return packImageToDatastore(processedImage)
-            else:
-                return processedImage # TODO: eventually the processed image is a quantitative value that we need for the chat bot to return?
+                processedImage
+            return returnMessage
 
         except Exception as e:
             return "Error processing image: "+str(e)

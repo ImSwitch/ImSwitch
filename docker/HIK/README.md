@@ -1,13 +1,48 @@
-## Setting Up ImSwitch React and Backend with Docker Compose
+## Setting Up ImSwitch React and Backend (optional: with Docker Compose)
 
-**ATTENTION** This is for ARM64 (i.e. Raspberry PI) only so far. A AMD64 version will follow very soon. 
+**Warning** This is very experimental. What you can expect:
 
-This tutorial will guide you through the process of setting up the ImSwitch React frontend and backend using Docker Compose. The ImSwitch React frontend is exposed on port 3000 and provides access to the REST API via a Swagger UI running in another Docker container on `localhost:8001`. The Swagger UI is available at `localhost:8001/docs`. This setup uses a simulated microscope with a line-like sample. The configuration is provided by a JSON file that can be updated if the corresponding flag is set. Additionally, the ImSwitch version can be updated based on a flag. If access to the camera (HIK camera and UC2-REST) is needed, the `--privileged` flag must be set.
+- This installs an NO-QT (no PyQt/Qt dependency) headless version on your computer
+- The APP is exposed under Port 8001 on your localhost
+- You can access the Swagger GUI under https://localhost:8001/docs
+- You can access the REACT APP (source: https://github.com/openUC2/imswitch-aiortc-react/) under https://localhost:8001/imswitch/index.html
+- You can customize the setup config/boot behaviour using additional arguments
+- The `dockerfile` can mount HIK cameras (tested on ARM devices)
+- The `dockerfile` is available here: https://github.com/openUC2/ImSwitch/blob/master/docker/HIK/dockerfile
+- The github actions file that builds the NOQT branch into a docker image for ARM/X86 is available here: https://github.com/openUC2/ImSwitch/blob/master/.github/workflows/imswitch-docker-multiarch-noqt.yaml
+
+
+![](./IMAGES/Docker_ImSwitch_1.png)
+*Swagger UI Interface of the ImSwitch Server*
+
+![](./IMAGES/Docker_ImSwitch_2.png)
+*The React APP is statically hosted using a fastaAPI endpoint under https://localhost:8001/imswitch/index.html (**ENSURE YOU HAVE ACCEPTED THE CERTIFICATE**)*
+
+![](./IMAGES/Docker_ImSwitch_3.png)
+*The images are build using CI using [actions](https://github.com/openUC2/ImSwitch/blob/master/.github/workflows/imswitch-docker-multiarch-noqt.yaml)
+
+![](./IMAGES/Docker_ImSwitch_4.png)
+*The docker Images are hosted on [github containers](https://github.com/orgs/openUC2/packages?repo_name=ImSwitch)*
 
 ### Prerequisites
 
-- Docker installed on your system
-- Docker Compose installed on your system
+- Docker installed on your system (Tested on Raspi, Jetson Nano, Mac M1, Windows)
+- Optional: Docker Compose installed on your system
+
+### Docker Quick Start
+
+#### ARM64 + X86
+
+```
+sudo docker pull ghcr.io/openuc2/imswitch-noqt-x64:latest
+sudo docker run -it --rm -p 8001:8001 -p 2222:22 -e HEADLESS=1 -e HTTP_PORT=8001 -e CONFIG_FILE=example_virtual_microscope.json -e UPDATE_GIT=0 -e UPDATE_CONFIG=0 --privileged ghcr.io/openuc2/imswitch-noqt-x64:latest
+```
+
+### Additional Information
+
+This tutorial will guide you through the process of setting up the ImSwitch React frontend and backend using Docker Compose. The ImSwitch React frontend is exposed on port 3000 and provides access to the REST API via a Swagger UI running in another Docker container on `localhost:8001`. The Swagger UI is available at `localhost:8001/docs`. This setup uses a simulated microscope with a line-like sample. The configuration is provided by a JSON file that can be updated if the corresponding flag is set. Additionally, the ImSwitch version can be updated based on a flag. If access to the camera (HIK camera and UC2-REST) is needed, the `--privileged` flag must be set.
+
+
 
 ### Docker Compose Configuration
 

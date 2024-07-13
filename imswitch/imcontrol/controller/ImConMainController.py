@@ -10,7 +10,6 @@ from imswitch.imcommon.framework import Thread
 from .server import ImSwitchServer
 from imswitch.imcontrol.model import configfiletools
 from imswitch.imcontrol.view import guitools
-from . import controllers
 from .CommunicationChannel import CommunicationChannel
 from .MasterController import MasterController
 from .PickSetupController import PickSetupController
@@ -145,7 +144,7 @@ class ImConMainController(MainController):
     def closeEvent(self):
         self.__logger.debug('Shutting down')
         self.__factory.closeAllCreatedControllers()
-        self.__masterController.closeEvent()
+        #self.__masterController.closeEvent()
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

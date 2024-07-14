@@ -4,12 +4,12 @@
 # docker stop imswitch_hik
 # sudo docker inspect imswitch_hik
 # docker run --privileged -it imswitch_hik
-# sudo docker run -it --rm -p 8001:8001 -p 2222:22 -e HEADLESS=1 -e HTTP_PORT=8001 -e CONFIG_FILE=example_virtual_microscope.json -e UPDATE_GIT=0 -e UPDATE_CONFIG=0 --privileged imswitch_hik
+# sudo docker run -it --rm -p 8001:8001 -p 2222:22 -e HEADLESS=1 -e HTTP_PORT=8001 -e CONFIG_FILE=example_virtual_microscope.json -e UPDATE_GIT=0 -e UPDATE_CONFIG=0 --privileged ghcr.io/openuc2/imswitch-noqt-x64:latest
 # sudo docker run -it --rm -p 8001:8001 -p 2222:22 -e HEADLESS=1 -e HTTP_PORT=8001 -e CONFIG_FILE=example_uc2_hik_flowstop.json -e UPDATE_GIT=1 -e UPDATE_CONFIG=0 --privileged imswitch_hik
 # performs python3 /opt/MVS/Samples/aarch64/Python/MvImport/GrabImage.py
 #
-# docker build --build-arg ARCH=arm64  -t imswitch_hik_arm64 .
-# docker build --build-arg ARCH=amd64  -t imswitch_hik_amd64 .
+# docker build --build-arg ARCH=linux/arm64  -t imswitch_hik_arm64 .
+# docker build --build-arg ARCH=linux/amd64  -t imswitch_hik_amd64 .
 #  docker run -it --rm -p 8001:8001 -p 2222:22 -e HEADLESS=1 -e HTTP_PORT=8001 -e CONFIG_FILE=example_virtual_microscope.json -e UPDATE_GIT=0 -e UPDATE_CONFIG=0 --privileged imswitch_hik_amd64
 #
 # Use an appropriate base image for multi-arch support

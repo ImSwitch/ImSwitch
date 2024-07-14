@@ -38,6 +38,7 @@ setup(
     include_package_data=True,
     python_requires=">=3.8",
     install_requires=[
+        "pydantic ==1.10.16",
         "coloredlogs >= 15",
         "colour-science >= 0.3",
         "dataclasses-json >= 0.5",
@@ -81,7 +82,7 @@ setup(
             "QScintilla >= 2.12",
             "PyQtWebEngine >= 5.15.2",
             "pyqtgraph >= 0.12.1",
-            "napari[pyqt5]"
+            "napari[pyqt5] == 0.4.19"
         ], 
         'arkitet':
             [

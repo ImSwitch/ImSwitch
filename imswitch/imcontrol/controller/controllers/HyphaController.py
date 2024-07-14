@@ -115,6 +115,11 @@ class MyMicroscope(object):
         except Exception as e:
             return e
 
+if IS_HEADLESS:
+    QThread = object
+    pyqtSignal = None
+else:
+    from PyQt5.QtCore import QThread, pyqtSignal
 
 class AsyncioThread(QThread):
     # We need this in order to get asynchronous behavior in the HyphaController
@@ -155,7 +160,6 @@ class HyphaController(LiveUpdatedController):
 
         # connect signals
         if not IS_HEADLESS:
-            from PyQt5.QtCore import QThread, pyqtSignal
             self._widget.sigLoginHypha.connect(self._loginHypha)
 
         '''

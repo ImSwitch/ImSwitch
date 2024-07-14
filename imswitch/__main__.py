@@ -64,7 +64,7 @@ def main(is_headless:bool=None, default_config:str=None, http_port:int=None, ssl
         if ssl is not None:
             imswitch.__ssl__ = ssl
 
-        # FIXME: !!!!
+        # FIXME: !!!! This is because the headless flag is loaded after commandline input
         from imswitch.imcommon import prepareApp, launchApp
         from imswitch.imcommon.controller import ModuleCommunicationChannel, MultiModuleWindowController
         from imswitch.imcommon.model import modulesconfigtools, pythontools, initLogger

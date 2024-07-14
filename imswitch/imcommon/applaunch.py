@@ -7,10 +7,10 @@ from imswitch import IS_HEADLESS
 if not IS_HEADLESS:
     from qtpy import QtCore, QtGui, QtWidgets
     from .view.guitools import getBaseStyleSheet
+    from PyQt5.QtCore import Qt
+    from PyQt5.QtWidgets import QApplication
 
 from .model import dirtools, pythontools, initLogger
-from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QApplication
 
 def prepareApp():
     """ This function must be called before any views are created. """

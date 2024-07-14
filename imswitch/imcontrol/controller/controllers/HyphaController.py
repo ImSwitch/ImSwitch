@@ -20,7 +20,7 @@ from imjoy_rpc.hypha.sync import connect_to_server, register_rtc_service, login
 import aiortc
 import cv2
 from aiortc import MediaStreamTrack, RTCPeerConnection, RTCSessionDescription, RTCConfiguration
-from PyQt5.QtCore import QThread, pyqtSignal
+
 import asyncio
 import logging
 import os
@@ -155,8 +155,8 @@ class HyphaController(LiveUpdatedController):
 
         # connect signals
         if not IS_HEADLESS:
+            from PyQt5.QtCore import QThread, pyqtSignal
             self._widget.sigLoginHypha.connect(self._loginHypha)
-
 
         '''
         assign hardware functions

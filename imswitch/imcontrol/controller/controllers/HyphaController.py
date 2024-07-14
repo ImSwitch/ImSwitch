@@ -20,8 +20,6 @@ from imjoy_rpc.hypha.sync import connect_to_server, register_rtc_service, login
 import aiortc
 import cv2
 from aiortc import MediaStreamTrack, RTCPeerConnection, RTCSessionDescription, RTCConfiguration
-
-import asyncio
 import logging
 import os
 import asyncio
@@ -122,8 +120,10 @@ else:
     from PyQt5.QtCore import QThread, pyqtSignal
 
 class AsyncioThread(QThread):
-    # We need this in order to get asynchronous behavior in the HyphaController
-    started = pyqtSignal()
+    # We need this in order to get asynchronous behavior in the HyphaController for the GUI-case
+    if not IS_HEADLESS:
+        started = pyqtSignal()
+
     def __init__(self, loop):
         super().__init__()
         self.loop = loop

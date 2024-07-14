@@ -48,10 +48,6 @@ RUN mkdir -p /opt/MVS/bin/fonts
 RUN echo "source ~/.bashrc" >> ~/.bashrc
 RUN /bin/bash -c "source ~/.bashrc"
 
-# Copy the necessary Python script
-#RUN cd /opt/MVS/Samples/aarch64/Python/ && \
-#    cp GrabImage/GrabImage.py MvImport/GrabImage.py
-
 # Set environment variable for MVCAM_COMMON_RUNENV
 ENV MVCAM_COMMON_RUNENV=/opt/MVS/lib LD_LIBRARY_PATH=/opt/MVS/lib/64:/opt/MVS/lib/32:$LD_LIBRARY_PATH
 
@@ -79,21 +75,14 @@ RUN git clone https://github.com/openUC2/ImSwitchConfig /root/ImSwitchConfig
 # Clone the repository and install dependencies
 RUN git clone https://github.com/openUC2/imSwitch /tmp/ImSwitch && \
     cd /tmp/ImSwitch && \
-    git checkout NOQT 
-RUN ls /tmp/ImSwitch && \
-    cd /tmp/ImSwitch && \
-    /bin/bash -c "source /opt/conda/bin/activate imswitch && pip install -e /tmp/ImSwitch" 
+    git checkout NOQT && \
+    /bin/bash -c "source /opt/conda/bin/activate imswitch && pip install -e /tmp/ImSwitch"
+
 
 # Install UC2-REST
 RUN git clone https://github.com/openUC2/UC2-REST /tmp/UC2-REST && \
     cd /tmp/UC2-REST && \
     /bin/bash -c "source /opt/conda/bin/activate imswitch && pip install -e /tmp/UC2-REST"
-
-# Setup SSH server
-RUN mkdir /var/run/sshd && \
-    echo 'root:password' | chpasswd && \
-    sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config && \
-    sed 's@session\s*required\s*pam_loginuid.so@session optional pam_loginuid.so@g' -i /etc/pam.d/sshd
 
 # Expose SSH port and HTTP port
 EXPOSE 22 8001
@@ -104,6 +93,10 @@ CMD ["/bin/bash", "-c", "\
     /usr/sbin/sshd -D & \
     ls /root/ImSwitchConfig && \
     if [ \"$UPDATE_GIT\" = \"true\" ]; then \
+        cd /tmp/ImSwitch && \
+        git pull; \
+    fi && \
+    if [ \"$UPDATE_INSTALL_GIT\" = \"true\" ]; then \
         cd /tmp/ImSwitch && \
         git pull && \
         /bin/bash -c 'source /opt/conda/bin/activate imswitch && pip install -e /tmp/ImSwitch'; \
@@ -117,4 +110,5 @@ CMD ["/bin/bash", "-c", "\
     HTTP_PORT=${HTTP_PORT:-8001} && \
     CONFIG_FILE=${CONFIG_FILE:-/root/ImSwitchConfig/imcontrol_setup/example_virtual_microscope.json} && \
     USB_DEVICE_PATH=${USB_DEVICE_PATH:-/dev/bus/usb} && \
-    python3 -m imswitch --headless $HEADLESS --config-file $CONFIG_FILE --http-port $HTTP_PORT --ssl 1"]
+    python3 /tmp/ImSwitch/main.py  --headless 1 --config-file example_virtual_microscope.json"]
+    #python3 -m imswitch --headless $HEADLESS --config-file $CONFIG_FILE --http-port $HTTP_PORT --ssl 1"]

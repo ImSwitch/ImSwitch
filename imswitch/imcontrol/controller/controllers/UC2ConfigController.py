@@ -23,6 +23,7 @@ class UC2ConfigController(ImConWidgetController):
         self._widget.autoEnableBtn.clicked.connect(self.set_auto_enable)
         self._widget.unsetAutoEnableBtn.clicked.connect(self.unset_auto_enable)
         self._widget.reconnectButton.clicked.connect(self.reconnect)
+        self._widget.closeConnectionButton.clicked.connect(self.closeConnection)
         self._widget.btpairingButton.clicked.connect(self.btpairing)
         self._widget.stopCommunicationButton.clicked.connect(self.interruptSerialCommunication)
         
@@ -129,6 +130,10 @@ class UC2ConfigController(ImConWidgetController):
         self._master.UC2ConfigManager.initSerial(baudrate=baudrate)
         self._widget.reconnectDeviceLabel.setText("We are connected: "+str(self._master.UC2ConfigManager.isConnected()))
     
+    def closeConnection(self):
+        self._master.UC2ConfigManager.closeSerial()
+        self._widget.reconnectDeviceLabel.setText("Connection to ESP32 closed.")
+
     @APIExport(runOnUIThread=True)
     def reconnect(self):
         self._logger.debug('Reconnecting to ESP32 device.')

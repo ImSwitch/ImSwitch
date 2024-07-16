@@ -26,6 +26,7 @@ class ImRecMainView(QtWidgets.QMainWindow):
     sigReconstructMultiIndividual = QtCore.Signal()
     sigQuickLoadData = QtCore.Signal()
     sigUpdate = QtCore.Signal()
+    sigDenoiseCurrent = QtCore.Signal()
 
     sigShowPatternChanged = QtCore.Signal(bool)
     sigFindPattern = QtCore.Signal()
@@ -94,6 +95,7 @@ class ImRecMainView(QtWidgets.QMainWindow):
         btnFrame.sigReconstructMultiIndividual.connect(self.sigReconstructMultiIndividual)
         btnFrame.sigQuickLoadData.connect(self.sigQuickLoadData)
         btnFrame.sigUpdate.connect(self.sigUpdate)
+        btnFrame.sigDenoiseCurrent.connect(self.sigDenoiseCurrent)
 
         self.reconstructionWidget = ReconstructionView()
 
@@ -107,6 +109,8 @@ class ImRecMainView(QtWidgets.QMainWindow):
         self.scanParWinBtn = self.parTree.p.param('Scanning parameters')
         self.scanParWinBtn.sigActivated.connect(self.sigShowScanParamsClicked)
         self.parTree.p.param('Pattern').sigTreeStateChanged.connect(self.sigPatternParamsChanged)
+        self.scanParWinBtn = self.parTree.p.param('Scanning parameters')
+        self.scanParWinBtn.sigActivated.connect(self.sigShowScanParamsClicked)
 
         self.scanParamsDialog = ScanParamsDialog(
             self, self.r_l_text, self.u_d_text, self.b_f_text,
@@ -229,6 +233,15 @@ class ImRecMainView(QtWidgets.QMainWindow):
         self.sigClosing.emit()
         event.accept()
 
+    def getDenoiseCropSize(self):
+        return self.parTree.p.param('Denoising options').param('Crop size').value()
+    
+    def getDenoiseBoolPad(self):
+        return self.parTree.p.param('Denoising options').param('Padding').value()
+
+    def getDenoiseModelName(self):
+        return self.parTree.p.param('Denoising options').param('Model name').value()
+
 
 class ReconParTree(ParameterTree):
     def __init__(self, *args, **kwargs):
@@ -253,7 +266,12 @@ class ReconParTree(ParameterTree):
             {'name': 'Scanning parameters', 'type': 'action'},
             {'name': 'Show pattern', 'type': 'bool'},
             {'name': 'Bleaching correction', 'type': 'bool'},
-            {'name': 'File extension', 'type': 'list', 'values': ['hdf5', 'zarr']}]
+            {'name': 'File extension', 'type': 'list', 'values': ['hdf5', 'zarr']},
+            {'name': 'Denoising options', 'type': 'group', 'children':[
+                {'name': 'Crop size (px)', 'type': 'str', 'value': 800},
+                {'name': 'Padding', 'type': 'bool'},
+                {'name': 'Model name', 'type': 'str','value':'Vimentin_UNet_RCAN_lowSNR'}]}
+                ]
 
         self.p = Parameter.create(name='params', type='group', children=params)
         self.setParameters(self.p, showTop=False)
@@ -266,6 +284,7 @@ class BtnFrame(QtWidgets.QFrame):
     sigReconstructMultiIndividual = QtCore.Signal()
     sigQuickLoadData = QtCore.Signal()
     sigUpdate = QtCore.Signal()
+    sigDenoiseCurrent = QtCore.Signal()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -276,6 +295,8 @@ class BtnFrame(QtWidgets.QFrame):
         self.quickLoadDataBtn.clicked.connect(self.sigQuickLoadData)
         self.updateBtn = BetterPushButton('Update reconstruction')
         self.updateBtn.clicked.connect(self.sigUpdate)
+        self.denoiseBtn = BetterPushButton("Denoise current")
+        self.denoiseBtn.clicked.connect(self.sigDenoiseCurrent)
 
         self.reconMultiBtn = QtWidgets.QToolButton()
         self.reconMultiBtn.setSizePolicy(
@@ -297,6 +318,7 @@ class BtnFrame(QtWidgets.QFrame):
         layout.addWidget(self.reconCurrBtn, 1, 0)
         layout.addWidget(self.reconMultiBtn, 1, 1)
         layout.addWidget(self.updateBtn, 2, 0, 1, 2)
+        layout.addWidget(self.denoiseBtn,3, 0, 1, 2)
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

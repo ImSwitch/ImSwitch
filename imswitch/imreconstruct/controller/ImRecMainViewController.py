@@ -6,7 +6,7 @@ import tifffile as tiff
 
 import imswitch.imreconstruct.view.guitools as guitools
 from imswitch.imcommon.controller import PickDatasetsController
-from imswitch.imreconstruct.model import DataObj, ReconObj, PatternFinder, SignalExtractor
+from imswitch.imreconstruct.model import DataObj, ReconObj, PatternFinder, SignalExtractor,Denoiser
 from .DataFrameController import DataFrameController
 from .MultiDataFrameController import MultiDataFrameController
 from .WatcherFrameController import WatcherFrameController
@@ -41,6 +41,7 @@ class ImRecMainViewController(ImRecWidgetController):
 
         self._signalExtractor = SignalExtractor()
         self._patternFinder = PatternFinder()
+        self._denoiser = Denoiser()
 
         self._currentDataObj = None
         self._pattern = self._widget.getPatternParams()
@@ -84,9 +85,35 @@ class ImRecMainViewController(ImRecWidgetController):
         self._widget.sigFindPattern.connect(self.findPattern)
         self._widget.sigShowScanParamsClicked.connect(self.showScanParamsDialog)
         self._widget.sigPatternParamsChanged.connect(self.updatePattern)
-
+        self._widget.sigDenoiseCurrent.connect(self.denoiseCurrent)
         self.updatePattern()
         self.updateScanParams()
+    
+    def denoiseCurrent(self) -> None:
+        reconObj = self.reconstructionController.getActiveReconObj()
+        if reconObj  is None:
+            return
+        crop_size = int(self._widget.getDenoiseCropSize())
+        pad = self._widget.getDenoiseBoolPad()
+        model_name = self._widget.getDenoiseModelName()
+        
+        if 'RCAN' in model_name:
+            model_type = 'UNetRCAN'
+        else:
+            model_type = 'UNet'
+
+        reconstrData = copy.deepcopy(reconObj.getReconstruction())
+        reconstrData = reconstrData[:, 0, 0, 0, :, :]
+
+        self._denoiser.init_model(model_name,model_type)
+        self._denoiser.load_model(model_name)
+        predict = self._denoiser.predict(data=reconstrData,crop_size=crop_size,pad=pad).astype('float32')
+        predict = np.expand_dims(predict,axis=(1,2,3))
+
+        denoiseObj = copy.deepcopy(reconObj)
+        denoiseObj.updateReconstructed(predict)
+        name = reconObj.name + "_denoise"
+        self._widget.addNewData(denoiseObj, name)
 
     def dataFolderChanged(self, dataFolder):
         self._dataFolder = dataFolder
@@ -150,7 +177,7 @@ class ImRecMainViewController(ImRecWidgetController):
         self._widget.showScanParamsDialog()
 
     def quickLoadData(self):
-        extension = self._widget.extension.value()
+        extension = 'hdf5'
         if extension == 'zarr':
             dataPath = guitools.askForFolderPath(self._widget, defaultFolder=self._dataFolder)
         elif extension == 'hdf5':
@@ -237,7 +264,7 @@ class ImRecMainViewController(ImRecWidgetController):
 
     def extractData(self, data):
         fwhmNm = self._widget.getFwhmNm()
-        bgModelling = self._widget.getBgModelling()
+        bgModelling = "Constant"
         if bgModelling == 'Constant':
             fwhmNm = np.append(fwhmNm, 9999)  # Code for constant bg
         elif bgModelling == 'No background':
@@ -252,7 +279,7 @@ class ImRecMainViewController(ImRecWidgetController):
 
         sigmas = np.divide(fwhmNm, 2.355 * self._widget.getPixelSizeNm())
 
-        device = self._widget.getComputeDevice()
+        device = "GPU"
         pattern = self._pattern
         if device == 'CPU' or device == 'GPU':
             coeffs = self._signalExtractor.extractSignal(data, sigmas, pattern, device.lower())

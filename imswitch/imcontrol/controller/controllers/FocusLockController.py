@@ -86,8 +86,10 @@ class FocusLockController(ImConWidgetController):
     def toggleFocus(self):
         self.aboutToLock = False
         if self._widget.lockButton.isChecked():
-            zpos = self._master.positionersManager[self.positioner].get_abs()
-            self.lockFocus(zpos)
+            absz = self._master.positionersManager[self.positioner].get_abs("Z")
+            self.lockFocus(float(self._widget.kpEdit.text()),
+                           float(self._widget.kiEdit.text()),
+                           absz)
             self._widget.lockButton.setText('Unlock')
         else:
             self.unlockFocus()
@@ -117,31 +119,28 @@ class FocusLockController(ImConWidgetController):
     def update(self):
         # get data
         img = self.__processDataThread.grabCameraFrame()
-        self.setPointSignal = self.__processDataThread.update(self.twoFociVar)
-        # move
-        if self.locked:
-            value_move = self.updatePI()
-            if self.noStepVar and abs(value_move) > 0.002:
-                self._master.positionersManager[self.positioner].move(value_move, 0)
-        elif self.aboutToLock:
-           self.aboutToLockUpdate()
-        # udpate graphics
-        self.updateSetPointData()
-        self._widget.camImg.setImage(img)
-        if self.currPoint < self.buffer:
-            self._widget.focusPlotCurve.setData(self.timeData[1:self.currPoint],
-                                                self.setPointData[1:self.currPoint])
-        else:
-            self._widget.focusPlotCurve.setData(self.timeData, self.setPointData)
-    
-    def aboutToLockUpdate(self):
-        self.aboutToLockDataPoints = np.roll(self.aboutToLockDataPoints,1)
-        self.aboutToLockDataPoints[0] = self.setPointSignal
-        averageDiff = np.std(self.aboutToLockDataPoints)
-        if averageDiff < self.aboutToLockDiffMax:
-            zpos = self._master.positionersManager[self.positioner].get_abs()
-            self.lockFocus(zpos)
-            self.aboutToLock = False
+
+        if img is not None:
+            # 2 Pass camera frame and get back focusSignalPosition from ProcessDataThread
+            self.setPointSignal = self.__processDataThread.update(self.twoFociVar)
+            # 3 Update PI with the new setPointSignal and get back the distance to move, send to
+            # update the PI control, and then send the move-distance to the z-piezo
+            if self.locked:
+                value_move = self.updatePI()
+                if self.noStepVar and abs(value_move) > 0.002:
+                    # self.zstepupdate = self.zstepupdate + 1
+                    self._master.positionersManager[self.positioner].move(value_move, 0)
+            # elif self.aboutToLock:
+            #    self.lockingPI()
+            # 4 Update image and focusSignalPosition in FocusLockWidget
+            self.updateSetPointData()
+            self._widget.camImg.setImage(img)
+            if self.currPoint < self.buffer:
+                self._widget.focusPlotCurve.setData(self.timeData[1:self.currPoint],
+                                                    self.setPointData[1:self.currPoint])
+            else:
+                self._widget.focusPlotCurve.setData(self.timeData, self.setPointData)
+
 
     def updateSetPointData(self):
         if self.currPoint < self.buffer:
@@ -157,8 +156,8 @@ class FocusLockController(ImConWidgetController):
     def updatePI(self):
         if not self.noStepVar:
             self.noStepVar = True
-        self.currentPosition = self._master.positionersManager[self.positioner].get_abs()
-        self.stepDistance = np.abs(self.currentPosition - self.lastPosition)
+
+        self.currentPosition = self._master.positionersManager[self.positioner].get_abs("Z")
         distance = self.currentPosition - self.lockPosition
         move = self.pi.update(self.setPointSignal)
         self.lastPosition = self.currentPosition
@@ -200,7 +199,7 @@ class ProcessDataThread(Thread):
         detectorManager = self._controller._master.detectorsManager[self._controller.camera]
         self.latestimg = detectorManager.getLatestFrame()
         # 1.5 swap axes of frame (depending on setup, make this a variable in the json)
-        if self._controller._setupInfo.focusLock.swapImageAxes:
+        if self.latestimg is not None:
             self.latestimg = np.swapaxes(self.latestimg,0,1)
         return self.latestimg
 

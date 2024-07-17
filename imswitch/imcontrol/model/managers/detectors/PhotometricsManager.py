@@ -46,7 +46,7 @@ class PhotometricsManager(DetectorManager):
                                                   options=['Sensitivity',
                                                            'Speed',
                                                            'Dynamic range'], editable=True),
-            'Camera pixel size': DetectorNumberParameter(group='Miscellaneous', value=0.1,
+            'Camera pixel size': DetectorNumberParameter(group='Miscellaneous', value=1.0,
                                                          valueUnits='µm', editable=True),
             'Number of frames per chunk': DetectorNumberParameter(group='Recording', value=self.__chunkFrameSize,
                                                          valueUnits='frames', editable=True)

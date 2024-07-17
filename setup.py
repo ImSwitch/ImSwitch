@@ -44,16 +44,15 @@ setup(
         "dataclasses-json >= 0.5",
         "h5py >= 2.10",
         "pyvisa-py==0.4.1",
-        "lantzdev[qt] >= 0.5.2",
+        "lantzdev >= 0.5.2",
         "luddite >= 1",
         "nidaqmx >= 0.5.7",
-        "numpy >= 1.19",
+        "numpy >= 1.23.5",
         "packaging >= 19",
         "psutil >= 5.4.8",
         "pyserial >= 3.4",
-        "qtpy >= 1.9",
         "requests >= 2.25",
-        "scikit-image >= 0.18",
+        "scikit-image >= 0.19.2",
         "Send2Trash >= 1.8",
         "tifffile >= 2020.11.26",
         "ome_zarr >= 0.6.1",
@@ -82,7 +81,9 @@ setup(
             "QScintilla >= 2.12",
             "PyQtWebEngine >= 5.15.2",
             "pyqtgraph >= 0.12.1",
-            "napari[pyqt5] == 0.4.19"
+            "napari[pyqt5] == 0.4.19", 
+            "lantzdev[qt] >= 0.5.2",
+            "qtpy >= 1.9"
         ], 
         'arkitet':
             [

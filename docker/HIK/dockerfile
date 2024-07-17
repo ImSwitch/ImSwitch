@@ -7,7 +7,7 @@
 # sudo docker run -it --rm -p 8001:8001 -p 2222:22 -e HEADLESS=1 -e HTTP_PORT=8001 -e CONFIG_FILE=example_virtual_microscope.json -e UPDATE_GIT=0 -e UPDATE_CONFIG=0 --privileged ghcr.io/openuc2/imswitch-noqt-x64:latest
 # sudo docker run -it --rm -p 8001:8001 -p 2222:22 -e HEADLESS=1 -e HTTP_PORT=8001 -e CONFIG_FILE=example_uc2_hik_flowstop.json -e UPDATE_GIT=1 -e UPDATE_CONFIG=0 --privileged imswitch_hik
 # performs python3 /opt/MVS/Samples/aarch64/Python/MvImport/GrabImage.py
-#
+#  sudo docker run -it -e MODE=terminal imswitch_hik
 # docker build --build-arg ARCH=linux/arm64  -t imswitch_hik_arm64 .
 # docker build --build-arg ARCH=linux/amd64  -t imswitch_hik_amd64 .
 #  docker run -it --rm -p 8001:8001 -p 2222:22 -e HEADLESS=1 -e HTTP_PORT=8001 -e CONFIG_FILE=example_virtual_microscope.json -e UPDATE_GIT=0 -e UPDATE_CONFIG=0 --privileged imswitch_hik_amd64
@@ -87,28 +87,31 @@ RUN git clone https://github.com/openUC2/UC2-REST /tmp/UC2-REST && \
 # Expose SSH port and HTTP port
 EXPOSE 22 8001
 
-# Start SSH server and run the ImSwitch application
 CMD ["/bin/bash", "-c", "\
-    echo 'LSUSB' && lsusb && \
-    /usr/sbin/sshd -D & \
-    ls /root/ImSwitchConfig && \
-    if [ \"$UPDATE_GIT\" = \"true\" ]; then \
-        cd /tmp/ImSwitch && \
-        git pull; \
-    fi && \
-    if [ \"$UPDATE_INSTALL_GIT\" = \"true\" ]; then \
-        cd /tmp/ImSwitch && \
-        git pull && \
-        /bin/bash -c 'source /opt/conda/bin/activate imswitch && pip install -e /tmp/ImSwitch'; \
-    fi && \
-    if [ \"$UPDATE_CONFIG\" = \"true\" ]; then \
-        cd /root/ImSwitchConfig && \
-        git pull origin main; \
-    fi && \
-    source /opt/conda/bin/activate imswitch && \
-    HEADLESS=${HEADLESS:-1} && \
-    HTTP_PORT=${HTTP_PORT:-8001} && \
-    CONFIG_FILE=${CONFIG_FILE:-/root/ImSwitchConfig/imcontrol_setup/example_virtual_microscope.json} && \
-    USB_DEVICE_PATH=${USB_DEVICE_PATH:-/dev/bus/usb} && \
-    python3 /tmp/ImSwitch/main.py  --headless 1 --config-file example_virtual_microscope.json"]
-    #python3 -m imswitch --headless $HEADLESS --config-file $CONFIG_FILE --http-port $HTTP_PORT --ssl 1"]
+    if [ \"$MODE\" = \"terminal\" ]; then \
+        /bin/bash; \
+    else \
+        echo 'LSUSB' && lsusb && \
+        /usr/sbin/sshd -D & \
+        ls /root/ImSwitchConfig && \
+        if [ \"$UPDATE_GIT\" = \"true\" ]; then \
+            cd /tmp/ImSwitch && \
+            git pull; \
+        fi && \
+        if [ \"$UPDATE_INSTALL_GIT\" = \"true\" ]; then \
+            cd /tmp/ImSwitch && \
+            git pull && \
+            /bin/bash -c 'source /opt/conda/bin/activate imswitch && pip install -e /tmp/ImSwitch'; \
+        fi && \
+        if [ \"$UPDATE_CONFIG\" = \"true\" ]; then \
+            cd /root/ImSwitchConfig && \
+            git pull origin main; \
+        fi && \
+        source /opt/conda/bin/activate imswitch && \
+        HEADLESS=${HEADLESS:-1} && \
+        HTTP_PORT=${HTTP_PORT:-8001} && \
+        CONFIG_FILE=${CONFIG_FILE:-/root/ImSwitchConfig/imcontrol_setup/example_virtual_microscope.json} && \
+        USB_DEVICE_PATH=${USB_DEVICE_PATH:-/dev/bus/usb} && \
+        python3 /tmp/ImSwitch/main.py  --headless 1 --config-file example_virtual_microscope.json; \
+    fi"]
+    #python3 /tmp/ImSwitch/__main__.py --headless 1 --config-file example_uc2_hik_flowstop.json  --http-port 8001 --ssl 1"]

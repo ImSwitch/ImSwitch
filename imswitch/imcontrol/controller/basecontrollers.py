@@ -248,6 +248,12 @@ class SuperScanController(ImConWidgetController):
         for key, value in self._digitalParameterDict.items():
             self.setSharedAttr(_attrCategoryTTL, key, value)
 
+    def getNumCamTTL(self):
+        camTTL = self._master.scanManager.getTTLCycleSignalsDict(self._digitalParameterDict)['Green'].tolist()
+        numCamTTL = len ([i for i in range(len(camTTL)-1) if camTTL[i+1]-camTTL[i] == 1]) #counting for first True in list
+        return numCamTTL
+
+
     @APIExport(runOnUIThread=True)
     def runScan(self) -> None:
         """ Runs a scan with the set scanning parameters. """

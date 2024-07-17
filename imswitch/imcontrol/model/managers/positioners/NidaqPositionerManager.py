@@ -34,6 +34,8 @@ class NidaqPositionerManager(PositionerManager):
                                      min_val=self._minVolt,
                                      max_val=self._maxVolt)
 
+    def get_abs(self, axis):
+        return self._position[axis]
 
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

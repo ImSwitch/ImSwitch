@@ -119,6 +119,12 @@ class CommunicationChannel(SignalInterface):
         else:
             raise RuntimeError('Required image widget not available')
 
+    def getNumCamTTL(self):
+        if 'Scan' in self.__main.controllers:
+            return self.__main.controllers['Scan'].getNumCamTTL()
+        else:
+            raise RuntimeError('Required scan widget not available')
+
     def getDimsScan(self):
         if 'Scan' in self.__main.controllers:
             return self.__main.controllers['Scan'].getDimsScan()

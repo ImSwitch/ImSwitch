@@ -177,7 +177,7 @@ class ImRecMainViewController(ImRecWidgetController):
         self._widget.showScanParamsDialog()
 
     def quickLoadData(self):
-        extension = 'hdf5'
+        extension = self._widget.extension.value()
         if extension == 'zarr':
             dataPath = guitools.askForFolderPath(self._widget, defaultFolder=self._dataFolder)
         elif extension == 'hdf5':
@@ -264,7 +264,7 @@ class ImRecMainViewController(ImRecWidgetController):
 
     def extractData(self, data):
         fwhmNm = self._widget.getFwhmNm()
-        bgModelling = "Constant"
+        bgModelling = self._widget.getBgModelling()
         if bgModelling == 'Constant':
             fwhmNm = np.append(fwhmNm, 9999)  # Code for constant bg
         elif bgModelling == 'No background':
@@ -279,7 +279,7 @@ class ImRecMainViewController(ImRecWidgetController):
 
         sigmas = np.divide(fwhmNm, 2.355 * self._widget.getPixelSizeNm())
 
-        device = "GPU"
+        device = self._widget.getComputeDevice()
         pattern = self._pattern
         if device == 'CPU' or device == 'GPU':
             coeffs = self._signalExtractor.extractSignal(data, sigmas, pattern, device.lower())

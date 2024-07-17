@@ -234,7 +234,7 @@ class ImRecMainView(QtWidgets.QMainWindow):
         event.accept()
 
     def getDenoiseCropSize(self):
-        return self.parTree.p.param('Denoising options').param('Crop size').value()
+        return self.parTree.p.param('Denoising options').param('Crop size (px)').value()
     
     def getDenoiseBoolPad(self):
         return self.parTree.p.param('Denoising options').param('Padding').value()

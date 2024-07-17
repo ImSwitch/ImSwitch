@@ -7,25 +7,6 @@ import os
 import imswitch
 # python main.py --headless or
 # python -m imswitch --headless 1 --config-file example_virtual_microscope.json
-def main():
-    parser = argparse.ArgumentParser(description='Process some integers.')
-
-    # specify if run in headless mode
-    parser.add_argument('--headless', dest='headless', type=bool, default=0,
-                        help='run in headless mode')
-
-    # specify config file name - None for default
-    parser.add_argument('--config-file', dest='config_file', type=str, default=None,
-                        help='specify run with config file')
-
-    args = parser.parse_args()
-    IS_HEADLESS = args.headless
-    imswitch.DEFAULT_SETUP_FILE = args.config_file # e.g. example_virtual_microscope.json
-
-    if IS_HEADLESS:
-        os.environ["DISPLAY"] = ":0"
-        os.environ["QT_QPA_PLATFORM"] = "offscreen"
-
 def main(is_headless:bool=None, default_config:str=None, http_port:int=None, ssl:bool=None):
     try:
         try: # Google Colab does not support argparse
@@ -48,15 +29,17 @@ def main(is_headless:bool=None, default_config:str=None, http_port:int=None, ssl
                                 help='specify ssl')
 
             args = parser.parse_args()
-            IS_HEADLESS = args.headless
-            imswitch.DEFAULT_SETUP_FILE = args.config_file # e.g. example_virtual_microscope.json
-            imswitch.__httpport__ = args.http_port
-            imswitch.__ssl__ = args.ssl
+            
+            imswitch.IS_HEADLESS = args.headless            # if True, no QT will be loaded   
+            imswitch.DEFAULT_SETUP_FILE = args.config_file  # e.g. example_virtual_microscope.json
+            imswitch.__httpport__ = args.http_port          # e.g. 8001
+            imswitch.__ssl__ = args.ssl                     # if True, ssl will be used (e.g. https)
         except:
             pass
         # override settings if provided as argument
         if is_headless is not None:
             imswitch.IS_HEADLESS = is_headless
+            
         if default_config is not None:
             imswitch.DEFAULT_SETUP_FILE = default_config
         if http_port is not None:

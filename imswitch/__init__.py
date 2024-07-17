@@ -5,7 +5,7 @@ __version__ = "2.1.0"
 __httpport__ = 8001
 __ssl__ = True
 
-IS_HEADLESS = False
+IS_HEADLESS = True
 DEFAULT_SETUP_FILE = None
 
 # Copyright (C) 2020-2023 ImSwitch developers

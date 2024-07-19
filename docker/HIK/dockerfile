@@ -114,15 +114,13 @@ CMD ["/bin/bash", "-c", "\
         fi && \
         if [ \"$UPDATE_CONFIG\" = \"true\" ]; then \
             cd /root/ImSwitchConfig && \
-            git pull origin main; \
+            git pull; \
         fi && \
         source /opt/conda/bin/activate imswitch && \
         HEADLESS=${HEADLESS:-1} && \
         HTTP_PORT=${HTTP_PORT:-8001} && \
         CONFIG_FILE=${CONFIG_FILE:-/root/ImSwitchConfig/imcontrol_setup/example_virtual_microscope.json} && \
         USB_DEVICE_PATH=${USB_DEVICE_PATH:-/dev/bus/usb} && \
-        python3 /tmp/ImSwitch/main.py --headless 1 --config-file example_virtual_microscope.json; \
+        echo \"python3 /tmp/ImSwitch/main.py --headless $HEADLESS --config-file $CONFIG_FILE --http-port $HTTP_PORT \" && \
+        python3 /tmp/ImSwitch/main.py --headless $HEADLESS --config-file $CONFIG_FILE --http-port $HTTP_PORT; \
     fi"]
-
-    #python3 /tmp/ImSwitch/__main__.py --headless 1 --config-file example_uc2_hik_flowstop.json  --http-port 8001 --ssl 1"]
-    # python3 /tmp/ImSwitch/imswitch/__main__.py --headless 1 --config-file example_uc2_hik_flowstop.json --http-port 8001 --ssl 1

@@ -21,6 +21,7 @@ from .ScanWidgetPointScan import ScanWidgetPointScan
 from .RotationScanWidget import RotationScanWidget
 from .RotatorWidget import RotatorWidget
 from .SettingsWidget import SettingsWidget
+from .SLMmlWidget import SLMmlWidget
 from .SLMWidget import SLMWidget
 from .TilingWidget import TilingWidget
 from .ULensesWidget import ULensesWidget

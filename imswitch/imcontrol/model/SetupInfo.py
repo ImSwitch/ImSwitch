@@ -123,6 +123,9 @@ class SLMInfo:
 
     wavelength: int
     """ Wavelength of the laser line used with the SLM. """
+    
+    serial_number: str
+    """ Unique n° of the SLM head you use. """
 
     pixelSize: float
     """ Pixel size or pixel pitch of the SLM, in millimetres. """

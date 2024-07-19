@@ -103,9 +103,9 @@ CMD ["/bin/bash", "-c", "\
             git pull && \
             /bin/bash -c 'source /opt/conda/bin/activate imswitch && pip install -e /tmp/ImSwitch'; \
         fi && \
-        if [ \"$UPDATEL_UC2\" = \"true\" ]; then \
+        if [ \"$UPDATE_UC2\" = \"true\" ]; then \
             cd /tmp/UC2-REST && \
-            git pull &&; \
+            git pull && \
         fi && \
         if [ \"$UPDATE_INSTALL_UC2\" = \"true\" ]; then \
             cd /tmp/UC2-REST && \

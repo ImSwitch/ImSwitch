@@ -10,8 +10,9 @@
 #  sudo docker run -it -e MODE=terminal imswitch_hik
 # docker build --build-arg ARCH=linux/arm64  -t imswitch_hik_arm64 .
 # docker build --build-arg ARCH=linux/amd64  -t imswitch_hik_amd64 .
-#  docker run -it --rm -p 8001:8001 -p 2222:22 -e HEADLESS=1 -e HTTP_PORT=8001 -e CONFIG_FILE=example_virtual_microscope.json -e UPDATE_GIT=0 -e UPDATE_CONFIG=0 --privileged imswitch_hik_amd64
+# sudo docker run -it --rm -p 8001:8001 -p 2222:22 -e HEADLESS=1 -e HTTP_PORT=8001 -e CONFIG_FILE=example_virtual_microscope.json -e UPDATE_GIT=0 -e UPDATE_CONFIG=0 --privileged imswitch_hik
 #
+# Use an appropriate base image for multi-arch support
 # Use an appropriate base image for multi-arch support
 FROM ubuntu:22.04
 
@@ -78,7 +79,6 @@ RUN git clone https://github.com/openUC2/imSwitch /tmp/ImSwitch && \
     git checkout NOQT && \
     /bin/bash -c "source /opt/conda/bin/activate imswitch && pip install -e /tmp/ImSwitch"
 
-
 # Install UC2-REST
 RUN git clone https://github.com/openUC2/UC2-REST /tmp/UC2-REST && \
     cd /tmp/UC2-REST && \
@@ -105,7 +105,7 @@ CMD ["/bin/bash", "-c", "\
         fi && \
         if [ \"$UPDATE_UC2\" = \"true\" ]; then \
             cd /tmp/UC2-REST && \
-            git pull && \
+            git pull; \
         fi && \
         if [ \"$UPDATE_INSTALL_UC2\" = \"true\" ]; then \
             cd /tmp/UC2-REST && \
@@ -121,7 +121,8 @@ CMD ["/bin/bash", "-c", "\
         HTTP_PORT=${HTTP_PORT:-8001} && \
         CONFIG_FILE=${CONFIG_FILE:-/root/ImSwitchConfig/imcontrol_setup/example_virtual_microscope.json} && \
         USB_DEVICE_PATH=${USB_DEVICE_PATH:-/dev/bus/usb} && \
-        python3 /tmp/ImSwitch/main.py  --headless 1 --config-file example_virtual_microscope.json; \
+        python3 /tmp/ImSwitch/main.py --headless 1 --config-file example_virtual_microscope.json; \
     fi"]
+
     #python3 /tmp/ImSwitch/__main__.py --headless 1 --config-file example_uc2_hik_flowstop.json  --http-port 8001 --ssl 1"]
     # python3 /tmp/ImSwitch/imswitch/__main__.py --headless 1 --config-file example_uc2_hik_flowstop.json --http-port 8001 --ssl 1

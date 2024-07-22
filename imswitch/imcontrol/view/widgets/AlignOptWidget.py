@@ -90,8 +90,8 @@ class AlignOptWidget(Widget):
     def _plotCumSum(self, cor):
         self.plotCumSum.createFigure(cor)
 
-    def _plotDiffCC(self, cor):
-        self.plotCumSum.createFigure2(cor)
+    def _plotThreshMiddle(self, cor):
+        self.plotThreshMiddle.createFigure2(cor)
 
     # TODO: this can be now refactored to just int
     def execPlots(self, cor: object) -> None:
@@ -108,7 +108,7 @@ class AlignOptWidget(Widget):
         self._plotHorCuts(cor)
         self._plotCC(cor)
         self._plotCumSum(cor)
-        self._plotDiffCC(cor)
+        self._plotThreshMiddle(cor)
 
         # plot center vertical line for cross correlations
         self.plotCC.addItem(
@@ -159,7 +159,7 @@ class AlignOptWidget(Widget):
         self.plotHorCuts = pg.PlotWidget()
         self.plotCC = pg.PlotWidget()
         self.plotCumSum = CumSumCanvas()
-        self.plotDiffCumSum = CumSumCanvas()
+        self.plotThreshMiddle = CumSumCanvas()
 
         self.scanPar['LineIdx'] = QtWidgets.QSpinBox()
         self.scanPar['LineIdx'].setRange(0, 10000)
@@ -224,7 +224,7 @@ class AlignOptWidget(Widget):
         self.tabDiffCumSum = QtWidgets.QWidget()
         self.grid5 = QtWidgets.QGridLayout()
         self.tabDiffCumSum.setLayout(self.grid5)
-        self.grid5.addWidget(self.plotDiffCumSum, 0, 0)
+        self.grid5.addWidget(self.plotThreshMiddle, 0, 0)
         self.tabs.addTab(self.tabDiffCumSum, 'Diff Cum. Sums')
 
         currentRow = 0
@@ -250,7 +250,7 @@ class AlignOptWidget(Widget):
         self.grid.addWidget(self.scanPar['xShiftLabel'], currentRow, 0)
         self.grid.addWidget(self.scanPar['xShift'], currentRow, 1)
 
-        self.grid.addWidget(QtWidgets.QLabel('Threshold'), currentRow, 2)
+        self.grid.addWidget(QtWidgets.QLabel('Threshold (%)'), currentRow, 2)
         self.grid.addWidget(self.scanPar['Threshold'], currentRow, 3)
 
         currentRow += 1
@@ -281,23 +281,23 @@ class CumSumCanvas(FigureCanvas):
         self.ax1.clear()
         self.ax2.clear()
 
-        # add plot 1
-        self.ax1.plot(cor.s1, lw=3, label='cumsum 1 mirr')
-        self.ax1.plot(cor.s2, label='cumsum 2 mirr')
+        # add plot 1, normalized by the first cumsum
+        self.ax1.plot(cor.s1, lw=3, label='Proj')
+        self.ax1.plot(cor.s2, label='Counter Proj')
 
         self.ax1.legend()
         self.ax1.set_xlabel('pixel index')
-        self.ax1.set_ylabel('camera counts')
+        self.ax1.set_ylabel('Normalized cum Sum')
         self.ax1.set_title(f'diff={cor.diff}')
 
-        # add plot 2
-        self.ax2.plot(cor.s1_raw, lw=3, label='cumsum 1 raw')
-        self.ax2.plot(cor.s2_raw, label='cumsum 2 raw')
+        # # add plot 2
+        # self.ax2.plot(cor.s1_raw, lw=3, label='cumsum 1 raw')
+        # self.ax2.plot(cor.s2_raw, label='cumsum 2 raw')
 
-        self.ax2.legend()
-        self.ax2.set_xlabel('pixel index')
-        self.ax2.set_ylabel('camera counts')
-        self.ax2.set_title(f'diff={cor.diff_raw}')
+        # self.ax2.legend()
+        # self.ax2.set_xlabel('pixel index')
+        # self.ax2.set_ylabel('camera counts')
+        # self.ax2.set_title(f'diff={cor.diff_raw}')
 
         self.fig.canvas.draw_idle()
 
@@ -313,13 +313,13 @@ class CumSumCanvas(FigureCanvas):
         self.ax1.set_ylabel('camera counts')
         self.ax1.set_title(f'diff={cor.diff}')
 
-        # add plot 2
-        self.ax2.plot(abs(cor.s1_raw - cor.s2_raw), lw=3, label='Diff cumsums')
+        # # add plot 2
+        # self.ax2.plot(abs(cor.s1_raw - cor.s2_raw), lw=3, label='Diff cumsums')
 
-        self.ax2.legend()
-        self.ax2.set_xlabel('pixel index')
-        self.ax2.set_ylabel('camera counts')
-        self.ax2.set_title(f'diff={cor.diff_raw}')
+        # self.ax2.legend()
+        # self.ax2.set_xlabel('pixel index')
+        # self.ax2.set_ylabel('camera counts')
+        # self.ax2.set_title(f'diff={cor.diff_raw}')
 
 
 # Copyright (C) 2020-2022 ImSwitch developers

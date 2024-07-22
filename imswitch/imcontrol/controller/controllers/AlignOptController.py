@@ -277,40 +277,60 @@ class AlignCOR():
             )
 
         # correlation
-        self.crossCorr = correlate(
-            self.img_stack[self.params['pairFlag']][0][i].astype(np.floating),
-            self.img_stack[self.params['pairFlag']][1][i].astype(np.floating),
-            mode='full')
-        # print('CC max min', np.amax(self.crossCorr), np.amin(self.crossCorr))
-        self.center_px = self.img_stack[self.params['pairFlag']][0].shape[1]
+        self.processCrossCorrelation(i)
 
-        self.diff_raw, self.s1_raw, self.s2_raw = self.cumsumDiff(
-            self.img_stack_raw[self.params['pairFlag']][0][i],
-            self.img_stack_raw[self.params['pairFlag']][1][i],
-            )
-
-        self.diff, self.s1, self.s2 = self.cumsumDiff(
+        self.diff, self.s1, self.s2 = self.processCumSums(
             self.img_stack[self.params['pairFlag']][0][i],
             self.img_stack[self.params['pairFlag']][1][i],
             )
 
-    def cumsumDiff(self, arr1, arr2) -> Tuple[float, np.ndarray, np.ndarray]:
+    # correlation
+    def processCrossCorrelation(self, i: int) -> float:
+        """PRocess cross-correlation of the horizontal cuts.
+        Normalize the cross-correlation by the maximum value of the
+        raw image cross-correlation.
+        Find the center pixel of the image, which should coincide with
+        the center of the cross-correlation.
+
+        Args:
+            i (int): Index of the row for horizontal cuts.
+
+        Returns:
+            None
+        """
+        corrNormFactor = np.amax(correlate(
+            self.img_stack_raw[self.params['pairFlag']][0][i].astype(np.floating),
+            self.img_stack_raw[self.params['pairFlag']][1][i].astype(np.floating),
+            mode='full'))
+
+        self.crossCorr = correlate(
+            self.img_stack[self.params['pairFlag']][0][i].astype(np.floating),
+            self.img_stack[self.params['pairFlag']][1][i].astype(np.floating),
+            mode='full') / corrNormFactor
+
+        self.center_px = self.img_stack[self.params['pairFlag']][0].shape[1]
+
+    def processCumSums(self, arr1, arr2) -> Tuple[float, np.ndarray, np.ndarray]:
         """ Calculate sum of difference of cumsums of the counterprojections.
         This should be minimized for centering for the COR.
         """
         s1, s2 = np.cumsum(arr1), np.cumsum(arr2)
+
+        # normalize by the value of first proj
+        s1 /= s1[-1]
+        s2 /= s1[-1]
         diff = abs(sum(s1 - s2))
         return diff, s1, s2
 
-    def calcFullImgDiff(self):
-        s1 = np.cumsum(self.img_stack[self.params['pairFlag']][0].mean(axis=0))
-        s2 = np.cumsum(self.img_stack[self.params['pairFlag']][1].mean(axis=0))
-        return s1 - s2, abs(sum(s1 - s2))
+    # def calcFullImgDiff(self):
+    #     s1 = np.cumsum(self.img_stack[self.params['pairFlag']][0].mean(axis=0))
+    #     s2 = np.cumsum(self.img_stack[self.params['pairFlag']][1].mean(axis=0))
+    #     return s1 - s2, abs(sum(s1 - s2))
 
-    def calcFullImgDiffRaw(self):
-        s1 = np.cumsum(self.img_stack_raw[self.params['pairFlag']][0].mean(axis=0))
-        s2 = np.cumsum(self.img_stack_raw[self.params['pairFlag']][1].mean(axis=0))
-        return s1 - s2, abs(sum(s1 - s2))
+    # def calcFullImgDiffRaw(self):
+    #     s1 = np.cumsum(self.img_stack_raw[self.params['pairFlag']][0].mean(axis=0))
+    #     s2 = np.cumsum(self.img_stack_raw[self.params['pairFlag']][1].mean(axis=0))
+    #     return s1 - s2, abs(sum(s1 - s2))
 
     def _reCalcWithShift(self) -> None:
         """ Called after shift value changes. """

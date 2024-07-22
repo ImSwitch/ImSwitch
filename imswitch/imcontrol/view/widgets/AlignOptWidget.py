@@ -28,6 +28,7 @@ class AlignOptWidget(Widget):
         self.scanPar['StopButton'].setEnabled(True)
         self.scanPar['LineIdx'].setEnabled(False)
         self.scanPar['xShift'].setEnabled(False)
+        self.scanPar['Threshold'].setEnabled(False)
         self.scanPar['CounterProjPair'].setEnabled(False)
 
     def plotCounterProj(self, img: np.ndarray) -> None:

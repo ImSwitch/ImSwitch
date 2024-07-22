@@ -128,6 +128,7 @@ class AlignOptController(ImConWidgetController):
         self._widget.scanPar['StopButton'].setEnabled(not value)
         self._widget.scanPar['LineIdx'].setEnabled(value)
         self._widget.scanPar['xShift'].setEnabled(value)
+        self._widget.scanPar['Threshold'].setEnabled(value)
         self._widget.scanPar['CounterProjPair'].setEnabled(value)
 
     def requestInterruption(self) -> None:
@@ -317,8 +318,10 @@ class AlignCOR():
         s1, s2 = np.cumsum(arr1), np.cumsum(arr2)
 
         # normalize by the value of first proj
-        s1 /= s1[-1]
-        s2 /= s1[-1]
+        # this changes the dtype, therefore the division is not done inplace (s1 /= s1[-1])
+        s2 = s2 / s1[-1]  # this division needs to be done first
+        s1 = s1 / s1[-1]
+        
         diff = abs(sum(s1 - s2))
         return diff, s1, s2
 

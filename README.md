@@ -3,8 +3,9 @@
 [![DOI](https://joss.theoj.org/papers/10.21105/joss.03394/status.svg)](https://doi.org/10.21105/joss.03394)
 
 Our Discord Server:
-<a href="[https://www.w3schools.com](https://discord.gg/y4Su9PpEvX)">
-<img src="[w3html.gif](https://cdn.prod.website-files.com/6257adef93867e50d84d30e2/636e0a6918e57475a843f59f_icon_clyde_black_RGB.svg)" alt="W3Schools.com" width="100">
+
+<a href="https://discord.gg/y4Su9PpEvX">
+<img src="https://cdn.prod.website-files.com/6257adef93867e50d84d30e2/636e0a6918e57475a843f59f_icon_clyde_black_RGB.svg" alt="W3Schools.com" width="100">
 </a>
 ![]()
 

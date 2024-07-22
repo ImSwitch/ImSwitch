@@ -81,8 +81,6 @@ class AlignOptWidget(Widget):
             pen=pg.mkPen('b'))
 
     def _plotCC(self, cor):
-        # I plot normalized, perhaps not great
-        # Not working
         self.plotCC.plot(
             cor.crossCorr/np.amax(cor.crossCorr),
             name=f'{cor.params["lineIdx"]}',
@@ -115,6 +113,13 @@ class AlignOptWidget(Widget):
         self.plotCC.addItem(
             pg.InfiniteLine(cor.center_px,
                             angle=90,
+                            pen=pg.mkPen(width=2, color='r'))
+        )
+
+        # plot horizontal line for at 1
+        self.plotCC.addItem(
+            pg.InfiniteLine(1,
+                            angle=0,
                             pen=pg.mkPen(width=2, color='r'))
         )
 

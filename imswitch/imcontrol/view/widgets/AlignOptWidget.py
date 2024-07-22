@@ -1,10 +1,15 @@
 from qtpy import QtWidgets
 import pyqtgraph as pg
 import numpy as np
-from typing import List
 
 from imswitch.imcontrol.view import guitools as guitools
 from .basewidgets import Widget
+
+# import matplotlib as mpl
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_qt5agg import (
+    FigureCanvasQTAgg as FigureCanvas
+)
 
 
 class AlignOptWidget(Widget):
@@ -33,15 +38,55 @@ class AlignOptWidget(Widget):
         """
         self.plotMerge.setImage(img)
 
-    def getHorCutsIdxList(self):
+    def getHorCutsIdx(self) -> int:
         """ Returns the user-input list of indeces for horizontal cuts."""
-        return self.scanPar['LineIdxsEdit'].text()
+        return self.scanPar['LineIdx'].value()
 
-    def getRotatorIdx(self):
+    def getShift(self) -> int:
+        return self.scanPar['xShift'].value()
+
+    def getProjectionPairFlag(self) -> int:
+        return self.scanPar['CounterProjPair'].currentIndex()
+
+    def getRotatorIdx(self) -> int:
         """Returns currently selected rotator for the OPT """
         return self.scanPar['Rotator'].currentIndex()
 
-    def execPlotHorCuts(self, idxList: List[int], cor: object) -> None:
+    def _clearPlots(self):
+        self.plotHorCuts.clear()  # clear plotWidget first
+        self.plotHorCuts.addLegend()
+        self.plotHorCuts.setTitle('Horizontal cuts', color='b')
+
+        self.plotCC.clear()  # clear plotWidget first
+        self.plotCC.addLegend()
+        self.plotCC.setTitle('Norm. cross-correlation', color='b')
+
+    def _plotHorCuts(self, cor):
+        self.plotHorCuts.plot(
+            self.normalize(cor.horCuts[0], '01'),
+            name=f'single {cor.params["lineIdx"]}',
+            pen=pg.mkPen('r'))
+        self.plotHorCuts.plot(
+            self.normalize(cor.horCuts[1], '01'),
+            name=f'merge {cor.params["lineIdx"]}',
+            pen=pg.mkPen('b'))
+
+    def _plotCC(self, cor):
+        # I plot normalized, perhaps not great
+        # Not working
+        self.plotCC.plot(
+            cor.crossCorr/np.amax(cor.crossCorr),
+            name=f'{cor.params["lineIdx"]}',
+        )
+
+    def _plotCumSum(self, cor):
+        self.plotCumSum.createFigure(cor)
+
+    def _plotDiffCC(self, cor):
+        self.plotCumSum.createFigure2(cor)
+
+    # TODO: this can be now refactored to just int
+    def execPlots(self, cor: object) -> None:
         """
         Plot horizontal cuts and normalized cross-correlation.
 
@@ -50,32 +95,14 @@ class AlignOptWidget(Widget):
             cor (object): Object containing horizontal cuts and
                 cross-correlation data.
         """
-        self.plotHorCuts.clear()  # clear plotWidget first
-        self.plotHorCuts.addLegend()
-        self.plotHorCuts.setTitle('Horizontal cuts', color='b')
+        self._clearPlots()
 
-        for i, px in enumerate(idxList):
-            self.plotHorCuts.plot(
-                self.normalize(cor.horCuts[i][0], '01'),
-                name=f'single {px}',
-                pen=pg.mkPen('r'))
-            self.plotHorCuts.plot(
-                self.normalize(cor.horCuts[i][1], '01'),
-                name=f'merge {px}',
-                pen=pg.mkPen('b'))
+        self._plotHorCuts(cor)
+        self._plotCC(cor)
+        self._plotCumSum(cor)
+        self._plotDiffCC(cor)
 
-        # plot CC
-        self.plotCC.clear()  # clear plotWidget first
-        self.plotCC.addLegend()
-        self.plotCC.setTitle('Norm. cross-correlation', color='b')
-        # find
-        for i, px in enumerate(idxList):
-            # I plot it normalized
-            self.plotCC.plot(
-                cor.crossCorr[i]/np.amax(cor.crossCorr[i]),
-                name=f'{px}',
-            )
-        # plot center Hor line
+        # plot center vertical line for cross correlations
         self.plotCC.addItem(
             pg.InfiniteLine(cor.center_px,
                             angle=90,
@@ -119,14 +146,19 @@ class AlignOptWidget(Widget):
         self.scanPar['RotatorLabel'] = QtWidgets.QLabel('Rotator')
 
         self.plotMerge = pg.ImageView()
+        self.plotMerge.setFixedWidth(400)
+        self.plotMerge.setFixedHeight(300)
         self.plotHorCuts = pg.PlotWidget()
         self.plotCC = pg.PlotWidget()
+        self.plotCumSum = CumSumCanvas()
+        self.plotDiffCumSum = CumSumCanvas()
 
-        self.scanPar['LineIdxsEdit'] = QtWidgets.QLineEdit('100 50')
+        self.scanPar['LineIdx'] = QtWidgets.QSpinBox()
+        self.scanPar['LineIdx'].setRange(0, 10000)
+        self.scanPar['LineIdx'].setValue(100)
         # tool tip
-        self.scanPar['LineIdxsEdit'].setToolTip(
-            'List of indeces for horizontal cuts, separated by space.'
-            ' E.g. "100 50" will plot horizontal cuts at row 100 and 50.'
+        self.scanPar['LineIdx'].setToolTip(
+            'Index for horizontal cuts.'
         )
         self.scanPar['xShift'] = QtWidgets.QSpinBox()
         self.scanPar['xShift'].setValue(0)
@@ -138,9 +170,11 @@ class AlignOptWidget(Widget):
         )
 
         self.scanPar['xShiftLabel'] = QtWidgets.QLabel('x-Shift')
-        self.scanPar['PlotHorCuts'] = guitools.BetterPushButton('Plot')
-        self.scanPar['PlotHorCuts'].setToolTip(
-            'Plot horizontal cuts and cross-correlation'
+        self.scanPar['CounterProjPair'] = QtWidgets.QComboBox()
+        self.scanPar['CounterProjPair'].addItems(['Pair 1 (0, 180 deg)',
+                                                  'Pair 2 (90, 270 deg)'])
+        self.scanPar['CounterProjPair'].setToolTip(
+            'Select a pair of counter projections which hor cuts are analyzed'
         )
 
         self.tabs = QtWidgets.QTabWidget()
@@ -161,6 +195,20 @@ class AlignOptWidget(Widget):
         # add tab to tabs
         self.tabs.addTab(self.tabCorr, 'Cross-correlation')
 
+        # third tab of cumsum of intensities
+        self.tabCumSum = QtWidgets.QWidget()
+        self.grid4 = QtWidgets.QGridLayout()
+        self.tabCumSum.setLayout(self.grid4)
+        self.grid4.addWidget(self.plotCumSum, 0, 0)
+        self.tabs.addTab(self.tabCumSum, 'Cumulative Sums')
+
+        # 4. tab of diff of cumsums
+        self.tabDiffCumSum = QtWidgets.QWidget()
+        self.grid5 = QtWidgets.QGridLayout()
+        self.tabDiffCumSum.setLayout(self.grid5)
+        self.grid5.addWidget(self.plotDiffCumSum, 0, 0)
+        self.tabs.addTab(self.tabDiffCumSum, 'Diff Cum. Sums')
+
         currentRow = 0
         self.grid.addWidget(self.scanPar['StartButton'], currentRow, 0)
         self.grid.addWidget(self.scanPar['StopButton'], currentRow, 1)
@@ -172,10 +220,13 @@ class AlignOptWidget(Widget):
         self.grid.addWidget(self.plotMerge, currentRow, 0, 1, -1)
 
         currentRow += 1
-        self.grid.addWidget(QtWidgets.QLabel('Line indeces'),
+        self.grid.addWidget(QtWidgets.QLabel('Line index'),
                             currentRow, 0)
-        self.grid.addWidget(self.scanPar['LineIdxsEdit'], currentRow, 1)
-        self.grid.addWidget(self.scanPar['PlotHorCuts'], currentRow, 2)
+        self.grid.addWidget(self.scanPar['LineIdx'], currentRow, 1)
+
+        # currentRow += 1
+        self.grid.addWidget(QtWidgets.QLabel('Pair'), currentRow, 2)
+        self.grid.addWidget(self.scanPar['CounterProjPair'], currentRow, 3)
 
         currentRow += 1
         self.grid.addWidget(self.scanPar['xShiftLabel'], currentRow, 0)
@@ -183,6 +234,71 @@ class AlignOptWidget(Widget):
 
         currentRow += 1
         self.grid.addWidget(self.tabs, currentRow, 0, 1, -1)
+
+
+class CumSumCanvas(FigureCanvas):
+    def __init__(self, parent=None, width=400, height=300):
+        self.fig = Figure(figsize=(width, height))
+        self.ax1 = self.fig.add_subplot(121)
+        self.ax2 = self.fig.add_subplot(122)
+
+        FigureCanvas.__init__(self, self.fig)
+        self.setParent(parent)
+
+        FigureCanvas.setSizePolicy(self,
+                                   QtWidgets.QSizePolicy.Expanding,
+                                   QtWidgets.QSizePolicy.Expanding)
+        FigureCanvas.updateGeometry(self)
+
+    def createFigure(self, cor) -> None:
+        """Create report plot.
+
+        Args:
+            report (dict): report dictionary.
+        """
+        # self.ax1.clear()
+        self.ax1.clear()
+        self.ax2.clear()
+
+        # add plot 1
+        self.ax1.plot(cor.s1, lw=3, label='cumsum 1 mirr')
+        self.ax1.plot(cor.s2, label='cumsum 2 mirr')
+
+        self.ax1.legend()
+        self.ax1.set_xlabel('pixel index')
+        self.ax1.set_ylabel('camera counts')
+        self.ax1.set_title(f'diff={cor.diff}')
+
+        # add plot 2
+        self.ax2.plot(cor.s1_raw, lw=3, label='cumsum 1 raw')
+        self.ax2.plot(cor.s2_raw, label='cumsum 2 raw')
+
+        self.ax2.legend()
+        self.ax2.set_xlabel('pixel index')
+        self.ax2.set_ylabel('camera counts')
+        self.ax2.set_title(f'diff={cor.diff_raw}')
+
+        self.fig.canvas.draw_idle()
+
+    def createFigure2(self, cor) -> None:
+        self.ax1.clear()
+        self.ax2.clear()
+
+        # add plot 1
+        self.ax1.plot(abs(cor.s1 - cor.s2), lw=3, label='Diff cumsums')
+
+        self.ax1.legend()
+        self.ax1.set_xlabel('pixel index')
+        self.ax1.set_ylabel('camera counts')
+        self.ax1.set_title(f'diff={cor.diff}')
+
+        # add plot 2
+        self.ax2.plot(abs(cor.s1_raw - cor.s2_raw), lw=3, label='Diff cumsums')
+
+        self.ax2.legend()
+        self.ax2.set_xlabel('pixel index')
+        self.ax2.set_ylabel('camera counts')
+        self.ax2.set_title(f'diff={cor.diff_raw}')
 
 
 # Copyright (C) 2020-2022 ImSwitch developers

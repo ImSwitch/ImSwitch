@@ -4,7 +4,7 @@ from scipy.signal import correlate
 from imswitch.imcommon.model import initLogger
 from ..basecontrollers import ImConWidgetController
 from imswitch.imcommon.framework import Thread
-from typing import List, Tuple
+from typing import Tuple
 
 from .OptController import ScanOPTWorker
 
@@ -22,7 +22,7 @@ class AlignOptController(ImConWidgetController):
         self.__logger = initLogger(self, tryInheritParent=True)
         self.optStack = np.ones((1, 1, 1))
         self.counterProj = np.ones((1, 1, 1))
-        self.cor = None
+        self.cor = AlignCOR()
 
         # Set up rotator in widget
         self._widget.initControls()
@@ -52,13 +52,14 @@ class AlignOptController(ImConWidgetController):
         self._widget.scanPar['StopButton'].clicked.connect(
             self.requestInterruption,
             )
-        self._widget.scanPar['PlotHorCuts'].clicked.connect(
-            self.plotHorCuts,
-            )
 
         # cross projection x-shift parameter
-        self._widget.scanPar['xShift'].valueChanged.connect(self.replotAll)
-        self.updateShift()
+        self._widget.scanPar['xShift'].valueChanged.connect(self.plotAll)
+
+        # this one can be done without updating the image.
+        self._widget.scanPar['LineIdx'].valueChanged.connect(self.plotAll)
+        self._widget.scanPar['CounterProjPair'].currentIndexChanged.connect(
+                                                    self.plotAll)
 
         # OPT worker thread
         self.optThread = Thread()
@@ -89,10 +90,11 @@ class AlignOptController(ImConWidgetController):
         self._logger.info('OPT scan finished.')
         self.optStack = np.array(self.allFrames)
 
-        self.processAlign(self.optStack)
+        self.cor.updateStack(self.optStack)
         self.optWorker.isInterruptionRequested = False  # reset flag
         self.optThread.quit()  # stop the worker thread
         self.enableWidget(True)
+        self.plotAll()
 
     def prepareOPTScan(self) -> None:
         """ Makes preliminary checks for the OPT scan.
@@ -103,13 +105,8 @@ class AlignOptController(ImConWidgetController):
         self.optWorker.noRAM = True
         self.allFrames = []
 
-        # equidistant steps for the OPT scan in absolute values.
-        curPos = self._master.rotatorsManager[
-                                self.rotatorName
-                                ].get_position()[0]
-
         step = self.stepsPerTurn//4
-        self.optWorker.optSteps = [curPos, curPos + step, curPos + 2*step, curPos + 3*step]
+        self.optWorker.optSteps = [0, step, 2*step, 3*step]
         self.optSteps = 4
 
         # starting scan
@@ -128,25 +125,27 @@ class AlignOptController(ImConWidgetController):
         """
         self._widget.scanPar['StartButton'].setEnabled(value)
         self._widget.scanPar['StopButton'].setEnabled(not value)
-        self._widget.scanPar['LineIdxsEdit'].setEnabled(value)
+        self._widget.scanPar['LineIdx'].setEnabled(value)
         self._widget.scanPar['xShift'].setEnabled(value)
-        self._widget.scanPar['PlotHorCuts'].setEnabled(value)
+        self._widget.scanPar['CounterProjPair'].setEnabled(value)
 
     def requestInterruption(self) -> None:
         """ Request interruption of the OPT scan. """
         self.optWorker.isInterruptionRequested = True
 
-    def getHorCutIdxs(self) -> List[int]:
+    def getHorCutIdx(self) -> int:
         """Decodes field of indices for row cuts
 
         Returns:
             List[int]: integers used as row indices
         """
-        return [int(k) for k in self._widget.getHorCutsIdxList().split()]
+        return self._widget.getHorCutsIdx()
 
-    def updateShift(self) -> None:
-        """ Update x-shift value for alignment """
-        self.xShift = self._widget.scanPar['xShift'].value()
+    def getShift(self) -> int:
+        return self._widget.getShift()
+
+    def getProjectionPairFlag(self) -> str:
+        return 'pair1' if self._widget.getProjectionPairFlag() == 0 else 'pair2'
 
     def updateRotator(self):
         """ Update rotator attributes when rotator is changed.
@@ -173,50 +172,30 @@ class AlignOptController(ImConWidgetController):
         if self.optWorker.isOPTScanRunning:
             self.allFrames.append(np.uint16(frame))
 
-    # TODO Needs to change from here
-    def processAlign(self, arr: np.ndarray) -> None:
-        """Plot counter projection using AlignCOR class
-
-        Args:
-            arr (np.ndarray): two-frame array
-        """
-        self.cor = AlignCOR(arr, self.xShift)
-        self.cor.merge()
-        self._widget.plotCounterProj(self.cor.merged)
-
-    def plotHorCuts(self) -> None:
-        """Create widget plot of the horizontal cuts
-        and the crosscorrelations.
-        """
-        # query the line indeces to get hor cuts.
-        self.horIdxList = self.getHorCutIdxs()
-        # process the hor cuts
-        self.cor.processHorCuts(self.horIdxList)
-
-        # here call widget func
-        self._widget.execPlotHorCuts(self.horIdxList, self.cor)
-
-    def replotAll(self) -> None:
+    def plotAll(self) -> None:
         """When xshift changes, replot the cuts, image
-        overlay and the crosscorrelation plots.
+        overlay and the cross-correlation plots.
         """
-        self.updateShift()
-        try:
-            self.cor._updateShift(self.xShift)
-            self._widget.plotCounterProj(self.cor.merged)
-            self.plotHorCuts()
-        except TypeError:
-            self.__logger.info('No alignment stack available')
+        self.cor._updateParams('shift', self.getShift())
+        self.cor._updateParams('lineIdx', self.getHorCutIdx())
+        self.cor._updateParams('pairFlag', self.getProjectionPairFlag())
+
+        # try:
+        self.cor._reCalcWithShift()
+        self._widget.plotCounterProj(self.cor.merged)
+        self._widget.execPlots(self.cor)
+        # except (TypeError, AttributeError):
+        #     self.__logger.info('No alignment stack available')
 
 
 class AlignCOR():
     """Class to visualize alignment of the two pairs of 180 deg tomographic
     projections, i.e. 0, 90, 180, 270 deg. The class is used to calculate
-    cummulative sums of the two projections
+    cumulative sums of the two projections
 
     and their cross-correlation.
     """
-    def __init__(self, img_stack: np.ndarray, shift: int) -> None:
+    def __init__(self) -> None:
         """Init class, check validity of the img_stack shape and calculate
         shifted overlay stack
 
@@ -228,36 +207,52 @@ class AlignCOR():
         Raises:
             IndexError: In case of wrong array shape
         """
-        if len(img_stack) != 4:
+        self.img_stack = {}
+        self.img_stack_raw = {}
+        self.params = {'shift': 0,
+                       'lineIdx': 0,
+                       'pairFlag': 'pair1',
+                       }
+
+    def updateStack(self, stack):
+        if len(stack) != 4:
             raise IndexError('Stack must contain exactly two images.')
         # img_stack is opt acquired at 0, 90, 180, 270 deg
-        self.img_stack_raw = {}
-        self.img_stack_raw['pair1'] = [img_stack[0],
-                                       img_stack[2],
-                                       ]
-        self.img_stack_raw['pair2'] = [img_stack[1],
-                                       img_stack[3],
-                                       ]
-
-        self.shift = shift
+        self.img_stack_raw['pair1'] = [stack[0], stack[2]]
+        self.img_stack_raw['pair2'] = [stack[1], stack[3]]
 
         # invert one of the images and do overlay.
         self.createShiftedStack()
-        self.img_stack = {}
+
+    def merge(self) -> None:
+        """ Merge of the two projections is their mean. """
+        self.merged = np.array(
+                        self.img_stack[self.params['pairFlag']]
+                        ).mean(axis=0).astype(np.int16)
 
     def createShiftedStack(self):
         """ This shifts the first of the two projections by self.shift,
         first image in the stack is also mirrored around vertical center axis
         """
-        shifted = [np.roll(k, self.shift, axis=1) for k in self.img_stack_raw]
-        self.img_stack['pair1'] = [shifted[0][:, ::-1],
-                                   shifted[2],
-                                   ]
-        self.img_stack['pair2'] = [shifted[1][:, ::-1],
-                                   shifted[3],
-                                   ]
+        self.img_stack['pair1'] = [
+            np.roll(self.img_stack_raw['pair1'][0],
+                    self.params['shift'],
+                    axis=1)[:, ::-1],
+            np.roll(self.img_stack_raw['pair1'][1],
+                    self.params['shift'],
+                    axis=1),
+            ]
+        self.img_stack['pair2'] = [
+            np.roll(self.img_stack_raw['pair2'][0],
+                    self.params['shift'],
+                    axis=1)[:, ::-1],
+            np.roll(self.img_stack_raw['pair2'][1],
+                    self.params['shift'],
+                    axis=1),
+            ]
+        self.merge()
 
-    def processHorCuts(self, idx_list: List[int]) -> None:
+    def processHorCuts(self) -> None:
         """Retrieve rows from the camera frames, mirror flip and merge
         the projections. Second part calculates cross-correlation of the
         cuts which should be ideally perfectly matching and central ->
@@ -266,49 +261,38 @@ class AlignCOR():
         Args:
             idx_list (List[int]): indices of row for horizontal cuts.
         """
-        self.valid_idx = []
-        self.horCuts = {'pair1': [], 'pair2': []}
+        self.horCuts = {}
 
         # evaluate if the idx is in the range of the detector
-        for i in idx_list:  # idx is row of the detector
-            if 0 <= i < self.img_stack['pair1'][0].shape[0]:
-                self.valid_idx.append(i)
-            else:
-                print(f"Index {i} out of camera's range")
 
-        # add rows
-        for i in self.valid_idx:  # idx is row of the detector
-            # append tuple of (first from stack, merged one) at given idx
-            self.horCuts['pair1'].append((self.img_stack['pair1'][0][i],
-                                          self.img_stack['pair1'][1][i],
-                                          ))
+        # Check this in the update func
+        if 0 <= self.params['lineIdx'] < self.img_stack[self.params['pairFlag']][0].shape[0]:
+            i = self.params['lineIdx']
+        else:
+            i = 0
+            print(f"Index {self.params['lineIdx']} out of camera's range, setting to {i}")
 
-        # cumsum metric
-        self.diff_raw = {'pair1': [], 'pair2': []}
-        self.s1_raw = {'pair1': [], 'pair2': []}
-        self.s2_raw = {'pair1': [], 'pair2': []}
+        self.horCuts = (self.img_stack[self.params['pairFlag']][0][i],
+                        self.img_stack[self.params['pairFlag']][1][i],
+                        )
 
-        self.diff = {'pair1': [], 'pair2': []}
-        self.s1 = {'pair1': [], 'pair2': []}
-        self.s2 = {'pair1': [], 'pair2': []}
+        # correlation
+        self.crossCorr = correlate(
+                            self.img_stack[self.params['pairFlag']][0][i].astype(np.floating),
+                            self.img_stack[self.params['pairFlag']][1][i].astype(np.floating),
+                            mode='full')
+        # print('CC max min', np.amax(self.crossCorr), np.amin(self.crossCorr))
+        self.center_px = self.img_stack[self.params['pairFlag']][0].shape[1]
 
-        for i in self.valid_idx:
-            for pair in ['pair1', 'pair2']:
-                diff_raw, s1_raw, s2_raw = self.cumsumDiff(
-                                            self.img_stack_raw[pair][0][i],
-                                            self.img_stack_raw[pair][1][i],
-                                            )
-                self.diff_raw[pair].append(diff_raw)
-                self.s1_raw[pair].append(s1_raw)
-                self.s2_raw[pair].append(s2_raw)
+        self.diff_raw, self.s1_raw, self.s2_raw = self.cumsumDiff(
+                            self.img_stack_raw[self.params['pairFlag']][0][i],
+                            self.img_stack_raw[self.params['pairFlag']][1][i],
+                            )
 
-                diff, s1, s2 = self.cumsumDiff(
-                                    self.img_stack[pair][0][i],
-                                    self.img_stack[pair][1][i],
-                                    )
-                self.diff[pair].append(diff)
-                self.s1[pair].append(s1)
-                self.s2[pair].append(s2)
+        self.diff, self.s1, self.s2 = self.cumsumDiff(
+                            self.img_stack[self.params['pairFlag']][0][i],
+                            self.img_stack[self.params['pairFlag']][1][i],
+                            )
 
     def cumsumDiff(self, arr1, arr2) -> Tuple[float, np.ndarray, np.ndarray]:
         """ Calculate sum of difference of cumsums of the counterprojections.
@@ -318,147 +302,13 @@ class AlignCOR():
         diff = abs(sum(s1 - s2))
         return diff, s1, s2
 
-    def _recalcWithShift(self) -> None:
+    def _reCalcWithShift(self) -> None:
         """ Called after shift value changes. """
         # first redo the stack
         self.createShiftedStack()
 
         # process cuts
-        self.processHorCuts(self.valid_idx)
+        self.processHorCuts()
 
-    def _updateShift(self, value: int) -> None:
-        """ Updates x-shift value between projections. Triggers
-        recalculation of the merge
-
-        Args:
-            value (int): shift between projections in pixels.
-        """
-        self.shift = value
-        self._recalcWithShift()
-
-
-class AlignCOR_old():
-    """Class to visualize alignment of the two 180 deg tomographic
-    projections
-    """
-    def __init__(self, img_stack: np.ndarray, shift: int) -> None:
-        """Init class, check validity of the img_stack shape and calculate
-        shifted overlay stack
-
-        Args:
-            img_stack (np.ndarray): stack od two counter-projections
-            shift (int): shift of one of the projections in respect to the
-                other one, in pixels.
-
-        Raises:
-            IndexError: In case of wrong array shape
-        """
-        if len(img_stack) != 2:
-            raise IndexError('Stack must contain exactly two images.')
-        # img_stack is opt acquired at 0 and 180 deg
-        self.img_stack_raw = img_stack
-        self.shift = shift
-
-        # invert one of the images and do overlay.
-        self.createShiftedStack()
-
-        self.horCuts = []
-        self.merged = None
-
-    def _updateShift(self, value: int) -> None:
-        """ Updates x-shift value between projections. Triggers
-        recalculation of the merge
-
-        Args:
-            value (int): shift between projections in pixels.
-        """
-        self.shift = value
-        self.recalcWithShift()
-
-    def merge(self) -> None:
-        """ Merge of the two projections is their mean. """
-        self.merged = np.array(self.img_stack).mean(axis=0).astype(np.int16)
-
-    def processHorCuts(self, idx_list: List[int]) -> None:
-        """Retrieve rows from the camera frames, mirror flip and merge
-        the projections. Second part calculates cross-correlation of the
-        cuts which should be ideally perfectly matching and central ->
-        optimization enabler
-
-        Args:
-            idx_list (List[int]): indices of row for horizontal cuts.
-        """
-        self.horCuts = []
-        self.valid_idx = []
-
-        # add rows
-        for i in idx_list:  # idx is row of the detector
-            try:
-                # append tuple of (first from stack, merged one) at given idx
-                self.horCuts.append((self.img_stack[0][i],
-                                     self.merged[i]))
-                self.valid_idx.append(i)
-            except IndexError:
-                # TODO: this could update the valid idx list too
-                print('Index out of range')
-
-        # calculate cross-correlation between 0, 180 projs
-        self.crossCorr = []
-        for i in self.valid_idx:
-            self.crossCorr.append(
-                correlate(self.img_stack[0][i],
-                          self.img_stack[1][i],
-                          mode='full'),
-                )
-        # column dimension, which is center
-        # of full cross correlation, which is size 2n
-        self.center_px = self.img_stack[0].shape[1]
-
-    def recalcWithShift(self) -> None:
-        """ Called after shift value changes. """
-        # first redo the stack
-        self.createShiftedStack()
-
-        # redo merge
-        self.merge()
-
-        # process cuts
-        self.processHorCuts(self.valid_idx)
-
-    def createShiftedStack(self):
-        """ This shifts the first of the two projections by self.shift,
-        first image in the stack is also mirrored around vertical center axis
-        """
-        shifted = np.zeros(self.img_stack_raw[0].shape)
-
-        # rolling around axis 1, which are columns
-        if self.shift < 0:
-            shifted[:, :self.shift] = np.roll(self.img_stack_raw[0],
-                                              self.shift,
-                                              axis=1,
-                                              )[:, :self.shift]
-        else:
-            shifted[:, self.shift:] = np.roll(self.img_stack_raw[0],
-                                              self.shift,
-                                              axis=1,
-                                              )[:, self.shift:]
-        # in the stack, first is shifted and mirrored
-        self.img_stack = [shifted[:, ::-1],
-                          self.img_stack_raw[1]]
-
-
-# Copyright (C) 2020-2021 ImSwitch developers
-# This file is part of ImSwitch.
-#
-# ImSwitch is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# ImSwitch is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+    def _updateParams(self, parName: str, value):
+        self.params[parName] = value

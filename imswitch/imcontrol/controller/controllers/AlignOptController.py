@@ -130,6 +130,7 @@ class AlignOptController(ImConWidgetController):
         self._widget.scanPar['LineIdx'].setEnabled(value)
         self._widget.scanPar['xShift'].setEnabled(value)
         self._widget.scanPar['Threshold'].setEnabled(value)
+        self._widget.scanPar['Modality'].setEnabled(value)
         self._widget.scanPar['CounterProjPair'].setEnabled(value)
 
     def requestInterruption(self) -> None:
@@ -291,6 +292,9 @@ class AlignCOR():
             self.img_stack[self.params['pairFlag']][1][i],
             )
 
+        # calculate the indices of the middle of the image
+        self.processImageValueIndices()
+
     # correlation
     def processCrossCorrelation(self, i: int) -> float:
         """PRocess cross-correlation of the horizontal cuts.
@@ -327,10 +331,31 @@ class AlignCOR():
         # this changes the dtype, therefore the division is not done inplace (s1 /= s1[-1])
         s2 = s2 / s1[-1]  # this division needs to be done first
         s1 = s1 / s1[-1]
-        
+
         diff = abs(sum(s1 - s2))
         return diff, s1, s2
 
+    def processImageValueIndices(self) -> None:
+        """ Calculate the indices of the middle of the image.
+        Calculate the indices of the middle of the cumsums.
+        Calculate the indices of the thresholded cuts.
+        """
+        # argmin of the difference of the cumsums
+        self.s1middle = np.argmin(abs(self.s1 - self.s1[-1]/2))
+        self.s2middle = np.argmin(abs(self.s2 - self.s2[-1]/2))
+
+        # retrieve the thresholded cuts
+        self.img_thresh = np.amax(self.horCuts[0]) * self.params['threshold'] / 100
+        self.s1meanIdx = np.mean(
+            [index for index, value in enumerate(self.horCuts[0]) if value > self.img_thresh])
+        self.s2meanIdx = np.mean(
+            [index for index, value in enumerate(self.horCuts[1]) if value > self.img_thresh])
+
+        # print all the values
+        print(f"Image threshold: {self.img_thresh}")
+        print(f"Center of the cumsums: {self.s1middle}, {self.s2middle}")
+        print(f"Center of the thresholded cuts: {self.s1meanIdx}, {self.s2meanIdx}")
+                                                        
     # def calcFullImgDiff(self):
     #     s1 = np.cumsum(self.img_stack[self.params['pairFlag']][0].mean(axis=0))
     #     s2 = np.cumsum(self.img_stack[self.params['pairFlag']][1].mean(axis=0))

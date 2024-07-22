@@ -305,6 +305,10 @@ class CumSumCanvas(FigureCanvas):
         self.ax1.plot(cor.s1, lw=3, label='Proj')
         self.ax1.plot(cor.s2, label='Counter Proj')
 
+        # plot middle indices
+        self.ax1.axvline(cor.s1middle, color='C0', lw=1, label=f'middle 1: {cor.s1middle}')
+        self.ax1.axvline(cor.s2middle, color='C1', lw=1, label=f'middle 2: {cor.s2middle}')
+
         self.ax1.legend()
         self.ax1.set_xlabel('pixel index')
         self.ax1.set_ylabel('Normalized cum Sum')
@@ -326,12 +330,20 @@ class CumSumCanvas(FigureCanvas):
         self.ax2.clear()
 
         # add plot 1
-        self.ax1.plot(abs(cor.s1 - cor.s2), lw=3, label='Diff cumsums')
+        self.ax1.plot(cor.horCuts[0], lw=3, label='_nolegend_')
+        self.ax1.plot(cor.horCuts[1], lw=2, label='_nolegend_')
+        # plot middle indices
+        self.ax1.axvline(cor.s1meanIdx, color='C0', lw=1,
+                         label=f'middle 1: {cor.s1meanIdx}')
+        self.ax1.axvline(cor.s2meanIdx, color='C1', lw=1,
+                         label=f'middle 2: {cor.s2meanIdx}')
+        # plot threshold
+        self.ax1.axhline(cor.img_thresh, color='b', lw=1, label='_nolegend_')
 
         self.ax1.legend()
         self.ax1.set_xlabel('pixel index')
         self.ax1.set_ylabel('camera counts')
-        self.ax1.set_title(f'diff={cor.diff}')
+        # self.ax1.set_title(f'diff={cor.diff}')
 
         # # add plot 2
         # self.ax2.plot(abs(cor.s1_raw - cor.s2_raw), lw=3, label='Diff cumsums')
@@ -340,6 +352,8 @@ class CumSumCanvas(FigureCanvas):
         # self.ax2.set_xlabel('pixel index')
         # self.ax2.set_ylabel('camera counts')
         # self.ax2.set_title(f'diff={cor.diff_raw}')
+
+        self.fig.canvas.draw_idle()
 
 
 # Copyright (C) 2020-2022 ImSwitch developers

@@ -61,6 +61,7 @@ class AlignOptController(ImConWidgetController):
         self._widget.scanPar['CounterProjPair'].currentIndexChanged.connect(
                                                     self.plotAll)
         self._widget.scanPar['Threshold'].valueChanged.connect(self.plotAll)
+        self._widget.scanPar['Modality'].currentIndexChanged.connect(self.plotAll)
 
         # OPT worker thread
         self.optThread = Thread()
@@ -146,6 +147,9 @@ class AlignOptController(ImConWidgetController):
     def getThreshold(self) -> float:
         return self._widget.getThreshold()
 
+    def getExpModality(self) -> str:
+        return self._widget.getExpModality()
+
     def getShift(self) -> int:
         return self._widget.getShift()
 
@@ -185,6 +189,7 @@ class AlignOptController(ImConWidgetController):
         self.cor._updateParams('shift', self.getShift())
         self.cor._updateParams('lineIdx', self.getHorCutIdx())
         self.cor._updateParams('pairFlag', self.getProjectionPairFlag())
+        self.cor._updateParams('modality', self.getExpModality())
 
         # try:
         self.cor._reCalcWithShift()
@@ -209,6 +214,7 @@ class AlignCOR():
             'lineIdx': 0,
             'pairFlag': 'pair1',
             'threshold': 1.0,
+            'modality': 'Transmission',
             }
 
     def updateStack(self, stack):

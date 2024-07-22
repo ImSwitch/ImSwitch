@@ -30,6 +30,7 @@ class AlignOptWidget(Widget):
         self.scanPar['xShift'].setEnabled(False)
         self.scanPar['Threshold'].setEnabled(False)
         self.scanPar['CounterProjPair'].setEnabled(False)
+        self.scanPar['Modality'].setEnabled(False)
 
     def plotCounterProj(self, img: np.ndarray) -> None:
         """
@@ -50,6 +51,9 @@ class AlignOptWidget(Widget):
 
     def getShift(self) -> int:
         return self.scanPar['xShift'].value()
+
+    def getExpModality(self) -> str:
+        return self.scanPar['Modality'].currentText()
 
     def getThreshold(self) -> float:
         return self.scanPar['Threshold'].value()
@@ -201,6 +205,12 @@ class AlignOptWidget(Widget):
             'Threshold for the for the cummulative sum'
         )
 
+        self.scanPar['Modality'] = QtWidgets.QComboBox()
+        self.scanPar['Modality'].setToolTip(
+            'Whether you use transmission or FL for alignment')
+        self.scanPar['ModalityLabel'] = QtWidgets.QLabel('Modality')
+        self.scanPar['Modality'].addItems(['Transmission', 'Fluorescence'])
+
         self.tabs = QtWidgets.QTabWidget()
 
         # first tab of horizontal cuts
@@ -258,6 +268,10 @@ class AlignOptWidget(Widget):
 
         self.grid.addWidget(QtWidgets.QLabel('Threshold (%)'), currentRow, 2)
         self.grid.addWidget(self.scanPar['Threshold'], currentRow, 3)
+
+        currentRow += 1
+        self.grid.addWidget(self.scanPar['ModalityLabel'], currentRow, 0)
+        self.grid.addWidget(self.scanPar['Modality'], currentRow, 1)
 
         currentRow += 1
         self.grid.addWidget(self.tabs, currentRow, 0, 1, -1)

@@ -68,7 +68,7 @@ class RotatorWidget(Widget):
         self.pars['StartMoveButton'+name].clicked.connect(lambda: self.sigStartContMovClicked.emit(name))
         self.pars['StopMoveButton'+name].clicked.connect(lambda: self.sigStopContMovClicked.emit(name))
         
-        if self.numPositioners == 0:
+        if self.numPositioners != 0:
             # Add space item to make the grid look nicer
             self.grid.addItem(
                 QtWidgets.QSpacerItem(10, 10,

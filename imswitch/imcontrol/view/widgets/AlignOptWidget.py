@@ -25,6 +25,11 @@ class AlignOptWidget(Widget):
         """ Initializes the controls for the widget. """
         self.widgetLayout()
 
+        self.scanPar['StopButton'].setEnabled(True)
+        self.scanPar['LineIdx'].setEnabled(False)
+        self.scanPar['xShift'].setEnabled(False)
+        self.scanPar['CounterProjPair'].setEnabled(False)
+
     def plotCounterProj(self, img: np.ndarray) -> None:
         """
         This method plots the counter projection image,
@@ -44,6 +49,9 @@ class AlignOptWidget(Widget):
 
     def getShift(self) -> int:
         return self.scanPar['xShift'].value()
+
+    def getThreshold(self) -> float:
+        return self.scanPar['Threshold'].value()
 
     def getProjectionPairFlag(self) -> int:
         return self.scanPar['CounterProjPair'].currentIndex()
@@ -168,13 +176,23 @@ class AlignOptWidget(Widget):
             'Shift the horizontal mirrored cut by this amount of pixels.'
             ' This provides idea how far off your COR is'
         )
-
         self.scanPar['xShiftLabel'] = QtWidgets.QLabel('x-Shift')
+
+        # projection pair
         self.scanPar['CounterProjPair'] = QtWidgets.QComboBox()
         self.scanPar['CounterProjPair'].addItems(['Pair 1 (0, 180 deg)',
                                                   'Pair 2 (90, 270 deg)'])
         self.scanPar['CounterProjPair'].setToolTip(
             'Select a pair of counter projections which hor cuts are analyzed'
+        )
+
+        # spinbox for threshhold in percents
+        self.scanPar['Threshold'] = QtWidgets.QDoubleSpinBox()
+        self.scanPar['Threshold'].setRange(0, 100)
+        self.scanPar['Threshold'].setValue(1.0)
+        self.scanPar['Threshold'].setSingleStep(0.5)
+        self.scanPar['Threshold'].setToolTip(
+            'Threshold for the for the cummulative sum'
         )
 
         self.tabs = QtWidgets.QTabWidget()
@@ -231,6 +249,9 @@ class AlignOptWidget(Widget):
         currentRow += 1
         self.grid.addWidget(self.scanPar['xShiftLabel'], currentRow, 0)
         self.grid.addWidget(self.scanPar['xShift'], currentRow, 1)
+
+        self.grid.addWidget(QtWidgets.QLabel('Threshold'), currentRow, 2)
+        self.grid.addWidget(self.scanPar['Threshold'], currentRow, 3)
 
         currentRow += 1
         self.grid.addWidget(self.tabs, currentRow, 0, 1, -1)

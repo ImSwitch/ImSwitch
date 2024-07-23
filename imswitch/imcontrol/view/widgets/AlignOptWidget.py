@@ -164,8 +164,8 @@ class AlignOptWidget(Widget):
         self.scanPar['RotatorLabel'] = QtWidgets.QLabel('Rotator')
 
         self.plotMerge = pg.ImageView()
-        self.plotMerge.setFixedWidth(400)
-        self.plotMerge.setFixedHeight(300)
+        # self.plotMerge.setFixedWidth(400)
+        # self.plotMerge.setFixedHeight(300)
         self.plotHorCuts = pg.PlotWidget()
         self.plotCC = pg.PlotWidget()
         self.plotCumSum = CumSumCanvas()
@@ -213,7 +213,14 @@ class AlignOptWidget(Widget):
 
         self.tabs = QtWidgets.QTabWidget()
 
-        # first tab of horizontal cuts
+        # first tab is the merge of counter projections
+        self.tabMerge = QtWidgets.QWidget()
+        self.grid1 = QtWidgets.QGridLayout()
+        self.tabMerge.setLayout(self.grid1)
+        self.grid1.addWidget(self.plotMerge, 0, 0)
+        self.tabs.addTab(self.tabMerge, 'Merge')
+
+        # 2. tab of horizontal cuts
         self.tabHorCuts = QtWidgets.QWidget()
         self.grid2 = QtWidgets.QGridLayout()
         self.tabHorCuts.setLayout(self.grid2)
@@ -221,27 +228,26 @@ class AlignOptWidget(Widget):
         # add tab to tabs
         self.tabs.addTab(self.tabHorCuts, 'Horizontal cuts')
 
-        # second tab of cross-correlation
+        # 3. tab of cross-correlation
         self.tabCorr = QtWidgets.QWidget()
         self.grid3 = QtWidgets.QGridLayout()
         self.tabCorr.setLayout(self.grid3)
         self.grid3.addWidget(self.plotCC, 0, 0)
         # add tab to tabs
         self.tabs.addTab(self.tabCorr, 'Cross-correlation')
-
-        # third tab of cumsum of intensities
+        # 4. tab of cumsum of intensities
         self.tabCumSum = QtWidgets.QWidget()
         self.grid4 = QtWidgets.QGridLayout()
         self.tabCumSum.setLayout(self.grid4)
         self.grid4.addWidget(self.plotCumSum, 0, 0)
         self.tabs.addTab(self.tabCumSum, 'Cumulative Sums')
 
-        # 4. tab of diff of cumsums
-        self.tabDiffCumSum = QtWidgets.QWidget()
+        # 5. tab of thresholded center px
+        self.tabThreshMiddle = QtWidgets.QWidget()
         self.grid5 = QtWidgets.QGridLayout()
-        self.tabDiffCumSum.setLayout(self.grid5)
+        self.tabThreshMiddle.setLayout(self.grid5)
         self.grid5.addWidget(self.plotThreshMiddle, 0, 0)
-        self.tabs.addTab(self.tabDiffCumSum, 'Diff Cum. Sums')
+        self.tabs.addTab(self.tabThreshMiddle, 'Thresholded middle PX')
 
         currentRow = 0
         self.grid.addWidget(self.scanPar['StartButton'], currentRow, 0)
@@ -250,8 +256,8 @@ class AlignOptWidget(Widget):
         self.grid.addWidget(self.scanPar['RotatorLabel'], currentRow, 2)
         self.grid.addWidget(self.scanPar['Rotator'], currentRow, 3)
 
-        currentRow += 1
-        self.grid.addWidget(self.plotMerge, currentRow, 0, 1, -1)
+        # currentRow += 1
+        # self.grid.addWidget(self.plotMerge, currentRow, 0, 1, -1)
 
         currentRow += 1
         self.grid.addWidget(QtWidgets.QLabel('Line index'),
@@ -280,8 +286,8 @@ class AlignOptWidget(Widget):
 class CumSumCanvas(FigureCanvas):
     def __init__(self, parent=None, width=400, height=300):
         self.fig = Figure(figsize=(width, height))
-        self.ax1 = self.fig.add_subplot(121)
-        self.ax2 = self.fig.add_subplot(122)
+        self.ax1 = self.fig.add_subplot(111)
+        # self.ax2 = self.fig.add_subplot(122)
 
         FigureCanvas.__init__(self, self.fig)
         self.setParent(parent)
@@ -306,8 +312,10 @@ class CumSumCanvas(FigureCanvas):
         self.ax1.plot(cor.s2, label='Counter Proj')
 
         # plot middle indices
-        self.ax1.axvline(cor.s1middle, color='C0', lw=1, label=f'middle 1: {cor.s1middle}')
-        self.ax1.axvline(cor.s2middle, color='C1', lw=1, label=f'middle 2: {cor.s2middle}')
+        self.ax1.axvline(cor.s1middle, color='C0', lw=1,
+                         label=f'middle 1: {cor.s1middle}')
+        self.ax1.axvline(cor.s2middle, color='C1', lw=1,
+                         label=f'middle 2: {cor.s2middle}')
 
         self.ax1.legend()
         self.ax1.set_xlabel('pixel index')
@@ -346,7 +354,8 @@ class CumSumCanvas(FigureCanvas):
         # self.ax1.set_title(f'diff={cor.diff}')
 
         # # add plot 2
-        # self.ax2.plot(abs(cor.s1_raw - cor.s2_raw), lw=3, label='Diff cumsums')
+        # self.ax2.plot(abs(cor.s1_raw - cor.s2_raw), lw=3,
+        # label='Diff cumsums')
 
         # self.ax2.legend()
         # self.ax2.set_xlabel('pixel index')

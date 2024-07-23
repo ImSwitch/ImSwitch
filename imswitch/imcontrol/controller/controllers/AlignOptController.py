@@ -201,7 +201,8 @@ class AlignCOR():
     """ Class to visualize alignment of the two pairs of 180 deg tomographic
     projections, i.e. 0, 90, 180, 270 deg. The class is used to calculate
     cumulative sums of the two projections, their cross-correlation, mean index
-    of the thresholded horizontal cuts. All can be used for alignment procedures.
+    of the thresholded horizontal cuts. All can be used for alignment
+    procedures.
     """
     def __init__(self):
         self.img_stack = {}
@@ -231,7 +232,7 @@ class AlignCOR():
         self.img_stack_raw['pair1'] = [stack[0], stack[2]]
         self.img_stack_raw['pair2'] = [stack[1], stack[3]]
 
-        # shift projections of both pairs by params['shift'] value 
+        # shift projections of both pairs by params['shift'] value
         self.createShiftedStack()
 
     def merge(self) -> None:
@@ -412,3 +413,19 @@ class AlignCOR():
             value (Any): value of the parameter
         """
         self.params[parName] = value
+
+# Copyright (C) 2020-2022 ImSwitch developers
+# This file is part of ImSwitch.
+#
+# ImSwitch is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# ImSwitch is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.

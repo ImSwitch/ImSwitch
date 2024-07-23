@@ -198,11 +198,10 @@ class AlignOptController(ImConWidgetController):
 
 
 class AlignCOR():
-    """Class to visualize alignment of the two pairs of 180 deg tomographic
+    """ Class to visualize alignment of the two pairs of 180 deg tomographic
     projections, i.e. 0, 90, 180, 270 deg. The class is used to calculate
-    cumulative sums of the two projections
-
-    and their cross-correlation.
+    cumulative sums of the two projections, their cross-correlation, mean index
+    of the thresholded horizontal cuts. All can be used for alignment procedures.
     """
     def __init__(self):
         self.img_stack = {}
@@ -215,16 +214,24 @@ class AlignCOR():
             'modality': 'Transmission',
             }
 
-    def updateStack(self, stack):
+    def updateStack(self, stack) -> None:
+        """ Update the stack of images for the alignment.
+
+        Args:
+            stack (List[np.ndarray]): list of four images, 0, 90, 180, 270 deg
+        """
         if len(stack) != 4:
             raise IndexError('Stack must contain exactly four images.')
+
         # img_stack is opt acquired at 0, 90, 180, 270 deg
         self.img_stack = {}
         self.img_stack_raw = {}
 
+        # separate the stack into two pairs
         self.img_stack_raw['pair1'] = [stack[0], stack[2]]
         self.img_stack_raw['pair2'] = [stack[1], stack[3]]
 
+        # shift projections of both pairs by params['shift'] value 
         self.createShiftedStack()
 
     def merge(self) -> None:
@@ -238,26 +245,36 @@ class AlignCOR():
         first image in the stack is also mirrored around vertical center axis
         """
         self.img_stack['pair1'] = [
-            np.roll(self.img_stack_raw['pair1'][0],
-                    self.params['shift'],
-                    axis=1)[:, ::-1],
-            np.roll(self.img_stack_raw['pair1'][1],
-                    self.params['shift'],
-                    axis=1),
+            np.roll(
+                self.img_stack_raw['pair1'][0],
+                self.params['shift'],
+                axis=1,
+                )[:, ::-1],
+
+            np.roll(
+                self.img_stack_raw['pair1'][1],
+                self.params['shift'],
+                axis=1,
+                ),
             ]
 
         self.img_stack['pair2'] = [
-            np.roll(self.img_stack_raw['pair2'][0],
-                    self.params['shift'],
-                    axis=1)[:, ::-1],
-            np.roll(self.img_stack_raw['pair2'][1],
-                    self.params['shift'],
-                    axis=1),
+            np.roll(
+                self.img_stack_raw['pair2'][0],
+                self.params['shift'],
+                axis=1,
+                )[:, ::-1],
+
+            np.roll(
+                self.img_stack_raw['pair2'][1],
+                self.params['shift'],
+                axis=1,
+                ),
             ]
         self.merge()
 
     def processHorCuts(self) -> None:
-        """Retrieve rows from the camera frames, mirror flip and merge
+        """ Retrieve rows from the camera frames, mirror flip and merge
         the projections. Second part calculates cross-correlation of the
         cuts which should be ideally perfectly matching and central ->
         optimization enabler
@@ -268,22 +285,24 @@ class AlignCOR():
         self.horCuts = {}
 
         # evaluate if the idx is in the range of the detector
-
-        # Check this in the update func
+        # TODO: Check this in the update func, perhaps
         if 0 <= self.params['lineIdx'] < self.img_stack[self.params['pairFlag']][0].shape[0]:
             i = self.params['lineIdx']
         else:
             i = 0
             print(f"Index {self.params['lineIdx']} out of camera's range, setting to {i}")
 
+        # horizontal cuts for the selected pair and row
         self.horCuts = (
             self.img_stack[self.params['pairFlag']][0][i],
             self.img_stack[self.params['pairFlag']][1][i],
             )
 
-        # correlation
+        # cross correlation of the projections
         self.processCrossCorrelation(i)
 
+        # calculate normalized cumsums
+        # and abs sum of their difference
         self.diff, self.s1, self.s2 = self.processCumSums(
             self.img_stack[self.params['pairFlag']][0][i],
             self.img_stack[self.params['pairFlag']][1][i],
@@ -293,22 +312,23 @@ class AlignCOR():
         self.processImageValueIndices()
 
     # correlation
-    def processCrossCorrelation(self, i: int) -> float:
-        """PRocess cross-correlation of the horizontal cuts.
-        Normalize the cross-correlation by the maximum value of the
+    def processCrossCorrelation(self, i: int) -> None:
+        """ Process cross-correlation of the horizontal cuts.
+        1. Normalize the cross-correlation by the maximum value of the
         raw image cross-correlation.
-        Find the center pixel of the image, which should coincide with
+        2. Find the center pixel of the image, which should coincide with
         the center of the cross-correlation.
 
         Args:
             i (int): Index of the row for horizontal cuts.
-
-        Returns:
-            None
         """
         corrNormFactor = np.amax(correlate(
-            self.img_stack_raw[self.params['pairFlag']][0][i].astype(np.floating),
-            self.img_stack_raw[self.params['pairFlag']][1][i].astype(np.floating),
+            self.img_stack_raw[
+                self.params['pairFlag']
+                ][0][i].astype(np.floating),
+            self.img_stack_raw[
+                self.params['pairFlag']
+                ][1][i].astype(np.floating),
             mode='full'))
 
         self.crossCorr = correlate(
@@ -318,18 +338,30 @@ class AlignCOR():
 
         self.center_px = self.img_stack[self.params['pairFlag']][0].shape[1]
 
-    def processCumSums(self, arr1, arr2) -> Tuple[float, np.ndarray, np.ndarray]:
-        """ Calculate sum of difference of cumsums of the counterprojections.
-        This should be minimized for centering for the COR.
+    def processCumSums(self, arr1, arr2,
+                       ) -> Tuple[float, np.ndarray, np.ndarray]:
+        """ Calculate normalized cumulative sums of the horizontal cuts.
+        sum of difference of cumulative sums of the counter-projections.
+        - This metric should be minimized for centering for the COR.
+
+        Args:
+            arr1 (np.ndarray): first horizontal cut
+            arr2 (np.ndarray): second horizontal cut
+
+        Returns:
+            Tuple[float, np.ndarray, np.ndarray]: difference of the cumsums,
+                cumsum of the first cut, cumsum of the second
         """
-        # firsst invert the arrays in case of transmission modality
+        # first invert the arrays in case of transmission modality
         if self.params['modality'] == 'Transmission':
             arr1, arr2 = -(arr1 - np.amax(arr1)), -(arr2 - np.amax(arr2))
+
         # calculate the cumsums
         s1, s2 = np.cumsum(arr1), np.cumsum(arr2)
 
         # normalize by the value of first proj
-        # this changes the dtype, therefore the division is not done inplace (s1 /= s1[-1])
+        # this changes the dtype, therefore the division
+        # is not done inplace (s1 /= s1[-1])
         s2 = s2 / s1[-1]  # this division needs to be done first
         s1 = s1 / s1[-1]
 
@@ -355,9 +387,14 @@ class AlignCOR():
         # retrieve the thresholded cuts
         self.img_thresh = np.amax(self.invHorCuts[0]) * self.params['threshold'] / 100
         self.s1meanIdx = np.mean(
-            [index for index, value in enumerate(self.invHorCuts[0]) if value > self.img_thresh])
+            [index for index, value in enumerate(self.invHorCuts[0])
+             if value > self.img_thresh],
+             )
+
         self.s2meanIdx = np.mean(
-            [index for index, value in enumerate(self.invHorCuts[1]) if value > self.img_thresh])
+            [index for index, value in enumerate(self.invHorCuts[1])
+             if value > self.img_thresh],
+             )
 
     def _reCalcWithShift(self) -> None:
         """ Called after shift value changes. """
@@ -367,5 +404,11 @@ class AlignCOR():
         # process cuts
         self.processHorCuts()
 
-    def _updateParams(self, parName: str, value):
+    def _updateParams(self, parName: str, value) -> None:
+        """ Update the parameters of the class.
+
+        Args:
+            parName (str): name of the parameter
+            value (Any): value of the parameter
+        """
         self.params[parName] = value

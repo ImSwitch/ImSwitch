@@ -13,7 +13,9 @@ from matplotlib.backends.backend_qt5agg import (
 
 
 class AlignOptWidget(Widget):
-    """ Widget controlling OPT experiments where a rotation stage is triggered
+    """ Widget controlling OPT alignment widget to acquire 2 pairs of
+     counter-projections and analyze the motor shaft and sample alignment
+     in respect to the camera's middle pixel.
     """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -50,15 +52,19 @@ class AlignOptWidget(Widget):
         return self.scanPar['LineIdx'].value()
 
     def getShift(self) -> int:
+        """ Returns the user-input shift for the horizontal cuts."""
         return self.scanPar['xShift'].value()
 
     def getExpModality(self) -> str:
+        """ Returns the user-selected modality for the experiment."""
         return self.scanPar['Modality'].currentText()
 
     def getThreshold(self) -> float:
+        """ Returns the user-input threshold for the horizontal cuts."""
         return self.scanPar['Threshold'].value()
 
     def getProjectionPairFlag(self) -> int:
+        """ Returns the user-selected projection pair for the experiment."""
         return self.scanPar['CounterProjPair'].currentIndex()
 
     def getRotatorIdx(self) -> int:
@@ -66,6 +72,7 @@ class AlignOptWidget(Widget):
         return self.scanPar['Rotator'].currentIndex()
 
     def _clearPlots(self):
+        """Clears all pyqtgraph plots."""
         self.plotHorCuts.clear()  # clear plotWidget first
         self.plotHorCuts.addLegend()
         self.plotHorCuts.setTitle('Horizontal cuts', color='b')
@@ -75,6 +82,12 @@ class AlignOptWidget(Widget):
         self.plotCC.setTitle('Norm. cross-correlation', color='b')
 
     def _plotHorCuts(self, cor):
+        """Plots horizontal cuts for user selected horizontal camera line
+        pixel.
+
+        Args:
+            cor (object): AlignCOR class object containing all alignment data.
+        """
         self.plotHorCuts.plot(
             self.normalize(cor.horCuts[0], '01'),
             name=f'single {cor.params["lineIdx"]}',
@@ -85,15 +98,30 @@ class AlignOptWidget(Widget):
             pen=pg.mkPen('b'))
 
     def _plotCC(self, cor):
+        """Plots normalized cross-correlation.
+
+        Args:
+            cor (object): AlignCOR class object containing all alignment data.
+        """
         self.plotCC.plot(
             cor.crossCorr/np.amax(cor.crossCorr),
             name=f'{cor.params["lineIdx"]}',
         )
 
     def _plotCumSum(self, cor):
+        """Plot the cumulative sums of the horizontal cuts.
+
+        Args:
+            cor (object): AlignCOR class object containing all alignment data.
+        """
         self.plotCumSum.createFigure(cor)
 
     def _plotThreshMiddle(self, cor):
+        """Plot the thresholded middle pixel of the horizontal cuts.
+
+        Args:
+            cor (object): AlignCOR class object containing all alignment data.
+        """
         self.plotThreshMiddle.createFigure2(cor)
 
     # TODO: this can be now refactored to just int
@@ -103,8 +131,7 @@ class AlignOptWidget(Widget):
 
         Args:
             idxList (list[int]): List of indices.
-            cor (object): Object containing horizontal cuts and
-                cross-correlation data.
+            cor (object): AlignCOR class object containing all alignment data.
         """
         self._clearPlots()
 
@@ -193,16 +220,17 @@ class AlignOptWidget(Widget):
         self.scanPar['CounterProjPair'].addItems(['Pair 1 (0, 180 deg)',
                                                   'Pair 2 (90, 270 deg)'])
         self.scanPar['CounterProjPair'].setToolTip(
-            'Select a pair of counter projections which hor cuts are analyzed'
+            'Select a pair of counter projections which are analyzed'
         )
 
-        # spinbox for threshhold in percents
+        # spinbox for threshold in percents
         self.scanPar['Threshold'] = QtWidgets.QDoubleSpinBox()
         self.scanPar['Threshold'].setRange(0, 100)
         self.scanPar['Threshold'].setValue(1.0)
         self.scanPar['Threshold'].setSingleStep(0.5)
         self.scanPar['Threshold'].setToolTip(
-            'Threshold for the for the cummulative sum'
+            'Intensity threshold for the sample center',
+            'calculation from the Horizontal cuts'
         )
 
         self.scanPar['Modality'] = QtWidgets.QComboBox()
@@ -302,10 +330,10 @@ class CumSumCanvas(FigureCanvas):
         FigureCanvas.updateGeometry(self)
 
     def createFigure(self, cor) -> None:
-        """Create report plot.
+        """Create the figure of the cumulative sums plots.
 
         Args:
-            report (dict): report dictionary.
+            cor (object): AlignCOR class object containing alignment data.
         """
         self.ax1.clear()
         self.ax1.cla()
@@ -329,6 +357,12 @@ class CumSumCanvas(FigureCanvas):
         self.fig.canvas.draw_idle()
 
     def createFigure2(self, cor) -> None:
+        """Create the figure of the thresholded middle pixel plots.
+
+        Args:
+            cor (object): AlignCOR class object containing alignment middle
+                pixel data.
+        """
         self.ax1.clear()
         self.ax1.cla()
 

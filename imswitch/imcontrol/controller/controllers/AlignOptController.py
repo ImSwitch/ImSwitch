@@ -325,6 +325,10 @@ class AlignCOR():
         """ Calculate sum of difference of cumsums of the counterprojections.
         This should be minimized for centering for the COR.
         """
+        # firsst invert the arrays in case of transmission modality
+        if self.params['modality'] == 'Transmission':
+            arr1, arr2 = -(arr1 - np.amax(arr1)), -(arr2 - np.amax(arr2))
+        # calculate the cumsums
         s1, s2 = np.cumsum(arr1), np.cumsum(arr2)
 
         # normalize by the value of first proj
@@ -344,27 +348,21 @@ class AlignCOR():
         self.s1middle = np.argmin(abs(self.s1 - self.s1[-1]/2))
         self.s2middle = np.argmin(abs(self.s2 - self.s2[-1]/2))
 
+        # invert horctus in case of transmission modality
+        if self.params['modality'] == 'Transmission':
+            self.invHorCuts = (-self.horCuts[0] + np.amax(self.horCuts[0]),
+                               -self.horCuts[1] + np.amax(self.horCuts[1]))
         # retrieve the thresholded cuts
-        self.img_thresh = np.amax(self.horCuts[0]) * self.params['threshold'] / 100
+        self.img_thresh = np.amax(self.invHorCuts[0]) * self.params['threshold'] / 100
         self.s1meanIdx = np.mean(
-            [index for index, value in enumerate(self.horCuts[0]) if value > self.img_thresh])
+            [index for index, value in enumerate(self.invHorCuts[0]) if value > self.img_thresh])
         self.s2meanIdx = np.mean(
-            [index for index, value in enumerate(self.horCuts[1]) if value > self.img_thresh])
+            [index for index, value in enumerate(self.invHorCuts[1]) if value > self.img_thresh])
 
         # print all the values
-        print(f"Image threshold: {self.img_thresh}")
-        print(f"Center of the cumsums: {self.s1middle}, {self.s2middle}")
-        print(f"Center of the thresholded cuts: {self.s1meanIdx}, {self.s2meanIdx}")
-                                                        
-    # def calcFullImgDiff(self):
-    #     s1 = np.cumsum(self.img_stack[self.params['pairFlag']][0].mean(axis=0))
-    #     s2 = np.cumsum(self.img_stack[self.params['pairFlag']][1].mean(axis=0))
-    #     return s1 - s2, abs(sum(s1 - s2))
-
-    # def calcFullImgDiffRaw(self):
-    #     s1 = np.cumsum(self.img_stack_raw[self.params['pairFlag']][0].mean(axis=0))
-    #     s2 = np.cumsum(self.img_stack_raw[self.params['pairFlag']][1].mean(axis=0))
-    #     return s1 - s2, abs(sum(s1 - s2))
+        # print(f"Image threshold: {self.img_thresh}")
+        # print(f"Center of the cumsums: {self.s1middle}, {self.s2middle}")
+        # print(f"Center of the thresholded cuts: {self.s1meanIdx}, {self.s2meanIdx}")
 
     def _reCalcWithShift(self) -> None:
         """ Called after shift value changes. """

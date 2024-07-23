@@ -249,6 +249,10 @@ class AlignOptWidget(Widget):
         self.grid5.addWidget(self.plotThreshMiddle, 0, 0)
         self.tabs.addTab(self.tabThreshMiddle, 'Thresholded middle PX')
 
+        # separator
+        self.separatorLine = QtWidgets.QFrame()
+        self.separatorLine.setFrameShape(QtWidgets.QFrame.HLine)
+
         currentRow = 0
         self.grid.addWidget(self.scanPar['StartButton'], currentRow, 0)
         self.grid.addWidget(self.scanPar['StopButton'], currentRow, 1)
@@ -256,19 +260,24 @@ class AlignOptWidget(Widget):
         self.grid.addWidget(self.scanPar['RotatorLabel'], currentRow, 2)
         self.grid.addWidget(self.scanPar['Rotator'], currentRow, 3)
 
-        # currentRow += 1
-        # self.grid.addWidget(self.plotMerge, currentRow, 0, 1, -1)
+        currentRow += 1
+        self.grid.addWidget(self.scanPar['ModalityLabel'], currentRow, 0)
+        self.grid.addWidget(self.scanPar['Modality'], currentRow, 1)
+        currentRow += 1
+
+        # separator
+        self.grid.addWidget(self.separatorLine, currentRow, 0, 1, -1)
 
         currentRow += 1
+        self.grid.addWidget(QtWidgets.QLabel('Pair'), currentRow, 0)
+        self.grid.addWidget(self.scanPar['CounterProjPair'], currentRow, 1)
+
         self.grid.addWidget(QtWidgets.QLabel('Line index'),
-                            currentRow, 0)
-        self.grid.addWidget(self.scanPar['LineIdx'], currentRow, 1)
-
-        # currentRow += 1
-        self.grid.addWidget(QtWidgets.QLabel('Pair'), currentRow, 2)
-        self.grid.addWidget(self.scanPar['CounterProjPair'], currentRow, 3)
+                            currentRow, 2)
+        self.grid.addWidget(self.scanPar['LineIdx'], currentRow, 3)
 
         currentRow += 1
+
         self.grid.addWidget(self.scanPar['xShiftLabel'], currentRow, 0)
         self.grid.addWidget(self.scanPar['xShift'], currentRow, 1)
 
@@ -276,18 +285,13 @@ class AlignOptWidget(Widget):
         self.grid.addWidget(self.scanPar['Threshold'], currentRow, 3)
 
         currentRow += 1
-        self.grid.addWidget(self.scanPar['ModalityLabel'], currentRow, 0)
-        self.grid.addWidget(self.scanPar['Modality'], currentRow, 1)
-
-        currentRow += 1
         self.grid.addWidget(self.tabs, currentRow, 0, 1, -1)
 
 
 class CumSumCanvas(FigureCanvas):
-    def __init__(self, parent=None, width=400, height=300):
+    def __init__(self, parent=None, width=8, height=6):
         self.fig = Figure(figsize=(width, height))
         self.ax1 = self.fig.add_subplot(111)
-        # self.ax2 = self.fig.add_subplot(122)
 
         FigureCanvas.__init__(self, self.fig)
         self.setParent(parent)
@@ -303,9 +307,8 @@ class CumSumCanvas(FigureCanvas):
         Args:
             report (dict): report dictionary.
         """
-        # self.ax1.clear()
         self.ax1.clear()
-        self.ax2.clear()
+        self.ax1.cla()
 
         # add plot 1, normalized by the first cumsum
         self.ax1.plot(cor.s1, lw=3, label='Proj')
@@ -313,54 +316,36 @@ class CumSumCanvas(FigureCanvas):
 
         # plot middle indices
         self.ax1.axvline(cor.s1middle, color='C0', lw=1,
-                         label=f'middle 1: {cor.s1middle}')
+                         label=f'middle 1: {np.round(cor.s1middle, 2)}')
         self.ax1.axvline(cor.s2middle, color='C1', lw=1,
-                         label=f'middle 2: {cor.s2middle}')
+                         label=f'middle 2: {np.round(cor.s2middle, 2)}')
 
         self.ax1.legend()
         self.ax1.set_xlabel('pixel index')
         self.ax1.set_ylabel('Normalized cum Sum')
-        self.ax1.set_title(f'diff={cor.diff}')
+        self.ax1.set_title(f'diff={np.round(cor.diff, 2)}')
 
-        # # add plot 2
-        # self.ax2.plot(cor.s1_raw, lw=3, label='cumsum 1 raw')
-        # self.ax2.plot(cor.s2_raw, label='cumsum 2 raw')
-
-        # self.ax2.legend()
-        # self.ax2.set_xlabel('pixel index')
-        # self.ax2.set_ylabel('camera counts')
-        # self.ax2.set_title(f'diff={cor.diff_raw}')
-
+        # for plot updates
         self.fig.canvas.draw_idle()
 
     def createFigure2(self, cor) -> None:
         self.ax1.clear()
-        self.ax2.clear()
+        self.ax1.cla()
 
         # add plot 1
-        self.ax1.plot(cor.horCuts[0], lw=3, label='_nolegend_')
-        self.ax1.plot(cor.horCuts[1], lw=2, label='_nolegend_')
+        self.ax1.plot(cor.invHorCuts[0], lw=3, label='_nolegend_')
+        self.ax1.plot(cor.invHorCuts[1], lw=2, label='_nolegend_')
         # plot middle indices
         self.ax1.axvline(cor.s1meanIdx, color='C0', lw=1,
-                         label=f'middle 1: {cor.s1meanIdx}')
+                         label=f'middle 1: {np.round(cor.s1meanIdx, 2)}')
         self.ax1.axvline(cor.s2meanIdx, color='C1', lw=1,
-                         label=f'middle 2: {cor.s2meanIdx}')
+                         label=f'middle 2: {np.round(cor.s2meanIdx, 2)}')
         # plot threshold
         self.ax1.axhline(cor.img_thresh, color='b', lw=1, label='_nolegend_')
 
         self.ax1.legend()
         self.ax1.set_xlabel('pixel index')
         self.ax1.set_ylabel('camera counts')
-        # self.ax1.set_title(f'diff={cor.diff}')
-
-        # # add plot 2
-        # self.ax2.plot(abs(cor.s1_raw - cor.s2_raw), lw=3,
-        # label='Diff cumsums')
-
-        # self.ax2.legend()
-        # self.ax2.set_xlabel('pixel index')
-        # self.ax2.set_ylabel('camera counts')
-        # self.ax2.set_title(f'diff={cor.diff_raw}')
 
         self.fig.canvas.draw_idle()
 

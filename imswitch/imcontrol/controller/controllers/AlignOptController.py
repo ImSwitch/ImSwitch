@@ -192,12 +192,9 @@ class AlignOptController(ImConWidgetController):
         self.cor._updateParams('pairFlag', self.getProjectionPairFlag())
         self.cor._updateParams('modality', self.getExpModality())
 
-        # try:
         self.cor._reCalcWithShift()
         self._widget.plotCounterProj(self.cor.merged)
         self._widget.execPlots(self.cor)
-        # except (TypeError, AttributeError):
-        #     self.__logger.info('No alignment stack available')
 
 
 class AlignCOR():
@@ -350,19 +347,17 @@ class AlignCOR():
 
         # invert horctus in case of transmission modality
         if self.params['modality'] == 'Transmission':
-            self.invHorCuts = (-self.horCuts[0] + np.amax(self.horCuts[0]),
-                               -self.horCuts[1] + np.amax(self.horCuts[1]))
+            self.invHorCuts = (-(self.horCuts[0] - np.amax(self.horCuts[0])),
+                               -(self.horCuts[1] - np.amax(self.horCuts[1])))
+        else:
+            self.invHorCuts = self.horCuts
+
         # retrieve the thresholded cuts
         self.img_thresh = np.amax(self.invHorCuts[0]) * self.params['threshold'] / 100
         self.s1meanIdx = np.mean(
             [index for index, value in enumerate(self.invHorCuts[0]) if value > self.img_thresh])
         self.s2meanIdx = np.mean(
             [index for index, value in enumerate(self.invHorCuts[1]) if value > self.img_thresh])
-
-        # print all the values
-        # print(f"Image threshold: {self.img_thresh}")
-        # print(f"Center of the cumsums: {self.s1middle}, {self.s2middle}")
-        # print(f"Center of the thresholded cuts: {self.s1meanIdx}, {self.s2meanIdx}")
 
     def _reCalcWithShift(self) -> None:
         """ Called after shift value changes. """

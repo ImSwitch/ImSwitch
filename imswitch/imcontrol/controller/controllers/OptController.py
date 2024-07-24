@@ -170,7 +170,7 @@ class ScanOPTWorker(Worker):
                 to the number of steps in the OPT scan.
         """
         def generateSyntheticSinogram(resolution: int) -> np.ndarray:
-            """Generates sinogram of a 3D shepp logan phantom. The resulting
+            """Generates sinogram of a 3D Shepp-Logan phantom. The resulting
             array is a cube with an edge of resolution pixels.
 
             Args:

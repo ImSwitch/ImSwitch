@@ -12,6 +12,7 @@ class SLMmlWidget(Widget):
 
     sigSLMDisplayToggled = QtCore.Signal(bool)  # (enabled)
     sigSLMMonitorChanged = QtCore.Signal(int)  # (monitor)
+    sigSLMApplyMFA = QtCore.Signal(bool) # (enabled)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -120,11 +121,16 @@ class SLMmlWidget(Widget):
         self.applyChangesButton = guitools.BetterPushButton('Apply changes')
         # self.paramtreeDockArea.addWidget(self.applyChangesButton, 'bottom', abertreeDock)
 
-        # MFA array
+        # MFA array specific
         self.loadMFABtn = guitools.BetterPushButton('Load MFA')
-        self.loadedMFA = QtWidgets.QLineEdit("None")
-        self.loadedMFA.setReadOnly(True)
+
+        self.loadedMFALayout= QtWidgets.QHBoxLayout()
+        self.loadedMFAlabel = QtWidgets.QLabel("Currently loaded:")
         self.ApplyMFAcheckBox = QtWidgets.QCheckBox('Apply MFA')
+        self.loadedMFALayout.addWidget(self.loadedMFAlabel,1)
+        self.loadedMFALayout.addWidget(self.ApplyMFAcheckBox)
+
+        self.ApplyMFAcheckBox.clicked.connect(lambda state: self.sigSLMApplyMFA.emit(state))
 
         # Control panel with most buttons
         self.controlPanel = QtWidgets.QFrame()
@@ -223,10 +229,9 @@ class SLMmlWidget(Widget):
         self.grid.addLayout(self.slmDisplayLayout, 4, 1, 1, 1)
         self.grid.addWidget(self.controlPanel, 1, 1, 2, 1)
         
+        # Add MFA-related buttons
         self.grid.addWidget(self.loadMFABtn,3,0,1,1)
-        self.grid.addWidget(QtWidgets.QLabel("Currently loaded:"),3,1,1,1)
-        self.grid.addWidget(self.loadedMFA,3,2,1,1)
-        self.grid.addWidget(self.ApplyMFAcheckBox,3,3,1,1)
+        self.grid.addLayout(self.loadedMFALayout,3,1,1,1)
 
     def initSLMDisplay(self, monitor):
         from imswitch.imcontrol.view import SLMDisplay
@@ -244,6 +249,8 @@ class SLMmlWidget(Widget):
     def setSLMDisplayMonitor(self, monitor):
         self.slmDisplay.setMonitor(monitor, updateImage=True)
 
+    def updateMLAlabel(self,MFAname):
+        self.loadedMFAlabel.setText(f"Currently loaded: {MFAname}")
 
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

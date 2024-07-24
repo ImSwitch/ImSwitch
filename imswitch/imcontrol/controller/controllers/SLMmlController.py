@@ -2,7 +2,7 @@ import json
 import os
 
 import numpy as np
-
+from pathlib import Path
 from imswitch.imcommon.model import dirtools, initLogger
 from imswitch.imcontrol.model.managers.SLMmlManager import MaskMode, Direction
 from ..basecontrollers import ImConWidgetController
@@ -25,7 +25,6 @@ class SLMmlController(ImConWidgetController):
         self.__slmSize = (self.__slmInfo.width, self.__slmInfo.height)"""
 
         self.slmDir = os.path.join(dirtools.UserFileDirs.Root, 'imcontrol_slm')
-        
         if not os.path.exists(self.slmDir):
             os.makedirs(self.slmDir)
 
@@ -71,15 +70,12 @@ class SLMmlController(ImConWidgetController):
         self._widget.sigSLMDisplayToggled.connect(self.toggleSLMDisplay)
         self._widget.sigSLMMonitorChanged.connect(self.monitorChanged)
         
+        #MFA specific
         self._widget.loadMFABtn.clicked.connect(self.loadMFA)
+        self._widget.sigSLMApplyMFA.connect(self.updateApplyMFA)
 
         # Initial SLM display
         self.displayMask(self._master.slmManager.maskCombined)
-
-    def loadMFA(self):
-        self.MFApath = guitools.askForFilePath(self._widget, 'Load MFA',defaultFolder=self.slmDir)
-        name = 
-        self._widget.loadedMFA.text()
 
     def toggleSLMDisplay(self, enabled):
         self._widget.setSLMDisplayVisible(enabled)

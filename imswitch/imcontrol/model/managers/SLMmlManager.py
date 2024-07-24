@@ -11,7 +11,7 @@ import numpy as np
 from PIL import Image
 import math
 from scipy import signal as sg
-
+from pathlib import Path
 import matplotlib.pyplot as plt
 
 from imswitch.imcommon.framework import Signal, SignalInterface
@@ -34,11 +34,13 @@ class SLMmlManager(SignalInterface):
         self.__slmSize = (self.__slmInfo.width, self.__slmInfo.height)
         self.__correctionPatternsDir = self.__slmInfo.correctionPatternsDir
         self.__mask = Mask(self.__slmSize[1], self.__slmSize[0], self.__wavelength)
-        
+        self.applyMFA = False
+
         self.initFresnelLensMask()
         self.initCorrectionMask()
         self.initTiltMask()
         self.initAberrationMask()
+        self.initMFAMask()
 
         self.update(maskChange=True, tiltChange=True, aberChange=True, focalChange=True)
         
@@ -86,6 +88,10 @@ class SLMmlManager(SignalInterface):
         self.__maskLens = Mask(self.__slmSize[1], self.__slmSize[0], self.__wavelength)
         self.__maskLens.setFresnelLens(self.__pixelsize)
         
+    def initMFAMask(self):
+        self.__maskMFA = Mask(self.__slmSize[1], self.__slmSize[0], self.__wavelength)
+        self.__maskMFA.setBlack()
+    
     def setMask(self, maskMode):
         if self.__mask.mask_type == MaskMode.Black and maskMode != MaskMode.Black:
             self.__maskTilt.setTilt(self.__pixelsize)
@@ -165,7 +171,10 @@ class SLMmlManager(SignalInterface):
         AberFactors = aber_info["mask"]
         self.__maskAber.setAberrationFactors(AberFactors)
         self.__maskAber.setAberrations()
-            
+    
+    def updateMFApath(self,path):
+        self.__maskMFA.MFApath = path
+
     def update(self, maskChange=False, tiltChange=False, aberChange=False, focalChange=False):
         if maskChange:
             self.__mask.updateImage()
@@ -180,9 +189,19 @@ class SLMmlManager(SignalInterface):
             self.__maskLens.updateImage()
             self.__maskLens.setCircular()
             self.maskLens = self.__maskLens
-        self.maskCombined = self.mask + self.maskAber + self.maskTilt + self.maskLens + self.__maskCorrection
+        
+        #MFA
+        if self.applyMFA:
+            self.__maskMFA.mask_type = MaskMode.MFA
+        else:
+            self.__maskMFA.mask_type = MaskMode.Black
+        self.__maskMFA.updateImage()
+        self.maskMFA = self.__maskMFA
+        
+        self.maskCombined = self.mask + self.maskAber + self.maskTilt + self.maskLens \
+                                               + self.maskMFA + self.__maskCorrection
         self.sigSLMMaskUpdated.emit(self.maskCombined)
-        returnmask = self.mask + self.maskAber + self.maskTilt
+        returnmask = self.mask + self.maskAber + self.maskTilt + self.maskMFA
         returnmask.img[:, 0:10] = 255
         return returnmask.image()
             
@@ -205,6 +224,7 @@ class Mask:
         self.radius = 500
         self.sigma = 200
         self.focal = 343
+        self.MFApath = None
         self.wavelength = wavelength
         self.mask_type = MaskMode.Black
         self.angle_rotation = 0
@@ -226,7 +246,8 @@ class Mask:
 
     def image(self):
         return self.img
-    
+
+
     def loadBMP(self, filename, path):
         """Loads a .bmp image as the img of the mask."""
         with Image.open(os.path.join(path, filename + ".bmp")) as data:
@@ -344,6 +365,18 @@ class Mask:
         self.pi2uint8()
         self.mask_type = MaskMode.Aber
         
+    def loadMFA(self):
+        if self.MFApath is not None:
+            filename = (Path(self.MFApath).name).split('.')[:-1]
+            filename = ''.join(filename)
+            path = Path(self.MFApath).parent
+            try:
+                self.loadBMP(filename,path)
+                self.mask_type = MaskMode.MFA
+            except FileNotFoundError as e:
+                self.__logger.error(f"Could not load MFA '{filename}' - got error: {e}")
+
+
     def setFresnelLens(self, pixelsize=None):
         if pixelsize:
             self.pixelSize = pixelsize
@@ -368,7 +401,7 @@ class Mask:
         self.mask_type = MaskMode.Lens
 
     def setBlack(self):
-        self.img = self.zeroimg
+        self.img = np.zeros((self.height, self.width), dtype=np.uint8)
         self.mask_type = MaskMode.Black
 
     def setGauss(self):
@@ -503,6 +536,8 @@ class Mask:
             self.setAberrations()
         elif self.mask_type == MaskMode.Lens:
             self.setFresnelLens()
+        elif self.mask_type == MaskMode.MFA:
+            self.loadMFA()
             
     def setCircular(self):
         """This method sets to 0 all the values within Mask except the ones
@@ -538,6 +573,7 @@ class MaskMode(enum.Enum):
     Tilt = 9
     Aber = 10
     Lens = 11
+    MFA = 12
 
 class Direction(enum.Enum):
     Up = 1

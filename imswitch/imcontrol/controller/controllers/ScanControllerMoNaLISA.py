@@ -1,6 +1,6 @@
 import traceback
 import configparser
-
+from math import ceil
 import numpy as np
 
 from ast import literal_eval
@@ -37,9 +37,9 @@ class ScanControllerMoNaLISA(SuperScanController):
         lengths = self._analogParameterDict['axis_length']
         stepSizes = self._analogParameterDict['axis_step_size']
 
-        x = lengths[0] / stepSizes[0]
-        y = lengths[1] / stepSizes[1]
-        z = lengths[2] / stepSizes[2]
+        x = ceil(lengths[0] / stepSizes[0])
+        y = ceil(lengths[1] / stepSizes[1])
+        z = ceil(lengths[2] / stepSizes[2])
 
         return x, y, z
     

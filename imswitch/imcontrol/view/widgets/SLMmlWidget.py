@@ -40,6 +40,7 @@ class SLMmlWidget(Widget):
              'step': 0.01,
              'suffix': 'rad'}
         ]}]
+        
         self.slmParameterTree.setStyleSheet("""
         QTreeView::item, QAbstractSpinBox, QComboBox {
             padding-top: 0;
@@ -118,6 +119,15 @@ class SLMmlWidget(Widget):
         # Button to apply changes
         self.applyChangesButton = guitools.BetterPushButton('Apply changes')
         # self.paramtreeDockArea.addWidget(self.applyChangesButton, 'bottom', abertreeDock)
+
+        # MFA array
+        self.loadMFABtn = guitools.BetterPushButton('Load MFA')
+
+        self.loadedMFALayout= QtWidgets.QHBoxLayout()
+        self.loadedMFAlabel = QtWidgets.QLabel("Currently loaded:")
+        self.ApplyMFAcheckBox = QtWidgets.QCheckBox('Apply MFA')
+        self.loadedMFALayout.addWidget(self.loadedMFAlabel,1)
+        self.loadedMFALayout.addWidget(self.ApplyMFAcheckBox)
 
         # Control panel with most buttons
         self.controlPanel = QtWidgets.QFrame()
@@ -212,9 +222,13 @@ class SLMmlWidget(Widget):
 
         self.grid.addWidget(self.slmFrame, 0, 0, 1, 2)
         self.grid.addWidget(self.paramtreeDockArea, 1, 0, 2, 1)
-        self.grid.addWidget(self.applyChangesButton, 3, 0, 1, 1)
-        self.grid.addLayout(self.slmDisplayLayout, 3, 1, 1, 1)
+        self.grid.addWidget(self.applyChangesButton, 4, 0, 1, 1)
+        self.grid.addLayout(self.slmDisplayLayout, 4, 1, 1, 1)
         self.grid.addWidget(self.controlPanel, 1, 1, 2, 1)
+        
+        # Add MFA-related buttons
+        self.grid.addWidget(self.loadMFABtn,3,0,1,1)
+        self.grid.addLayout(self.loadedMFALayout,3,1,1,1)
 
     def initSLMDisplay(self, monitor):
         from imswitch.imcontrol.view import SLMDisplay
@@ -232,6 +246,8 @@ class SLMmlWidget(Widget):
     def setSLMDisplayMonitor(self, monitor):
         self.slmDisplay.setMonitor(monitor, updateImage=True)
 
+    def updateMLAlabel(self,MFAname):
+        self.loadedMFAlabel.setText(f"Currently loaded: {MFAname}")
 
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

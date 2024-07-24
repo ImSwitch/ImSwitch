@@ -40,6 +40,7 @@ class SLMmlWidget(Widget):
              'step': 0.01,
              'suffix': 'rad'}
         ]}]
+        
         self.slmParameterTree.setStyleSheet("""
         QTreeView::item, QAbstractSpinBox, QComboBox {
             padding-top: 0;
@@ -118,6 +119,12 @@ class SLMmlWidget(Widget):
         # Button to apply changes
         self.applyChangesButton = guitools.BetterPushButton('Apply changes')
         # self.paramtreeDockArea.addWidget(self.applyChangesButton, 'bottom', abertreeDock)
+
+        # MFA array
+        self.loadMFABtn = guitools.BetterPushButton('Load MFA')
+        self.loadedMFA = QtWidgets.QLineEdit("None")
+        self.loadedMFA.setReadOnly(True)
+        self.ApplyMFAcheckBox = QtWidgets.QCheckBox('Apply MFA')
 
         # Control panel with most buttons
         self.controlPanel = QtWidgets.QFrame()
@@ -212,9 +219,14 @@ class SLMmlWidget(Widget):
 
         self.grid.addWidget(self.slmFrame, 0, 0, 1, 2)
         self.grid.addWidget(self.paramtreeDockArea, 1, 0, 2, 1)
-        self.grid.addWidget(self.applyChangesButton, 3, 0, 1, 1)
-        self.grid.addLayout(self.slmDisplayLayout, 3, 1, 1, 1)
+        self.grid.addWidget(self.applyChangesButton, 4, 0, 1, 1)
+        self.grid.addLayout(self.slmDisplayLayout, 4, 1, 1, 1)
         self.grid.addWidget(self.controlPanel, 1, 1, 2, 1)
+        
+        self.grid.addWidget(self.loadMFABtn,3,0,1,1)
+        self.grid.addWidget(QtWidgets.QLabel("Currently loaded:"),3,1,1,1)
+        self.grid.addWidget(self.loadedMFA,3,2,1,1)
+        self.grid.addWidget(self.ApplyMFAcheckBox,3,3,1,1)
 
     def initSLMDisplay(self, monitor):
         from imswitch.imcontrol.view import SLMDisplay

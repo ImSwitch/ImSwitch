@@ -6,6 +6,7 @@ import numpy as np
 from imswitch.imcommon.model import dirtools, initLogger
 from imswitch.imcontrol.model.managers.SLMmlManager import MaskMode, Direction
 from ..basecontrollers import ImConWidgetController
+from imswitch.imcontrol.view import guitools
 
 
 class SLMmlController(ImConWidgetController):
@@ -24,6 +25,7 @@ class SLMmlController(ImConWidgetController):
         self.__slmSize = (self.__slmInfo.width, self.__slmInfo.height)"""
 
         self.slmDir = os.path.join(dirtools.UserFileDirs.Root, 'imcontrol_slm')
+        
         if not os.path.exists(self.slmDir):
             os.makedirs(self.slmDir)
 
@@ -32,6 +34,7 @@ class SLMmlController(ImConWidgetController):
             return
 
         self._widget.initSLMDisplay(self._setupInfo.slm.monitorIdx)
+        self.MFApath = None
 
         # Connect CommunicationChannel signals
         self._commChannel.sigSLMMaskUpdated.connect(lambda mask: self.displayMask(mask))
@@ -67,9 +70,16 @@ class SLMmlController(ImConWidgetController):
         self._widget.applyChangesButton.clicked.connect(self.applyParams)
         self._widget.sigSLMDisplayToggled.connect(self.toggleSLMDisplay)
         self._widget.sigSLMMonitorChanged.connect(self.monitorChanged)
+        
+        self._widget.loadMFABtn.clicked.connect(self.loadMFA)
 
         # Initial SLM display
         self.displayMask(self._master.slmManager.maskCombined)
+
+    def loadMFA(self):
+        self.MFApath = guitools.askForFilePath(self._widget, 'Load MFA',defaultFolder=self.slmDir)
+        name = 
+        self._widget.loadedMFA.text()
 
     def toggleSLMDisplay(self, enabled):
         self._widget.setSLMDisplayVisible(enabled)

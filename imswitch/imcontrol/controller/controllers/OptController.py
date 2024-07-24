@@ -121,7 +121,7 @@ class ScanOPTWorker(Worker):
     the live reconstruction of the acquired frames, if the option is enabled.
 
     Args:
-        master (`MasterController`): reference to the master controller; used to access the
+        master (`MasterController`): reference to the master controller; used to access the hardware managers.
         detectorName (`str`): name identifier of the detector used for the OPT scan.
         rotatorName (`str`): name identifier of the rotator used for the OPT scan.
     """

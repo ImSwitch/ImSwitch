@@ -113,7 +113,16 @@ class CommunicationChannel(SignalInterface):
         self.__logger = initLogger(self)
         self._scriptExecution = False
         self.__main._moduleCommChannel.sigExecutionFinished.connect(self.executionFinished)
-
+    
+    def isScanRunning(self) -> bool:
+        """
+        Returns wether a scan is ongoing or not.
+        """
+        if 'Scan' in self.__main.controllers:
+            return self.__main.controllers['Scan'].isRunning
+        else:
+            raise RuntimeError('Required scan widget not available')
+        
     def getCenterViewbox(self):
         """ Returns the center point of the viewbox, as an (x, y) tuple. """
         if 'Image' in self.__main.controllers:
@@ -124,6 +133,12 @@ class CommunicationChannel(SignalInterface):
     def getDimsScan(self):
         if 'Scan' in self.__main.controllers:
             return self.__main.controllers['Scan'].getDimsScan()
+        else:
+            raise RuntimeError('Required scan widget not available')
+    
+    def getScanStepSizes(self):
+        if 'Scan' in self.__main.controllers:
+            return self.__main.controllers['Scan'].getScanStepSizes()
         else:
             raise RuntimeError('Required scan widget not available')
 

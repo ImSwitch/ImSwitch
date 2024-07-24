@@ -11,6 +11,7 @@ class BeadRecWidget(Widget):
 
     sigROIToggled = QtCore.Signal(bool)  # (enabled)
     sigRunClicked = QtCore.Signal()
+    sigScaleClicked = QtCore.Signal()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -33,6 +34,7 @@ class BeadRecWidget(Widget):
         self.roiButton = guitools.BetterPushButton('Show ROI')
         self.roiButton.setCheckable(True)
         self.runButton = QtWidgets.QCheckBox('Run')
+        self.scaleButton = QtWidgets.QCheckBox('Scale')
         self.ROI = naparitools.VispyROIVisual(rect_color='yellow', handle_color='orange')
 
         # Add elements to GridLayout
@@ -41,10 +43,12 @@ class BeadRecWidget(Widget):
         grid.addWidget(self.cwidget, 0, 0, 1, 6)
         grid.addWidget(self.roiButton, 1, 0, 1, 1)
         grid.addWidget(self.runButton, 1, 1, 1, 1)
+        grid.addWidget(self.scaleButton, 1, 2, 1, 1)
 
         # Connect signals
         self.roiButton.toggled.connect(self.sigROIToggled)
         self.runButton.clicked.connect(self.sigRunClicked)
+        self.scaleButton.clicked.connect(self.sigScaleClicked)
 
     def getROIGraphicsItem(self):
         return self.ROI

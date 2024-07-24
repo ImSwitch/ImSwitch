@@ -86,9 +86,9 @@ class ScanWidgetMoNaLISA(SuperScanWidget):
 
         for index, positionerName in enumerate(positionerNames):
             # Scan params
-            sizePar = QtWidgets.QLineEdit('5')
+            sizePar = QtWidgets.QLineEdit('0.0')
             self.scanPar['size' + positionerName] = sizePar
-            stepSizePar = QtWidgets.QLineEdit('0.1')
+            stepSizePar = QtWidgets.QLineEdit('0.0')
             self.scanPar['stepSize' + positionerName] = stepSizePar
             numPixelsPar = QtWidgets.QLineEdit('50')
             numPixelsPar.setEnabled(False)

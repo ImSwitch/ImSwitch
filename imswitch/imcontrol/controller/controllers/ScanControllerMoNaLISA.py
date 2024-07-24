@@ -39,9 +39,12 @@ class ScanControllerMoNaLISA(SuperScanController):
 
         x = lengths[0] / stepSizes[0]
         y = lengths[1] / stepSizes[1]
-        z = lengths[2] / stepSizes[1]
+        z = lengths[2] / stepSizes[2]
 
         return x, y, z
+    
+    def getScanStepSizes(self):
+        return self._analogParameterDict['axis_step_size']
 
     def setParameters(self):
         self.settingParameters = True

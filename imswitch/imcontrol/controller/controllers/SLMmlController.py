@@ -34,7 +34,6 @@ class SLMmlController(ImConWidgetController):
             return
 
         self._widget.initSLMDisplay(self._setupInfo.slm.monitorIdx)
-        self.MFApath = None
 
         # Connect CommunicationChannel signals
         self._commChannel.sigSLMMaskUpdated.connect(lambda mask: self.displayMask(mask))
@@ -71,15 +70,22 @@ class SLMmlController(ImConWidgetController):
         self._widget.sigSLMDisplayToggled.connect(self.toggleSLMDisplay)
         self._widget.sigSLMMonitorChanged.connect(self.monitorChanged)
         
+        #MFA specific
         self._widget.loadMFABtn.clicked.connect(self.loadMFA)
+        self._widget.sigSLMApplyMFA.connect(self.updateApplyMFA)
 
         # Initial SLM display
         self.displayMask(self._master.slmManager.maskCombined)
 
+
+
+    def updateApplyMFA(self,state:bool):
+        self._master.slmManager.applyMFA = state
+
     def loadMFA(self):
-        self.MFApath = guitools.askForFilePath(self._widget, 'Load MFA',defaultFolder=self.slmDir)
-        name = Path(self.MFApath).name
-        self._widget.updateMLAlabel(MFAname=name)
+        path = guitools.askForFilePath(self._widget, 'Choose MFA hologram BMP image',defaultFolder=self.slmDir)
+        self._widget.updateMLAlabel(Path(path).name)
+        self._master.slmManager.updateMFApath(path)
 
     def toggleSLMDisplay(self, enabled):
         self._widget.setSLMDisplayVisible(enabled)

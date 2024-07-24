@@ -12,6 +12,7 @@ class SLMmlWidget(Widget):
 
     sigSLMDisplayToggled = QtCore.Signal(bool)  # (enabled)
     sigSLMMonitorChanged = QtCore.Signal(int)  # (monitor)
+    sigSLMApplyMFA = QtCore.Signal(bool) # (enabled)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -120,7 +121,7 @@ class SLMmlWidget(Widget):
         self.applyChangesButton = guitools.BetterPushButton('Apply changes')
         # self.paramtreeDockArea.addWidget(self.applyChangesButton, 'bottom', abertreeDock)
 
-        # MFA array
+        # MFA array specific
         self.loadMFABtn = guitools.BetterPushButton('Load MFA')
 
         self.loadedMFALayout= QtWidgets.QHBoxLayout()
@@ -128,6 +129,8 @@ class SLMmlWidget(Widget):
         self.ApplyMFAcheckBox = QtWidgets.QCheckBox('Apply MFA')
         self.loadedMFALayout.addWidget(self.loadedMFAlabel,1)
         self.loadedMFALayout.addWidget(self.ApplyMFAcheckBox)
+
+        self.ApplyMFAcheckBox.clicked.connect(lambda state: self.sigSLMApplyMFA.emit(state))
 
         # Control panel with most buttons
         self.controlPanel = QtWidgets.QFrame()

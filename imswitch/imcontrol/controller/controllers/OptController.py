@@ -245,9 +245,9 @@ class ScanOPTWorker(Worker):
         Otherwise, the method performs the following steps:
 
         - captures the latest frame from the detector;
+        - updates the stability plot;
         - (optional) performs live reconstruction;
         - (optional) saves the frame if option is enabled;
-        - updates the stability plot;
         - triggers the next motor step.
 
         This workflow is repeated until all the rotational steps

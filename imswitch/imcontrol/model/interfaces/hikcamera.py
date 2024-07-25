@@ -125,17 +125,26 @@ class CameraHIK:
             self.__logger.debug("set trigger mode fail! ret[0x%x]" % ret)
             sys.exit()
 
-        # get framesize
-        stFloatParam_height = MVCC_INTVALUE()
-        memset(byref(stFloatParam_height), 0, sizeof(MVCC_INTVALUE))
-        stFloatParam_width = MVCC_INTVALUE()
-        memset(byref(stFloatParam_width), 0, sizeof(MVCC_INTVALUE))
-
-        #stOutFrame = MV_FRAME_OUT()  # stOutFrame.stFrameInfo.nHeight
-        self.SensorHeight = self.camera.MV_CC_GetIntValue("Height", stFloatParam_height)
-        self.SensorWidth = self.camera.MV_CC_GetIntValue("Width", stFloatParam_width)
         #if self.isRGB:
         #    self.camera.MV_CC_SetEnumValue("PixelFormat", PixelType_Gvsp_BayerGB8)
+
+        # Get frame size
+        stIntValue_height = MVCC_INTVALUE()
+        memset(byref(stIntValue_height), 0, sizeof(MVCC_INTVALUE))
+        stIntValue_width = MVCC_INTVALUE()
+        memset(byref(stIntValue_width), 0, sizeof(MVCC_INTVALUE))
+
+        ret = self.camera.MV_CC_GetIntValue("Height", stIntValue_height)
+        if ret != 0:
+            raise Exception("get height fail! ret[0x%x]" % ret)
+        self.SensorHeight = stIntValue_height.nCurValue
+
+        ret = self.camera.MV_CC_GetIntValue("Width", stIntValue_width)
+        if ret != 0:
+            raise Exception("get width fail! ret[0x%x]" % ret)
+        self.SensorWidth = stIntValue_width.nCurValue
+
+        print(f"Current number of pixels: Width = {self.SensorWidth}, Height = {self.SensorHeight}")
 
         '''
         # set exposure

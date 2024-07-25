@@ -374,9 +374,7 @@ class ScanOPTWorker(Worker):
             frame (np.ndarray): camera frame
         """
         if self.saveOpt:
-            self.saveImage(frame,
-                           self.saveSubfolder,
-                           )
+            self.saveImage(frame)
 
     def startNextStep(self):
         """

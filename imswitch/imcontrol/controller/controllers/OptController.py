@@ -16,7 +16,7 @@ from typing import Tuple, List, Callable, Dict
 from ..basecontrollers import ImConWidgetController
 from imswitch.imcommon.model import initLogger, dirtools
 from imswitch.imcommon.framework import Signal, Thread, Worker
-from imswitch.imcommon.model.mathutils import shepp3d
+from imswitch.imcommon.externals.tomopy import shepp3d
 
 __author__ = "David Palecek", "Jacopo Abramo"
 __credits__ = []

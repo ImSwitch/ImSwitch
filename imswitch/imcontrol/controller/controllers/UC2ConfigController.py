@@ -14,7 +14,7 @@ class UC2ConfigController(ImConWidgetController):
         super().__init__(*args, **kwargs)
         self.__logger = initLogger(self)
 
-
+        try:
             self.stages = self._master.positionersManager[self._master.positionersManager.getAllDeviceNames()[0]]
         except Exception as e:
             self.__logger.error("No Stages found in the config file? " +e )
@@ -60,7 +60,6 @@ class UC2ConfigController(ImConWidgetController):
         self._widget.btpairingButton.clicked.connect(self.btpairing)
         self._widget.stopCommunicationButton.clicked.connect(self.interruptSerialCommunication)
 
-        try:
 
     def registerCaptureCallback(self):
         # This will capture an image based on a signal coming from the ESP32

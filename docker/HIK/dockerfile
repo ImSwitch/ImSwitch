@@ -1,6 +1,7 @@
 # Use an appropriate base image for Jetson Nano
 # sudo docker build -t imswitch_hik .
 # sudo docker run -it --privileged  imswitch_hik
+# sudo docker ps # => get id for stop
 # docker stop imswitch_hik
 # sudo docker inspect imswitch_hik
 # docker run --privileged -it imswitch_hik
@@ -30,7 +31,9 @@ RUN apt-get update && apt-get install -y \
     mesa-utils \
     openssh-server \
     libhdf5-dev \
+    nano \
     usbutils \
+    sudo \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -43,6 +46,9 @@ RUN cd /tmp && \
     elif [ "${TARGETPLATFORM}" = "linux/amd64" ]; then \
         dpkg -i MVS-2.1.2_x86_64_20231116.deb; \
     fi
+    # Copy the necessary Python script
+    #RUN cd /opt/MVS/Samples/aarch64/Python/ && \
+    #    cp GrabImage/GrabImage.py MvImport/GrabImage.py
 
 RUN mkdir -p /opt/MVS/bin/fonts
 # Source the bashrc file

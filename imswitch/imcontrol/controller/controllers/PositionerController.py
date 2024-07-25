@@ -1,12 +1,11 @@
 from typing import Dict, List
 
+from imswitch import IS_HEADLESS
 from imswitch.imcommon.model import APIExport
 from ..basecontrollers import ImConWidgetController
 from imswitch.imcommon.model import initLogger
-import threading
 from typing import Optional
-import time 
-from Pyro5.api import expose
+
 
 class PositionerController(ImConWidgetController):
     """ Linked to PositionerWidget."""
@@ -26,7 +25,7 @@ class PositionerController(ImConWidgetController):
             hasSpeed = hasattr(pManager, 'speed')
             hasHome = hasattr(pManager, 'home')
             hasStop = hasattr(pManager, 'stop')
-            self._widget.addPositioner(pName, pManager.axes, hasSpeed, hasHome, hasStop)
+            if not IS_HEADLESS: self._widget.addPositioner(pName, pManager.axes, hasSpeed, hasHome, hasStop)
             for axis in pManager.axes:
                 self.setSharedAttr(pName, axis, _positionAttr, pManager.position[axis])
                 if hasSpeed:
@@ -37,15 +36,16 @@ class PositionerController(ImConWidgetController):
                     self.setSharedAttr(pName, axis, _stopAttr, pManager.stop[axis])
 
         # Connect CommunicationChannel signals
-        self._commChannel.sharedAttrs.sigAttributeSet.connect(self.attrChanged)
-        self._commChannel.sigUpdateMotorPosition.connect(self.updateAllPositionGUI) # force update position in GUI
+        self._commChannel.sharedAttrs.sigAttributeSet.connect(self.attrChanged, check_nargs=False)
 
         # Connect PositionerWidget signals
-        self._widget.sigStepUpClicked.connect(self.stepUp)
-        self._widget.sigStepDownClicked.connect(self.stepDown)
-        self._widget.sigStepAbsoluteClicked.connect(self.moveAbsolute)
-        self._widget.sigHomeAxisClicked.connect(self.homeAxis)
-        self._widget.sigStopAxisClicked.connect(self.stopAxis)
+        if not IS_HEADLESS:
+            self._commChannel.sigUpdateMotorPosition.connect(self.updateAllPositionGUI) # force update position in GUI
+            self._widget.sigStepUpClicked.connect(self.stepUp)
+            self._widget.sigStepDownClicked.connect(self.stepDown)
+            self._widget.sigStepAbsoluteClicked.connect(self.moveAbsolute)
+            self._widget.sigHomeAxisClicked.connect(self.homeAxis)
+            self._widget.sigStopAxisClicked.connect(self.stopAxis)
 
     def closeEvent(self):
         self._master.positionersManager.execOnAll(
@@ -66,10 +66,13 @@ class PositionerController(ImConWidgetController):
 
         # get all speed values from the GUI
         if speed is None:
-            if axis =="XY":
-                speed = self._widget.getSpeed(positionerName, "X")
+            if not IS_HEADLESS:
+                if axis =="XY":
+                    speed = self._widget.getSpeed(positionerName, "X")
+                else:
+                    speed = self._widget.getSpeed(positionerName, axis)
             else:
-                speed = self._widget.getSpeed(positionerName, axis)
+                speed = 5000 # FIXME: default speed for headless mode
         # set speed for the positioner
         self.setSpeed(positionerName=positionerName, speed=speed, axis=axis)
         try:
@@ -77,7 +80,7 @@ class PositionerController(ImConWidgetController):
             self._master.positionersManager[positionerName].move(dist, axis, isAbsolute, isBlocking)
             if dist is None:
                 self.__logger.info(f"Moving {positionerName}, axis {axis}, at speed {str(speed)}")
-                self._master.positionersManager[positionerName].moveForeverByAxis(speed=speed, axis=axis, is_stop=~(abs(speed)>0))            
+                self._master.positionersManager[positionerName].moveForeverByAxis(speed=speed, axis=axis, is_stop=~(abs(speed)>0))
         except Exception as e:
             # if the positioner does not have the move method, use the default move method
             self._logger.error(e)
@@ -108,31 +111,30 @@ class PositionerController(ImConWidgetController):
     def setSpeed(self, positionerName, axis, speed=(1000, 1000, 1000)):
         self._master.positionersManager[positionerName].setSpeed(speed, axis)
         self.setSharedAttr(positionerName, axis, _speedAttr, speed)
-        self._widget.setSpeedSize(positionerName, axis, speed)
-        
+        if not IS_HEADLESS: self._widget.setSpeedSize(positionerName, axis, speed)
+
     def updateAllPositionGUI(self):
         # update all positions for all axes in GUI
         for positionerName in self._master.positionersManager.getAllDeviceNames():
             for axis in self._master.positionersManager[positionerName].axes:
                 self.updatePosition(positionerName, axis)
                 self.updateSpeed(positionerName, axis)
-                
+
     def updatePosition(self, positionerName, axis):
         if axis == "XY":
             for axis in (("X", "Y")):
                 newPos = self._master.positionersManager[positionerName].position[axis]
-                self._widget.updatePosition(positionerName, axis, newPos)
                 self.setSharedAttr(positionerName, axis, _positionAttr, newPos)
-
+                if not IS_HEADLESS: self._widget.updatePosition(positionerName, axis, newPos)
         else:
             newPos = self._master.positionersManager[positionerName].position[axis]
-            self._widget.updatePosition(positionerName, axis, newPos)
             self.setSharedAttr(positionerName, axis, _positionAttr, newPos)
+            if not IS_HEADLESS: self._widget.updatePosition(positionerName, axis, newPos)
 
     def updateSpeed(self, positionerName, axis):
         newSpeed = self._master.positionersManager[positionerName].speed[axis]
-        self._widget.updateSpeed(positionerName, axis, newSpeed)
         self.setSharedAttr(positionerName, axis, _speedAttr, newSpeed)
+        if not IS_HEADLESS: self._widget.updateSpeed(positionerName, axis, newSpeed)
 
     @APIExport(runOnUIThread=True)
     def homeAxis(self, positionerName, axis, isBlocking=False):
@@ -140,7 +142,7 @@ class PositionerController(ImConWidgetController):
         self._master.positionersManager[positionerName].doHome(axis, isBlocking=isBlocking)
         self.updatePosition(positionerName, axis)
         self._commChannel.sigUpdateMotorPosition.emit()
-    
+
     @APIExport()
     def stopAxis(self, positionerName, axis):
         self.__logger.debug(f"Stopping axis {axis}")
@@ -177,7 +179,7 @@ class PositionerController(ImConWidgetController):
 
     @APIExport(runOnUIThread=True)
     def enalbeMotors(self, enable=None, enableauto=None):
-        try: 
+        try:
             return self._master.positionersManager.enalbeMotors(enable=None, enableauto=None)
         except:
             pass
@@ -197,13 +199,14 @@ class PositionerController(ImConWidgetController):
     def setPositionerStepSize(self, positionerName: str, stepSize: float) -> None:
         """ Sets the step size of the specified positioner to the specified
         number of micrometers. """
-        self._widget.setStepSize(positionerName, stepSize)
+        if not IS_HEADLESS: self._widget.setStepSize(positionerName, stepSize)
 
     @APIExport(runOnUIThread=True)
-    @expose
     def movePositioner(self, positionerName: Optional[str]=None, axis: Optional[str]="X", dist: Optional[float] = None, isAbsolute: bool = False, isBlocking: bool=False, speed: float=None) -> None:
         """ Moves the specified positioner axis by the specified number of
         micrometers. """
+        if axis is None or dist is None:
+            raise ValueError("Both axis and dist must be specified.")
         if positionerName is None:
             positionerName = self._master.positionersManager.getAllDeviceNames()[0]
         try: # uc2 only

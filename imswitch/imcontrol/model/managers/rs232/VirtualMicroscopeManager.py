@@ -232,6 +232,7 @@ class Positioner:
             self.psf = None
 
     def move(self, x=None, y=None, z=None, a=None, is_absolute=False):
+        print("Moving to: ", x, y, z, a, is_absolute)
         with self.lock:
             if is_absolute:
                 if x is not None:

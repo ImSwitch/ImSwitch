@@ -1,4 +1,8 @@
 import imswitch
+import dataclasses
+import sys
+from imswitch import IS_HEADLESS
+
 __imswitch_module__ = True
 __title__ = 'Hardware Control'
 
@@ -8,16 +12,13 @@ def getMainViewAndController(moduleCommChannel, *_args,
     from imswitch.imcommon.model import initLogger
     from .controller import ImConMainController
     from .model import configfiletools
-    from .view import ViewSetupInfo, ImConMainView
-
+    from .view import ViewSetupInfo, ImConMainView, ImConMainViewNoQt
     logger = initLogger('imcontrol init')
 
     def pickSetup(options):
-        import dataclasses
-        import sys
         from qtpy import QtWidgets
         from imswitch.imcontrol.view import PickSetupDialog
-
+        
         # Let user pick the setup to use
         pickSetupDialog = PickSetupDialog()
         pickSetupDialog.setSetups(configfiletools.getSetupList())
@@ -28,37 +29,54 @@ def getMainViewAndController(moduleCommChannel, *_args,
             sys.exit()
         return dataclasses.replace(options, setupFileName=setupFileName)
 
+
+    '''
+    load the options such as imcontrol, imnotebook, etc.
+    '''
     if overrideOptions is None:
         options, optionsDidNotExist = configfiletools.loadOptions()
         if optionsDidNotExist:
-            options = pickSetup(options)  # Setup to use not set, let user pick
-
+            if not IS_HEADLESS: options = pickSetup(options)  # Setup to use not set, let user pick            
         configfiletools.saveOptions(options)
     else:
+        # force the options to use a specific configuration
         options = overrideOptions
 
-    if overrideSetupInfo is None:
+    '''
+    load the setup configuration including detectors, stages, etc.
+    '''
+    if not IS_HEADLESS and overrideSetupInfo is None:
         try:
-            if imswitch.DEFAULT_SETUP_FILE is not None:
-                try:options.setupFileName = imswitch.DEFAULT_SETUP_FILE
-                except:print("Error setting default setup file from commandline.." )
             setupInfo = configfiletools.loadSetupInfo(options, ViewSetupInfo)
         except FileNotFoundError:
             # Have user pick setup anyway
             options = pickSetup(options)
             configfiletools.saveOptions(options)
             setupInfo = configfiletools.loadSetupInfo(options, ViewSetupInfo)
-    else:
+    elif IS_HEADLESS and overrideSetupInfo is None:
+        if imswitch.DEFAULT_SETUP_FILE is not None:
+            try:
+                setupFileName = imswitch.DEFAULT_SETUP_FILE
+                options = dataclasses.replace(options, setupFileName=setupFileName)
+            except Exception as e: 
+                print("Error setting default setup file from commandline..:" + e)
+        setupInfo = configfiletools.loadSetupInfo(options, ViewSetupInfo)
+    elif overrideSetupInfo is not None:
         setupInfo = overrideSetupInfo
+    else:
+        raise KeyError # FIXME: !!!!
 
     logger.debug(f'Setup used: {options.setupFileName}')
-    
-    view = ImConMainView(options, setupInfo)
+    if not IS_HEADLESS:
+        view = ImConMainView(options, setupInfo)
+    else:
+        view = ImConMainViewNoQt(options, setupInfo)
     try:
         controller = ImConMainController(options, setupInfo, view, moduleCommChannel)
     except Exception as e:
         # TODO: To broad exception
-        view.close()
+        logger.error('Error initializing controller: %s', e)
+        if not IS_HEADLESS: view.close()
         raise e
 
     return view, controller

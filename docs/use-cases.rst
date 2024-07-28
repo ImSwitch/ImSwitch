@@ -52,9 +52,9 @@ It contains all the scanning pulses and hardware parameters related to the exper
 
 Image processing module for image reconstruction
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-The raw data can be either manually loaded into the reconstruction module or automatically retreived from the scanning if selected in the Recording widget. The user can further analyze the data using Napari image viewer.
+The raw data can be either manually loaded into the reconstruction module or automatically retrieved from the scanning if selected in the Recording widget. The user can further analyze the data using Napari image viewer.
 In this module we use our custom-designed DLLs for reconstruction, since this is a rather specific type of algorithm for our method. But the idea is that different microscope techniques implement their own modules as well.
-"Multidata management" stacks all the data incomming from the hardware control module.
+"Multidata management" stacks all the data incoming from the hardware control module.
 
 * The Image processing module is illustrated in the following image:
 
@@ -80,11 +80,11 @@ Both cameras are The Imaging Source cameras, so they use ``TISManager``. All the
 
 There are three lasers in this setup, and all three have an associated AOM or AOTF to rapidly control the power, and hence there are six laser devices defined. Two of them controls only fast digital modulation through digital Nidaq lines (561 and 640 lasers); one controls fast digital modulation and analog modulation through digital and analog Nidaq lines (775AOM); one controls the 775 nm laser through RS232 communication and hence has an associated rs232device (775Katana); and the last two controls the power modulation of the multiple channels of the common AOTF for the 561 and 640 nm lasers through RS232 communication with an associated rs232device (561AOTF and 640AOTF). The speicfic manager is defined for each device, ``NidaqLaserManager``, ``AAAOTFLaserManager``, or ``KatanaLaserManager``.
 
-We use galvanometric mirros for the XY-scanning that we control through the DAQ, so the axes are defined as positioners using ``NidaqPositionerManager``. The analog lines of the Nidaq used and conversion factors, for converting µm of the user-input to V for the signal, are specificied as well. Additionally a piezo is used for Z-movement, controlled both through analog signals from the DAQ with a ``NidaqPositionerManager`` and through RS232 communication with a ``PiezoconceptZManager``. 
+We use galvanometric mirrors for the XY-scanning that we control through the DAQ, so the axes are defined as positioners using ``NidaqPositionerManager``. The analog lines of the Nidaq used and conversion factors, for converting µm of the user-input to V for the signal, are specified as well. Additionally a piezo is used for Z-movement, controlled both through analog signals from the DAQ with a ``NidaqPositionerManager`` and through RS232 communication with a ``PiezoconceptZManager``. 
 
 The modules that will create the signals for the scan are ``GalvoScanDesigner`` for the XY-scanning, and ``PointScanTTLCycleDesigner`` for the laser synchronization. The analog scan designer will create smooth scanning signals with linear acquisition regions for good control of the galvanometric mirrors. The TTL designer will create laser modulation signals that can be controlled on a sub-line level with the widget interface, with automatic turn off during the portions of the scan that are not during acquisition. 
 
-The Hamamtsu SLM used in the setup is managed through the ``SLMManager``, and is simply controlled by connecting it as a monitor and showing a gray-scale image with the pixel values corresponding to the phase-shift you want to impose. The manager is responsible for building this image based on the user-input from the widget. 
+The Hamamatsu SLM used in the setup is managed through the ``SLMManager``, and is simply controlled by connecting it as a monitor and showing a gray-scale image with the pixel values corresponding to the phase-shift you want to impose. The manager is responsible for building this image based on the user-input from the widget. 
 
 The focus lock does not have a separate manager, but instead is associated with one of the TIS cameras and the Z-piezo rs232device. The properties for the focus lock specifies what hardware devices it should associate with, what part of the camera frame should be cropped, and the update frequency (in Hz) of the PI control loop.
 
@@ -145,7 +145,7 @@ The pulses will be directly handled by the National Instruments card and our TTL
 
 Optical Projection Tomography (OPT) using rotator stepping
 --------------------------------------------------------------------
-contact: `David Palecek (CCMAR, Portugal) <mailto:dpalecek@ualg.pt>`_, `Teresa Correia (CCMAR, Portugal) <mailto:tmcorreia@ualg.pt>`_
+contact: `David Palecek (CCMAR, Portugal) <mailto:david@stanka.de>`_, `Teresa Correia (CCMAR, Portugal) <mailto:tmcorreia@ualg.pt>`_
 
 .. figure:: ./images/opt-scan-controller.png
     :width: 600px
@@ -155,14 +155,14 @@ contact: `David Palecek (CCMAR, Portugal) <mailto:dpalecek@ualg.pt>`_, `Teresa C
 
 Optical Projection Tomography (OPT) is an optical analogue of X-ray computer tomography used
 in medical imaging. OPT can be performed leveraging any microscopy contrast, most widespread
-used ones are transmission, fluorescence or polarizaiton. Imswitch implementation aims to provide
+used ones are transmission, fluorescence or polarization. ImSwitch implementation aims to provide
 user-friendly access to end-to-end pipeline for the OPT, which consist of these indispensible steps:
 
 #. Hardware control and data acquisition
 #. Data preprocessing
 #. Tomography volume reconstruction (CPU and GPU, FBP and Deep Learning)
 
-All of them can be performed within imswitch, since step 2. and 3. are implemented as napari plugins.
+All of them can be performed within ImSwitch, since step 2. and 3. are implemented as napari plugins.
 
 Hardware control
 ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -172,7 +172,8 @@ in the refractive index matched medium and infinity corrected objective imaging 
 
 Configuration file and OPT hardware specifications
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-For this microscope use case, we created the JSON file ``example_OPTFull4Wire.json``, located at ``/imswitch/_data/user_defaults/imcontrol_setups/example_OPTFull4Wire.json``.
+For this microscope use case, we created the JSON file ``example_OPTFull4Wire.json``, 
+located at ``/imswitch/_data/user_defaults/imcontrol_setups/example_OPTFull4Wire.json``.
 
 In the JSON file, one detector is specified for the imaging: DMK 37BUX252 is controlled by ``TIS4Manager`` set for
 gray-scale 12bit frame acquisition. The exposure time is defined in `us` for ``TIS4Manager``, however
@@ -223,22 +224,36 @@ Rotational stages:
 Please help us improve and open issues or ask help to implement your own hardware. Or report to us successful
 implementations of your hardware to share it here.
 
-Alingment widget
+Alignment widget
 ^^^^^^^^^^^^^^^^^^^^^^^^
-Rotational axis of the sample needs to be as close to perpendicular to the optical axis as possible, while
-also aligned on the central column ot the camera chip.
-Even though the center of rotation (COR) is always corrected for in the reconstruction, for depth of field
-and resolution reasons it is better to have the sample as close to the center of the camera as possible.
-Therefore we provide an alignment widget to help with this task. 
+Rotational axis of the motor shaft as well as the sample needs to be as close to perpendicular to the
+optical axis as possible, while also aligned on the central column of the camera chip.
+Even though the center of rotation (COR) is always corrected for in the reconstruction step, for depth of field
+and resolution reasons it is highly beneficial to have the sample as close to the center of the camera as possible.
+Therefore we provide an alignment widget to help with all these tasks. 
 
-The alignment procedure allows to acquire 2 projections
-at 0 and 180 degrees, which are mirror images to each other. After Flipping one of them and
-calculating mean of the two, if
-the motor axis is perfectly centered, the merged image will show a single step function and
-single cross-sectional profile matching exactly the one which is acquired at 0 degrees.
+The alignment procedure starts with acquisition of tow pairs of counter-projections, ie. 0-180 degrees and 90-270 degrees.
+With prefect alignment, each pair is essentially a mirror images to each other. Property which we take
+advantage of in the following alignment steps:
 
-The widget shows enables to compare merge as image, camera horizontal cuts (H-cuts)
-and cross-correlation of the H-cuts.
+#. Flip one of counter-projections and overlay horizontal cuts for user selected camera line.
+#. Use shift in x-direction to align the two images, the metric can be visual inspection, cross-correlation or mean central index calculated using thresholding of the cuts with the threshold parameter.
+#. The misalignment from the central camera pixel can be calculated as `pixel_size * x_shift`, where `pixel_size` is the camera pixel size in micrometers.
+#. Move the motor shaft horizontally and repeat the acquisition until the two images are perfectly aligned.
+#. Only one pair of the counter-projections is needed to align the motor shaft.
+
+At this point, the motor shaft is aligned in respect to the camera chip. The next objective is to align
+the sample in respect to the motor shaft. Although the mean pixels for the counter-projections coincide,
+they most probably do not coincide with the center pixel of the camera. Therefore, the sample needs to be
+aligned in respect to the motor shaft.
+
+#. Acquire the counter-projections of the sample.
+#. Move sample in `X` and `Y` direction in respect to the shaft iteratively until the the center pixels of **both** counter-projection pairs are as close to the center camera pixel value as possible.
+
+This effectively leads to centering the sample in the center of the reconstructed volume, which leads to
+optimization of the steps for obtaining fully sample OPT dataset.
+Use the `threshold` (in percents of the maximum intensity counts) parameter to calculate
+mean position of the sample and the background camera counts are under the threshold.
 
 Full Example
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -288,7 +303,7 @@ Supposing the motor shaft is aligned in respect to the camera chip, align the mo
 the motor shaft in an analogous way as described above. After the alignment, the acquisition itself is trivial.
 Define number
 of OPT steps you want to acquire. `Note:` If the number of steps does not divide the number of motor steps per revolution without
-remaider, confirmation will be requested whether to proceed with the acquisition. If yes, you introduce certain rounding error
+remainder, confirmation will be requested whether to proceed with the acquisition. If yes, you introduce certain rounding error
 casting the requested steps (real numbers) to the ones of the motor (integer numbers). Ee have not tested experimentally, how big
 of an effect this has on the resulting reconstruction.
 
@@ -301,7 +316,7 @@ is out of range, central row of the camera will be reconstructed.
     
     OTP acquisition widget with live reconstruction in progress.
 
-Select whether to save the data (to the ``recordings`` folder), the folder name is a datetime string.
+Select whether to save the data (to the ``recordings`` folder), the folder name is a `datetime` string.
 By default all projections will be also kept in RAM for postprocessing and napari viewer will display all
 acquired projections so far in a 3D stack. This can be disabled by checking the ``noRAM`` option, which
 results in faster acquisition, but only last projection will be displayed in the viewer during the OPT
@@ -313,7 +328,7 @@ the exception of optics/sample description. Metadata file is saved in the same f
 
 OPT experiment begins after pressing ``Start`` button.
 
-You can check the time per acquisiiton operation in the report, looking similar to the one below, which is also saved
+You can check the time per acquisition operation in the report, looking similar to the one below, which is also saved
 in the metadata file.
 
 .. figure:: ./images/opt-acq02.png
@@ -324,10 +339,11 @@ in the metadata file.
 
 Corrections
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-Correction are saved always in the ``recordings/corrections/`` folder. All corrections are subjected to averaging set by the ``Averages`` parameter.
+Correction are saved always in the ``recordings/corrections/`` folder.
+All corrections are subjected to averaging set by the ``Averages`` parameter.
 
 The hot pixel correction can be used to identify both hot pixels (relevant for fluorescence acquisitions with
-long exposures), as well as dead pixels (relevant for brightfield acquisitions with short exposures). For hot
+long exposures), as well as dead pixels (relevant for bright-field acquisitions with short exposures). For hot
 pixel correction, use as long exposure as possible, to make the hot pixels visible. The STD cutoff is used just
 to provide illustrative information on how many hot pixels are detected. None of that information is saved or is binding
 
@@ -336,19 +352,20 @@ any light source. To facilitate subtraction, the dark-field acquisition should h
 acquisition of the experiment.
 
 Bright-field correction is used to correct for the uneven illumination of the field of, i.e. sample. In principle it is relevant
-mostly for transmission measurements, however, reflection/scatter of the excitation and leakage through the emission filter or very low emissive
-sample might result in need of bright-field correction for the fluorescence too (should be avoided however, because the major reflector
-and scattrer is the sample itself, and therefore precise bright-field is difficult to get). The bright-field acquisition
+mostly for transmission measurements, however, reflection/scatter of the excitation and leakage through the 
+emission filter or very low emissive sample might result in need of bright-field correction for the 
+fluorescence too (should be avoided however, because the major reflector
+and scatter is the sample itself, and therefore precise bright-field is difficult to get). The bright-field acquisition
 should have the same exposure time as the acquisition of the experiment.
 
 Intensity correction for fluctuating light source intensity is applied separately in the preprocessing widget
-and essentially tracks intensity of corners of the camera along the volume acquisiiton.
+and essentially tracks intensity of corners of the camera along the volume acquisition.
 
 Practical notes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 * For short exposure times on the order of 10s of ms, the motor stepping is the limiting factor in the speed of the acquisition. For longer exposure times, necessary for fluorescence imaging, the camera snap time will dominate the scan time. 
 * If you want to acquire same datasets at different conditions, do not set zero on the rotator, and do NOT run the continuous rotation. Both will result in losing your rotator 0 posision.
-* Use preferably the ``noRAM`` option, because it speeds up the acquisiiton, as the time to update the viewer with the 3D volume is linearly increasing (O(n)) and can be significant for big volumes.
+* Use preferably the ``noRAM`` option, because it speeds up the acquisition, as the time to update the viewer with the 3D volume is linearly increasing (O(n)) and can be significant for big volumes.
 
 Demo experiment
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -360,29 +377,30 @@ If the rotator is connected, it will move in correct steps.
 Live reconstruction is also available, which will show the reconstructed slice progress in real time.
 
 
-Napari OPT preprocessing module (Comming soon)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Download  `OPT preprocessing`  napari pluging from XX. This allows you to preprocess the OPT data
-before final reconstruction step. So far it provides following functionalities which are documented
+Napari OPT preprocessing module (`OPT handler <https://www.napari-hub.org/plugins/napari-opt-handler>`_)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Download  `OPT preprocessing`  napari plugin from `napari-hub <https://www.napari-hub.org/plugins/napari-opt-handler>`_ 
+or `PyPI <https://pypi.org/project/napari-opt-handler/>`_. This plugin allows you to pre-process the OPT data
+before final reconstruction step. So far it provides following functionalities which are documented in detail
 in the plugin documentation:
 
 * Dark-field correction
 * Bright-field correction
-* data inversion for tranmission acquisition
+* Bad pixel correction
+* Intensity correction
+* Fluorescence Bleaching correction
 * ROI selection
 * Binning
-* Hot pixel correction
-* Intensity correction
-* log transformation (for tranmission or visualization purposes)
+* log transformation (for transmission or visualization purposes)
 
 In case you `did not` select ``noRam`` acquisition, the plugin is designed to process the 
-acquired OPT stack with the corrections which are either in separate layers, or caa be loaded separately.
+acquired OPT stack with the corrections which are either in separate layers, or can be loaded separately.
 
-Please open feature requests or issues on the plugin github page XX.
+Please open feature requests or issues on the plugin `github page <https://github.com/QBioImaging/napari-opt-handler/issues>`_.
 
 
-Napari deep learning reconstruction (`ToMoDL <https://pypi.org/project/napari-tomodl/>`_)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Napari deep learning reconstruction (`ToMoDL <https://www.napari-hub.org/plugins/napari-tomodl>`_)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 contact: `Marcos Obando <mailto: Marcos.Obando@cwi.nl>`_, `Teresa Correia (CCMAR, Portugal) <mailto:tmcorreia@ualg.pt>`_
 
 For the reconstruction of the OPT data, we provide a deep learning reconstruction plugin for Napari, which

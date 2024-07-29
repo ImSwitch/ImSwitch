@@ -230,15 +230,16 @@ Rotational axis of the motor shaft as well as the sample needs to be as close to
 optical axis as possible, while also aligned on the central column of the camera chip.
 Even though the center of rotation (COR) is always corrected for in the reconstruction step, for depth of field
 and resolution reasons it is highly beneficial to have the sample as close to the center of the camera as possible.
-Therefore we provide an alignment widget to help with all these tasks. 
+Therefore we provide an alignment widget to help with all these tasks. Here the procedure is described for the case
+that the motor shaft is not visible in the field of view.
 
-The alignment procedure starts with acquisition of tow pairs of counter-projections, ie. 0-180 degrees and 90-270 degrees.
+The alignment procedure starts with acquisition of tow pairs of counter-projections, ie. 0-180 and 90-270 degrees.
 With prefect alignment, each pair is essentially a mirror images to each other. Property which we take
 advantage of in the following alignment steps:
 
-#. Flip one of counter-projections and overlay horizontal cuts for user selected camera line.
-#. Use shift in x-direction to align the two images, the metric can be visual inspection, cross-correlation or mean central index calculated using thresholding of the cuts with the threshold parameter.
-#. The misalignment from the central camera pixel can be calculated as `pixel_size * x_shift`, where `pixel_size` is the camera pixel size in micrometers.
+#. Flip one of counter-projections and overlay horizontal cuts (H-cuts) for user selected camera line.
+#. Use shift in x-direction to align the two images (H-cuts), the metric can be visual inspection, cross-correlation or mean central index calculated using thresholding of the cuts with the `threshold` parameter.
+#. The misalignment from the central camera pixel can be calculated as `pixel_size * x_shift` in micrometers.
 #. Move the motor shaft horizontally and repeat the acquisition until the two images are perfectly aligned.
 #. Only one pair of the counter-projections is needed to align the motor shaft.
 
@@ -251,13 +252,14 @@ aligned in respect to the motor shaft.
 #. Move sample in `X` and `Y` direction in respect to the shaft iteratively until the the center pixels of **both** counter-projection pairs are as close to the center camera pixel value as possible.
 
 This effectively leads to centering the sample in the center of the reconstructed volume, which leads to
-optimization of the steps for obtaining fully sample OPT dataset.
-Use the `threshold` (in percents of the maximum intensity counts) parameter to calculate
-mean position of the sample and the background camera counts are under the threshold.
+optimization of the steps for obtaining fully sample OPT dataset, while minimizing required DoF for the
+imaging at the same time. Use the `threshold` (in percents of the maximum intensity counts) parameter to calculate mean position of the sample and the background camera counts are under the threshold.
 
 Full Example
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-First align the shaft in respect to the camera field of view without the sample:
+In the full example, we start with motor shaft alignment alone in respect to the camera field of view 
+without the sample. This does not need to be done every time, however tilt of the shaft along the optical 
+axis or in respect of the camera chip is detrimental to the image quality and should be checked from time to time:
 
 .. figure:: ./images/opt-alignment-shaft01.png
     :width: 600px
@@ -266,14 +268,13 @@ First align the shaft in respect to the camera field of view without the sample:
     OPT alignment widget with the shaft alignment in progress.
 
 #. Make the shaft span vertically most of the camera chip.
-#. Acquire the 0 and 180 degree projections by pressing ``Acquire`` button in the ``OPT Alignment`` widget.
-#. Select a row Plot the slices, if you see a step function in the `merge`, the shaft is off the chip center.
-#. The x-shift allows to shift one of the image in the horizontal direction, which is useful for getting an idea how far from the center you currently are. x-shift is in pixels so once you find the best overlay, you are `x-shift * pixel_size` away from the vertical axis of the chip.
-#. Adjust (and re-acquire) the motor shaft horizontal position until the images/slices are perfectly aligned.
+#. Acquire 4 projections by pressing ``Acquire`` button in the ``OPT Alignment`` widget.
+#. Select a row  the slices, if you see a step function in the `merge`, the shaft is off the chip center.
+#. The ``x-shift`` and ``threshold`` allows to figure out the misalignment of the shaft. Shift and reacquire until the H-cuts overlay with 0 x-shift.
 
 #. For the tilt correction, the motor mounted on `Kinematic Platform Base <https://www.thorlabs.com/thorproduct.cfm?partnumber=KM200B/M>`_, which allows for independent alignment of a shaft tilt along the optical axis and perpendicularly to it.
-#. For sideways tilt, select two H-cuts, which are close to the bottom and top of your camera field of view.
-#. Since the shaft is already centered, the H-cuts show single step function. However, if they are not perfectly on top of each other, the shaft is tilted sideways. Adjust the tilr, and re-acquire until match is achieved.
+#. For sideways tilt, alternate between two H-cuts, which are close to the bottom and top of your camera field of view, respectively.
+#. The center pixels of these two H-cuts need to be the same in case of no tilt. Adjust the tilt, and re-acquire until match is achieved.
 
 .. figure:: ./images/opt-alignment-shaft02.png
     :width: 600px
@@ -284,7 +285,7 @@ First align the shaft in respect to the camera field of view without the sample:
 #. You can approximately check the tilt along the optical axis too. Attach a `rigid flange <https://www.amazon.com/Rigid-Flange-Coupling-Coupler-Connector/dp/B06Y6MSYCS?th=1>`_ to the motor shaft.
 #. Adjust the height of the flange so that the top edge is close to the central line of the camera.
 #. Change focusing to the front and back edge of the flange.
-#. If the shaft is tilted away from the camera, the flange further from the camera will be clearly visible in the image.
+#. If the shaft is tilted away from the camera, the flange further from the camera will be clearly visible in the image once brought to focus.
 #. On the other hand, if the shaft is tilted towards the camera, the far-away flange will never be visible.
 #. Adjust the tilt, that the close and far edge of the flange are aligned in height, and perfectly shadowing each other.
 
@@ -413,4 +414,4 @@ main focus of this plugin. Please open issues or feature requests on the `ToMoDL
 * Volume reshaping (binning)
 * Removing circular edge from the acquisition
 * filtering
-* Reconstruction method (with and without GPU support)
+* Reconstruction method (with CPU and GPU support)

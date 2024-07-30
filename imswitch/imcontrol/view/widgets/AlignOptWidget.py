@@ -5,7 +5,6 @@ import numpy as np
 from imswitch.imcontrol.view import guitools as guitools
 from .basewidgets import Widget
 
-# import matplotlib as mpl
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import (
     FigureCanvasQTAgg as FigureCanvas
@@ -108,21 +107,13 @@ class AlignOptWidget(Widget):
             name=f'{cor.params["lineIdx"]}',
         )
 
-    # def _plotCumSum(self, cor):
-    #     """Plot the cumulative sums of the horizontal cuts.
-
-    #     Args:
-    #         cor (object): AlignCOR class object containing all alignment data.
-    #     """
-    #     self.plotCumSum.createFigure(cor)
-
     def _plotThreshMiddle(self, cor):
         """Plot the thresholded middle pixel of the horizontal cuts.
 
         Args:
             cor (object): AlignCOR class object containing all alignment data.
         """
-        self.plotThreshMiddle.createFigure2(cor)
+        self.plotThreshMiddle.createFigure(cor)
 
     # TODO: this can be now refactored to just int
     def execPlots(self, cor: object) -> None:
@@ -137,7 +128,6 @@ class AlignOptWidget(Widget):
 
         self._plotHorCuts(cor)
         self._plotCC(cor)
-        # self._plotCumSum(cor)
         self._plotThreshMiddle(cor)
 
         # plot center vertical line for cross correlations
@@ -193,7 +183,6 @@ class AlignOptWidget(Widget):
         self.plotMerge = pg.ImageView()
         self.plotHorCuts = pg.PlotWidget()
         self.plotCC = pg.PlotWidget()
-        self.plotCumSum = CumSumCanvas()
         self.plotThreshMiddle = CumSumCanvas()
 
         self.scanPar['LineIdx'] = QtWidgets.QSpinBox()
@@ -261,18 +250,12 @@ class AlignOptWidget(Widget):
         self.grid3.addWidget(self.plotCC, 0, 0)
         # add tab to tabs
         self.tabs.addTab(self.tabCorr, 'Cross-correlation')
-        # 4. tab of cumsum of intensities
-        # self.tabCumSum = QtWidgets.QWidget()
-        # self.grid4 = QtWidgets.QGridLayout()
-        # self.tabCumSum.setLayout(self.grid4)
-        # self.grid4.addWidget(self.plotCumSum, 0, 0)
-        # self.tabs.addTab(self.tabCumSum, 'Cumulative Sums')
 
-        # 5. tab of thresholded center px
+        # 4. tab of thresholded center px
         self.tabThreshMiddle = QtWidgets.QWidget()
-        self.grid5 = QtWidgets.QGridLayout()
-        self.tabThreshMiddle.setLayout(self.grid5)
-        self.grid5.addWidget(self.plotThreshMiddle, 0, 0)
+        self.grid4 = QtWidgets.QGridLayout()
+        self.tabThreshMiddle.setLayout(self.grid4)
+        self.grid4.addWidget(self.plotThreshMiddle, 0, 0)
         self.tabs.addTab(self.tabThreshMiddle, 'Thresholded middle PX')
 
         # separator
@@ -327,34 +310,7 @@ class CumSumCanvas(FigureCanvas):
                                    QtWidgets.QSizePolicy.Expanding)
         FigureCanvas.updateGeometry(self)
 
-    # def createFigure(self, cor) -> None:
-    #     """Create the figure of the cumulative sums plots.
-
-    #     Args:
-    #         cor (object): AlignCOR class object containing alignment data.
-    #     """
-    #     self.ax1.clear()
-    #     self.ax1.cla()
-
-    #     # add plot 1, normalized by the first cumsum
-    #     self.ax1.plot(cor.s1, lw=3, label='Proj')
-    #     self.ax1.plot(cor.s2, label='Counter Proj')
-
-    #     # plot middle indices
-    #     self.ax1.axvline(cor.s1middle, color='C0', lw=1,
-    #                      label=f'middle 1: {np.round(cor.s1middle, 2)}')
-    #     self.ax1.axvline(cor.s2middle, color='C1', lw=1,
-    #                      label=f'middle 2: {np.round(cor.s2middle, 2)}')
-
-    #     self.ax1.legend()
-    #     self.ax1.set_xlabel('pixel index')
-    #     self.ax1.set_ylabel('Normalized cum Sum')
-    #     self.ax1.set_title(f'diff={np.round(cor.diff, 2)}')
-
-    #     # for plot updates
-    #     self.fig.canvas.draw_idle()
-
-    def createFigure2(self, cor) -> None:
+    def createFigure(self, cor) -> None:
         """Create the figure of the thresholded middle pixel plots.
 
         Args:

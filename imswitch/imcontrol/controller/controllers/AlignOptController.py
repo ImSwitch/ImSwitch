@@ -302,13 +302,6 @@ class AlignCOR():
         # cross correlation of the projections
         self.processCrossCorrelation(i)
 
-        # calculate normalized cumsums
-        # and abs sum of their difference
-        # self.diff, self.s1, self.s2 = self.processCumSums(
-        #     self.img_stack[self.params['pairFlag']][0][i],
-        #     self.img_stack[self.params['pairFlag']][1][i],
-        #     )
-
         # calculate the indices of the middle of the image
         self.processImageValueIndices()
 
@@ -339,45 +332,11 @@ class AlignCOR():
 
         self.center_px = self.img_stack[self.params['pairFlag']][0].shape[1]
 
-    # def processCumSums(self, arr1, arr2,
-    #                    ) -> Tuple[float, np.ndarray, np.ndarray]:
-    #     """ Calculate normalized cumulative sums of the horizontal cuts.
-    #     sum of difference of cumulative sums of the counter-projections.
-    #     - This metric should be minimized for centering for the COR.
-
-    #     Args:
-    #         arr1 (np.ndarray): first horizontal cut
-    #         arr2 (np.ndarray): second horizontal cut
-
-    #     Returns:
-    #         Tuple[float, np.ndarray, np.ndarray]: difference of the cumsums,
-    #             cumsum of the first cut, cumsum of the second
-    #     """
-    #     # first invert the arrays in case of transmission modality
-    #     if self.params['modality'] == 'Transmission':
-    #         arr1, arr2 = -(arr1 - np.amax(arr1)), -(arr2 - np.amax(arr2))
-
-    #     # calculate the cumsums
-    #     s1, s2 = np.cumsum(arr1), np.cumsum(arr2)
-
-    #     # normalize by the value of first proj
-    #     # this changes the dtype, therefore the division
-    #     # is not done inplace (s1 /= s1[-1])
-    #     s2 = s2 / s1[-1]  # this division needs to be done first
-    #     s1 = s1 / s1[-1]
-
-    #     diff = abs(sum(s1 - s2))
-    #     return diff, s1, s2
-
     def processImageValueIndices(self) -> None:
         """ Calculate the indices of the middle of the image.
         Calculate the indices of the middle of the cumsums.
         Calculate the indices of the thresholded cuts.
         """
-        # argmin of the difference of the cumsums
-        # self.s1middle = np.argmin(abs(self.s1 - self.s1[-1]/2))
-        # self.s2middle = np.argmin(abs(self.s2 - self.s2[-1]/2))
-
         # invert horctus in case of transmission modality
         if self.params['modality'] == 'Transmission':
             self.invHorCuts = (-(self.horCuts[0] - np.amax(self.horCuts[0])),

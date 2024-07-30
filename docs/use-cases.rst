@@ -230,30 +230,7 @@ Rotational axis of the motor shaft as well as the sample needs to be as close to
 optical axis as possible, while also aligned on the central column of the camera chip.
 Even though the center of rotation (COR) is always corrected for in the reconstruction step, for depth of field
 and resolution reasons it is highly beneficial to have the sample as close to the center of the camera as possible.
-Therefore we provide an alignment widget to help with all these tasks. Here the procedure is described for the case
-that the motor shaft is not visible in the field of view.
-
-The alignment procedure starts with acquisition of tow pairs of counter-projections, ie. 0-180 and 90-270 degrees.
-With prefect alignment, each pair is essentially a mirror images to each other. Property which we take
-advantage of in the following alignment steps:
-
-#. Flip one of counter-projections and overlay horizontal cuts (H-cuts) for user selected camera line.
-#. Use shift in x-direction to align the two images (H-cuts), the metric can be visual inspection, cross-correlation or mean central index calculated using thresholding of the cuts with the `threshold` parameter.
-#. The misalignment from the central camera pixel can be calculated as `pixel_size * x_shift` in micrometers.
-#. Move the motor shaft horizontally and repeat the acquisition until the two images are perfectly aligned.
-#. Only one pair of the counter-projections is needed to align the motor shaft.
-
-At this point, the motor shaft is aligned in respect to the camera chip. The next objective is to align
-the sample in respect to the motor shaft. Although the mean pixels for the counter-projections coincide,
-they most probably do not coincide with the center pixel of the camera. Therefore, the sample needs to be
-aligned in respect to the motor shaft.
-
-#. Acquire the counter-projections of the sample.
-#. Move sample in `X` and `Y` direction in respect to the shaft iteratively until the the center pixels of **both** counter-projection pairs are as close to the center camera pixel value as possible.
-
-This effectively leads to centering the sample in the center of the reconstructed volume, which leads to
-optimization of the steps for obtaining fully sample OPT dataset, while minimizing required DoF for the
-imaging at the same time. Use the `threshold` (in percents of the maximum intensity counts) parameter to calculate mean position of the sample and the background camera counts are under the threshold.
+Therefore we provide an alignment widget to help with all these tasks.
 
 Full Example
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -290,13 +267,38 @@ axis or in respect of the camera chip is detrimental to the image quality and sh
 #. Adjust the tilt, that the close and far edge of the flange are aligned in height, and perfectly shadowing each other.
 
 Now the motor is perfectly align, however after mounting the sample, the sample needs to be
-centered in respect to both the motor shaft in an analogous procedure as described above.
+centered in respect to both the motor shaft in an analogous procedure as described below.
 
 .. figure:: ./images/opt-alignment-fish.png
     :width: 600px
     :align: center
 
     Sample alignment in respect to the motor shaft and the camera chip.
+
+TODO: IMAGES
+Now we describe the sample and motor COR alignment (not tilts), which does not necessitate a motor shaft in the camera FOV.
+The alignment procedure starts with acquisition of two pairs of counter-projections, ie. 0-180 and 90-270 degrees.
+With perfect alignment, each pair is essentially a mirror images to each other. Property which we take
+advantage of in the following alignment steps:
+
+#. Flip one of counter-projections and overlay horizontal cuts (H-cuts) for user selected camera line.
+#. Use shift in x-direction to align the two images (H-cuts), the metric can be visual inspection, cross-correlation or mean central index calculated using thresholding of the cuts with the `threshold` parameter.
+#. The misalignment from the central camera pixel can be calculated as `pixel_size * x_shift` in micrometers.
+#. Move the motor shaft horizontally and repeat the acquisition until the two images are perfectly aligned.
+#. Only one pair of the counter-projections is needed to align the motor shaft.
+
+At this point, the motor shaft is aligned in respect to the camera chip. The next objective is to align
+the sample in respect to the motor shaft. Although the mean pixels for the counter-projections coincide,
+they most probably do not coincide with the center pixel of the camera. Therefore, the sample needs to be
+aligned in respect to the motor shaft.
+
+#. Acquire the counter-projections of the sample.
+#. Move sample in `X` and `Y` direction in respect to the shaft iteratively until the the center pixels of **both** counter-projection pairs are as close to the center camera pixel value as possible.
+
+This effectively leads to centering the sample in the center of the reconstructed volume, which leads to
+optimization of the steps for obtaining fully sample OPT dataset, while minimizing required DoF for the
+imaging at the same time. Use the `threshold` (in percents of the maximum intensity counts) parameter to calculate mean position of the sample and the background camera counts are under the threshold.
+
 
 OPT acquisition
 ^^^^^^^^^^^^^^^^^^^^^^^^

@@ -17,7 +17,7 @@ that it is possible to integrate current state-of-the-art solutions into one uni
 
 ### Option A: Standalone bundles for Windows
 
-Windows users can download ImSwitch in standalone format from the [releases page on GitHub](https://github.com/kasasxav/ImSwitch/releases). Further information is available there. An existing Python installation is *not* required.
+Windows users can download ImSwitch in standalone format from the [releases page on GitHub](https://github.com/ImSwitch/ImSwitch/releases). Further information is available there. An existing Python installation is *not* required.
 
 ### Option B: Install using pip
 

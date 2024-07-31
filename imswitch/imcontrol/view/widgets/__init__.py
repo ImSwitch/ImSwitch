@@ -1,3 +1,5 @@
+import warnings
+
 from .AlignAverageWidget import AlignAverageWidget
 from .AlignmentLineWidget import AlignmentLineWidget
 from .AlignXYWidget import AlignXYWidget
@@ -13,7 +15,6 @@ from .HistogrammWidget import HistogrammWidget
 from .STORMReconWidget import STORMReconWidget
 from .HoliSheetWidget import HoliSheetWidget
 from .FlowStopWidget import FlowStopWidget
-
 from .ObjectiveRevolverWidget import ObjectiveRevolverWidget
 from .TemperatureWidget import TemperatureWidget
 from .LEDMatrixWidget import LEDMatrixWidget
@@ -41,7 +42,10 @@ from .MCTWidget import MCTWidget
 from .ROIScanWidget import ROIScanWidget
 from .LightsheetWidget import LightsheetWidget
 from .WebRTCWidget import WebRTCWidget
-from .HyphaWidget import HyphaWidget
+try:
+    from .HyphaWidget import HyphaWidget
+except ModuleNotFoundError:
+    warnings.warn("HyphaWidget not available; please install imjoy-rpc module")
 from .MockXXWidget import MockXXWidget
 from .JetsonNanoWidget import JetsonNanoWidget
 from .HistoScanWidget import HistoScanWidget

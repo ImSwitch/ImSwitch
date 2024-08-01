@@ -40,6 +40,7 @@ def initUserFilesIfNeeded():
 
     # Initialize directories
     for userFileDir in UserFileDirs.list():
+        print("Create new User file dir: " + userFileDir)
         os.makedirs(userFileDir, exist_ok=True)
 
     # Copy default user files

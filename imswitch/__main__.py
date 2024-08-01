@@ -35,9 +35,11 @@ def main(is_headless:bool=None, default_config:str=None, http_port:int=None, ssl
             args = parser.parse_args()
             
             imswitch.IS_HEADLESS = args.headless            # if True, no QT will be loaded   
-            imswitch.DEFAULT_SETUP_FILE = args.config_file  # e.g. example_virtual_microscope.json
             imswitch.__httpport__ = args.http_port          # e.g. 8001
             imswitch.__ssl__ = args.ssl                     # if True, ssl will be used (e.g. https)
+            
+            if args.config_file.find("json")>=0:  # e.g. example_virtual_microscope.json
+                imswitch.DEFAULT_SETUP_FILE = args.config_file  
             if os.path.isdir(args.config_folder):
                 imswitch.DEFAULT_CONFIG_PATH = args.config_folder # e.g. /Users/USER/ in case an alternative path is used
             

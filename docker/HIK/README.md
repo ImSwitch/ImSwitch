@@ -33,18 +33,67 @@
 
 #### ARM64 + X86
 
-For *ARM64*:
+Pull the file from github containers:
 ```bash
-sudo docker pull ghcr.io/openuc2/imswitch-docker-arm64-noqt:latest
-sudo docker run -it --rm -p 8001:8001 -p 2222:22 -e HEADLESS=1 -e HTTP_PORT=8001 -e CONFIG_FILE=example_virtual_microscope.json -e UPDATE_GIT=0 -e UPDATE_CONFIG=0 --privileged ghcr.io/openuc2/imswitch-docker-arm64-noqt:latest
+sudo docker pull ghcr.io/openuc2/imswitch-noqt-x64:latest
 ```
 
-For *i86*:
-```bash
-sudo docker pull ghcr.io/openuc2/imswitch-docker-arm64-noqt:latest
-sudo docker run -it --rm -p 8001:8001 -p 2222:22 -e HEADLESS=1 -e HTTP_PORT=8001 -e CONFIG_FILE=example_virtual_microscope.json -e UPDATE_GIT=0 -e UPDATE_CONFIG=0 --privileged ghcr.io/openuc2/imswitch-docker-arm64-noqt:latest
+Install the docker image and run it:
+```
+sudo docker run -it --rm -p 8001:8001 -p 2222:22 -e HEADLESS=1 -e HTTP_PORT=8001 -e CONFIG_FILE=example_uc2_hik_flowstop.json -e UPDATE_GIT=0 -e UPDATE_CONFIG=0 --privileged ghcr.io/openuc2/imswitch-noqt-x64:latest
 ```
 
+*List of arguments:*
+
+```bash
+HEADLESS=1                # ImSwitch will start without any GUI
+HTTP_PORT=8001            # Port to access e.g. the ImSwitch React GUI
+CONFIG_FILE=example_virtual_microscope.json # default setup configuration
+UPDATE_GIT=true           # pull the latest ImSwitch git
+UPDATE_INSTALL_GIT=true   # pull and pip install all changes (e.g. new packages)
+UPDATE_UC2=true           # pull UC2-REST
+UPDATE_INSTALL_UC2=true   # pull and pip install all changes
+UPDATE_CONFIG=true        # pull changes for setup configurations
+MODE=terminal             # start Docker with bash for better debugging
+```
+
+
+### Setting up docker on Raspi
+
+```bash
+#!/bin/bash
+
+# Update package lists
+sudo apt update -y
+
+# Upgrade installed packages
+sudo apt upgrade -y
+
+# Install Docker
+curl -sSL https://get.docker.com | sh
+
+# Add current user to the Docker group
+sudo usermod -aG docker $USER
+
+# Print message to logout and login again
+echo "Please log out and log back in to apply the Docker group changes."
+
+# Verify group membership (this will not reflect the changes until you log out and log back in)
+groups
+```
+
+To save this script, you can copy the content above into a file, for example, `install_docker.sh`, and then run the script using the following command:
+
+```bash
+chmod +x install_docker.sh
+./install_docker.sh
+```
+
+After running the script, you will need to log out and log back in to apply the Docker group changes. Once you log back in, you can verify your membership in the Docker group by running:
+
+```bash
+groups
+```
 
 ### Additional Information
 

@@ -27,11 +27,6 @@ class ImConMainController(MainController):
         self.__mainView = mainView
         self._moduleCommChannel = moduleCommChannel
 
-        # Connect view signals
-        self.__mainView.sigLoadParamsFromHDF5.connect(self.loadParamsFromHDF5)
-        self.__mainView.sigPickSetup.connect(self.pickSetup)
-        self.__mainView.sigClosing.connect(self.closeEvent)
-
         # Init communication channel and master controller
         self.__commChannel = CommunicationChannel(self, self.__setupInfo)
         self.__masterController = MasterController(self.__setupInfo, self.__commChannel,
@@ -41,8 +36,12 @@ class ImConMainController(MainController):
         self.__factory = ImConWidgetControllerFactory(
             self.__setupInfo, self.__masterController, self.__commChannel, self._moduleCommChannel
         )
-        
+
         if not IS_HEADLESS:
+            # Connect view signals
+            self.__mainView.sigLoadParamsFromHDF5.connect(self.loadParamsFromHDF5)
+            self.__mainView.sigPickSetup.connect(self.pickSetup)
+            self.__mainView.sigClosing.connect(self.closeEvent)   
             self.pickSetupController = self.__factory.createController(
                 PickSetupController, self.__mainView.pickSetupDialog
             )
@@ -82,12 +81,11 @@ class ImConMainController(MainController):
                                                   f' hardware setup file.'
         )
         # Generate Shorcuts
-        self.__shortcuts = None
-        shorcutObjs = list(self.__mainView.widgets.values())
-        self.__shortcuts = generateShortcuts(shorcutObjs)
-        self.__mainView.addShortcuts(self.__shortcuts)
-
-
+        if not IS_HEADLESS:
+            self.__shortcuts = None
+            shorcutObjs = list(self.__mainView.widgets.values())
+            self.__shortcuts = generateShortcuts(shorcutObjs)
+            self.__mainView.addShortcuts(self.__shortcuts)
         self.__logger.debug("Start ImSwitch Server")
         self._serverWorker = ImSwitchServer(self.__api, setupInfo)
         self._thread = threading.Thread(target=self._serverWorker.run)
@@ -157,7 +155,7 @@ class ImConMainController(MainController):
         self.__logger.debug('Shutting down')
         self.__factory.closeAllCreatedControllers()
         self.__masterController.closeEvent()
-        
+
         # seems like the imswitchserver is not closing from the closing event, need to hard kill it
         self._serverWorker.stop()
         self._thread.join()

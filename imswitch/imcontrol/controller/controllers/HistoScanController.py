@@ -14,8 +14,6 @@ import numpy as np
 from skimage.io import imsave
 from scipy.ndimage import gaussian_filter
 from collections import deque
-from PyQt5.QtCore import QTimer
-from PyQt5.QtGui import QImage, QPixmap
 import ast
 import skimage.transform
 import skimage.util
@@ -191,7 +189,7 @@ class HistoScanController(LiveUpdatedController):
             self.microscopeDetector.startAcquisition()
             # run image scraper if not started already 
             if not self.isWebcamRunning:
-                self.timer = QTimer(self)
+                self.timer = Timer(self)
                 self.timer.timeout.connect(self.updateFrameWebcam)
                 self.timer.start(100)
                 self.isWebcamRunning = True
@@ -210,6 +208,7 @@ class HistoScanController(LiveUpdatedController):
         if frame is not None:
             height, width, channel = frame.shape
             bytesPerLine = 3 * width
+            from PyQt5.QtGui import QImage, QPixmap
             image = QImage(np.uint8(frame.copy()), width, height, bytesPerLine, QImage.Format_RGB888)
             pixmap = QPixmap.fromImage(image)
             self._widget.imageLabel.setOriginalPixmap(pixmap)
@@ -454,7 +453,7 @@ class HistoScanController(LiveUpdatedController):
     
     def updateAllPositionGUI(self):
         allPositions = self.stages.position
-        self._widget.updateBoxPosition(allPositions["X"], allPositions["Y"])
+        if not IS_HEADLESS: self._widget.updateBoxPosition(allPositions["X"], allPositions["Y"])
 
     def goToPosition(self, posX, posY):
         # {"task":"/motor_act",     "motor":     {         "steppers": [             { "stepperid": 1, "position": -1000, "speed": 30000, "isabs": 0, "isaccel":1, "isen":0, "accel":500000}     ]}}

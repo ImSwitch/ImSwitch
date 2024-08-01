@@ -4,7 +4,6 @@ import time
 import cv2
 from imswitch.imcommon.model import initLogger
 import imswitch.imcontrol.model.interfaces.gxipy as gx
-
 #import imswitch.imcontrol.model.interfaces.template as gx
 import collections
 

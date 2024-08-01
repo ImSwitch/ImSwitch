@@ -25,21 +25,20 @@ class LEDMatrixController(ImConWidgetController):
         self.ledMatrix_name = self._master.LEDMatrixsManager.getAllDeviceNames()[0]
         self.ledMatrix = self._master.LEDMatrixsManager[self.ledMatrix_name]
 
-        # set up GUI and "wire" buttons
-        self.connect_leds()
-
         # initialize matrix
-        self.setAllLEDOff()
 
         if IS_HEADLESS:
             return
         self._widget.add_matrix_view(self.nLedsX, self.nLedsY)
+        self.connect_leds()
+        self.setAllLEDOff()
         self._widget.ButtonAllOn.clicked.connect(self.setAllLEDOn)
         self._widget.ButtonAllOff.clicked.connect(self.setAllLEDOff)
         self._widget.slider.sliderReleased.connect(self.setIntensity)
         self._widget.ButtonSpecial1.clicked.connect(self.setSpecial1)
         self._widget.ButtonSpecial2.clicked.connect(self.setSpecial2)
         
+        # set up GUI and "wire" buttons
 
     @APIExport()
     def setAllLEDOn(self, getReturn=True):

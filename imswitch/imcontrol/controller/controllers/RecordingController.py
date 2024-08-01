@@ -41,15 +41,16 @@ class RecordingController(ImConWidgetController):
         self._commChannel.sigScanDone.connect(self.scanDone)
         self._commChannel.sigUpdateRecFrameNum.connect(self.updateRecFrameNum)
         self._commChannel.sigUpdateRecTime.connect(self.updateRecTime)
-        self._commChannel.sharedAttrs.sigAttributeSet.connect(self.attrChanged, check_nargs=False)
         self._commChannel.sigSnapImg.connect(self.snap)
         self._commChannel.sigSnapImgPrev.connect(self.snapImagePrev)
         self._commChannel.sigStartRecordingExternal.connect(self.startRecording)
         self._commChannel.sigRequestScanFreq.connect(self.sendScanFreq)
-        
-
-        if IS_HEADLESS: return
-        
+        if IS_HEADLESS: 
+            self._commChannel.sharedAttrs.sigAttributeSet.connect(self.attrChanged, check_nargs=False)
+            return
+        else:
+            self._commChannel.sharedAttrs.sigAttributeSet.connect(self.attrChanged)
+            
         self.untilStop()
         
         # ADD GUI elements just in case

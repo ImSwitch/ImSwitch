@@ -57,9 +57,10 @@ def main(is_headless:bool=None, default_config:str=None, http_port:int=None, ssl
         logger.info(f'Headless mode: {imswitch.IS_HEADLESS}')
         logger.info(f'Config file: {imswitch.DEFAULT_SETUP_FILE}')
         
-        if not imswitch.IS_HEADLESS:
+        if imswitch.IS_HEADLESS:
             os.environ["DISPLAY"] = ":0"
             os.environ["QT_QPA_PLATFORM"] = "offscreen"
+        else:
             app = prepareApp()
         enabledModuleIds = modulesconfigtools.getEnabledModuleIds()
 
@@ -90,11 +91,11 @@ def main(is_headless:bool=None, default_config:str=None, http_port:int=None, ssl
                 multiModuleWindow, moduleCommChannel
             )
             multiModuleWindow.show(showLoadingScreen=True)
+            app.processEvents()  # Draw window before continuing
         else:
             multiModuleWindow = None
             multiModuleWindowController = None
-        if not imswitch.IS_HEADLESS:
-            app.processEvents()  # Draw window before continuing
+        
 
         # Register modules
         for modulePkg in modulePkgs:

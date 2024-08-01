@@ -176,88 +176,17 @@ class ImSwitchServer(Worker):
             swagger_css_url="/static/swagger-ui.css",
         )
 
-    @app.get("/hyphalogin")
-    async def hyphalogin(service_id="UC2ImSwitch", server_url="https://chat.bioimage.io", workspace=None, token=None):
-        #mThread = threading.Thread(target=self.start_service, args=(service_id, server_url, workspace, token))
-        #mThread.start()
-        # self.start_service(service_id, server_url, workspace, token, is_async=True)
-        from imjoy_rpc.hypha.sync import connect_to_server, register_rtc_service, login
-        from imjoy_rpc.hypha import connect_to_server as connect_to_server_async
-        from imjoy_rpc.hypha import login as login_async
-
-        from imjoy_rpc.hypha import connect_to_server, login
-        server_url = "https://chat.bioimage.io"
-        token = await login({"server_url": server_url})
-        server = await connect_to_server({"server_url": server_url, "token": token})
-
-        import webbrowser
-        print(f"Starting service...")
-        client_id = service_id + "-client"
-
-        def autoLogin(message):
-            # automatically open default browser and return the login token
-            webbrowser.open(message['login_url']) # TODO: pass login token to qtwebview
-            print(f"Please open your browser and login at: {message['login_url']}")
-
-        try:
-            token = await login_async({"server_url": server_url,
-                                        "login_callback": autoLogin,
-                                        "timeout": 10})
-        except Exception as e:
-            # probably timeout error - not connected to the Internet?
-            print(e)
-            return "probably timeout error - not connected to the Internet?"
-        print(token)
-        server = await connect_to_server_async(
-                {
-                "server_url": server_url,
-                "token": token}
-                )
-
-        # initialize datastorer for image saving and data handling outside the chat prompts, resides on the hypha server
-        #self.datastore.setup(server, service_id="data-store")
-        svc = server.register_service(self.getMicroscopeControlExtensionDefinition())
-        hyphaURL = f"https://bioimage.io/chat?server={server_url}&extension={svc.id}"
-        try:
-            # open the chat window in the browser to interact with the herin created connection
-            webbrowser.open(hyphaURL)
-            #self._widget.setChatURL(url=f"https://bioimage.io/chat?token={token}&assistant=Skyler&server={server_url}&extension={svc.id}")
-            #self._isConnected = True
-        except:
-            pass
-        print(f"Extension service registered with id: {svc.id}, you can visit the chatbot at {self.hyphaURL}, and the service at: {server_url}/{server.config.workspace}/services/{svc.id.split(':')[1]}")
-
-        if 0:
-            # FIXME: WEBRTC-related stuff, need to reimplement this!
-            coturn = server.get_service("coturn")
-            ice_servers = coturn.get_rtc_ice_servers()
-            register_rtc_service(
-                server,
-                service_id=service_id,
-                config={
-                    "visibility": "public",
-                    "ice_servers": ice_servers,
-                    "on_init": self.on_init,
-                },
-            )
-            self.__logger.debug(
-                f"Service (client_id={client_id}, service_id={service_id}) started successfully, available at https://ai.imjoy.io/{server.config.workspace}/services"
-            )
-            self.__logger.debug(f"You can access the webrtc stream at https://oeway.github.io/webrtc-hypha-demo/?service_id={service_id}")
-
-
-
     @app.get("/")
     def createAPI(self):
         api_dict = self._api._asdict()
         functions = api_dict.keys()
 
         def includeAPI(str, func):
-            if func._APIAsyncExecution:
+            if hasattr(func, '._APIAsyncExecution') and func._APIAsyncExecution:
                 @app.get(str) # TODO: Perhaps we want POST instead?
                 @wraps(func)
                 async def wrapper(*args, **kwargs):
-                    return await func(*args, **kwargs)
+                    return await func(*args, **kwargs) # sometimes we need to return a future 
             else:
                 @app.get(str) # TODO: Perhaps we want POST instead?
                 @wraps(func)

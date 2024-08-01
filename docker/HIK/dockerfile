@@ -51,10 +51,49 @@ RUN cd /tmp && \
     #RUN cd /opt/MVS/Samples/aarch64/Python/ && \
     #    cp GrabImage/GrabImage.py MvImport/GrabImage.py
 
-RUN mkdir -p /opt/MVS/bin/fonts
+
+## Install Daheng Camera 
+# Create the udev rules directory
+RUN mkdir -p /etc/udev/rules.d
+
+# Download and install the appropriate Hik driver based on architecture
+RUN cd /tmp && \
+    wget https://dahengimaging.com/downloads/Galaxy_Linux_Python_2.0.2106.9041.tar_1.gz && \
+    if [ "${TARGETPLATFORM}" = "linux/arm64" ]; then \
+        wget https://dahengimaging.com/downloads/Galaxy_Linux-armhf_Gige-U3_32bits-64bits_1.5.2303.9202.zip && \
+        unzip Galaxy_Linux-armhf_Gige-U3_32bits-64bits_1.5.2303.9202.zip && \
+        cd Galaxy_Linux-armhf_Gige-U3_32bits-64bits_1.5.2303.9202 && \
+    elif [ "${TARGETPLATFORM}" = "linux/amd64" ]; then \
+        wget https://dahengimaging.com/downloads/Galaxy_Linux-x86_Gige-U3_32bits-64bits_1.5.2303.9221.zip && \
+        unzip Galaxy_Linux-x86_Gige-U3_32bits-64bits_1.5.2303.9221.zip && \
+        Galaxy_Linux-x86_Gige-U3_32bits-64bits_1.5.2303.9221 && \
+    fi && \
+    tar -zxvf Galaxy_Linux_Python_2.0.2106.9041.tar_1.gz && \
+    chmod +x Galaxy_camera.run && \
+    cd /tmp/Galaxy_Linux_Python_2.0.2106.9041/api && \
+    python3 setup.py build && \
+    python3 setup.py install
+
+# Run the installer script using expect to automate Enter key presses
+RUN if [ "${TARGETPLATFORM}" = "linux/arm64" ]; then \
+        RUN echo "Y En Y" | /tmp/Galaxy_Linux-armhf_Gige-U3_32bits-64bits_1.5.2303.9202/Galaxy_camera.run && \
+    elif [ "${TARGETPLATFORM}" = "linux/amd64" ]; then \
+        RUN echo "Y En Y" | /tmp/Galaxy_Linux-x86_Gige-U3_32bits-64bits_1.5.2303.9221/Galaxy_camera.run && \
+    fi 
+
+# Copy libgxiapi.so to /usr/lib and set the library path
+#RUN cp /usr/lib/libgxiapi.so /usr/lib && \
+#    cp /tmp/Galaxy_Linux-armhf_Gige-U3_32bits-64bits_1.5.2303.9202/libgxiapi.so /usr/lib && \
+#    ldconfig
+
+# Ensure the library path is set
+ENV LD_LIBRARY_PATH="/usr/lib:/tmp/Galaxy_Linux-armhf_Gige-U3_32bits-64bits_1.5.2303.9202:$LD_LIBRARY_PATH"
+
+
 # Source the bashrc file
 RUN echo "source ~/.bashrc" >> ~/.bashrc
 RUN /bin/bash -c "source ~/.bashrc"
+RUN mkdir -p /opt/MVS/bin/fonts
 
 # Set environment variable for MVCAM_COMMON_RUNENV
 ENV MVCAM_COMMON_RUNENV=/opt/MVS/lib LD_LIBRARY_PATH=/opt/MVS/lib/64:/opt/MVS/lib/32:$LD_LIBRARY_PATH

@@ -44,19 +44,24 @@ def main(is_headless:bool=None, default_config:str=None, http_port:int=None, ssl
             if os.path.isdir(args.config_folder):
                 imswitch.DEFAULT_CONFIG_PATH = args.config_folder # e.g. /Users/USER/ in case an alternative path is used
             
-        except:
+        except Exception as e:
+            print(e)
             pass
         # override settings if provided as argument
         if is_headless is not None:
+            print("We use the user-provided headless flag: " + str(is_headless))
             imswitch.IS_HEADLESS = is_headless
-            
         if default_config is not None:
+            print("We use the user-provided configuration file: " + default_config)
             imswitch.DEFAULT_SETUP_FILE = default_config
         if http_port is not None:
+            print("We use the user-provided http port: " + str(http_port))
             imswitch.__httpport__ = http_port
         if ssl is not None:
+            print("We use the user-provided ssl: " + str(ssl))
             imswitch.__ssl__ = ssl
         if config_folder is not None:
+            print("We use the user-provided configuration path: " + config_folder)
             imswitch.DEFAULT_CONFIG_PATH = config_folder
 
         # FIXME: !!!! This is because the headless flag is loaded after commandline input

@@ -193,3 +193,70 @@ This command stops and removes all containers defined in the `docker-compose.yml
 - The `--privileged` flag is necessary for accessing certain hardware components like cameras.
 
 By following this tutorial, you should be able to set up and run the ImSwitch React frontend and backend with Docker Compose, providing a seamless environment for interacting with the simulated microscope and accessing the API via Swagger UI.
+
+
+To make the `CONFIG_PATH` available as a folder outside the container on the host computer (e.g., in `~/Downloads/ImSwitchConfig`), you can use Docker's volume mounting feature. This allows you to mount a directory from the host machine into the container, making it accessible from within the container.
+
+Here's how you can modify your Docker run command to mount the `~/Downloads/ImSwitchConfig` directory from the host to the container:
+
+1. **Modify the Docker run command**: Use the `-v` (or `--volume`) option to mount the directory.
+
+```sh
+sudo docker run -it --rm -p 8001:8001 -p 2222:22 \
+    -e HEADLESS=1 \
+    -e HTTP_PORT=8001 \
+    -e CONFIG_FILE=example_virtual_microscope.json \
+    -e UPDATE_GIT=0 \
+    -e UPDATE_CONFIG=0 \
+    -e CONFIG_PATH=/config \
+    --privileged \
+    -v ~/Downloads/ImSwitchConfig:/config \
+    imswitch_hik
+```
+
+2. **Update the CMD** in your Dockerfile to use the `CONFIG_PATH` environment variable:
+
+```Dockerfile
+CMD ["/bin/bash", "-c", "\
+    if [ \"$MODE\" = \"terminal\" ]; then \
+        /bin/bash; \
+    else \
+        echo 'LSUSB' && lsusb && \
+        /usr/sbin/sshd -D & \
+        ls /root/ImSwitchConfig && \
+        if [ \"$UPDATE_GIT\" = \"true\" ]; then \
+            cd /tmp/ImSwitch && \
+            git pull; \
+        fi && \
+        if [ \"$UPDATE_INSTALL_GIT\" = \"true\" ]; then \
+            cd /tmp/ImSwitch && \
+            git pull && \
+            /bin/bash -c 'source /opt/conda/bin/activate imswitch && pip install -e /tmp/ImSwitch'; \
+        fi && \
+        if [ \"$UPDATE_UC2\" = \"true\" ]; then \
+            cd /tmp/UC2-REST && \
+            git pull; \
+        fi && \
+        if [ \"$UPDATE_INSTALL_UC2\" = \"true\" ]; then \
+            cd /tmp/UC2-REST && \
+            git pull && \
+            /bin/bash -c 'source /opt/conda/bin/activate imswitch && pip install -e /tmp/UC2-ESP'; \
+        fi && \
+        if [ \"$UPDATE_CONFIG\" = \"true\" ]; then \
+            cd /root/ImSwitchConfig && \
+            git pull; \
+        fi && \
+        source /opt/conda/bin/activate imswitch && \
+        HEADLESS=${HEADLESS:-1} && \
+        HTTP_PORT=${HTTP_PORT:-8001} && \
+        CONFIG_FILE=${CONFIG_FILE:-/root/ImSwitchConfig/imcontrol_setup/example_virtual_microscope.json} && \
+        USB_DEVICE_PATH=${USB_DEVICE_PATH:-/dev/bus/usb} && \
+        CONFIG_PATH=${CONFIG_PATH:-None} && \
+        echo \"python3 /tmp/ImSwitch/main.py --headless $HEADLESS --config-file $CONFIG_FILE --http-port $HTTP_PORT \" && \
+        python3 /tmp/ImSwitch/main.py --headless $HEADLESS --config-file $CONFIG_FILE --http-port $HTTP_PORT --config-folder $CONFIG_PATH; \
+    fi"]
+```
+
+By adding the `-v ~/Downloads/ImSwitchConfig:/config` option in the `docker run` command, you mount the host's `~/Downloads/ImSwitchConfig` directory to the `/config` directory inside the container. The `-e CONFIG_PATH=/config` environment variable makes sure that the container uses this mounted directory as the configuration path.
+
+Now, any changes you make in `~/Downloads/ImSwitchConfig` on your host machine will be reflected inside the container at `/config`, and the application running inside the container will use this directory for its configuration files.

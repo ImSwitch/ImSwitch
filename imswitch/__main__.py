@@ -6,8 +6,8 @@ import os
 
 import imswitch
 # python main.py --headless or
-# python -m imswitch --headless 1 --config-file example_virtual_microscope.json
-def main(is_headless:bool=None, default_config:str=None, http_port:int=None, ssl:bool=None):
+# python -m imswitch --headless 1 --config-file example_virtual_microscope.json --config-folder /Users/bene/Downloads
+def main(is_headless:bool=None, default_config:str=None, http_port:int=None, ssl:bool=None, config_folder:str=None):
     try:
         try: # Google Colab does not support argparse
             parser = argparse.ArgumentParser(description='Process some integers.')
@@ -27,6 +27,10 @@ def main(is_headless:bool=None, default_config:str=None, http_port:int=None, ssl
             # specify ssl
             parser.add_argument('--ssl', dest='ssl', type=bool, default=True,
                                 help='specify ssl')
+            
+            # specify the config folder (e.g. if running from a different location / container)
+            parser.add_argument('--config-folder', dest='config_folder', type=str, default=None,
+                                help='specify config folder')
 
             args = parser.parse_args()
             
@@ -34,6 +38,9 @@ def main(is_headless:bool=None, default_config:str=None, http_port:int=None, ssl
             imswitch.DEFAULT_SETUP_FILE = args.config_file  # e.g. example_virtual_microscope.json
             imswitch.__httpport__ = args.http_port          # e.g. 8001
             imswitch.__ssl__ = args.ssl                     # if True, ssl will be used (e.g. https)
+            if os.path.isdir(args.config_folder):
+                imswitch.DEFAULT_CONFIG_PATH = args.config_folder # e.g. /Users/USER/ in case an alternative path is used
+            
         except:
             pass
         # override settings if provided as argument
@@ -46,6 +53,8 @@ def main(is_headless:bool=None, default_config:str=None, http_port:int=None, ssl
             imswitch.__httpport__ = http_port
         if ssl is not None:
             imswitch.__ssl__ = ssl
+        if config_folder is not None:
+            imswitch.DEFAULT_CONFIG_PATH = config_folder
 
         # FIXME: !!!! This is because the headless flag is loaded after commandline input
         from imswitch.imcommon import prepareApp, launchApp
@@ -56,6 +65,7 @@ def main(is_headless:bool=None, default_config:str=None, http_port:int=None, ssl
         logger.info(f'Starting ImSwitch {imswitch.__version__}')
         logger.info(f'Headless mode: {imswitch.IS_HEADLESS}')
         logger.info(f'Config file: {imswitch.DEFAULT_SETUP_FILE}')
+        logger.info(f'Config folder: {imswitch.DEFAULT_CONFIG_PATH}')
         
         if imswitch.IS_HEADLESS:
             os.environ["DISPLAY"] = ":0"

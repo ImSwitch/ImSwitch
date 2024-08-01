@@ -20,7 +20,6 @@ FROM ubuntu:22.04
 ARG TARGETPLATFORM
 ENV TZ=America/Los_Angeles
 
-
 # Install necessary dependencies
 RUN apt-get update && apt-get install -y \
     wget \
@@ -47,26 +46,22 @@ RUN cd /tmp && \
     elif [ "${TARGETPLATFORM}" = "linux/amd64" ]; then \
         dpkg -i MVS-2.1.2_x86_64_20231116.deb; \
     fi
-    # Copy the necessary Python script
-    #RUN cd /opt/MVS/Samples/aarch64/Python/ && \
-    #    cp GrabImage/GrabImage.py MvImport/GrabImage.py
-
 
 ## Install Daheng Camera 
 # Create the udev rules directory
 RUN mkdir -p /etc/udev/rules.d
 
-# Download and install the appropriate Hik driver based on architecture
+# Download and install the appropriate Daheng driver based on architecture
 RUN cd /tmp && \
     wget https://dahengimaging.com/downloads/Galaxy_Linux_Python_2.0.2106.9041.tar_1.gz && \
     if [ "${TARGETPLATFORM}" = "linux/arm64" ]; then \
         wget https://dahengimaging.com/downloads/Galaxy_Linux-armhf_Gige-U3_32bits-64bits_1.5.2303.9202.zip && \
         unzip Galaxy_Linux-armhf_Gige-U3_32bits-64bits_1.5.2303.9202.zip && \
-        cd Galaxy_Linux-armhf_Gige-U3_32bits-64bits_1.5.2303.9202 && \
+        cd Galaxy_Linux-armhf_Gige-U3_32bits-64bits_1.5.2303.9202; \
     elif [ "${TARGETPLATFORM}" = "linux/amd64" ]; then \
         wget https://dahengimaging.com/downloads/Galaxy_Linux-x86_Gige-U3_32bits-64bits_1.5.2303.9221.zip && \
         unzip Galaxy_Linux-x86_Gige-U3_32bits-64bits_1.5.2303.9221.zip && \
-        Galaxy_Linux-x86_Gige-U3_32bits-64bits_1.5.2303.9221 && \
+        cd Galaxy_Linux-x86_Gige-U3_32bits-64bits_1.5.2303.9221; \
     fi && \
     tar -zxvf Galaxy_Linux_Python_2.0.2106.9041.tar_1.gz && \
     chmod +x Galaxy_camera.run && \
@@ -76,19 +71,13 @@ RUN cd /tmp && \
 
 # Run the installer script using expect to automate Enter key presses
 RUN if [ "${TARGETPLATFORM}" = "linux/arm64" ]; then \
-        RUN echo "Y En Y" | /tmp/Galaxy_Linux-armhf_Gige-U3_32bits-64bits_1.5.2303.9202/Galaxy_camera.run && \
+        echo "Y En Y" | /tmp/Galaxy_Linux-armhf_Gige-U3_32bits-64bits_1.5.2303.9202/Galaxy_camera.run; \
     elif [ "${TARGETPLATFORM}" = "linux/amd64" ]; then \
-        RUN echo "Y En Y" | /tmp/Galaxy_Linux-x86_Gige-U3_32bits-64bits_1.5.2303.9221/Galaxy_camera.run && \
-    fi 
-
-# Copy libgxiapi.so to /usr/lib and set the library path
-#RUN cp /usr/lib/libgxiapi.so /usr/lib && \
-#    cp /tmp/Galaxy_Linux-armhf_Gige-U3_32bits-64bits_1.5.2303.9202/libgxiapi.so /usr/lib && \
-#    ldconfig
+        echo "Y En Y" | /tmp/Galaxy_Linux-x86_Gige-U3_32bits-64bits_1.5.2303.9221/Galaxy_camera.run; \
+    fi
 
 # Ensure the library path is set
 ENV LD_LIBRARY_PATH="/usr/lib:/tmp/Galaxy_Linux-armhf_Gige-U3_32bits-64bits_1.5.2303.9202:$LD_LIBRARY_PATH"
-
 
 # Source the bashrc file
 RUN echo "source ~/.bashrc" >> ~/.bashrc

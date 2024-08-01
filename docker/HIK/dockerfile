@@ -15,6 +15,7 @@
 #
 # sudo docker run -it --rm -p 8001:8001 -p 2222:22 -e HEADLESS=1 -e HTTP_PORT=8001 -e CONFIG_FILE=example_uc2_hik_flowstop.json -e UPDATE_GIT=1 -e UPDATE_CONFIG=0 --privileged ghcr.io/openuc2/imswitch-noqt-x64:latest
 # Use an appropriate base image for multi-arch support
+# Use an appropriate base image for multi-arch support
 FROM ubuntu:22.04
 
 ARG TARGETPLATFORM
@@ -54,6 +55,7 @@ RUN mkdir -p /etc/udev/rules.d
 # Download and install the appropriate Daheng driver based on architecture
 RUN cd /tmp && \
     wget https://dahengimaging.com/downloads/Galaxy_Linux_Python_2.0.2106.9041.tar_1.gz && \
+    tar -zxvf Galaxy_Linux_Python_2.0.2106.9041.tar_1.gz && \
     if [ "${TARGETPLATFORM}" = "linux/arm64" ]; then \
         wget https://dahengimaging.com/downloads/Galaxy_Linux-armhf_Gige-U3_32bits-64bits_1.5.2303.9202.zip && \
         unzip Galaxy_Linux-armhf_Gige-U3_32bits-64bits_1.5.2303.9202.zip && \
@@ -63,8 +65,7 @@ RUN cd /tmp && \
         unzip Galaxy_Linux-x86_Gige-U3_32bits-64bits_1.5.2303.9221.zip && \
         cd Galaxy_Linux-x86_Gige-U3_32bits-64bits_1.5.2303.9221; \
     fi && \
-    tar -zxvf Galaxy_Linux_Python_2.0.2106.9041.tar_1.gz && \
-    chmod +x Galaxy_camera.run && \
+    chmod +x /tmp/Galaxy_Linux_Python_2.0.2106.9041/driver_package/Galaxy_camera.run && \
     cd /tmp/Galaxy_Linux_Python_2.0.2106.9041/api && \
     python3 setup.py build && \
     python3 setup.py install

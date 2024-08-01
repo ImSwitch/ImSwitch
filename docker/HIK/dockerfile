@@ -14,6 +14,11 @@
 # sudo docker run -it --rm -p 8001:8001 -p 2222:22 -e HEADLESS=1 -e HTTP_PORT=8001 -e CONFIG_FILE=example_virtual_microscope.json -e UPDATE_GIT=0 -e UPDATE_CONFIG=0 --privileged imswitch_hik
 #
 # sudo docker run -it --rm -p 8001:8001 -p 2222:22 -e HEADLESS=1 -e HTTP_PORT=8001 -e CONFIG_FILE=example_uc2_hik_flowstop.json -e UPDATE_GIT=1 -e UPDATE_CONFIG=0 --privileged ghcr.io/openuc2/imswitch-noqt-x64:latest
+# For loading external configs and store data externally
+# sudo docker run -it --rm -p 8001:8001  -e HEADLESS=1  -e HTTP_PORT=8001    -e UPDATE_GIT=1  -e UPDATE_CONFIG=0  -e CONFIG_PATH=/config  --privileged  -v ~/Downloads:/config  imswitch_hik_arm64
+
+
+
 # Use an appropriate base image for multi-arch support
 # Use an appropriate base image for multi-arch support
 FROM ubuntu:22.04
@@ -107,20 +112,24 @@ RUN mkdir -p /opt/MVS/bin/fonts
 # Set environment variable for MVCAM_COMMON_RUNENV
 ENV MVCAM_COMMON_RUNENV=/opt/MVS/lib LD_LIBRARY_PATH=/opt/MVS/lib/64:/opt/MVS/lib/32:$LD_LIBRARY_PATH
 
-
 # Clone the config folder
 RUN git clone https://github.com/openUC2/ImSwitchConfig /root/ImSwitchConfig
 
 # Clone the repository and install dependencies
 RUN git clone https://github.com/openUC2/imSwitch /tmp/ImSwitch && \
     cd /tmp/ImSwitch && \
-    git checkout NOQT && \
     /bin/bash -c "source /opt/conda/bin/activate imswitch && pip install -e /tmp/ImSwitch"
 
 # Install UC2-REST
 RUN git clone https://github.com/openUC2/UC2-REST /tmp/UC2-REST && \
     cd /tmp/UC2-REST && \
     /bin/bash -c "source /opt/conda/bin/activate imswitch && pip install -e /tmp/UC2-REST"
+
+# Force pull imswitch
+ARG CACHEBUST=1
+RUN cd /tmp/ImSwitch && \
+     git pull
+        #/bin/bash -c "source /opt/conda/bin/activate imswitch && pip install -e /tmp/ImSwitch --no-deps"
 
 # Expose SSH port and HTTP port
 EXPOSE 22 8001
@@ -130,36 +139,50 @@ CMD ["/bin/bash", "-c", "\
         /bin/bash; \
     else \
         echo 'LSUSB' && lsusb && \
+        echo 'Listing external USB storage devices' && \
+        ls /media && \
         /usr/sbin/sshd -D & \
         ls /root/ImSwitchConfig && \
-        if [ \"$UPDATE_GIT\" = \"true\" ]; then \
+        if [ \"$UPDATE_GIT\" = \"true\" ] || [ \"$UPDATE_GIT\" = \"1\" ]; then \
+            echo 'Pulling the ImSwitch repository' && \
             cd /tmp/ImSwitch && \
             git pull; \
         fi && \
-        if [ \"$UPDATE_INSTALL_GIT\" = \"true\" ]; then \
+        if [ \"$UPDATE_INSTALL_GIT\" = \"true\" ] || [ \"$UPDATE_INSTALL_GIT\" = \"1\" ]; then \
+            echo 'Pulling the ImSwitch repository and installing' && \
             cd /tmp/ImSwitch && \
             git pull && \
             /bin/bash -c 'source /opt/conda/bin/activate imswitch && pip install -e /tmp/ImSwitch'; \
         fi && \
         if [ \"$UPDATE_UC2\" = \"true\" ]; then \
+            echo 'Pulling the UC2-REST repository' && \
             cd /tmp/UC2-REST && \
             git pull; \
         fi && \
         if [ \"$UPDATE_INSTALL_UC2\" = \"true\" ]; then \
+            echo 'Pulling the UC2-REST repository and installing' && \
             cd /tmp/UC2-REST && \
             git pull && \
             /bin/bash -c 'source /opt/conda/bin/activate imswitch && pip install -e /tmp/UC2-ESP'; \
         fi && \
         if [ \"$UPDATE_CONFIG\" = \"true\" ]; then \
+            echo 'Pulling the ImSwitchConfig repository' && \
             cd /root/ImSwitchConfig && \
             git pull; \
+        fi && \
+        if [ -z \"$CONFIG_PATH\" ]; then \
+            CONFIG_FILE=${CONFIG_FILE:-/root/ImSwitchConfig/imcontrol_setup/example_virtual_microscope.json}; \
+        else \
+            CONFIG_FILE=None; \
         fi && \
         source /opt/conda/bin/activate imswitch && \
         HEADLESS=${HEADLESS:-1} && \
         HTTP_PORT=${HTTP_PORT:-8001} && \
-        CONFIG_FILE=${CONFIG_FILE:-/root/ImSwitchConfig/imcontrol_setup/example_virtual_microscope.json} && \
         USB_DEVICE_PATH=${USB_DEVICE_PATH:-/dev/bus/usb} && \
         CONFIG_PATH=${CONFIG_PATH:-None} && \
-        echo \"python3 /tmp/ImSwitch/main.py --headless $HEADLESS --config-file $CONFIG_FILE --http-port $HTTP_PORT \" && \
+        echo \"python3 /tmp/ImSwitch/main.py --headless $HEADLESS --config-file $CONFIG_FILE --http-port $HTTP_PORT --config-folder $CONFIG_PATH\" && \
         python3 /tmp/ImSwitch/main.py --headless $HEADLESS --config-file $CONFIG_FILE --http-port $HTTP_PORT --config-folder $CONFIG_PATH; \
     fi"]
+
+# source /opt/conda/bin/activate imswitch
+# python3 /tmp/ImSwitch/main.py  --headless 1 --config-file example_virtual_microscope.json --config-folder /config

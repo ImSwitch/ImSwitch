@@ -210,13 +210,14 @@ class FlowStopController(LiveUpdatedController):
         self.is_measure = True
         if numImages < 0: numImages = np.inf
         self.imagesTaken = 0
-        if len(self.externalDrives)>0:
-            self._logger.debug("Create folder on an external drive")
-            drivePath = self.externalDrives[0]
-            dirPath  = os.path.join(drivePath, 'recordings', timeStamp)
-            self._logger.debug(dirPath)
-        else:
-            dirPath  = os.path.join(dirtools.UserFileDirs.Root, 'recordings', timeStamp)
+        drivePath = dirtools.UserFileDirs.Root
+        if filePath == "extern":
+            # try to find an externally connected hard drive and store images on that  one 
+            if len(self.externalDrives)>0:
+                self._logger.debug("Create folder on an external drive")
+                drivePath = self.externalDrives[0]
+        dirPath = os.path.join(drivePath, 'recordings', timeStamp)
+        self._logger.debug(dirPath)
         if not os.path.exists(dirPath):
             os.makedirs(dirPath)
         while True:

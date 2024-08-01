@@ -15,6 +15,7 @@ def loadSetupInfo(options, setupInfoType):
         mPath = options.setupFileName
     else:
         mPath = os.path.join(_setupFilesDir, options.setupFileName)
+    print("Loading setup info from: " + mPath)
     with open(mPath) as setupFile:
         return setupInfoType.from_json(setupFile.read(), infer_missing=True)
 

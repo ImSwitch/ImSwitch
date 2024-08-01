@@ -327,7 +327,7 @@ class CameraGXIPY:
 
     def set_continuous_acquisition(self):
         self.camera.TriggerMode.set(gx.GxSwitchEntry.OFF)
-        self.trigger_mode = TriggerMode.CONTINUOU
+        self.trigger_mode = TriggerMode.CONTINUOUS
 
     def set_software_triggered_acquisition(self):
         self.camera.TriggerMode.set(gx.GxSwitchEntry.ON)

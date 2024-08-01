@@ -760,7 +760,7 @@ class HistoScanController(LiveUpdatedController):
                     lastFrameNumber=-1
                     while(1):
                         # get frame and frame number to get one that is newer than the one with illumination off eventually
-                        mFrame, currentFrameNumber = self.detector.getLatestFrame(returnFrameNumber=True)
+                        mFrame, currentFrameNumber = self.microscopeDetector.getLatestFrame(returnFrameNumber=True)
                         if lastFrameNumber==-1:
                             # first round
                             lastFrameNumber = currentFrameNumber

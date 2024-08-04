@@ -55,7 +55,29 @@ UPDATE_UC2=true           # pull UC2-REST
 UPDATE_INSTALL_UC2=true   # pull and pip install all changes
 UPDATE_CONFIG=true        # pull changes for setup configurations
 MODE=terminal             # start Docker with bash for better debugging
+CONFIG_PATH=/Users/bene/Downloads # path to the local ImSwitchConfig folder (will use the default inside the container if not specified)
+DATA_PATH=/Users/bene/Downloads # remote path to store data (e.g. USB drive, needs to be mounted via commandline, (will use the default inside the container if not specified))
 ```
+
+### External folders for Config and Data
+
+We can use external path (outside the container) to store and read data. This is helpful if we want to make changes e.g. to the config or want to store data/images. Remember, the docker container gets reseted after the next reboot! 
+
+We have two options.
+1. The Config folder. Let's have the following use case, where the folder should be linked to your Downloads folder. For this you ahve to specify two things in the way you call the docker image:
+```bash
+-e CONFIG_PATH=/config  -v ~/Downloads:/config
+```
+This means that ImSwitch inside docker will use the folder `/config/ImSwitchConfig/config` to specify the setup configuration. The `-v` command will mount the host's Downloads folder as `/config` inside the docker container. 
+
+2. The same mechanism can be used for specifying the datapath to specify the dataset storage. For this we have to specify:
+```bash
+-e  DATA_PATH=/dataset  -v ~/Downloads:/dataset
+```
+Images will be stored in that folder. Ensure the folder exists! 
+
+
+-v ~/Downloads:/config
 
 
 ### Setting up docker on Raspi
@@ -260,3 +282,128 @@ CMD ["/bin/bash", "-c", "\
 By adding the `-v ~/Downloads/ImSwitchConfig:/config` option in the `docker run` command, you mount the host's `~/Downloads/ImSwitchConfig` directory to the `/config` directory inside the container. The `-e CONFIG_PATH=/config` environment variable makes sure that the container uses this mounted directory as the configuration path.
 
 Now, any changes you make in `~/Downloads/ImSwitchConfig` on your host machine will be reflected inside the container at `/config`, and the application running inside the container will use this directory for its configuration files.
+
+
+Certainly! Here's a summary and explanation of the combined script:
+
+### Autostarting ImSwitch on e.g. the Raspberry Pi
+
+The script `setup_autostart.sh` performs the following actions:
+
+1. **Creates a startup script (`start_imswitch.sh`)** that:
+   - Waits for the X server to be available.
+   - Starts the Docker container in the background.
+   - Launches Chromium in fullscreen mode, opening a specific URL and zooming out the page to 70%.
+   - Logs output to a file for debugging purposes.
+
+2. **Creates a systemd service (`start_imswitch.service`)** that:
+   - Ensures the startup script runs only after the X server is available.
+   - Restarts the script on failure.
+   - Configures logging to the systemd journal.
+
+### Explanation
+
+```sh
+#!/bin/bash
+
+# Define variables
+START_SCRIPT_PATH="$HOME/start_imswitch.sh"
+SERVICE_FILE_PATH="/etc/systemd/system/start_imswitch.service"
+
+# Create the startup script
+cat << 'EOF' > $START_SCRIPT_PATH
+#!/bin/bash
+set -x
+
+LOGFILE=/home/uc2/start_imswitch.log
+exec > $LOGFILE 2>&1
+
+echo "Starting IMSwitch Docker container and Chromium"
+
+# Wait for the X server to be available
+while ! xset q &>/dev/null; do
+  echo "Waiting for X server..."
+  sleep 2
+done
+
+export DISPLAY=:0
+
+# Start Docker container in the background
+echo "Running Docker container..."
+nohup sudo docker run --rm -d -p 8001:8001 -p 2222:22 \
+  -e HEADLESS=1 -e HTTP_PORT=8001 \
+  -e CONFIG_FILE=example_uc2_hik_flowstop.json \
+  -e UPDATE_GIT=1 -e UPDATE_CONFIG=0 \
+  --privileged ghcr.io/openuc2/imswitch-noqt-x64:latest &
+
+# Wait a bit to ensure Docker starts
+sleep 10
+
+# Start Chromium
+echo "Starting Chromium..."
+/usr/bin/chromium-browser --start-fullscreen --ignore-certificate-errors \
+  --unsafely-treat-insecure-origin-as-secure=https://0.0.0.0:8001 \
+  --app="data:text/html,<html><body><script>window.location.href='https://0.0.0.0:8001/imswitch/index.html';setTimeout(function(){document.body.style.zoom='0.7';}, 3000);</script></body></html>"
+
+echo "Startup script completed"
+EOF
+
+# Make the startup script executable
+chmod +x $START_SCRIPT_PATH
+
+echo "Startup script created at $START_SCRIPT_PATH and made executable."
+
+# Create the systemd service file
+sudo bash -c "cat << EOF > $SERVICE_FILE_PATH
+[Unit]
+Description=Start IMSwitch Docker and Chromium
+After=display-manager.service
+Requires=display-manager.service
+
+[Service]
+Type=simple
+ExecStart=$START_SCRIPT_PATH
+User=$USER
+Environment=DISPLAY=:0
+Restart=on-failure
+TimeoutSec=300
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=graphical.target
+EOF"
+
+# Reload systemd, enable and start the new service
+sudo systemctl daemon-reload
+sudo systemctl enable start_imswitch.service
+sudo systemctl start start_imswitch.service
+
+echo "Systemd service created and enabled to start at boot."
+```
+
+### Detailed Steps:
+
+1. **Define Paths**:
+   - `START_SCRIPT_PATH` and `SERVICE_FILE_PATH` are set to the paths where the startup script and the systemd service file will be created.
+
+2. **Create the Startup Script**:
+   - **Logging**: Redirects output to a log file (`/home/uc2/start_imswitch.log`).
+   - **Wait for X Server**: Uses a loop to check if the X server is available (`xset q`).
+   - **Start Docker**: Runs the Docker container in detached mode (`-d`), ensuring it runs in the background without expecting a TTY.
+   - **Start Chromium**: Opens Chromium in fullscreen mode, bypassing certificate errors, and zooms the page to 70%.
+
+3. **Make the Script Executable**:
+   - Sets the `start_imswitch.sh` script as executable using `chmod +x`.
+
+4. **Create the Systemd Service File**:
+   - **Dependencies**: Ensures the service runs after the display manager service (`display-manager.service`), which starts the X server.
+   - **Service Configuration**: Specifies the script to run (`ExecStart`), user to run it as (`User`), environment variables (`Environment`), and restart behavior on failure (`Restart=on-failure`).
+   - **Logging**: Configures logging to the systemd journal (`StandardOutput` and `StandardError`).
+
+5. **Enable and Start the Service**:
+   - Reloads systemd to recognize the new service.
+   - Enables the service to start at boot.
+   - Starts the service immediately.
+
+By running the combined script, you ensure that the IMSwitch Docker container and Chromium browser will start automatically after the X server is available, with proper logging and background execution.

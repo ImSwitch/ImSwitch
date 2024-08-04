@@ -2,6 +2,7 @@ import numpy as np
 import datetime
 import tifffile as tif
 import os
+import platform
 import subprocess
 import numpy as np
 import cv2 
@@ -335,29 +336,52 @@ class FlowStopController(LiveUpdatedController):
         """ Displays the image in the view. """
         self._widget.setImage(im)
 
-    # we have to run this script as root
+    
     def detect_external_drives(self):
-        # Run 'df' command to get disk usage and filter only mounted devices
-        df_result = subprocess.run(['df', '-h'], stdout=subprocess.PIPE)
-        output = df_result.stdout.decode('utf-8')
-
-        # Split the output by lines
-        lines = output.splitlines()
+        system = platform.system()
 
         external_drives = []
 
-        # Iterate through each line
-        for line in lines:
-            # Check if the line contains '/media' (common mount point for external drives)
-            if '/media/' in line:
-                # Split the line by spaces and get the second column (which contains the mount point)
-                drive_info = line.split()
-                mount_point = " ".join(drive_info[5:])  # Assuming the mount point is at index 5
-                external_drives.append(mount_point)
+        if system == "Linux" or system == "Darwin":  # Darwin is the system name for macOS
+            # Run 'df' command to get disk usage and filter only mounted devices
+            df_result = subprocess.run(['df', '-h'], stdout=subprocess.PIPE)
+            output = df_result.stdout.decode('utf-8')
+
+            # Split the output by lines
+            lines = output.splitlines()
+
+            # Iterate through each line
+            for line in lines:
+                # Check if the line contains '/media' or '/Volumes' (common mount points for external drives)
+                if '/media/' in line or '/Volumes/' in line:
+                    # Split the line by spaces and get the mount point
+                    drive_info = line.split()
+                    if system == "Darwin":
+                        mount_point = " ".join(drive_info[8:])  # Assuming the mount point is at index 8
+                    else:
+                        mount_point = " ".join(drive_info[5:])  # Assuming the mount point is at index 5
+                    # Filter out mount points that contain 'System' for macOS
+                    if system == "Darwin" and "System" in mount_point:
+                        continue
+                    external_drives.append(mount_point)
+        elif system == "Windows":
+            # Run 'wmic logicaldisk get caption,description' to get logical disks
+            wmic_result = subprocess.run(['wmic', 'logicaldisk', 'get', 'caption,description'], stdout=subprocess.PIPE)
+            output = wmic_result.stdout.decode('utf-8')
+
+            # Split the output by lines
+            lines = output.splitlines()
+
+            # Iterate through each line
+            for line in lines:
+                # Check if the line contains 'Removable Disk' (common description for external drives)
+                if 'Removable Disk' in line:
+                    # Split the line by spaces and get the drive letter
+                    drive_info = line.split()
+                    drive_letter = drive_info[0]  # Drive letter is the first column
+                    external_drives.append(drive_letter)
 
         return external_drives
-
-
 
 
 _attrCategory = 'Laser'

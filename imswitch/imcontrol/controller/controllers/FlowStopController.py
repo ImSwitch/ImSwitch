@@ -210,7 +210,7 @@ class FlowStopController(LiveUpdatedController):
         self.is_measure = True
         if numImages < 0: numImages = np.inf
         self.imagesTaken = 0
-        drivePath = dirtools.UserFileDirs.Root
+        drivePath = dirtools.UserFileDirs.Data
         if filePath == "extern":
             # try to find an externally connected hard drive and store images on that  one 
             if len(self.externalDrives)>0:

@@ -21,7 +21,8 @@ class FlowStopManager(SignalInterface):
         self.flowStopConfigFilename = "config.json"
         self.allParameterKeys = ["wasRunning", "defaultFlowRate", "defaultNumberOfFrames",
                                  "defaultExperimentName","defaultFrameRate","defaultSavePath",
-                                 "defaultAxisFocus", "defaultAxisFlow", "defaultDelayTimeAfterRestart"]
+                                 "defaultFileFormat", "defaultAxisFocus", 
+                                 "defaultAxisFlow", "defaultDelayTimeAfterRestart"]
         
         # get default configs
         self.defaultConfigPath = os.path.join(dirtools.UserFileDirs.Root, "flowStopController")
@@ -48,6 +49,7 @@ class FlowStopManager(SignalInterface):
             self.defaultConfig["defaultExperimentName"] = "FlowStopExperiment"
             self.defaultConfig["defaultFrameRate"] = 1
             self.defaultConfig["defaultSavePath"] = "./"
+            self.defaultConfig["defaultFileFormat"] = "JPG"
             self.defaultConfig["defaultAxisFlow"] = "A"
             self.defaultConfig["defaultAxisFocus"] = "Z"
             self.defaultConfig["defaultDelayTimeAfterRestart"]=1

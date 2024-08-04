@@ -39,6 +39,7 @@ class FlowStopController(LiveUpdatedController):
         self.defaultExperimentName = self._master.FlowStopManager.defaultConfig["defaultExperimentName"]
         self.defaultFrameRate = self._master.FlowStopManager.defaultConfig["defaultFrameRate"]
         self.defaultSavePath = self._master.FlowStopManager.defaultConfig["defaultSavePath"]
+        self.defaultFileFormat = self._master.FlowStopManager.defaultConfig["defaultFileFormat"]
         self.pumpAxis = self._master.FlowStopManager.defaultConfig["defaultAxisFlow"]
         self.focusAxis = self._master.FlowStopManager.defaultConfig["defaultAxisFocus"]
         self.defaultDelayTimeAfterRestart = self._master.FlowStopManager.defaultConfig["defaultDelayTimeAfterRestart"]
@@ -94,9 +95,10 @@ class FlowStopController(LiveUpdatedController):
             delayToStart = self.defaultDelayTimeAfterRestart
             frameRate = self.defaultFrameRate
             filePath = self.defaultSavePath
+            fileFormat = self.defaultFileFormat
             self.startFlowStopExperiment(timeStamp, experimentName, experimentDescription, 
                                          uniqueId, numImages, volumePerImage, timeToStabilize, delayToStart, 
-                                         frameRate, filePath)
+                                         frameRate, filePath, fileFormat)
             
     def startFlowStopExperimentByButton(self):
         """ Start FlowStop experiment. """
@@ -120,11 +122,17 @@ class FlowStopController(LiveUpdatedController):
         numImages = int(self.mExperimentParameters['numImages'])
         volumePerImage = float(self.mExperimentParameters['volumePerImage'])
         timeToStabilize = float(self.mExperimentParameters['timeToStabilize'])
+        fileFormat = self.defaultFileFormat
         self._widget.buttonStart.setEnabled(False)
         self._widget.buttonStop.setEnabled(True)
         self._widget.buttonStop.setStyleSheet("background-color: red")
         self._widget.buttonStart.setStyleSheet("background-color: grey")
-        self.startFlowStopExperiment(timeStamp, experimentName, experimentDescription, uniqueId, numImages, volumePerImage, timeToStabilize)
+        self.startFlowStopExperiment(timeStamp = timeStamp, experimentName = experimentName,
+                                     experimentDescription = experimentDescription, uniqueId = uniqueId,
+                                     numImages = numImages, volumePerImage = volumePerImage,
+                                     timeToStabilize = timeToStabilize, delayToStart = 0, frameRate = 1,
+                                     filePath = self.defaultSavePath, fileFormat = fileFormat)
+        
 
     @APIExport()
     def getStatus(self) -> list:
@@ -142,13 +150,15 @@ class FlowStopController(LiveUpdatedController):
     @APIExport(runOnUIThread=True)
     def startFlowStopExperiment(self, timeStamp: str, experimentName: str, experimentDescription: str, 
                                 uniqueId: str, numImages: int, volumePerImage: float, timeToStabilize: float, 
-                                delayToStart: float=1, frameRate: float=1, filePath: str="./"):
+                                delayToStart: float=1, frameRate: float=1, filePath: str="./", 
+                                fileFormat: str= "TIF"):
         """ Start FlowStop experiment. """
         self.thread = Thread(target=self.flowExperimentThread, 
                              name="FlowStopExperiment", 
                              args=(timeStamp, experimentName, experimentDescription, 
                                    uniqueId, numImages, volumePerImage, timeToStabilize,
-                                   delayToStart, frameRate, filePath))
+                                   delayToStart, frameRate, filePath, fileFormat))
+        
         self.thread.start()
 
     def stopFlowStopExperimentByButton(self):
@@ -196,7 +206,8 @@ class FlowStopController(LiveUpdatedController):
                              experimentDescription: str, uniqueId: str, 
                              numImages: int, volumePerImage: float, 
                              timeToStabilize: float, delayToStart: float=0, 
-                             frameRate: float=1, filePath:str="./"):
+                             frameRate: float=1, filePath:str="./", 
+                             fileFormat="TIF"):
         ''' FlowStop experiment thread.
         The device captures images periodically by moving the pump at n-steps / ml, waits for a certain time
         and then moves on to the next step. The experiment is stopped when the user presses the stop button or
@@ -244,8 +255,8 @@ class FlowStopController(LiveUpdatedController):
                 # save image                    
                 mFileName = f'{timeStamp}_{experimentName}_{uniqueId}_{self.imagesTaken}'
                 mFilePath = os.path.join(dirPath, mFileName)
-                self.snapImageFlowCam(mFilePath, metaData)
-                self._logger.debug(f"Image {self.imagesTaken} saved to {mFilePath}")
+                self.snapImageFlowCam(mFilePath, metaData, fileFormat=fileFormat)
+                self._logger.debug(f"Image {self.imagesTaken} saved to {mFilePath}.{fileFormat}")
 
                 # maintain framerate
                 while (time.time()-currentTime)<(1/frameRate):

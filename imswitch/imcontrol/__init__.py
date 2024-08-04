@@ -1,7 +1,7 @@
 import imswitch
 import dataclasses
 import sys
-from imswitch import IS_HEADLESS
+from imswitch import IS_HEADLESS, DEFAULT_DATA_PATH
 
 __imswitch_module__ = True
 __title__ = 'Hardware Control'
@@ -66,6 +66,11 @@ def getMainViewAndController(moduleCommChannel, *_args,
     else:
         raise KeyError # FIXME: !!!!
 
+    # Override Data PAth
+    if DEFAULT_DATA_PATH is not None:
+        logger.debug("Overriding data save path with: "+DEFAULT_DATA_PATH) 
+        options_rec = dataclasses.replace(options.recording, outputFolder=DEFAULT_DATA_PATH)
+        options = dataclasses.replace(options, recording=options_rec)
     logger.debug(f'Setup used: {options.setupFileName}')
     if not IS_HEADLESS:
         view = ImConMainView(options, setupInfo)

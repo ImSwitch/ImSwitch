@@ -33,7 +33,7 @@ class ImConMainView(QMainWindow):
 
         super().__init__(*args, **kwargs)
 
-        self.factory = self.factory = widgets.WidgetFactory(options)
+        self.factory = widgets.WidgetFactory(options)
         self.docks = {}
         self.widgets = {}
         self.shortcuts = {}

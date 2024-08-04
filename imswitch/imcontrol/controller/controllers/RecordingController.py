@@ -104,19 +104,16 @@ class RecordingController(ImConWidgetController):
 
         # by default save as it's noted in the widget
         if mSaveFormat is None:
-            if IS_HEADLESS:
+            if not IS_HEADLESS:
                 mSaveFormat = SaveFormat(self._widget.getSnapSaveMode())
             else:
-                mSaveFormat = 1 # TIFF
+                mSaveFormat = SaveFormat(1) # TIFF
 
-        if IS_HEADLESS:
-            folder = self._widget.getRecFolder()
-        else:
-            timeStamp = datetime.datetime.now().strftime("%Y_%m_%d-%I-%M-%S_%p")
-            folder = os.path.join(dirtools.UserFileDirs.Root, 'recordings', timeStamp)
+        timeStamp = datetime.datetime.now().strftime("%Y_%m_%d-%I-%M-%S_%p")
+        folder = os.path.join(dirtools.UserFileDirs.Data, 'recordings', timeStamp)
         if not os.path.exists(folder):
             os.makedirs(folder)
-        time.sleep(0.01)
+            time.sleep(0.01)
 
         detectorNames = self.getDetectorNamesToCapture()
         if name is None:

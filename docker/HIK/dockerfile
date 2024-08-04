@@ -154,12 +154,12 @@ CMD ["/bin/bash", "-c", "\
             git pull && \
             /bin/bash -c 'source /opt/conda/bin/activate imswitch && pip install -e /tmp/ImSwitch'; \
         fi && \
-        if [ \"$UPDATE_UC2\" = \"true\" ]; then \
+        if [ \"$UPDATE_UC2\" = \"true\" ] || [ \"$UPDATE_UC2\" = \"1\" ]; then \
             echo 'Pulling the UC2-REST repository' && \
             cd /tmp/UC2-REST && \
             git pull; \
         fi && \
-        if [ \"$UPDATE_INSTALL_UC2\" = \"true\" ]; then \
+        if [ \"$UPDATE_INSTALL_UC2\" = \"true\" ] || [ \"$UPDATE_INSTALL_UC2\" = \"1\" ]; then \
             echo 'Pulling the UC2-REST repository and installing' && \
             cd /tmp/UC2-REST && \
             git pull && \
@@ -180,8 +180,9 @@ CMD ["/bin/bash", "-c", "\
         HTTP_PORT=${HTTP_PORT:-8001} && \
         USB_DEVICE_PATH=${USB_DEVICE_PATH:-/dev/bus/usb} && \
         CONFIG_PATH=${CONFIG_PATH:-None} && \
-        echo \"python3 /tmp/ImSwitch/main.py --headless $HEADLESS --config-file $CONFIG_FILE --http-port $HTTP_PORT --config-folder $CONFIG_PATH\" && \
-        python3 /tmp/ImSwitch/main.py --headless $HEADLESS --config-file $CONFIG_FILE --http-port $HTTP_PORT --config-folder $CONFIG_PATH; \
+        DATA_PATH=${DATA_PATH:-None} && \        
+        echo \"python3 /tmp/ImSwitch/main.py --headless $HEADLESS --config-file $CONFIG_FILE --http-port $HTTP_PORT --config-folder $CONFIG_PATH --ext-data-folder $DATA_PATH \" && \
+        python3 /tmp/ImSwitch/main.py --headless $HEADLESS --config-file $CONFIG_FILE --http-port $HTTP_PORT --config-folder $CONFIG_PATH --ext-data-folder $DATA_PATH; \
     fi"]
 
 # source /opt/conda/bin/activate imswitch

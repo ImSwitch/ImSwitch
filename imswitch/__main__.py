@@ -8,7 +8,12 @@ import imswitch
 # python main.py --headless or
 # python -m imswitch --headless 1 --config-file example_virtual_microscope.json --config-folder /Users/bene/Downloads
 # py
-def main(is_headless:bool=None, default_config:str=None, http_port:int=None, ssl:bool=None, config_folder:str=None):
+def main(is_headless:bool=None, default_config:str=None, http_port:int=None, ssl:bool=None, config_folder:str=None,
+         data_folder: str=None):
+    '''
+    is_hedless
+    
+    '''
     try:
         try: # Google Colab does not support argparse
             parser = argparse.ArgumentParser(description='Process some integers.')
@@ -32,6 +37,9 @@ def main(is_headless:bool=None, default_config:str=None, http_port:int=None, ssl
             # specify the config folder (e.g. if running from a different location / container)
             parser.add_argument('--config-folder', dest='config_folder', type=str, default=None,
                                 help='specify config folder')
+            
+            parser.add_argument('--ext-data-folder', dest='data_folder', type=str, default=None, 
+                                help='point to a folder to store the data. This overrides the ImSwitchConfig, useful for docker volumes')
 
             args = parser.parse_args()
             
@@ -43,6 +51,8 @@ def main(is_headless:bool=None, default_config:str=None, http_port:int=None, ssl
                 imswitch.DEFAULT_SETUP_FILE = args.config_file  
             if os.path.isdir(args.config_folder):
                 imswitch.DEFAULT_CONFIG_PATH = args.config_folder # e.g. /Users/USER/ in case an alternative path is used
+            if os.path.isdir(args.data_folder):
+                imswitch.DEFAULT_DATA_PATH = args.data_folder # e.g. /Users/USER/ in case an alternative path is used
             
         except Exception as e:
             print(e)
@@ -63,6 +73,9 @@ def main(is_headless:bool=None, default_config:str=None, http_port:int=None, ssl
         if config_folder is not None:
             print("We use the user-provided configuration path: " + config_folder)
             imswitch.DEFAULT_CONFIG_PATH = config_folder
+        if data_folder is not None:
+            print("We use the user-provided data path: " + data_folder)
+            imswitch.DEFAULT_DATA_PATH = data_folder
 
         # FIXME: !!!! This is because the headless flag is loaded after commandline input
         from imswitch.imcommon import prepareApp, launchApp
@@ -74,6 +87,7 @@ def main(is_headless:bool=None, default_config:str=None, http_port:int=None, ssl
         logger.info(f'Headless mode: {imswitch.IS_HEADLESS}')
         logger.info(f'Config file: {imswitch.DEFAULT_SETUP_FILE}')
         logger.info(f'Config folder: {imswitch.DEFAULT_CONFIG_PATH}')
+        logger.info(f'Data folder: {imswitch.DEFAULT_DATA_PATH}')
         
         if imswitch.IS_HEADLESS:
             os.environ["DISPLAY"] = ":0"

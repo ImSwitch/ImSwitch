@@ -3,7 +3,7 @@ import os
 from abc import ABC
 from pathlib import Path
 from shutil import copy2
-from imswitch import IS_HEADLESS, __file__, DEFAULT_CONFIG_PATH
+from imswitch import IS_HEADLESS, __file__, DEFAULT_CONFIG_PATH, DEFAULT_DATA_PATH
 
 
 def getSystemUserDir():
@@ -89,6 +89,11 @@ class UserFileDirs(FileDirs):
     """ Catalog of directories that contain user configuration files. """
     Root = _baseUserFilesDir
     Config = os.path.join(_baseUserFilesDir, 'config')
+    Data = _baseUserFilesDir
+    if DEFAULT_DATA_PATH is not None:
+        Data = DEFAULT_DATA_PATH
+    
+
 
 
 # Copyright (C) 2020-2023 ImSwitch developers

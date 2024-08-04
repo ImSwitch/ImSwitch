@@ -96,7 +96,7 @@ def main(is_headless:bool=None, default_config:str=None, http_port:int=None, ssl
             app = prepareApp()
         enabledModuleIds = modulesconfigtools.getEnabledModuleIds()
 
-        if 'imscripting' in enabledModuleIds 
+        if 'imscripting' in enabledModuleIds:
             if imswitch.IS_HEADLESS:
                 enabledModuleIds.remove('imscripting')
             else:

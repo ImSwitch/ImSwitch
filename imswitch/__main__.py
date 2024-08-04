@@ -96,11 +96,12 @@ def main(is_headless:bool=None, default_config:str=None, http_port:int=None, ssl
             app = prepareApp()
         enabledModuleIds = modulesconfigtools.getEnabledModuleIds()
 
-        if 'imscripting' in enabledModuleIds and not imswitch.IS_HEADLESS:
-            # Ensure that imscripting is added last
-            enabledModuleIds.append(enabledModuleIds.pop(enabledModuleIds.index('imscripting')))
-        elif imswitch.IS_HEADLESS:
-            enabledModuleIds.remove('imscripting')
+        if 'imscripting' in enabledModuleIds 
+            if imswitch.IS_HEADLESS:
+                enabledModuleIds.remove('imscripting')
+            else:
+                # Ensure that imscripting is added last
+                enabledModuleIds.append(enabledModuleIds.pop(enabledModuleIds.index('imscripting')))
 
         if 'imnotebook' in enabledModuleIds and not imswitch.IS_HEADLESS:
             # Ensure that imnotebook is added last

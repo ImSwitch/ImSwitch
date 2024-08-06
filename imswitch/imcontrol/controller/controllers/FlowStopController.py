@@ -4,23 +4,21 @@ import tifffile as tif
 import os
 import platform
 import subprocess
-import numpy as np
 import cv2 
-
+from datetime import datetime
+from threading import Thread, Event
 try:
     import NanoImagingPack as nip
     isNIP = True
 except:
     isNIP = False
 import time
-import os
 from imswitch.imcommon.model import dirtools, APIExport
 from imswitch.imcommon.framework import Signal, Worker, Mutex, Timer
 from imswitch.imcontrol.view import guitools
 from imswitch.imcommon.model import initLogger
 from ..basecontrollers import LiveUpdatedController
 from imswitch import IS_HEADLESS
-from threading import Thread
 from imswitch.imcontrol.model import RecMode, SaveMode, SaveFormat
 
 class FlowStopController(LiveUpdatedController):
@@ -40,11 +38,12 @@ class FlowStopController(LiveUpdatedController):
         self.defaultFrameRate = self._master.FlowStopManager.defaultConfig["defaultFrameRate"]
         self.defaultSavePath = self._master.FlowStopManager.defaultConfig["defaultSavePath"]
         self.defaultFileFormat = self._master.FlowStopManager.defaultConfig["defaultFileFormat"]
+        self.defaultIsRecordVideo = self._master.FlowStopManager.defaultConfig["defaultIsRecordVideo"]
         self.pumpAxis = self._master.FlowStopManager.defaultConfig["defaultAxisFlow"]
         self.focusAxis = self._master.FlowStopManager.defaultConfig["defaultAxisFocus"]
         self.defaultDelayTimeAfterRestart = self._master.FlowStopManager.defaultConfig["defaultDelayTimeAfterRestart"]
         self.tSettle = 0.05
-        
+        self.imagesTaken = 0
         # select detectors
         allDetectorNames = self._master.detectorsManager.getAllDeviceNames()
         self.detectorFlowCam = self._master.detectorsManager[allDetectorNames[0]]
@@ -65,7 +64,7 @@ class FlowStopController(LiveUpdatedController):
         
         # detect potential external drives
         self.externalDrives = self.detect_external_drives()
-        
+
         # Connect FlowStopWidget signals
         if not IS_HEADLESS:
             # Connect CommunicationChannel signals
@@ -96,9 +95,10 @@ class FlowStopController(LiveUpdatedController):
             frameRate = self.defaultFrameRate
             filePath = self.defaultSavePath
             fileFormat = self.defaultFileFormat
+            isRecordVideo = self.defaultIsRecordVideo
             self.startFlowStopExperiment(timeStamp, experimentName, experimentDescription, 
                                          uniqueId, numImages, volumePerImage, timeToStabilize, delayToStart, 
-                                         frameRate, filePath, fileFormat)
+                                         frameRate, filePath, fileFormat, isRecordVideo)
             
     def startFlowStopExperimentByButton(self):
         """ Start FlowStop experiment. """
@@ -123,6 +123,7 @@ class FlowStopController(LiveUpdatedController):
         volumePerImage = float(self.mExperimentParameters['volumePerImage'])
         timeToStabilize = float(self.mExperimentParameters['timeToStabilize'])
         fileFormat = self.defaultFileFormat
+        isRecordVideo = self.defaultIsRecordVideo
         self._widget.buttonStart.setEnabled(False)
         self._widget.buttonStop.setEnabled(True)
         self._widget.buttonStop.setStyleSheet("background-color: red")
@@ -131,7 +132,8 @@ class FlowStopController(LiveUpdatedController):
                                      experimentDescription = experimentDescription, uniqueId = uniqueId,
                                      numImages = numImages, volumePerImage = volumePerImage,
                                      timeToStabilize = timeToStabilize, delayToStart = 0, frameRate = 1,
-                                     filePath = self.defaultSavePath, fileFormat = fileFormat)
+                                     filePath = self.defaultSavePath, fileFormat = fileFormat, 
+                                     isRecordVideo = isRecordVideo)
         
 
     @APIExport()
@@ -151,13 +153,13 @@ class FlowStopController(LiveUpdatedController):
     def startFlowStopExperiment(self, timeStamp: str, experimentName: str, experimentDescription: str, 
                                 uniqueId: str, numImages: int, volumePerImage: float, timeToStabilize: float, 
                                 delayToStart: float=1, frameRate: float=1, filePath: str="./", 
-                                fileFormat: str= "TIF"):
+                                fileFormat: str= "TIF", isRecordVideo: bool = True):
         """ Start FlowStop experiment. """
         self.thread = Thread(target=self.flowExperimentThread, 
                              name="FlowStopExperiment", 
                              args=(timeStamp, experimentName, experimentDescription, 
                                    uniqueId, numImages, volumePerImage, timeToStabilize,
-                                   delayToStart, frameRate, filePath, fileFormat))
+                                   delayToStart, frameRate, filePath, fileFormat, isRecordVideo))
         
         self.thread.start()
 
@@ -207,7 +209,7 @@ class FlowStopController(LiveUpdatedController):
                              numImages: int, volumePerImage: float, 
                              timeToStabilize: float, delayToStart: float=0, 
                              frameRate: float=1, filePath:str="./", 
-                             fileFormat="TIF"):
+                             fileFormat="TIF", isRecordVideo: bool = True):
         ''' FlowStop experiment thread.
         The device captures images periodically by moving the pump at n-steps / ml, waits for a certain time
         and then moves on to the next step. The experiment is stopped when the user presses the stop button or
@@ -216,6 +218,7 @@ class FlowStopController(LiveUpdatedController):
         User supplied parameters:
 
         '''
+        self.isRecordVideo = isRecordVideo
         self._logger.debug("Starting the FlowStop experiment thread in {delayToStart} seconds.")
         time.sleep(abs(delayToStart))
         self._commChannel.sigStartLiveAcquistion.emit(True)
@@ -232,6 +235,14 @@ class FlowStopController(LiveUpdatedController):
         self._logger.debug(dirPath)
         if not os.path.exists(dirPath):
             os.makedirs(dirPath)
+            
+        # create the video writer object 
+        videoFrameRate = 5
+        videoBitrate = 4000000
+        if self.isRecordVideo:
+            self.video_safe = VideoSafe(self.detectorFlowCam.getLatestFrame, output_folder=dirPath, frame_rate=videoFrameRate, bitrate=videoBitrate)
+            self.video_safe.start()
+                
         while True:
             currentTime = time.time()
             self.imagesTaken += 1
@@ -266,6 +277,11 @@ class FlowStopController(LiveUpdatedController):
             else:
                 break
 
+        # stop the video writer
+        if self.isRecordVideo:
+            self.video_safe.stop()
+
+        # restet the GUI
         self.stopFlowStopExperiment()
 
     def setSharedAttr(self, laserName, attr, value):
@@ -394,6 +410,87 @@ class FlowStopController(LiveUpdatedController):
 
         return external_drives
 
+
+class VideoSafe:
+    def __init__(self, frame_provider, output_folder, frame_rate=5, bitrate=4000000):
+        """
+        Initializes the VideoSafe class.
+        
+        Parameters:
+        frame_provider (function): Function that returns a numpy array frame when called.
+        output_folder (str): Directory to save the video files.
+        frame_rate (int): Frames per second.
+        bitrate (int): Video bitrate.
+        """
+        self.frame_provider = frame_provider
+        self.output_folder = output_folder
+        self.frame_rate = frame_rate
+        self.bitrate = bitrate
+        self.max_frames = 1000
+        self.stop_event = Event()
+        self.thread = None
+        self.video_writer = None
+        self.frame_count = 0
+
+        if not os.path.exists(output_folder):
+            os.makedirs(output_folder)
+
+    def _get_video_writer(self):
+        """
+        Initializes a new video writer object.
+        
+        Returns:
+        cv2.VideoWriter: The video writer object.
+        """
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        video_filename = os.path.join(self.output_folder, f"{timestamp}.mp4")
+        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+        frame = self.frame_provider()
+        height, width = frame.shape[:2]
+        video_writer = cv2.VideoWriter(video_filename, fourcc, self.frame_rate, (width, height))
+
+        # Set the bitrate if possible (note: OpenCV might not support setting bitrate directly)
+        #if hasattr(cv2, 'CAP_PROP_BITRATE'):
+        #    video_writer.set(cv2.CAP_PROP_BITRATE, self.bitrate)
+
+        return video_writer
+    
+    def _write_video(self):
+        """
+        Continuously writes frames to the video file until stopped.
+        """
+        self.video_writer = self._get_video_writer()
+        while not self.stop_event.is_set():
+            frame = self.frame_provider()
+            #https://stackoverflow.com/questions/30509573/writing-an-mp4-video-using-python-opencv
+            frame = cv2.cvtColor(cv2.convertScaleAbs(frame), cv2.COLOR_GRAY2BGR)
+            self.video_writer.write(frame)  
+            self.frame_count += 1
+            if self.frame_count >= self.max_frames:
+                self.video_writer.release()
+                self.video_writer = self._get_video_writer()
+                self.frame_count = 0
+            time.sleep(1 / self.frame_rate)
+
+    def start(self):
+        """
+        Starts the video acquisition in a separate thread.
+        """
+        if self.thread is None:
+            self.stop_event.clear()
+            self.thread = Thread(target=self._write_video)
+            self.thread.start()
+
+    def stop(self):
+        """
+        Stops the video acquisition.
+        """
+        if self.thread is not None:
+            self.stop_event.set()
+            self.thread.join()
+            self.thread = None
+            if self.video_writer is not None:
+                self.video_writer.release()
 
 _attrCategory = 'Laser'
 _metaDataAttr = 'metaData'

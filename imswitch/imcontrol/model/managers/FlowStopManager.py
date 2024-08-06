@@ -22,7 +22,7 @@ class FlowStopManager(SignalInterface):
         self.allParameterKeys = ["wasRunning", "defaultFlowRate", "defaultNumberOfFrames",
                                  "defaultExperimentName","defaultFrameRate","defaultSavePath",
                                  "defaultFileFormat", "defaultAxisFocus", 
-                                 "defaultAxisFlow", "defaultDelayTimeAfterRestart"]
+                                 "defaultAxisFlow", "defaultDelayTimeAfterRestart", "defaultIsRecordVideo"]
         
         # get default configs
         self.defaultConfigPath = os.path.join(dirtools.UserFileDirs.Root, "flowStopController")
@@ -53,6 +53,7 @@ class FlowStopManager(SignalInterface):
             self.defaultConfig["defaultAxisFlow"] = "A"
             self.defaultConfig["defaultAxisFocus"] = "Z"
             self.defaultConfig["defaultDelayTimeAfterRestart"]=1
+            self.defaultConfig["defaultIsRecordVideo"]=True
             self.writeConfig(self.defaultConfig)
                 
     def updateConfig(self, parameterName, value):

@@ -12,6 +12,7 @@ import numpy as np
 import tifffile as tiff
 import cv2
 
+from imswitch import IS_HEADLESS
 from imswitch.imcommon.framework import Signal, SignalInterface, Thread, Worker
 from imswitch.imcommon.model import initLogger
 from ome_zarr.writer import write_multiscales_metadata
@@ -196,7 +197,8 @@ class RecordingManager(SignalInterface):
         self.__recordingWorker = RecordingWorker(self)
         self.__thread = Thread()
         self.__recordingWorker.moveToThread(self.__thread)
-        self.__thread.started.connect(self.__recordingWorker.run) # FIXME!!!!!!!!!!!
+        if not IS_HEADLESS:
+            self.__thread.started.connect(self.__recordingWorker.run) # FIXME!!!!!!!!!!!
 
     def __del__(self):
         self.endRecording(emitSignal=False, wait=True)

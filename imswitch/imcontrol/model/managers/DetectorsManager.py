@@ -45,16 +45,23 @@ class DetectorsManager(MultiManager, SignalInterface):
                 self._currentDetectorName = detectorName
 
         # A timer will collect the new frame and update it through the communication channel
-        self._lvWorker = LVWorker(self, updatePeriod)
-        self._thread = threading.Thread(target=self._lvWorker.run)
-        
-        #self._lvWorker.moveToThread(self._thread) # TODO !!!!!
-        #self._thread.started.connect(self._lvWorker.run)
-        #self._thread.finished.connect(self._lvWorker.stop)
+        if IS_HEADLESS:
+            self._lvWorker = LVWorkerNOQT(self, updatePeriod)
+            self._thread = threading.Thread(target=self._lvWorker.run)
+        else:
+            # A timer will collect the new frame and update it through the communication channel
+            self._lvWorker = LVWorker(self, updatePeriod)
+            self._thread = Thread()
+            self._lvWorker.moveToThread(self._thread)
+            self._thread.started.connect(self._lvWorker.run)
+            self._thread.finished.connect(self._lvWorker.stop)
 
     def __del__(self):
-        self._thread.quit()
-        self._thread.wait()
+        if IS_HEADLESS:
+            self._lvWorker.stop()
+        else:
+            self._thread.quit()
+            self._thread.wait()
         if hasattr(super(), '__del__'):
             super().__del__()
 
@@ -173,7 +180,7 @@ class DetectorsManager(MultiManager, SignalInterface):
         self._thread.wait()
         self._thread.start()
 
-class LVWorker(Worker):
+class LVWorkerNOQT(Worker):
     def __init__(self, detectorsManager, updatePeriod):
         super().__init__()
         self._detectorsManager = detectorsManager
@@ -200,6 +207,30 @@ class LVWorker(Worker):
     def setUpdatePeriod(self, updatePeriod):
         self._updatePeriod = updatePeriod
         
+class LVWorker(Worker):
+    def __init__(self, detectorsManager, updatePeriod):
+        super().__init__()
+        self._detectorsManager = detectorsManager
+        self._updatePeriod = updatePeriod
+        self._vtimer = None
+
+    def run(self):
+        self._detectorsManager.execOnAll(lambda c: c.updateLatestFrame(False),
+                                         condition=lambda c: c.forAcquisition)
+        self._vtimer = Timer()
+        self._vtimer.timeout.connect(
+            lambda: self._detectorsManager.execOnAll(lambda c: c.updateLatestFrame(True),
+                                                     condition=lambda c: c.forAcquisition)
+        )
+        self._vtimer.start(self._updatePeriod)
+
+    def stop(self):
+        if self._vtimer is not None:
+            self._vtimer.stop()
+
+    def setUpdatePeriod(self, updatePeriod):
+        self._updatePeriod = updatePeriod
+
 class LVWorker_old(Worker):
     def __init__(self, detectorsManager, updatePeriod):
         super().__init__()

@@ -43,14 +43,14 @@ class FlowStopManager(SignalInterface):
         except Exception as e:
             self.__logger.error(f"Could not load default config from {self.defaultConfigPath}: {e}")
             self.defaultConfig = {}
-            self.defaultConfig["wasRunning"] = False
+            self.defaultConfig["wasRunning"] = True
             self.defaultConfig["defaultFlowRate"] = 100
             self.defaultConfig["defaultNumberOfFrames"] = -1
             self.defaultConfig["defaultExperimentName"] = "FlowStopExperiment"
             self.defaultConfig["defaultFrameRate"] = 1
             self.defaultConfig["defaultSavePath"] = "./"
             self.defaultConfig["defaultFileFormat"] = "JPG"
-            self.defaultConfig["defaultAxisFlow"] = "A"
+            self.defaultConfig["defaultAxisFlow"] = "X"
             self.defaultConfig["defaultAxisFocus"] = "Z"
             self.defaultConfig["defaultDelayTimeAfterRestart"]=1
             self.defaultConfig["defaultIsRecordVideo"]=True

@@ -141,7 +141,8 @@ class FlowStopController(LiveUpdatedController):
 
     @APIExport()
     def getExperimentParameters(self) -> dict:
-        self.mExperimentParameters = self._widget.getAutomaticImagingParameters()
+        if not IS_HEADLESS:
+            self.mExperimentParameters = self._widget.getAutomaticImagingParameters()
         return self.mExperimentParameters 
     
     @APIExport()

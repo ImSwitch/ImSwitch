@@ -5,7 +5,6 @@ import os
 import platform
 import subprocess
 import cv2 
-from datetime import datetime
 from threading import Thread, Event
 try:
     import NanoImagingPack as nip
@@ -84,7 +83,7 @@ class FlowStopController(LiveUpdatedController):
             
         # start thread if it was funning 
         if self.wasRunning:
-            timeStamp = datetime.datetime.now().strftime("%Y_%m_%d-%I-%M-%S_%p")
+            timeStamp = datetime.datetime.now().strftime("%Y_%m_%d-%H-%M-%S")
             experimentName = self.defaultExperimentName
             experimentDescription = ""
             uniqueId = np.random.randint(0, 2**16)
@@ -115,7 +114,7 @@ class FlowStopController(LiveUpdatedController):
         'volumePerImage': self.textEditVolumePerImage.text(),
         'timeToStabilize': self.textEditTimeToStabilize.text(),
         '''
-        timeStamp = self.mExperimentParameters['timeStamp']
+        timeStamp = datetime.datetime.now().strftime("%Y_%m_%d-%H-%M-%S") # overriding this: self.mExperimentParameters['timeStamp']
         experimentName = self.mExperimentParameters['experimentName']
         experimentDescription = self.mExperimentParameters['experimentDescription']
         uniqueId = self.mExperimentParameters['uniqueId']
@@ -295,7 +294,7 @@ class FlowStopController(LiveUpdatedController):
     def snapImageFlowCam(self, fileName=None, metaData={}, fileFormat="JPG"):
         """ Snap image. """
         if fileName is None or not fileName:
-            fileName = datetime.datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
+            fileName  = datetime.datetime.now().strftime("%Y_%m_%d-%H-%M-%S")
 
         if fileFormat == "TIF":
             # save as tif 
@@ -343,8 +342,11 @@ class FlowStopController(LiveUpdatedController):
     @APIExport(runOnUIThread=True)
     def changeAutoExposureTime(self, value):
         """ Change auto exposure time. """
-        self.detectorFlowCam.setParameter(name="exposure_mode", value=value)
-        
+        try:
+            self.detectorFlowCam.setParameter(name="exposure_mode", value=value)
+        except Exception as e:
+            self._logger.error(f"Could not set auto exposure mode: {e}")
+
     def changeGain(self, value):
         """ Change gain. """
         self.detectorFlowCam.setGain(value)
@@ -442,7 +444,7 @@ class VideoSafe:
         Returns:
         cv2.VideoWriter: The video writer object.
         """
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         video_filename = os.path.join(self.output_folder, f"{timestamp}.mp4")
         fourcc = cv2.VideoWriter_fourcc(*'mp4v')
         frame = self.frame_provider()

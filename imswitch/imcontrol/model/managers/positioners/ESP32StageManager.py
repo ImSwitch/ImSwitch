@@ -138,6 +138,11 @@ class ESP32StageManager(PositionerManager):
         self.setupMotor(self.minZ, self.maxZ, self.stepSizes["Z"], self.backlashZ, "Z")
         self.setupMotor(self.minA, self.maxA, self.stepSizes["A"], self.backlashA, "A")
 
+        # Dummy move to get the motor to the right position
+        for iAxis in ("A", "X", "Y", "Z"):
+            self.move(value=-1, speed=1000, axis=iAxis, is_absolute=False, is_blocking=True, isEnable=True)
+            self.move(value=1, speed=1000, axis=iAxis, is_absolute=False, is_blocking=True, isEnable=True)
+        
         # optional: hom on startup:
         if self.homeOnStartX: self.home_x()
         time.sleep(0.5)
@@ -163,19 +168,19 @@ class ESP32StageManager(PositionerManager):
     def setHomeParametersAxis(self, axis, speed, direction, endstoppolarity, endposrelease, timeout=None):
         if axis == "X":
             self.homeSpeedX = speed
-            self.homeDirectionX = direction
+            self.homeDirectionX = 1 if direction > 0 else -1
             self.homeEndstoppolarityX = endstoppolarity
             self.homeEndposReleaseX = endposrelease
             self.homeTimeoutX = timeout
         elif axis == "Y":
-            self.homeSpeedY = speed
-            self.homeDirectionY = direction
+            self.homeSpeedY = speed#
+            self.homeDirectionY = 1 if direction > 0 else -1
             self.homeEndstoppolarityY = endstoppolarity
             self.homeEndposReleaseY = endposrelease
             self.homeTimeoutY = timeout
         elif axis == "Z":
             self.homeSpeedZ = speed
-            self.homeDirectionZ = direction
+            self.homeDirectionZ = 1 if direction > 0 else -1
             self.homeEndstoppolarityZ = endstoppolarity
             self.homeEndposReleaseZ = endposrelease
             self.homeTimeoutZ = timeout

@@ -1,7 +1,7 @@
 import imswitch
 import dataclasses
 import sys
-from imswitch import IS_HEADLESS
+from imswitch import IS_HEADLESS, DEFAULT_DATA_PATH
 
 __imswitch_module__ = True
 __title__ = 'Hardware Control'
@@ -45,28 +45,37 @@ def getMainViewAndController(moduleCommChannel, *_args,
     '''
     load the setup configuration including detectors, stages, etc.
     '''
-    if not IS_HEADLESS and overrideSetupInfo is None:
-        try:
-            setupInfo = configfiletools.loadSetupInfo(options, ViewSetupInfo)
-        except FileNotFoundError:
-            # Have user pick setup anyway
-            options = pickSetup(options)
-            configfiletools.saveOptions(options)
-            setupInfo = configfiletools.loadSetupInfo(options, ViewSetupInfo)
-    elif IS_HEADLESS and overrideSetupInfo is None:
+    if overrideSetupInfo is None:
         if imswitch.DEFAULT_SETUP_FILE is not None:
             try:
+                # we provide it via command line arguments
                 setupFileName = imswitch.DEFAULT_SETUP_FILE
                 options = dataclasses.replace(options, setupFileName=setupFileName)
+                setupInfo = configfiletools.loadSetupInfo(options, ViewSetupInfo)
             except Exception as e: 
                 print("Error setting default setup file from commandline..:" + e)
-        setupInfo = configfiletools.loadSetupInfo(options, ViewSetupInfo)
+                raise KeyError
+                # we will try to load it via the gui
+        else:
+            try:
+                setupInfo = configfiletools.loadSetupInfo(options, ViewSetupInfo)
+            except FileNotFoundError:
+                # Have user pick setup anyway
+                options = pickSetup(options)
+                configfiletools.saveOptions(options)
+                setupInfo = configfiletools.loadSetupInfo(options, ViewSetupInfo)
+    # this case is used for pytesting
     elif overrideSetupInfo is not None:
         setupInfo = overrideSetupInfo
     else:
         raise KeyError # FIXME: !!!!
-
     logger.debug(f'Setup used: {options.setupFileName}')
+
+    # Override Data PAth
+    if DEFAULT_DATA_PATH is not None:
+        logger.debug("Overriding data save path with: "+DEFAULT_DATA_PATH) 
+        options_rec = dataclasses.replace(options.recording, outputFolder=DEFAULT_DATA_PATH)
+        options = dataclasses.replace(options, recording=options_rec)
     if not IS_HEADLESS:
         view = ImConMainView(options, setupInfo)
     else:

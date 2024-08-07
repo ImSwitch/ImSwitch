@@ -6,8 +6,14 @@ import os
 
 import imswitch
 # python main.py --headless or
-# python -m imswitch --headless 1 --config-file example_virtual_microscope.json
-def main(is_headless:bool=None, default_config:str=None, http_port:int=None, ssl:bool=None):
+# python -m imswitch --headless 1 --config-file example_virtual_microscope.json --config-folder /Users/bene/Downloads
+# py
+def main(is_headless:bool=None, default_config:str=None, http_port:int=None, ssl:bool=None, config_folder:str=None,
+         data_folder: str=None):
+    '''
+    is_hedless
+    
+    '''
     try:
         try: # Google Colab does not support argparse
             parser = argparse.ArgumentParser(description='Process some integers.')
@@ -27,25 +33,49 @@ def main(is_headless:bool=None, default_config:str=None, http_port:int=None, ssl
             # specify ssl
             parser.add_argument('--ssl', dest='ssl', type=bool, default=True,
                                 help='specify ssl')
+            
+            # specify the config folder (e.g. if running from a different location / container)
+            parser.add_argument('--config-folder', dest='config_folder', type=str, default=None,
+                                help='specify config folder')
+            
+            parser.add_argument('--ext-data-folder', dest='data_folder', type=str, default=None, 
+                                help='point to a folder to store the data. This overrides the ImSwitchConfig, useful for docker volumes')
 
             args = parser.parse_args()
             
             imswitch.IS_HEADLESS = args.headless            # if True, no QT will be loaded   
-            imswitch.DEFAULT_SETUP_FILE = args.config_file  # e.g. example_virtual_microscope.json
             imswitch.__httpport__ = args.http_port          # e.g. 8001
             imswitch.__ssl__ = args.ssl                     # if True, ssl will be used (e.g. https)
-        except:
+            
+            if type(args.config_file)==str and args.config_file.find("json")>=0:  # e.g. example_virtual_microscope.json
+                imswitch.DEFAULT_SETUP_FILE = args.config_file  
+            if os.path.isdir(args.config_folder):
+                imswitch.DEFAULT_CONFIG_PATH = args.config_folder # e.g. /Users/USER/ in case an alternative path is used
+            if os.path.isdir(args.data_folder):
+                imswitch.DEFAULT_DATA_PATH = args.data_folder # e.g. /Users/USER/ in case an alternative path is used
+            
+        except Exception as e:
+            print(e)
             pass
         # override settings if provided as argument
         if is_headless is not None:
+            print("We use the user-provided headless flag: " + str(is_headless))
             imswitch.IS_HEADLESS = is_headless
-            
         if default_config is not None:
+            print("We use the user-provided configuration file: " + default_config)
             imswitch.DEFAULT_SETUP_FILE = default_config
         if http_port is not None:
+            print("We use the user-provided http port: " + str(http_port))
             imswitch.__httpport__ = http_port
         if ssl is not None:
+            print("We use the user-provided ssl: " + str(ssl))
             imswitch.__ssl__ = ssl
+        if config_folder is not None:
+            print("We use the user-provided configuration path: " + config_folder)
+            imswitch.DEFAULT_CONFIG_PATH = config_folder
+        if data_folder is not None:
+            print("We use the user-provided data path: " + data_folder)
+            imswitch.DEFAULT_DATA_PATH = data_folder
 
         # FIXME: !!!! This is because the headless flag is loaded after commandline input
         from imswitch.imcommon import prepareApp, launchApp
@@ -56,6 +86,8 @@ def main(is_headless:bool=None, default_config:str=None, http_port:int=None, ssl
         logger.info(f'Starting ImSwitch {imswitch.__version__}')
         logger.info(f'Headless mode: {imswitch.IS_HEADLESS}')
         logger.info(f'Config file: {imswitch.DEFAULT_SETUP_FILE}')
+        logger.info(f'Config folder: {imswitch.DEFAULT_CONFIG_PATH}')
+        logger.info(f'Data folder: {imswitch.DEFAULT_DATA_PATH}')
         
         if imswitch.IS_HEADLESS:
             os.environ["DISPLAY"] = ":0"
@@ -64,11 +96,12 @@ def main(is_headless:bool=None, default_config:str=None, http_port:int=None, ssl
             app = prepareApp()
         enabledModuleIds = modulesconfigtools.getEnabledModuleIds()
 
-        if 'imscripting' in enabledModuleIds and not imswitch.IS_HEADLESS:
-            # Ensure that imscripting is added last
-            enabledModuleIds.append(enabledModuleIds.pop(enabledModuleIds.index('imscripting')))
-        elif imswitch.IS_HEADLESS:
-            enabledModuleIds.remove('imscripting')
+        if 'imscripting' in enabledModuleIds:
+            if imswitch.IS_HEADLESS:
+                enabledModuleIds.remove('imscripting')
+            else:
+                # Ensure that imscripting is added last
+                enabledModuleIds.append(enabledModuleIds.pop(enabledModuleIds.index('imscripting')))
 
         if 'imnotebook' in enabledModuleIds and not imswitch.IS_HEADLESS:
             # Ensure that imnotebook is added last

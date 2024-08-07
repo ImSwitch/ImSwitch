@@ -196,7 +196,7 @@ class RecordingManager(SignalInterface):
         self.__recordingWorker = RecordingWorker(self)
         self.__thread = Thread()
         self.__recordingWorker.moveToThread(self.__thread)
-        #self.__thread.started.connect(self.__recordingWorker.run) # FIXME!!!!!!!!!!!
+        self.__thread.started.connect(self.__recordingWorker.run) # FIXME!!!!!!!!!!!
 
     def __del__(self):
         self.endRecording(emitSignal=False, wait=True)

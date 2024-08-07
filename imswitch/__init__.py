@@ -7,6 +7,8 @@ __ssl__ = True
 
 IS_HEADLESS = True
 DEFAULT_SETUP_FILE = None
+DEFAULT_CONFIG_PATH = None
+DEFAULT_DATA_PATH = None
 
 # Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.

@@ -140,8 +140,8 @@ class ESP32StageManager(PositionerManager):
 
         # Dummy move to get the motor to the right position
         for iAxis in ("A", "X", "Y", "Z"):
-            self.move(value=-1, speed=1000, axis=iAxis, is_absolute=False, is_blocking=True, isEnable=True)
-            self.move(value=1, speed=1000, axis=iAxis, is_absolute=False, is_blocking=True, isEnable=True)
+            self.move(value=-1, speed=1000, axis=iAxis, is_absolute=False, is_blocking=True, isEnable=True, timeout=0.2)
+            self.move(value=1, speed=1000, axis=iAxis, is_absolute=False, is_blocking=True, isEnable=True, timeout=0.2)
         
         # optional: hom on startup:
         if self.homeOnStartX: self.home_x()

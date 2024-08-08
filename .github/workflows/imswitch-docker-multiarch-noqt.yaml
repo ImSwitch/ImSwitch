@@ -49,5 +49,7 @@ jobs:
           file: docker/HIK/dockerfile
           push: true
           platforms: linux/amd64,linux/arm64
+          cache-from: type=registry,ref=ghcr.io/${{ env.IMAGE_NAME }}-${{ env.ARCH }}:latest
+          cache-to: type=inline
           tags: ghcr.io/${{ env.IMAGE_NAME }}-${{ env.ARCH }}:latest
           labels: ${{ steps.meta.outputs.labels }}

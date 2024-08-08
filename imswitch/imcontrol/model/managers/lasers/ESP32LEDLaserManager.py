@@ -87,26 +87,10 @@ class ESP32LEDLaserManager(LaserManager):
     def sendTrigger(self, triggerId):
         self._esp32.digital.sendTrigger(triggerId)
 
-    '''
-    def sendScanner(self, scannernFrames=100, scannerXFrameMin=0, scannerXFrameMax=255,
-        scannerYFrameMin=0, scannerYFrameMax=255, scannerEnable=0, scannerxMin=1,
-        scannerxMax=5, scanneryMin=1, scanneryMax=5, scannerXStep=25,
-        scannerYStep=25, scannerLaserVal=32000, scannerExposure=500, scannerDelay=500):
-
-        self._rs232manager._esp32.set_scanner_classic(scannernFrames,
-            scannerXFrameMin, scannerXFrameMax, scannerYFrameMin, scannerYFrameMax,
-            scannerEnable, scannerxMin, scannerxMax, scanneryMin,
-            scanneryMax, scannerXStep, scannerYStep, scannerLaserVal,
-            scannerExposure, scannerDelay)
-
-    def sendScannerPattern(self, ismPatternIndex, scannernFrames=1,
-            scannerLaserVal=32000, scannerExposure=500, scannerDelay=500, isBlocking=False):
-
-        self._rs232manager._esp32.set_scanner_pattern(ismPatternIndex, scannernFrames,
-            scannerLaserVal, scannerExposure, scannerDelay, isBlocking)
-    '''
-
-
+    def setGalvo(self,channel=1, frequency=1, offset=0, amplitude=1, clk_div=0, phase=0, invert=1, timeout=1):
+        self._rs232manager._esp32.galvo.set_dac(
+            channel=channel, frequency=frequency, offset=offset, amplitude=amplitude, clk_div=clk_div, 
+            phase=phase, invert=invert, timeout=timeout)
 
 # Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.

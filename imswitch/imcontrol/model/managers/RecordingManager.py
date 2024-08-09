@@ -194,11 +194,14 @@ class RecordingManager(SignalInterface):
         self._memRecordings = {}  # { filePath: bytesIO }
         self.__detectorsManager = detectorsManager
         self.__record = False
-        self.__recordingWorker = RecordingWorker(self)
         self.__thread = Thread()
-        self.__recordingWorker.moveToThread(self.__thread)
-        if not IS_HEADLESS:
-            self.__thread.started.connect(self.__recordingWorker.run) # FIXME!!!!!!!!!!!
+        if not IS_HEADLESS: # TODO: Merge the two RecordingWorkers
+            self.__recordingWorker = RecordingWorker(self)
+            self.__recordingWorker.moveToThread(self.__thread)
+            self.__thread.started.connect(self.__recordingWorker.run)
+        else:
+            self.__recordingWorker = RecordingWorkerNoQt(self)
+            self.__recordingWorker.moveToThread(self.__thread)
 
     def __del__(self):
         self.endRecording(emitSignal=False, wait=True)
@@ -359,7 +362,322 @@ class RecordingManager(SignalInterface):
         return newPath
 
 
+
+
 class RecordingWorker(Worker):
+    def __init__(self, recordingManager):
+        super().__init__()
+        self.__logger = initLogger(self)
+        self.__recordingManager = recordingManager
+        self.__logger = initLogger(self)
+
+    def run(self):
+        acqHandle = self.__recordingManager.detectorsManager.startAcquisition()
+        try:
+            self._record()
+
+        finally:
+            self.__recordingManager.detectorsManager.stopAcquisition(acqHandle)
+
+    def _record(self):
+        if self.saveFormat == SaveFormat.HDF5 or self.saveFormat == SaveFormat.ZARR:
+            files, fileDests, filePaths = self._getFiles()
+
+        shapes = {detectorName: self.__recordingManager.detectorsManager[detectorName].shape
+                  for detectorName in self.detectorNames}
+
+        currentFrame = {}
+        datasets = {}
+        filenames = {}
+
+        for detectorName in self.detectorNames:
+            currentFrame[detectorName] = 0
+
+            datasetName = detectorName
+            if self.recMode == RecMode.ScanLapse and self.singleLapseFile:
+                # Add scan number to dataset name
+                scanNum = 0
+                datasetNameWithScan = f'{datasetName}_scan{scanNum}'
+                while datasetNameWithScan in files[detectorName]:
+                    scanNum += 1
+                    datasetNameWithScan = f'{datasetName}_scan{scanNum}'
+                datasetName = datasetNameWithScan
+
+            # Initial number of frames must not be 0; otherwise, too much disk space may get
+            # allocated. We remove this default frame later on if no frames are captured.
+            shape = shapes[detectorName]
+            if len(shape) > 2:
+                shape = shape[-2:]
+
+            if self.saveFormat == SaveFormat.HDF5:
+                # Initial number of frames must not be 0; otherwise, too much disk space may get
+                # allocated. We remove this default frame later on if no frames are captured.
+                datasets[detectorName] = files[detectorName].create_dataset(
+                    datasetName, (1, *reversed(shape)),
+                    maxshape=(None, *reversed(shape)),
+                    dtype='i2'
+                )
+
+                for key, value in self.attrs[detectorName].items():
+                    datasets[detectorName].attrs[key] = value
+
+                datasets[detectorName].attrs['detector_name'] = detectorName
+
+                # For ImageJ compatibility
+                datasets[detectorName].attrs['element_size_um'] \
+                    = self.__recordingManager.detectorsManager[detectorName].pixelSizeUm
+                datasets[detectorName].attrs['writing'] = True
+
+            elif self.saveFormat == SaveFormat.TIFF:
+                fileExtension = str(self.saveFormat.name).lower()
+                filenames[detectorName] = self.__recordingManager.getSaveFilePath(
+                    f'{self.savename}_{detectorName}.{fileExtension}', False, False)
+
+            elif self.saveFormat == SaveFormat.ZARR:
+                datasets[detectorName] = files[detectorName].create_dataset(datasetName, shape=(1, *reversed(shape)),
+                                                                            dtype='i2', chunks=(1, 512, 512)
+                                                                            )
+                datasets[detectorName].attrs['detector_name'] = detectorName
+                # For ImageJ compatibility
+                datasets[detectorName].attrs['element_size_um'] \
+                    = self.__recordingManager.detectorsManager[detectorName].pixelSizeUm
+                datasets[detectorName].attrs['writing'] = True
+                info: List[dict] = [{"path": datasetName, "transformation": None}]
+                write_multiscales_metadata(files[detectorName], info, format_from_version("0.2"), shape, **self.attrs[detectorName])
+
+        self.__recordingManager.sigRecordingStarted.emit()
+        try:
+            if len(self.detectorNames) < 1:
+                raise ValueError('No detectors to record specified')
+
+            if self.recMode in [RecMode.SpecFrames, RecMode.ScanOnce, RecMode.ScanLapse]:
+                recFrames = self.recFrames
+                if recFrames is None:
+                    raise ValueError('recFrames must be specified in SpecFrames, ScanOnce or'
+                                     ' ScanLapse mode')
+
+                while (self.__recordingManager.record and
+                       any([currentFrame[detectorName] < recFrames
+                            for detectorName in self.detectorNames])):
+                    for detectorName in self.detectorNames:
+                        if currentFrame[detectorName] >= recFrames:
+                            continue  # Reached requested number of frames with this detector, skip
+
+                        newFrames = self._getNewFrames(detectorName)
+                        n = len(newFrames)
+
+                        if n > 0:
+                            it = currentFrame[detectorName]
+                            if self.saveFormat == SaveFormat.TIFF:
+                                try:
+                                    filePath = filenames[detectorName]
+                                    tiff.imwrite(filePath, newFrames, append=True)
+                                except ValueError:
+                                    self.__logger.error("TIFF File exceeded 4GB.")
+                                    if self.saveFormat == SaveFormat.TIFF:
+                                        filePath = self.__recordingManager.getSaveFilePath(
+                                            f'{self.savename}_{detectorName}.{fileExtension}', False, False)
+                                        continue
+                            elif self.saveFormat == SaveFormat.HDF5:
+                                dataset = datasets[detectorName]
+                                if (it + n) <= recFrames:
+                                    dataset.resize(n + it, axis=0)
+                                    dataset[it:it + n, :, :] = newFrames
+                                    currentFrame[detectorName] += n
+                                else:
+                                    dataset.resize(recFrames, axis=0)
+                                    dataset[it:recFrames, :, :] = newFrames[0:recFrames - it]
+                                    currentFrame[detectorName] = recFrames
+                            elif self.saveFormat == SaveFormat.ZARR:
+                                dataset = datasets[detectorName]
+                                if it == 0:
+                                    dataset[0, :, :] = newFrames[0, :, :]
+                                    if n > 0:
+                                        dataset.append(newFrames[1:n, :, :])
+                                else:
+                                    dataset.append(newFrames)
+                                currentFrame[detectorName] += n
+
+                            # Things get a bit weird if we have multiple detectors when we report
+                            # the current frame number, since the detectors may not be synchronized.
+                            # For now, we will report the lowest number.
+                            self.__recordingManager.sigRecordingFrameNumUpdated.emit(
+                                min(list(currentFrame.values()))
+                            )
+                    time.sleep(0.0001)  # Prevents freezing for some reason
+
+                self.__recordingManager.sigRecordingFrameNumUpdated.emit(0)
+            elif self.recMode == RecMode.SpecTime:
+                recTime = self.recTime
+                if recTime is None:
+                    raise ValueError('recTime must be specified in SpecTime mode')
+
+                start = time.time()
+                currentRecTime = 0
+                shouldStop = False
+                while True:
+                    for detectorName in self.detectorNames:
+                        newFrames = self._getNewFrames(detectorName)
+                        n = len(newFrames)
+                        if n > 0:
+                            if self.saveFormat == SaveFormat.TIFF:
+                                try:
+                                    filePath = filenames[detectorName]
+                                    tiff.imwrite(filePath, newFrames, append=True)
+                                except ValueError:
+                                    self.__logger.error("TIFF File exceeded 4GB.")
+                                    if self.saveFormat == SaveFormat.TIFF:
+                                        filePath = self.__recordingManager.getSaveFilePath(
+                                            f'{self.savename}_{detectorName}.{fileExtension}', False, False)
+                                        continue
+                            elif self.saveFormat == SaveFormat.HDF5 or self.saveFormat == SaveFormat.ZARR:
+                                it = currentFrame[detectorName]
+                                dataset = datasets[detectorName]
+                                dataset.resize(n + it, axis=0)
+                                dataset[it:it + n, :, :] = newFrames
+                            currentFrame[detectorName] += n
+                            self.__recordingManager.sigRecordingTimeUpdated.emit(
+                                np.around(currentRecTime, decimals=2)
+                            )
+                            currentRecTime = time.time() - start
+
+                    if shouldStop:
+                        break  # Enter loop one final time, then stop
+
+                    if not self.__recordingManager.record or currentRecTime >= recTime:
+                        shouldStop = True
+
+                    time.sleep(0.0001)  # Prevents freezing for some reason
+
+                self.__recordingManager.sigRecordingTimeUpdated.emit(0)
+            elif self.recMode == RecMode.UntilStop:
+                shouldStop = False
+                while True:
+                    for detectorName in self.detectorNames:
+                        newFrames = self._getNewFrames(detectorName)
+                        n = len(newFrames)
+                        if n > 0:
+                            if self.saveFormat == SaveFormat.TIFF:
+                                try:
+                                    filePath = filenames[detectorName]
+                                    tiff.imwrite(filePath, newFrames, append=True)
+                                except ValueError:
+                                    self.__logger.error("TIFF File exceeded 4GB.")
+                                    if self.saveFormat == SaveFormat.TIFF:
+                                        filePath = self.__recordingManager.getSaveFilePath(
+                                            f'{self.savename}_{detectorName}.{fileExtension}', False, False)
+                                        continue
+
+                            elif self.saveFormat == SaveFormat.HDF5:
+                                it = currentFrame[detectorName]
+                                dataset = datasets[detectorName]
+                                dataset.resize(n + it, axis=0)
+                                dataset[it:it + n, :, :] = newFrames
+
+                            elif self.saveFormat == SaveFormat.ZARR:
+                                it = currentFrame[detectorName]
+                                dataset = datasets[detectorName]
+                                if it == 0:
+                                    dataset[0, :, :] = newFrames[0, :, :]
+                                    if n > 0:
+                                        dataset.append(newFrames[1:n, :, :])
+                                else:
+                                    dataset.append(newFrames)
+
+                            currentFrame[detectorName] += n
+
+                    if shouldStop:
+                        break
+
+                    if not self.__recordingManager.record:
+                        shouldStop = True  # Enter loop one final time, then stop
+
+                    time.sleep(0.0001)  # Prevents freezing for some reason
+            else:
+                raise ValueError('Unsupported recording mode specified')
+        finally:
+
+            if self.saveFormat == SaveFormat.HDF5 or self.saveFormat == SaveFormat.ZARR:
+                for detectorName, file in files.items():
+                    # Remove default frame if no frames have been captured
+                    if currentFrame[detectorName] < 1:
+                        if self.saveFormat == SaveFormat.HDF5:
+                            datasets[detectorName].resize(0, axis=0)
+
+                    # Handle memory recordings
+                    if self.saveMode == SaveMode.RAM or self.saveMode == SaveMode.DiskAndRAM:
+                        filePath = filePaths[detectorName]
+                        name = os.path.basename(filePath)
+                        if self.saveMode == SaveMode.RAM:
+                            file.close()
+                            self.__recordingManager.sigMemoryRecordingAvailable.emit(
+                                name, fileDests[detectorName], filePath, False
+                            )
+                        else:
+                            file.flush()
+                            self.__recordingManager.sigMemoryRecordingAvailable.emit(
+                                name, file, filePath, True
+                            )
+                    else:
+                        datasets[detectorName].attrs['writing'] = False
+                        if self.saveFormat == SaveFormat.HDF5:
+                            file.close()
+                        else:
+                            self.store.close()
+            emitSignal = True
+            if self.recMode in [RecMode.SpecFrames, RecMode.ScanOnce, RecMode.ScanLapse]:
+                emitSignal = False
+            self.__recordingManager.endRecording(emitSignal=emitSignal, wait=False)
+
+    def _getFiles(self):
+        singleMultiDetectorFile = self.singleMultiDetectorFile
+        singleLapseFile = self.recMode == RecMode.ScanLapse and self.singleLapseFile
+
+        files = {}
+        fileDests = {}
+        filePaths = {}
+        extension = 'hdf5' if self.saveFormat == SaveFormat.HDF5 else 'zarr'
+
+        for detectorName in self.detectorNames:
+            if singleMultiDetectorFile:
+                baseFilePath = f'{self.savename}.{extension}'
+            else:
+                baseFilePath = f'{self.savename}_{detectorName}.{extension}'
+
+            filePaths[detectorName] = self.__recordingManager.getSaveFilePath(
+                baseFilePath,
+                allowOverwriteDisk=singleLapseFile and self.saveMode != SaveMode.RAM,
+                allowOverwriteMem=singleLapseFile and self.saveMode == SaveMode.RAM
+            )
+
+        for detectorName in self.detectorNames:
+            if self.saveMode == SaveMode.RAM:
+                memRecordings = self.__recordingManager._memRecordings
+                if (filePaths[detectorName] not in memRecordings or
+                        memRecordings[filePaths[detectorName]].closed):
+                    memRecordings[filePaths[detectorName]] = BytesIO()
+                fileDests[detectorName] = memRecordings[filePaths[detectorName]]
+            else:
+                fileDests[detectorName] = filePaths[detectorName]
+
+            if singleMultiDetectorFile and len(files) > 0:
+                files[detectorName] = list(files.values())[0]
+            else:
+                if self.saveFormat == SaveFormat.HDF5:
+                    files[detectorName] = h5py.File(fileDests[detectorName],
+                                                    'a' if singleLapseFile else 'w-')
+                elif self.saveFormat == SaveFormat.ZARR:
+                    self.store = zarr.storage.DirectoryStore(fileDests[detectorName])
+                    files[detectorName] = zarr.group(store=self.store, overwrite=True)
+
+        return files, fileDests, filePaths
+
+    def _getNewFrames(self, detectorName):
+        newFrames = self.__recordingManager.detectorsManager[detectorName].getChunk()
+        newFrames = np.array(newFrames)
+        return newFrames
+
+class RecordingWorkerNoQt(Worker):
     def __init__(self, recordingManager):
         super().__init__()
         self.__logger = initLogger(self)

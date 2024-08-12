@@ -17,9 +17,11 @@ def main():
     enabledModuleIds = modulesconfigtools.getEnabledModuleIds()
     if 'imscripting' in enabledModuleIds:
         # Ensure that imscripting is added last
-        
+
         enabledModuleIds.append(enabledModuleIds.pop(enabledModuleIds.index('imscripting')))
 
+    # enabledModuleIds = ['imcontrol', 'imreconstruct', 'imscripting']
+    # modulePkgs are paths to __init__ files
     modulePkgs = [importlib.import_module(pythontools.joinModulePath('imswitch', moduleId))
                   for moduleId in modulesconfigtools.getEnabledModuleIds()]
 

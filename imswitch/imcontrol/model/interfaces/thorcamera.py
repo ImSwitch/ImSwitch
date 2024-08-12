@@ -6,7 +6,6 @@ from imswitch.imcommon.model import initLogger
 
 import collections
 
-
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -24,19 +23,18 @@ import matplotlib.pyplot as plt
 
 from devwraps.thorcam import ThorCam
 
+
 class TriggerMode:
     SOFTWARE = 'Software Trigger'
     HARDWARE = 'Hardware Trigger'
     CONTINUOUS = 'Continuous Acqusition'
 
+
 class ThorCamera:
-    def __init__(self,cameraNo=None, exposure_time = 10000, gain = 0, blacklevel=100, binning=2):
+    def __init__(self,cameraNo=None, exposure_time=10000, gain=0, blacklevel=100, binning=2):
         super().__init__()
         self.__logger = initLogger(self, tryInheritParent=True)
 
-
-
-        
         # many to be purged
         self.model = "ThorCamera"
         self.shape = (0, 0)
@@ -57,20 +55,19 @@ class ThorCamera:
         NBuffer = 60
         self.frame_buffer = collections.deque(maxlen=NBuffer)
         self.frameid_buffer = collections.deque(maxlen=NBuffer)
-        
-        #%% starting the camera thread
+
+        # starting the camera thread
         self.camera = None
 
         # binning 
         self.binning = binning
 
         self._init_cam(cameraNo=self.cameraNo)
-        
-
+    
     def _init_cam(self, cameraNo=1, callback_fct=None):
         # start camera
         self.is_connected = True
-        
+
         # open the first device
         self.camera = ThorCam()
         cameraNo = self.camera.get_number_of_cameras()
@@ -82,14 +79,14 @@ class ThorCamera:
 
         # set gain
         # not available? self.camera.Gain.set(self.gain)
-        
+
         # set blacklevel
         # not available? self.camera.BlackLevel.set(self.blacklevel)
 
-        # get framesize 
+        # get framesize
         self.SensorHeight = self.camera.shape()[0]
         self.SensorWidth = self.camera.shape()[1]
-        
+
     def start_live(self):
         pass
 
@@ -105,17 +102,17 @@ class ThorCamera:
     def close(self):
         self.camera.close()
         
-    def set_exposure_time(self,exposure_time):
+    def set_exposure_time(self, exposure_time):
         self.exposure_time = exposure_time
         self.camera.set_exposure(self.exposure_time)
 
-    def set_gain(self,gain):
+    def set_gain(self, gain):
         pass
         
-    def set_blacklevel(self,blacklevel):
+    def set_blacklevel(self, blacklevel):
         pass
 
-    def set_pixel_format(self,format):
+    def set_pixel_format(self, format):
         pass
 
     def setBinning(self, binning=1):

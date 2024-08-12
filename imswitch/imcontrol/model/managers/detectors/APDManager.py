@@ -109,6 +109,9 @@ class APDManager(DetectorManager):
         except Exception:
             pass
 
+    def getExposure(self) -> int:
+        return 0
+
     def getLatestFrame(self, is_save=True):
         return self._image
 

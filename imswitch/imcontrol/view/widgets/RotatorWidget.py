@@ -41,22 +41,23 @@ class RotatorWidget(Widget):
         self.pars['AbsPosUnit'+name] = QtWidgets.QLabel(' deg')
 
         self.grid.addWidget(self.pars['Label'+name], self.numPositioners*4, 0)
-        self.grid.addWidget(self.pars['Position'+name], self.numPositioners*4, 1)
-        self.grid.addWidget(self.pars['ForwButton'+name], self.numPositioners*4, 2)
-        self.grid.addWidget(self.pars['BackButton'+name], self.numPositioners*4, 3)
-        self.grid.addWidget(QtWidgets.QLabel('Step'), self.numPositioners*4, 4)
-        self.grid.addWidget(self.pars['RelStepEdit'+name], self.numPositioners*4, 5)
-        self.grid.addWidget(self.pars['RelStepUnit'+name], self.numPositioners*4, 6)
-        self.grid.addWidget(self.pars['SetZeroButton'+name], self.numPositioners*4+1, 2)
-        self.grid.addWidget(self.pars['AbsButton'+name], self.numPositioners*4+1, 3)
-        self.grid.addWidget(QtWidgets.QLabel('Position'), self.numPositioners*4+1, 4)
-        self.grid.addWidget(self.pars['AbsPosEdit'+name], self.numPositioners*4+1, 5)
-        self.grid.addWidget(self.pars['AbsPosUnit'+name], self.numPositioners*4+1, 6)
-        self.grid.addWidget(self.pars['SpeedEdit'+name], self.numPositioners*4+2, 0)
-        self.grid.addWidget(self.pars['SpeedUnit'+name], self.numPositioners*4+2, 1)
-        self.grid.addWidget(self.pars['SetSpeedButton'+name], self.numPositioners*4+2, 2)
-        self.grid.addWidget(self.pars['StartMoveButton'+name], self.numPositioners*4+2, 3)
-        self.grid.addWidget(self.pars['StopMoveButton'+name], self.numPositioners*4+2, 4)
+        self.grid.addWidget(self.pars['Position'+name], self.numPositioners*4+1, 0)
+        self.grid.addWidget(self.pars['ForwButton'+name], self.numPositioners*4+1, 1)
+        self.grid.addWidget(self.pars['BackButton'+name], self.numPositioners*4+1, 2)
+        self.grid.addWidget(QtWidgets.QLabel('Step'), self.numPositioners*4+1, 3)
+        self.grid.addWidget(self.pars['RelStepEdit'+name], self.numPositioners*4+1, 4)
+        self.grid.addWidget(self.pars['RelStepUnit'+name], self.numPositioners*4+1, 5)
+
+        self.grid.addWidget(self.pars['SetZeroButton'+name], self.numPositioners*4+2, 1)
+        self.grid.addWidget(self.pars['AbsButton'+name], self.numPositioners*4+2, 2)
+        self.grid.addWidget(QtWidgets.QLabel('Position'), self.numPositioners*4+2, 3)
+        self.grid.addWidget(self.pars['AbsPosEdit'+name], self.numPositioners*4+2, 4)
+        self.grid.addWidget(self.pars['AbsPosUnit'+name], self.numPositioners*4+2, 5)
+        self.grid.addWidget(self.pars['SpeedEdit'+name], self.numPositioners*4+3, 0)
+        self.grid.addWidget(self.pars['SpeedUnit'+name], self.numPositioners*4+3, 1)
+        self.grid.addWidget(self.pars['SetSpeedButton'+name], self.numPositioners*4+3, 2)
+        self.grid.addWidget(self.pars['StartMoveButton'+name], self.numPositioners*4+3, 3)
+        self.grid.addWidget(self.pars['StopMoveButton'+name], self.numPositioners*4+3, 4)
 
         # Connect signals
         self.pars['ForwButton'+name].clicked.connect(lambda: self.sigMoveRelClicked.emit(name, 1))
@@ -67,7 +68,7 @@ class RotatorWidget(Widget):
         self.pars['StartMoveButton'+name].clicked.connect(lambda: self.sigStartContMovClicked.emit(name))
         self.pars['StopMoveButton'+name].clicked.connect(lambda: self.sigStopContMovClicked.emit(name))
         
-        if self.numPositioners == 0:
+        if self.numPositioners != 0:
             # Add space item to make the grid look nicer
             self.grid.addItem(
                 QtWidgets.QSpacerItem(10, 10,

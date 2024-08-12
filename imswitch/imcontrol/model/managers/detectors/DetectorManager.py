@@ -2,11 +2,25 @@ import traceback
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
+from enum import Enum
 
 import numpy as np
 
 from imswitch.imcommon.framework import Signal, SignalInterface
 from imswitch.imcommon.model import initLogger
+
+
+class ExposureTimeToUs(Enum):
+    """ Exposure time units to microseconds conversion factors. """
+    ns = 1e-3
+    us = 1
+    ms = 1e3
+    s = 1e6
+
+    @classmethod
+    def convert(cls, exposureTime: float, unit: str) -> int:
+        """ Convert exposure time to microseconds. """
+        return int(exposureTime * cls[unit].value)
 
 
 @dataclass
@@ -105,9 +119,10 @@ class DetectorManager(SignalInterface):
 
         self.__forAcquisition = detectorInfo.forAcquisition
         self.__forFocusLock = detectorInfo.forFocusLock
-        if not detectorInfo.forAcquisition and not detectorInfo.forFocusLock:
-            raise ValueError('At least one of forAcquisition and forFocusLock must be set in'
-                             ' DetectorInfo.')
+        self.__forOpt = detectorInfo.forOpt
+        if not detectorInfo.forAcquisition and not detectorInfo.forFocusLock and not detectorInfo.forOpt:
+            raise ValueError('At least one of forAcquisition/forFocusLock/forOpt'
+                             ' must be set in DetectorInfo.')
 
         self.setBinning(supportedBinnings[0])
 
@@ -125,7 +140,6 @@ class DetectorManager(SignalInterface):
         If the parameter doesn't exist, i.e. the parameters field doesn't
         contain a key with the specified parameter name, an AttributeError will
         be raised. """
-
         if name not in self.__parameters:
             raise AttributeError(f'Non-existent parameter "{name}" specified')
 
@@ -136,7 +150,8 @@ class DetectorManager(SignalInterface):
         """ Sets the detector's binning. """
 
         if binning not in self.__supportedBinnings:
-            raise ValueError(f'Specified binning value "{binning}" not supported by the detector')
+            raise ValueError(f'Specified binning value "{binning}" not'
+                             ' supported by the detector')
 
         self._binning = binning
 
@@ -207,6 +222,11 @@ class DetectorManager(SignalInterface):
         return self.__forFocusLock
 
     @property
+    def forOpt(self) -> bool:
+        """ Whether the detector is used for OPT acquisition. """
+        return self.__forOpt
+
+    @property
     def scale(self) -> List[int]:
         """ The pixel sizes in micrometers, all axes, in the format high dim
         to low dim (ex. [..., 'Z', 'Y', 'X']). Override in managers handling
@@ -223,6 +243,11 @@ class DetectorManager(SignalInterface):
     @abstractmethod
     def crop(self, hpos: int, vpos: int, hsize: int, vsize: int) -> None:
         """ Crop the frame read out by the detector. """
+        pass
+
+    @abstractmethod
+    def getExposure(self) -> int:
+        """ Returns the current exposure time in microseconds. """
         pass
 
     @abstractmethod

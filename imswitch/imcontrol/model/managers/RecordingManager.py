@@ -216,7 +216,6 @@ class RecordingManager(SignalInterface):
         with the specified name prefix, save mode, file format and attributes
         to save to the capture per detector. """
         acqHandle = self.__detectorsManager.startAcquisition()
-
         try:
             images = {}
 

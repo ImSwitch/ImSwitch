@@ -3,9 +3,12 @@ import numpy as np
 from .basesignaldesigners import ScanDesigner
 from imswitch.imcommon.model import initLogger
 
+
 class BetaScanDesigner(ScanDesigner):
     """ Scan designer for X/Y/Z stages that move a sample.
+
     Designer params:
+
     - ``return_time`` -- time to wait between lines for the stage to return to
       the first position of the next line, in seconds.
     """

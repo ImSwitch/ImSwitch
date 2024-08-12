@@ -46,13 +46,13 @@ class LEDMatrixController(ImConWidgetController):
 
     def setSpecial1(self):
         SpecialPattern1 = self._master.LEDMatrixsManager._subManagers['ESP32 LEDMatrix'].SpecialPattern1.copy()
-        self.setSpecial(SpecialPattern1, intensity = intensity)
         if not IS_HEADLESS: intensity = self._widget.slider.value()
+        self.setSpecial(SpecialPattern1, intensity = intensity)
         
     def setSpecial2(self):
         SpecialPattern2 = self._master.LEDMatrixsManager._subManagers['ESP32 LEDMatrix'].SpecialPattern2.copy()
-        self.setSpecial(SpecialPattern2, intensity = intensity)
         if not IS_HEADLESS: intensity = self._widget.slider.value()
+        self.setSpecial(SpecialPattern2, intensity = intensity)
                 
     @APIExport()
     def setSpecial(self, pattern, intensity = 255, getReturn=False):

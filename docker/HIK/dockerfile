@@ -135,8 +135,21 @@ RUN cd /tmp/ImSwitch && \
      git pull
         #/bin/bash -c "source /opt/conda/bin/activate imswitch && pip install -e /tmp/ImSwitch --no-deps"
 
-# Expose SSH port and HTTP port
-EXPOSE 22 8001
+# Install vsftpd
+RUN apt-get update && apt-get install -y vsftpd
+
+# Configure vsftpd
+RUN echo "listen=YES" >> /etc/vsftpd.conf && \
+    echo "anonymous_enable=YES" >> /etc/vsftpd.conf && \
+    echo "anon_root=/dataset" >> /etc/vsftpd.conf && \
+    echo "local_enable=YES" >> /etc/vsftpd.conf && \
+    echo "write_enable=YES" >> /etc/vsftpd.conf && \
+    echo "chroot_local_user=YES" >> /etc/vsftpd.conf && \
+    echo "allow_writeable_chroot=YES" >> /etc/vsftpd.conf
+
+
+# Expose FTP, SSH port and HTTP port
+EXPOSE  21 22 8001
 
 CMD ["/bin/bash", "-c", "\
     if [ \"$MODE\" = \"terminal\" ]; then \
@@ -146,6 +159,7 @@ CMD ["/bin/bash", "-c", "\
         echo 'Listing external USB storage devices' && \
         ls /media && \
         /usr/sbin/sshd -D & \
+        /usr/sbin/vsftpd /etc/vsftpd.conf & \
         ls /root/ImSwitchConfig && \
         if [ \"$UPDATE_GIT\" = \"true\" ] || [ \"$UPDATE_GIT\" = \"1\" ]; then \
             echo 'Pulling the ImSwitch repository' && \

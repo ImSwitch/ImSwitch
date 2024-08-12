@@ -143,7 +143,7 @@ of a RS232 connection, such as:
 
 The pulses will be directly handled by the National Instruments card and our TTLDesigner.
 
-Optical Projection Tomography (OPT) using rotator stepping
+Optical Projection Tomography (OPT) using stepper motor
 --------------------------------------------------------------------
 contact: `David Palecek (CCMAR, Portugal) <mailto:david@stanka.de>`_, `Teresa Correia (CCMAR, Portugal) <mailto:tmcorreia@ualg.pt>`_
 
@@ -164,7 +164,7 @@ user-friendly access to end-to-end pipeline for the OPT, which consist of these 
 
 All of them can be performed within ImSwitch, since step 2. and 3. are implemented as napari plugins.
 
-Hardware control
+OPT Hardware control
 ^^^^^^^^^^^^^^^^^^^^^^^^
 The setup consists of collimated light-source, diffuser, sample mounted on a rotational stage,
 in the refractive index matched medium and infinity corrected objective imaging the
@@ -229,75 +229,103 @@ Alignment widget
 Rotational axis of the motor shaft as well as the sample needs to be as close to perpendicular to the
 optical axis as possible, while also aligned on the central column of the camera chip.
 Even though the center of rotation (COR) is always corrected for in the reconstruction step, for depth of field
-and resolution reasons it is highly beneficial to have the sample as close to the center of the camera as possible.
+and resolution reasons it is highly beneficial to have the sample as centered on the camera as possible.
 Therefore we provide an alignment widget to help with all these tasks.
 
 Full Example
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 In the full example, we start with motor shaft alignment alone in respect to the camera field of view 
 without the sample. This does not need to be done every time, however tilt of the shaft along the optical 
-axis or in respect of the camera chip is detrimental to the image quality and should be checked from time to time:
+axis or in respect of the camera chip is detrimental to the image quality and should be checked from time to time, 
+depending on the robustness of the sample holder and experimental resolution.
 
-.. figure:: ./images/opt-alignment-shaft01.png
+.. figure:: ./images/new_alignment_shaft01.png
     :width: 600px
     :align: center
+    :name: fig-align-shaft01
 
-    OPT alignment widget with the shaft alignment in progress.
+    OPT alignment widget with the alignment of the centering shaft and its sideways tilt in progress.
 
 #. Make the shaft span vertically most of the camera chip.
 #. Acquire 4 projections by pressing ``Acquire`` button in the ``OPT Alignment`` widget.
 #. Select a row  the slices, if you see a step function in the `merge`, the shaft is off the chip center.
-#. The ``x-shift`` and ``threshold`` allows to figure out the misalignment of the shaft. Shift and reacquire until the H-cuts overlay with 0 x-shift.
+#. The ``x-shift`` and ``threshold`` allows to figure out the misalignment of the shaft.
+#. Shift and reacquire until the H-cuts overlay with 0 x-shift (see details in figure :numref:`fig-align-shaft01`).
 
-#. For the tilt correction, the motor mounted on `Kinematic Platform Base <https://www.thorlabs.com/thorproduct.cfm?partnumber=KM200B/M>`_, which allows for independent alignment of a shaft tilt along the optical axis and perpendicularly to it.
+#. For the tilt correction, the motor is mounted on `Kinematic Platform Base <https://www.thorlabs.com/thorproduct.cfm?partnumber=KM200B/M>`_, which allows for independent alignment of a shaft tilt along the optical axis and perpendicularly to it.
 #. For sideways tilt, alternate between two H-cuts, which are close to the bottom and top of your camera field of view, respectively.
 #. The center pixels of these two H-cuts need to be the same in case of no tilt. Adjust the tilt, and re-acquire until match is achieved.
 
-.. figure:: ./images/opt-alignment-shaft02.png
+Result of the two above procedures is shown in figure :numref:`fig-align-shaft02`.
+
+.. figure:: ./images/new_alignment_shaft02.png
     :width: 600px
     :align: center
+    :name: fig-align-shaft02
 
-    Shaft alignment in respect to tile along the optical axis.
+    Alignment of the shaft tilt along the optical axis.
 
-#. You can approximately check the tilt along the optical axis too. Attach a `rigid flange <https://www.amazon.com/Rigid-Flange-Coupling-Coupler-Connector/dp/B06Y6MSYCS?th=1>`_ to the motor shaft.
+
+You can approximately check the tilt along the optical axis too. The procedure is
+demonstrated in figure :numref:`fig-align-shaft03`.
+#. Attach a `rigid flange <https://www.amazon.com/Rigid-Flange-Coupling-Coupler-Connector/dp/B06Y6MSYCS?th=1>`_ to the motor shaft.
 #. Adjust the height of the flange so that the top edge is close to the central line of the camera.
 #. Change focusing to the front and back edge of the flange.
 #. If the shaft is tilted away from the camera, the flange further from the camera will be clearly visible in the image once brought to focus.
 #. On the other hand, if the shaft is tilted towards the camera, the far-away flange will never be visible.
 #. Adjust the tilt, that the close and far edge of the flange are aligned in height, and perfectly shadowing each other.
 
-Now the motor is perfectly align, however after mounting the sample, the sample needs to be
-centered in respect to both the motor shaft in an analogous procedure as described below.
-
-.. figure:: ./images/opt-alignment-fish.png
+.. figure:: ./images/opt-alignment-shaft02.png
     :width: 600px
     :align: center
+    :name: fig-align-shaft03
 
-    Sample alignment in respect to the motor shaft and the camera chip.
+    Alignment of the shaft tilt along the optical axis.
 
-TODO: IMAGES
-Now we describe the sample and motor COR alignment (not tilts), which does not necessitate a motor shaft in the camera FOV.
-The alignment procedure starts with acquisition of two pairs of counter-projections, ie. 0-180 and 90-270 degrees.
-With perfect alignment, each pair is essentially a mirror images to each other. Property which we take
-advantage of in the following alignment steps:
+Now the motor is perfectly align, however after mounting the sample, the sample needs to be
+centered in respect to both the motor shaft in an analogous procedure as described above.
 
-#. Flip one of counter-projections and overlay horizontal cuts (H-cuts) for user selected camera line.
+.. figure:: ./images/new_alignment_fish01.png
+    :width: 600px
+    :align: center
+    :name: fig-align-fish01
+
+    Sample alignment in respect to the camera chip.
+
+Now we describe the sample and motor COR alignment (not tilts), which, **importantly**, does not
+require the motor shaft in the camera FOV. The alignment procedure starts with acquisition
+of two pairs of counter-projections, ie. 0-180 and 90-270 degrees. With perfect alignment,
+each pair is essentially a mirror images to each other. The property which we take advantage of
+in the following alignment steps:
+
+#. We flip one of counter-projections and overlay horizontal cuts (H-cuts) for user selected camera line.
 #. Use shift in x-direction to align the two images (H-cuts), the metric can be visual inspection, cross-correlation or mean central index calculated using thresholding of the cuts with the `threshold` parameter.
 #. The misalignment from the central camera pixel can be calculated as `pixel_size * x_shift` in micrometers.
 #. Move the motor shaft horizontally and repeat the acquisition until the two images are perfectly aligned.
-#. Only one pair of the counter-projections is needed to align the motor shaft.
+#. Only one pair of the counter-projections is needed to center the motor shaft on the chip.
 
-At this point, the motor shaft is aligned in respect to the camera chip. The next objective is to align
-the sample in respect to the motor shaft. Although the mean pixels for the counter-projections coincide,
-they most probably do not coincide with the center pixel of the camera. Therefore, the sample needs to be
-aligned in respect to the motor shaft.
+At this point, the motor shaft is aligned in respect to the camera chip (figure :numref:`fig-align-fish01`).
+The next objective is to align the sample in respect to the motor shaft. Although the mean pixels for the counter-projections coincide,
+they most probably do not coincide with the center pixel of the camera, which is an indicator that sample is
+not aligned with the motor shaft. See figure :numref:`fig-align-fish02` and the following steps for details.
 
+.. figure:: ./images/new_alignment_fish02.png
+    :width: 600px
+    :align: center
+    :name: fig-align-fish02
+
+    Sample alignment in respect to the motor shaft.
+
+#. For curved sample, select camera line, which is you intend to use for the alignment.
 #. Acquire the counter-projections of the sample.
+#. Use the `threshold` (in percents of the maximum intensity counts) parameter to track the mean position of the sample, while discounting.
+#. Select correct modality for correction, transmission data need to be inverted for correct thresholding.
 #. Move sample in `X` and `Y` direction in respect to the shaft iteratively until the the center pixels of **both** counter-projection pairs are as close to the center camera pixel value as possible.
+#. We use magnets which can be slid in respect to each other for that.
 
-This effectively leads to centering the sample in the center of the reconstructed volume, which leads to
-optimization of the steps for obtaining fully sample OPT dataset, while minimizing required DoF for the
-imaging at the same time. Use the `threshold` (in percents of the maximum intensity counts) parameter to calculate mean position of the sample and the background camera counts are under the threshold.
+This effectively leads to centering the sample in the center of the reconstructed volume, which results in
+optimization of the minimum steps for obtaining fully sample OPT dataset, while minimizing required DoF for the
+imaging at the same time. 
 
 
 OPT acquisition
@@ -382,7 +410,8 @@ Live reconstruction is also available, which will show the reconstructed slice p
 
 Napari OPT preprocessing module (`OPT handler <https://www.napari-hub.org/plugins/napari-opt-handler>`_)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Download  `OPT preprocessing`  napari plugin from `napari-hub <https://www.napari-hub.org/plugins/napari-opt-handler>`_ 
+contact: `David Palecek <mailto: david@stanka.de>`_, `Teresa Correia (CCMAR, Portugal) <mailto:tmcorreia@ualg.pt>`_
+Download  `OPT preprocessing`  napari plugin from `napari-hub <https://www.napari-hub.org/plugins>`_ 
 or `PyPI <https://pypi.org/project/napari-opt-handler/>`_. This plugin allows you to pre-process the OPT data
 before final reconstruction step. So far it provides following functionalities which are documented in detail
 in the plugin documentation:
@@ -396,24 +425,26 @@ in the plugin documentation:
 * Binning
 * log transformation (for transmission or visualization purposes)
 
-In case you `did not` select ``noRam`` acquisition, the plugin is designed to process the 
-acquired OPT stack with the corrections which are either in separate layers, or can be loaded separately.
+Any subset of pre-processing steps is valid and should be functional. Correction images are in separate layers, and can be loaded
+from any napari compatible files, as well as the OPT data itself.
 
 Please open feature requests or issues on the plugin `github page <https://github.com/QBioImaging/napari-opt-handler/issues>`_.
 
 
 Napari deep learning reconstruction (`ToMoDL <https://www.napari-hub.org/plugins/napari-tomodl>`_)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-contact: `Marcos Obando <mailto: Marcos.Obando@cwi.nl>`_, `Teresa Correia (CCMAR, Portugal) <mailto:tmcorreia@ualg.pt>`_
+contact: `Marcos Obando (CWI) <mailto: Marcos.Obando@cwi.nl>`_, `Teresa Correia (CCMAR, Portugal) <mailto:tmcorreia@ualg.pt>`_
 
 For the reconstruction of the OPT data, we provide a deep learning reconstruction plugin for Napari, which
 includes also standard Filter Back Projection (FBP) reconstruction. The plugin is available at
-`napari-hub <https://www.napari-hub.org/plugins/napari-tomodl>`_. The plugin preprocessing steps
-partially overlap with the OPT preprocessing plugin, but the reconstruction reconstruction is the
+`napari-hub <https://www.napari-hub.org/plugins>`_. The plugin preprocessing steps
+partially overlap with the OPT preprocessing plugin, but the reconstruction is the
 main focus of this plugin. Please open issues or feature requests on the `ToMoDL github repo <https://github.com/obandomarcos/ToMoDL>`_.
 
 * COR axis alignment
-* Volume reshaping (binning)
-* Removing circular edge from the acquisition
+* Volume reshaping (interpolation on desired shape)
+* Clip reconstruction to the circular edge
+* Batch processing
+* 2D or 3D reconstruction
 * filtering
 * Reconstruction method (with CPU and GPU support)

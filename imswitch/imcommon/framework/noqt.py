@@ -35,10 +35,11 @@ class Thread(threading.Thread):
 
     def run(self):
         while not self._stop_event.is_set():
-            # Your thread code here
-            pass
+            if self._target:
+                self._target()
+                break  
 
-    def quit(self) -> None:
+    def quit(self, timeout=None) -> None:
         self._stop_event.set()
 
     def wait(self, timeout=None) -> None:

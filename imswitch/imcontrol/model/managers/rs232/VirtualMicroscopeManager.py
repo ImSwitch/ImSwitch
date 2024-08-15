@@ -212,6 +212,9 @@ class Camera:
                 light_intensity=intensity,
                 defocusPSF=defocusPSF,
             )
+            
+    def getLastChunk(self):
+        return [self.getLast()]
 
     def setPropertyValue(self, propertyName, propertyValue):
         pass

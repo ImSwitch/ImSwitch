@@ -58,7 +58,7 @@ class RecordingController(ImConWidgetController):
             self._master.detectorsManager.execOnAll(lambda c: c.model,
                                                     condition=lambda c: c.forAcquisition)
         )
-        self._widget.setsaveFormat(SaveFormat.HDF5.value)
+        self._widget.setsaveFormat(SaveFormat.TIFF.value)
         self._widget.setSnapSaveMode(SaveMode.Disk.value)
         self._widget.setSnapSaveModeVisible(self._setupInfo.hasWidget('Image'))
 
@@ -245,24 +245,25 @@ class RecordingController(ImConWidgetController):
         self._commChannel.sigRunScan.emit(isFirstLapse, not isFinalLapse)
 
     def recordingStarted(self):
-        self._widget.setFieldsEnabled(False)
+        if not IS_HEADLESS: self._widget.setFieldsEnabled(False)
 
     def recordingCycleEnded(self):
-        if (self._widget.isRecButtonChecked() and self.recMode == RecMode.ScanLapse and
+        if (self.recording and self.recMode == RecMode.ScanLapse and
                 0 < self.lapseCurrent + 1 < self.lapseTotal):
             self.lapseCurrent += 1
-            self._widget.updateRecLapseNum(self.lapseCurrent)
+            if not IS_HEADLESS: self._widget.updateRecLapseNum(self.lapseCurrent)
             self.timer = Timer(singleShot=True)
             self.timer.timeout.connect(self.nextLapse)
             self.timer.start(int(self._widget.getTimelapseFreq() * 1000))
         else:
             self.recording = False
             self.lapseCurrent = -1
-            self._widget.updateRecFrameNum(0)
-            self._widget.updateRecTime(0)
-            self._widget.updateRecLapseNum(0)
-            self._widget.setRecButtonChecked(False)
-            self._widget.setFieldsEnabled(True)
+            if not IS_HEADLESS: 
+                self._widget.updateRecFrameNum(0)
+                self._widget.updateRecTime(0)
+                self._widget.updateRecLapseNum(0)
+                self._widget.setRecButtonChecked(False)
+                self._widget.setFieldsEnabled(True)
 
     def scanDone(self):
         self.doneScan = True
@@ -346,7 +347,10 @@ class RecordingController(ImConWidgetController):
 
     def getFileName(self):
         """ Gets the filename of the data to save. """
-        filename = self._widget.getCustomFilename()
+        if IS_HEADLESS: 
+            filename =  time.strftime('%Hh%Mm%Ss')+"_ImSwitch_ImageFile"
+        else:
+            filename = self._widget.getCustomFilename()
         if filename is None:
             filename = time.strftime('%Hh%Mm%Ss')
         return filename
@@ -465,11 +469,8 @@ class RecordingController(ImConWidgetController):
             self.stop_stream()
             return "stream stopped"
 
-
-
-
-
     #@app.post("/execute-function/")
+    ''' TODO: Maybe a little bit of a security risk, but it's a nice feature
     @APIExport(runOnUIThread=False)
     def executeFunction(self, code: str):
         try:
@@ -487,7 +488,9 @@ class RecordingController(ImConWidgetController):
         except Exception as e:
             self._logger.error(e)
             return HTTPException(detail=str(e), status_code=400)
-
+    '''
+    
+    
     @APIExport(runOnUIThread=False)
     #@app.get("/get-variable/{variable_name}")
     def getVariable(self, variable_name: str):
@@ -556,14 +559,51 @@ class RecordingController(ImConWidgetController):
         return Response(im_bytes, headers=headers, media_type='image/png')
 
     @APIExport(runOnUIThread=True)
-    def startRecording(self) -> None:
+    def startRecording(self, mSaveFormat: int = SaveFormat.TIFF) -> None:
         """ Starts recording with the set settings to the set file path. """
-        self._widget.setRecButtonChecked(True)
+        mSaveFormat = SaveFormat(mSaveFormat)
+        if not IS_HEADLESS:
+            self._widget.setRecButtonChecked(True)
+        else:
+            # we probably call from the FASTAPI server
+            if self.recording: # Already recording
+                return
+
+            timeStamp = datetime.datetime.now().strftime("%Y_%m_%d-%I-%M-%S_%p")
+            folder = os.path.join(dirtools.UserFileDirs.Data, 'recordings', timeStamp)
+            if not os.path.exists(folder):
+                os.makedirs(folder)
+            time.sleep(0.01)
+            self.savename = os.path.join(folder, self.getFileName()) + '_rec'
+
+            detectorsBeingCaptured = self.getDetectorNamesToCapture()
+            self.recMode = RecMode.UntilStop
+            self.recordingArgs = {
+                'detectorNames': detectorsBeingCaptured,
+                'recMode': self.recMode,
+                'savename': self.savename,
+                'saveMode': SaveMode(1), # Disk
+                'saveFormat': mSaveFormat, # TIFF
+                'attrs': {detectorName: self._commChannel.sharedAttrs.getHDF5Attributes()
+                          for detectorName in detectorsBeingCaptured},
+            }
+            self._master.recordingManager.startRecording(**self.recordingArgs)
+            self.recording = True
+            self.endedRecording = False
+
+            
 
     @APIExport(runOnUIThread=True)
     def stopRecording(self) -> None:
         """ Stops recording. """
-        self._widget.setRecButtonChecked(False)
+        if not IS_HEADLESS:
+            self._widget.setRecButtonChecked(True)
+        else:    
+            self.recording = False
+            self.endedRecording = True
+            if self.recMode == RecMode.ScanLapse and self.lapseCurrent != -1:
+                self._commChannel.sigAbortScan.emit()
+            self._master.recordingManager.endRecording()            
 
     @APIExport(runOnUIThread=True)
     def setRecModeSpecFrames(self, numFrames: int) -> None:

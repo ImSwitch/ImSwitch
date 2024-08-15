@@ -194,14 +194,14 @@ class RecordingManager(SignalInterface):
         self._memRecordings = {}  # { filePath: bytesIO }
         self.__detectorsManager = detectorsManager
         self.__record = False
-        self.__thread = Thread()
         if not IS_HEADLESS: # TODO: Merge the two RecordingWorkers
+            self._thread = Thread()
             self.__recordingWorker = RecordingWorker(self)
-            self.__recordingWorker.moveToThread(self.__thread)
-            self.__thread.started.connect(self.__recordingWorker.run)
+            self.__recordingWorker.moveToThread(self._thread)
+            self._thread.started.connect(self.__recordingWorker.run)
         else:
             self.__recordingWorker = RecordingWorkerNoQt(self)
-            self.__recordingWorker.moveToThread(self.__thread)
+            self._thread = Thread(target=self.__recordingWorker.run)
 
     def __del__(self):
         self.endRecording(emitSignal=False, wait=True)
@@ -240,7 +240,9 @@ class RecordingManager(SignalInterface):
         self.__recordingWorker.singleLapseFile = singleLapseFile
         self.__detectorsManager.execOnAll(lambda c: c.flushBuffers(),
                                           condition=lambda c: c.forAcquisition)
-        self.__thread.start()
+        if IS_HEADLESS:
+            self._thread = Thread(target=self.__recordingWorker.run) # TODO: Merge the two RecordingWorkers
+        self._thread.start()
 
     def endRecording(self, emitSignal=True, wait=True):
         """ Ends the current recording. Unless emitSignal is false, the
@@ -253,11 +255,11 @@ class RecordingManager(SignalInterface):
         if self.__record:
             self.__logger.info('Stopping recording')
         self.__record = False
-        self.__thread.quit()
+        self._thread.quit()
         if emitSignal:
             self.sigRecordingEnded.emit()
         if wait:
-            self.__thread.wait()
+            self._thread.wait()
 
     def snap(self, detectorNames=None, savename="", saveMode=SaveMode.Disk, saveFormat=SaveFormat.TIFF, attrs=None):
         """ Saves an image with the specified detectors to a file
@@ -685,6 +687,7 @@ class RecordingWorkerNoQt(Worker):
         self.__logger = initLogger(self)
 
     def run(self):
+        self.__logger.info('Recording worker NoQT started')
         acqHandle = self.__recordingManager.detectorsManager.startAcquisition()
         try:
             self._record()
@@ -692,10 +695,11 @@ class RecordingWorkerNoQt(Worker):
         finally:
             self.__recordingManager.detectorsManager.stopAcquisition(acqHandle)
 
-    def moveToThread(self, *args, **kwargs):
-        pass
-    
+    def moveToThread(self, thread) -> None:
+        return super().moveToThread(thread)
+            
     def _record(self):
+        self.__logger.info('Recording started in mode: ' + str(self.recMode))
         if self.saveFormat == SaveFormat.HDF5 or self.saveFormat == SaveFormat.ZARR:
             files, fileDests, filePaths = self._getFiles()
 
@@ -761,6 +765,7 @@ class RecordingWorkerNoQt(Worker):
                 fourcc = cv2.VideoWriter_fourcc(*'mp4v')
                 fileExtension = str(self.saveFormat.name).lower()
                 filePath = self.__recordingManager.getSaveFilePath(f'{self.savename}_{detectorName}.{fileExtension}')
+                self.__logger.debug("Saving Video to file: " + filePath)
                 filenames[detectorName] = filePath
                 datasets[detectorName] = cv2.VideoWriter(filePath, fourcc, 20.0, shapes[detectorName])
                 #datasets[detectorName] = cv2.VideoWriter(filePath, cv2.VideoWriter_fourcc(*'MJPG'), 10, shapes[detectorName])

@@ -198,9 +198,6 @@ class LVWorkerNOQT(Worker):
             )
             sleep(self._updatePeriod / 1000.0)
 
-    def moveToThread(self):
-        pass
-
     def stop(self):
         self._stop_event.set()
 

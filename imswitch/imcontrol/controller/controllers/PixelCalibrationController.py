@@ -14,7 +14,7 @@ from ..basecontrollers import ImConWidgetController
 from imswitch.imcommon.framework import Signal, Thread, Worker, Mutex, Timer
 from imswitch.imcontrol.model import configfiletools
 import time
-import imswitch
+from imswitch import IS_HEADLESS
 
 from fractions import Fraction
 from uuid import UUID
@@ -57,7 +57,7 @@ class PixelCalibrationController(LiveUpdatedController):
         allDetectorNames = self._master.detectorsManager.getAllDeviceNames()
         self.detector = self._master.detectorsManager[allDetectorNames[0]]
 
-        if not imswitch.IS_HEADLESS:
+        if not IS_HEADLESS:
             # Connect PixelCalibrationWidget signals
             #self._widget.PixelCalibrationLabelInfo.clicked.connect()
             self._widget.PixelCalibrationSnapPreviewButton.clicked.connect(self.snapPreview)

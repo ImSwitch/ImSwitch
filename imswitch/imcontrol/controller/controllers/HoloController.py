@@ -13,7 +13,7 @@ from imswitch.imcommon.model import initLogger
 from ..basecontrollers import LiveUpdatedController
 import threading
 import time
-import imswitch
+from imswitch import IS_HEADLESS
 
 '''
 try:
@@ -74,7 +74,7 @@ class HoloController(LiveUpdatedController):
         # Connect CommunicationChannel signals
         self._commChannel.sigUpdateImage.connect(self.update)
 
-        if imswitch.IS_HEADLESS:
+        if IS_HEADLESS:
             return
         # Connect HoloWidget signals
         self._widget.sigShowInLineToggled.connect(self.setShowInLineHolo)
@@ -234,10 +234,12 @@ class HoloController(LiveUpdatedController):
             self.reconstructionMode = mode
 
         def reconholo(self, mimage, PSFpara, N_subroi=1024, pixelsize=1e-3, dz=50e-3):
+            '''
             Main.xs = [1, 2, 3]
             Main.mimage = mimage
             print(Main.eval("sin.(xs)"))
             print(Main.eval("sin.(mimage)"))
+            '''
             # FIXME: @Aaron, you can change this code to have yours instead
             if self.reconstructionMode == "offaxis" and self.CCCenter is not None:
                 mimage = np.sqrt(nip.image(mimage.copy()))  # get e-field

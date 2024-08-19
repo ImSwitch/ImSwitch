@@ -3,6 +3,7 @@ from typing import Any, List, Tuple
 
 import numpy as np
 
+from imswitch import IS_HEADLESS
 from imswitch.imcommon.model import APIExport
 from imswitch.imcontrol.model import configfiletools
 from imswitch.imcontrol.view import guitools as guitools
@@ -39,11 +40,12 @@ class SettingsController(ImConWidgetController):
         if not self._master.detectorsManager.hasDevices():
             return
 
+        if IS_HEADLESS: return
         # Set up detectors
         for dName, dManager in self._master.detectorsManager:
             if not dManager.forAcquisition:
                 continue
-
+            
             self._widget.addDetector(
                 dName, dManager.model, dManager.parameters, dManager.actions,
                 dManager.supportedBinnings, self._setupInfo.rois
@@ -63,7 +65,6 @@ class SettingsController(ImConWidgetController):
                   condition=lambda c: c.forAcquisition)
 
         self.detectorSwitched(self._master.detectorsManager.getCurrentDetectorName())
-
         self.updateSharedAttrs()
 
         # Connect CommunicationChannel signals
@@ -310,9 +311,13 @@ class SettingsController(ImConWidgetController):
 
     def updateBinning(self):
         """ Update a new binning to the detector. """
-        self.getDetectorManagerFrameExecFunc()(
-            lambda c: c.setBinning(int(self.allParams[c.name].binning.value()))
-        )
+        def set_binning(c):
+            if type(self.allParams[c.name].binning.value())!=int:
+                c.setBinning(1)
+            else:
+                c.setBinning(int(self.allParams[c.name].binning.value()))
+
+        self.getDetectorManagerFrameExecFunc()(set_binning)        
         self.updateSharedAttrs()
 
     def updateParamsFromDetector(self, *, detector):

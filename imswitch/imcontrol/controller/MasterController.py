@@ -1,4 +1,6 @@
 from imswitch.imcommon.model import VFileItem, initLogger
+from imswitch import IS_HEADLESS
+
 import pkg_resources
         
 from imswitch.imcontrol.model import (
@@ -34,6 +36,7 @@ class MasterController:
         self.lasersManager = LasersManager(self.__setupInfo.lasers,
                                            **lowLevelManagers)
         self.positionersManager = PositionersManager(self.__setupInfo.positioners,
+                                                     self.__commChannel,
                                                      **lowLevelManagers)
         self.LEDMatrixsManager = LEDMatrixsManager(self.__setupInfo.LEDMatrixs,
                                            **lowLevelManagers)
@@ -120,8 +123,11 @@ class MasterController:
         self.recordingManager.sigRecordingFrameNumUpdated.connect(cc.sigUpdateRecFrameNum)
         self.recordingManager.sigRecordingTimeUpdated.connect(cc.sigUpdateRecTime)
         self.recordingManager.sigMemorySnapAvailable.connect(cc.sigMemorySnapAvailable)
-        self.recordingManager.sigMemoryRecordingAvailable.connect(self.memoryRecordingAvailable)
-
+        if IS_HEADLESS:
+            self.recordingManager.sigMemoryRecordingAvailable.connect(self.memoryRecordingAvailable, check_nargs=False) 
+        else:
+            self.recordingManager.sigMemoryRecordingAvailable.connect(self.memoryRecordingAvailable) 
+            
         self.slmManager.sigSLMMaskUpdated.connect(cc.sigSLMMaskUpdated)
         self.simManager.sigSIMMaskUpdated.connect(cc.sigSIMMaskUpdated)
 

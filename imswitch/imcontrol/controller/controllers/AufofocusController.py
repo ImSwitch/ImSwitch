@@ -1,4 +1,4 @@
-import imswitch
+from imswitch import IS_HEADLESS
 
 import time
 
@@ -51,7 +51,7 @@ class AutofocusController(ImConWidgetController):
         self.sigImageReceived.connect(self.displayImage)
         
         # Connect AutofocusWidget buttons
-        if not imswitch.IS_HEADLESS: # TODO: We need to have signals instead!
+        if not IS_HEADLESS: # TODO: We need to have signals instead!
             self._widget.focusButton.clicked.connect(self.focusButton)
             self._commChannel.sigAutoFocus.connect(self.autoFocus)
 
@@ -75,7 +75,6 @@ class AutofocusController(ImConWidgetController):
     @APIExport(runOnUIThread=True)
     # Update focus lock
     def autoFocus(self, rangez=100, resolutionz=10, defocusz=0):
-
         '''
         The stage moves from -rangez...+rangez with a resolution of resolutionz
         For every stage-position a camera frame is captured and a contrast curve is determined

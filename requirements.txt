@@ -5,9 +5,9 @@ h5py >= 3
 pyvisa-py==0.4.1
 lantzdev[qt] >= 0.5.2
 luddite >= 1
-napari[pyqt5]
+napari[pyqt5]==0.4.19
 nidaqmx >= 0.5.7
-numpy >= 1.19
+numpy == 1.23.5
 packaging >= 19
 psutil >= 5.4.8
 PyQt5 >= 5.15.2
@@ -18,7 +18,7 @@ QDarkStyle >= 3
 QScintilla >= 2.12
 qtpy >= 1.9
 requests >= 2.25
-scikit-image >= 0.18
+scikit-image >= 0.19.2
 Send2Trash >= 1.8
 tifffile >= 2020.11.26
 ome_zarr >= 0.6.1
@@ -28,10 +28,19 @@ uvicorn[standard] >= 0.19.0
 matplotlib >= 3.6
 websockets >= 10.0
 websocket-client >= 1.2
-zeroconf >= 0.30
 opencv-python
 imjoy_rpc
 imjoy
 aiortc >= 1.3.0
 juliacall
 UC2-REST
+python-multipart >= 0.0.5
+jupyter
+rpyc >= 5.0.0
+tk >= 0.1.0
+psygnal==0.11.1
+piexif >= 1.1.3
+NanoImagingPack==2.1.3.dev1
+ashlarUC2
+pydantic >= 1.9.0
+

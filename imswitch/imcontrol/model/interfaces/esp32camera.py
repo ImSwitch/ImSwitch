@@ -38,6 +38,7 @@ class CameraESP32Cam:
         
     def put_frame(self, frame):
         self.frame = frame
+        self.frame = cv2.resize(self.frame, (self.SensorWidth, self.SensorHeight))
         return frame
 
     def start_live(self):
@@ -256,7 +257,7 @@ class ESP32Camera(object):
 
     def start_stream(self, callback_fct = None):
         # Create and launch a thread    
-        self.stream_url = "http://"+self.host+":81/stream.mjpeg"
+        self.stream_url = "http://"+self.host+":81"
         
         self.is_stream = True
         self.frame_receiver_thread = Thread(target = self.getframes, args=(self.stream_url,), daemon=True)

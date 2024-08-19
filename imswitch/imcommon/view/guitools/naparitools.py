@@ -785,9 +785,12 @@ class VispyCrosshairVisual(VispyBaseVisual):
 
         self._nodes = [self.node]
 
-        canvas.connect(self.on_mouse_press)
-        canvas.connect(self.on_mouse_move)
-        canvas.connect(self.on_mouse_release)
+        try:
+            canvas.connect(self.on_mouse_press)
+            canvas.connect(self.on_mouse_move)
+            canvas.connect(self.on_mouse_release)
+        except Exception as e:
+            print(f'Error connecting to canvas: {e}')
         self._viewer.camera.events.zoom.connect(self._on_zoom_change)
         self._viewer.dims.events.ndisplay.connect(self._on_data_change)
 

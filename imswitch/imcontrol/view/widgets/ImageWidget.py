@@ -69,7 +69,7 @@ class ImageWidget(QtWidgets.QWidget):
         if name not in self.napariViewer.layers:
             self.napariViewer.add_image(im, rgb=isRGB, name=name, blending='additive')
         else:
-            self.imgLayers[name].data = np.squeeze(im)
+            self.napariViewer.layers[name].data = np.squeeze(im)
 
     def getCurrentImageName(self):
         return self.napariViewer.active_layer.name

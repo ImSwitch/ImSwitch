@@ -68,7 +68,14 @@ class OpenCVCamManager(DetectorManager):
         super().__init__(detectorInfo, name, fullShape=fullShape, supportedBinnings=[1],
                          model=model, parameters=parameters, actions=actions, croppable=True)
 
-    def getLatestFrame(self, is_save=False):
+    def getLatestFrame(self, is_save=False, returnFrameNumber=False):
+        if returnFrameNumber:
+            frame, frameNumber = self._camera.getLast(returnFrameNumber=returnFrameNumber)
+            return frame, frameNumber
+        else:
+            frame = self._camera.getLast(returnFrameNumber=returnFrameNumber)
+            return frame
+        
         if is_save:
             return self._camera.getLastChunk()
         else:

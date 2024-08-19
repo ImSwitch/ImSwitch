@@ -164,7 +164,9 @@ class MockCameraTIS:
         else: 
             return np.abs(img)
 
-    def getLast(self, is_resize=False):
+    def getLast(self, is_resize=False, returnFrameNumber=False):
+        if returnFrameNumber:
+            return self.grabFrame(), self.iFrame
         return self.grabFrame()
     
     def getLastChunk(self):

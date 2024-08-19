@@ -1,4 +1,4 @@
-import imswitch
+from imswitch import IS_HEADLESS
 from pyqtgraph.dockarea import Dock, DockArea
 from qtpy import QtCore, QtWidgets
 from imswitch.imcommon.model import dirtools
@@ -6,9 +6,14 @@ from imswitch.imcommon.model import dirtools
 from PyQt5.QtCore import pyqtSlot, QSettings, QTimer, QUrl, Qt
 from PyQt5.QtGui import QCloseEvent
 from PyQt5.QtWidgets import QMainWindow, QMessageBox, QDockWidget, QPlainTextEdit, QTabWidget
-from PyQt5.QtWebEngineWidgets import QWebEngineView as QWebView, QWebEnginePage as QWebPage
-from PyQt5.QtWebEngineCore import QWebEngineUrlRequestInterceptor
-from PyQt5.QtWebEngineWidgets import QWebEngineProfile
+try:
+    from PyQt5.QtWebEngineWidgets import QWebEngineView as QWebView, QWebEnginePage as QWebPage
+    from PyQt5.QtWebEngineWidgets import QWebEngineView as QWebView, QWebEnginePage as QWebPage
+    from PyQt5.QtWebEngineCore import QWebEngineUrlRequestInterceptor
+    from PyQt5.QtWebEngineWidgets import QWebEngineProfile
+    IS_QTWEBENGINE = True
+except:
+    IS_QTWEBENGINE = False
 from PyQt5.QtCore import QSettings, QDir, QObject, pyqtSignal, QUrl
 from PyQt5.QtWidgets import QFileDialog, QMessageBox, QApplication
 
@@ -31,24 +36,26 @@ class ImScrMainView(QtWidgets.QMainWindow):
     sigClosing = QtCore.Signal()
     
     def __init__(self, *args, **kwargs):
+        if not IS_QTWEBENGINE: return
         super().__init__(*args, **kwargs)
         self.setWindowTitle('Notebook')
         
         # Actions in menubar
-        if imswitch.IS_HEADLESS:
+        if IS_HEADLESS:
             return 
         
         # setup application
         python_exec_path = os.path.dirname(sys.executable)
         execname = os.path.join(python_exec_path, 'jupyter-notebook')
 
+        # check if jupyter notebook is installed
         if not testnotebook(execname):
-            while True:
-                QMessageBox.information(None, "Error", "It appears that Jupyter Notebook isn't where it usually is. " +
-                                        "Ensure you've installed Jupyter correctly and then press Ok to " +
-                                        "find the executable 'jupyter-notebook'", QMessageBox.Ok)
-                if testnotebook(execname):
-                    break
+            QMessageBox.information(None, "Error", "It appears that Jupyter Notebook isn't where it usually is. " +
+                                    "Ensure you've installed Jupyter correctly in your current environment "+
+                                    "test it by running  'jupyter-notebook' in your terminal"+ 
+                                    "ImSwitch will run without it now. If you don't wanted to "+
+                                    "use imnotebook module in the firstplace, remove it from the config.json", QMessageBox.Ok)
+            return
                 
         # setup logging
         # try to write to a log file, or redirect to stdout if debugging

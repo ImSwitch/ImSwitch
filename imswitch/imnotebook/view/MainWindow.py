@@ -1,13 +1,17 @@
-import imswitch
+from imswitch import IS_HEADLESS
 from pyqtgraph.dockarea import Dock, DockArea
 from qtpy import QtCore, QtWidgets
 
 from PyQt5.QtCore import pyqtSlot, QSettings, QTimer, QUrl, Qt
 from PyQt5.QtGui import QCloseEvent
 from PyQt5.QtWidgets import QMainWindow, QMessageBox, QDockWidget, QPlainTextEdit, QTabWidget
-from PyQt5.QtWebEngineWidgets import QWebEngineView as QWebView, QWebEnginePage as QWebPage
-from PyQt5.QtWebEngineCore import QWebEngineUrlRequestInterceptor
-from PyQt5.QtWebEngineWidgets import QWebEngineProfile
+try:
+    from PyQt5.QtWebEngineWidgets import QWebEngineView as QWebView, QWebEnginePage as QWebPage
+    from PyQt5.QtWebEngineCore import QWebEngineUrlRequestInterceptor
+    from PyQt5.QtWebEngineWidgets import QWebEngineProfile
+    IS_QTWEBENGINE = True
+except:
+    IS_QTWEBENGINE = False
 from PyQt5.QtCore import QSettings, QDir, QObject, pyqtSignal, QUrl
 from PyQt5.QtWidgets import QFileDialog, QMessageBox, QApplication
 
@@ -38,6 +42,7 @@ class LoggerDock(QDockWidget):
 class MainWindow(QMainWindow):
 
     def __init__(self, parent=None, homepage=None):
+        if not IS_QTWEBENGINE: return
         super(MainWindow, self).__init__(parent)
         self.homepage = homepage
         self.windows = []

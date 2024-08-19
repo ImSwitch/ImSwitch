@@ -2,11 +2,17 @@
 
 [![DOI](https://joss.theoj.org/papers/10.21105/joss.03394/status.svg)](https://doi.org/10.21105/joss.03394)
 
+Our Discord Server:
+
+<a href="https://discord.gg/y4Su9PpEvX">
+<img src="https://cdn.prod.website-files.com/6257adef93867e50d84d30e2/636e0a6918e57475a843f59f_icon_clyde_black_RGB.svg" alt="W3Schools.com" width="100">
+</a>
+
 ``ImSwitch`` is a software solution in Python that aims at generalizing microscope control by using an architecture based on the model-view-presenter (MVP) to provide a solution for flexible control of multiple microscope modalities.
 
 ## News 
 
-🎥 Watch this intro video from Jacopo about ImSwitch on [YouTube](https://www.youtube.com/watch?v=B54QCt5OQPI&ab_channel=Euro-BioImagingCommunication
+🎥 Watch this intro video from Jacopo about ImSwitch on [YouTube](https://www.youtube.com/watch?v=B54QCt5OQPI&ab_channel=Euro-BioImagingCommunication)
 
 ## Statement of need
 
@@ -365,6 +371,7 @@ sudo reboot
 Download the Linux zip (MVS2.1)
 https://www.hikrobotics.com/cn/machinevision/service/download or 
 
+Examples will be in  `/opt/MVS/Samples/aarch64/Python/GrabImage/`
 ```bash
 cd ~/Downloads
 wget https://www.hikrobotics.com/cn2/source/support/software/MVS_STD_GML_V2.1.2_231116.zip

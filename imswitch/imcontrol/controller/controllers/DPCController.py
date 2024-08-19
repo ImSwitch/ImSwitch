@@ -45,22 +45,29 @@ class DPCController(ImConWidgetController):
             return
 
         # define patterns
+        # TODO: Brush up the LEDMatrix manager
         self.nPattern = 4
-        #self.brightfieldPattern = {"0": [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23]}
         self.brightfieldPattern = {"0": [1,2,4,5,6,7,8,9,10,11,13,14]}
         self.allDPCPatternNames = ("top", "bottom", "right", "left")
         if False:
+            # TODO: We need to generalize this interface in a better way
+            #self.brightfieldPattern = {"0": [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23]}
             self.allDPCPatterns = {self.allDPCPatternNames[0]: [0,1,2,7,8,9,10,11,12,21,22,23,24], 
                                     self.allDPCPatternNames[1]: [3,4,5,6,13,14,15,16,17,18,19,20,21,22], 
                                     self.allDPCPatternNames[2]: [0,5,6,7,8,18,19,20,21,22,23,24], 
                                     self.allDPCPatternNames[3]: [1,2,3,4,9,10,11,12,14,15,16]}
             self.nLEDs = 25
         else:        
-            self.allDPCPatterns = {self.allDPCPatternNames[0]: [8,9,10,11,13,14], 
+            '''self.allDPCPatterns = {self.allDPCPatternNames[0]: [8,9,10,11,13,14], 
                         self.allDPCPatternNames[1]: [1,2,4,5,6,7], 
                         self.allDPCPatternNames[2]: [2,4,5,11,10,13], 
                         self.allDPCPatternNames[3]: [1,6,7,8,9,14]}
-            self.nLEDs = 16
+            self.nLEDs = 16'''
+            self.allDPCPatterns = {self.allDPCPatternNames[0]: [41,42,43,44,45,46,47,50,51,52,53,54,59,60,61], 
+                        self.allDPCPatternNames[1]: [25,26,27,28,29,30,31,18,19,20,21,22,11,12,13], 
+                        self.allDPCPatternNames[2]: [13,21,22,29,30,31,37,38,39,45,46,47,53,54,61], 
+                        self.allDPCPatternNames[3]: [11,18,19,25,26,27,33,34,35,41,42,43,50,51,59]}
+            self.nLEDs = 64
         #self._widget.applyChangesButton.clicked.connect(self.applyParams)
         self._widget.startDPCAcquisition.clicked.connect(self.startDPC)
         self._widget.isRecordingButton.clicked.connect(self.toggleRecording)
@@ -367,8 +374,8 @@ class DPCProcessor(object):
             dpc_result_2 = (self.stackToReconstruct[2]-self.stackToReconstruct[3])/(self.stackToReconstruct[2]+self.stackToReconstruct[3])
 
             # display images
-            self.parent.sigDPCProcessorImageComputed.emit(np.angle(np.array(qdpc_result)), "qDPC Reconstruction (Phase)")
-            self.parent.sigDPCProcessorImageComputed.emit(np.abs(np.array(qdpc_result)), "qDPC Reconstruction (Magnitude)")
+            #self.parent.sigDPCProcessorImageComputed.emit(np.angle(np.array(qdpc_result)), "qDPC Reconstruction (Phase)")
+            #self.parent.sigDPCProcessorImageComputed.emit(np.abs(np.array(qdpc_result)), "qDPC Reconstruction (Magnitude)")
             self.parent.sigDPCProcessorImageComputed.emit(np.array(dpc_result_1), "DPC left/right")
             self.parent.sigDPCProcessorImageComputed.emit(np.array(dpc_result_2), "DPC top/bottom")
             self.parent.isReconstructing = False

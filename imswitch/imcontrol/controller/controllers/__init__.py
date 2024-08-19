@@ -12,7 +12,6 @@ from .HistogrammController import HistogrammController
 from .STORMReconController import STORMReconController
 from .HoliSheetController import HoliSheetController
 from .FlowStopController import FlowStopController
-from .FLIMLabsController import FLIMLabsController
 from .ObjectiveRevolverController import ObjectiveRevolverController
 from .TemperatureController import TemperatureController
 from .SquidStageScanController import SquidStageScanController
@@ -43,7 +42,6 @@ from .RotationScanController import RotationScanController
 from .LightsheetController import LightsheetController
 from .WebRTCController import WebRTCController
 from .HyphaController import HyphaController
-from .MockXXController import MockXXController
 from .JetsonNanoController import JetsonNanoController
 from .HistoScanController import HistoScanController
 from .FlatfieldController import FlatfieldController
@@ -56,3 +54,9 @@ from .ULensesController import ULensesController
 from .ViewController import ViewController
 from .TilingController import TilingController
 from .WatcherController import WatcherController
+from .hypha import hypha_storage
+from .hypha import hypha_executor
+from .camera_stage_mapping import camera_stage_calibration_1d
+from .camera_stage_mapping import camera_stage_calibration_2d
+from .camera_stage_mapping import camera_stage_tracker
+from .camera_stage_mapping import correlation_image_tracking

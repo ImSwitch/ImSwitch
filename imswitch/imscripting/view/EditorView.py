@@ -1,6 +1,6 @@
 import uuid
-import imswitch
-if not imswitch.IS_HEADLESS:
+from imswitch import IS_HEADLESS
+if not IS_HEADLESS:
     from PyQt5 import Qsci
 from qtpy import QtCore, QtGui, QtWidgets
 
@@ -146,7 +146,7 @@ class EditorInstanceView(QtWidgets.QWidget):
         """ Sets the text in the editor instance. """
         self.scintilla.setText(text)
 
-if not imswitch.IS_HEADLESS:
+if not IS_HEADLESS:
     class Scintilla(Qsci.QsciScintilla):
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)

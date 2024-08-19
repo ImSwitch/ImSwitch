@@ -15,7 +15,7 @@ from imswitch.imcommon.framework import Signal, Thread, Worker, Mutex, Timer
 from imswitch.imcommon.model import dirtools, initLogger, APIExport
 from skimage.registration import phase_cross_correlation
 from ..basecontrollers import ImConWidgetController
-import imswitch
+from imswitch import IS_HEADLESS
 
 import h5py
 import numpy as np
@@ -24,8 +24,9 @@ import numpy as np
 
 class MCTController(ImConWidgetController):
     """Linked to MCTWidget."""
-    sigImageReceived = Signal(np.ndarray, str)
-    
+
+    sigImageReceived = Signal()
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._logger = initLogger(self)
@@ -70,26 +71,19 @@ class MCTController(ImConWidgetController):
         # select detectors
         allDetectorNames = self._master.detectorsManager.getAllDeviceNames()
         self.detector = self._master.detectorsManager[allDetectorNames[0]]
-        self.detectorWidth, self.detectorHeight = self.detector._camera.SensorWidth, self.detector._camera.SensorHeight
         self.isRGB = self.detector._camera.isRGB
         self.detectorPixelSize = self.detector.pixelSizeUm
         
         # select lasers
         allIlluNames = self._master.lasersManager.getAllDeviceNames()+ self._master.LEDMatrixsManager.getAllDeviceNames()
-        for index, iDevice in enumerate(allIlluNames):
+        for iDevice in allIlluNames:
             try:
-                # laser maanger 
+                # laser maanger
                 self.availableIlliminations.append(self._master.lasersManager[iDevice])
             except:
                 # lexmatrix manager
                 self.availableIlliminations.append(self._master.LEDMatrixsManager[iDevice])
-            # TODO: Not really nice 
-            if index == 0:
-                self._widget.sliderIllu1.setRange(self._master.lasersManager[iDevice].valueRangeMin,self._master.lasersManager[iDevice].valueRangeMax)
-            elif index == 1:
-                self._widget.sliderIllu2.setRange(self._master.lasersManager[iDevice].valueRangeMin,self._master.lasersManager[iDevice].valueRangeMax)
-            elif index == 2:
-                self._widget.sliderIllu3.setRange(self._master.lasersManager[iDevice].valueRangeMin,self._master.lasersManager[iDevice].valueRangeMax)
+              
         # select stage
         try:
             self.positioner = self._master.positionersManager[self._master.positionersManager.getAllDeviceNames()[0]]
@@ -99,7 +93,7 @@ class MCTController(ImConWidgetController):
         self.isMCTrunning = False
 
         # Connect MCTWidget signals
-        if not imswitch.IS_HEADLESS:
+        if not IS_HEADLESS:
             self._widget.mctStartButton.clicked.connect(self.startMCT)
             self._widget.mctStopButton.clicked.connect(self.stopMCT)
             self._widget.mctShowLastButton.clicked.connect(self.showLast)
@@ -129,8 +123,8 @@ class MCTController(ImConWidgetController):
         # get active illuminations 
         self.activeIlluminations = []
         if self.Illu1Value>0: self.activeIlluminations.append(self.availableIlliminations[0])
-        if self.Illu2Value>0: self.activeIlluminations.append(self.availableIlliminations[1])
-        if self.Illu3Value>0: self.activeIlluminations.append(self.availableIlliminations[2])
+        if self.Illu2Value>0 and len(self.availableIlliminations)>1: self.activeIlluminations.append(self.availableIlliminations[1])
+        if self.Illu3Value>0 and len(self.availableIlliminations)>2: self.activeIlluminations.append(self.availableIlliminations[2])
         
         # start the timelapse
         if not self.isMCTrunning and len(self.activeIlluminations)>0:
@@ -138,7 +132,7 @@ class MCTController(ImConWidgetController):
             self.switchOffIllumination()
             
             # GUI updates
-            if not imswitch.IS_HEADLESS:
+            if not IS_HEADLESS:
                 self._widget.mctStartButton.setEnabled(False)
                 self._widget.setMessageGUI("Starting timelapse...")
             
@@ -260,12 +254,15 @@ class MCTController(ImConWidgetController):
         self._commChannel.sigAutoFocus.emit(int(params["valueRange"]), int(params["valueSteps"]))
         self.isAutofocusRunning = True
 
-        while self.isAutofocusRunning:
-            time.sleep(0.1)
-            t0 = time.time()
-            if not self.isAutofocusRunning or time.time()-t0>timeout:
-                self._logger.info("Autofocusing done.")
-                return
+        try:
+            while self.isAutofocusRunning:
+                time.sleep(0.1)
+                t0 = time.time()
+                if not self.isAutofocusRunning or time.time()-t0>timeout:
+                    self._logger.info("Autofocusing done.")
+                    return
+        except Exception as e:
+            self._logger.error(e)
 
 
     def takeTimelapseThread(self, tperiod, nImagesToCapture, 
@@ -293,6 +290,7 @@ class MCTController(ImConWidgetController):
         fileName = self.getSaveFilePath(date=MCTDate,
                                 filename=MCTFilename,
                                 extension=fileExtension)
+        self.detectorWidth, self.detectorHeight = self.detector._camera.SensorWidth, self.detector._camera.SensorHeight
         if self.isRGB:
             init_dims = (1, len(self.activeIlluminations), nZStack, self.detectorWidth, self.detectorHeight, 3) # time, channels, z, y, x, RGB
             max_dims = (None, 3, nZStack, None, None, 3)  # Allow unlimited time points and z slices
@@ -465,22 +463,34 @@ class MCTController(ImConWidgetController):
                     elif mIllumination.name==self.availableIlliminations[2].name:
                         illuValue = self.Illu3Value
                     
-                    # switch on illumination
+                    # change illumination
                     mIllumination.setValue(illuValue)
-                    mIllumination.setEnabled(True, getReturn=True)
-                    time.sleep(self.tWait)
-                    mFrame = self.forceGetNewFrame()
-                    if mFrame is None:
-                        continue
-                    allChannelFrames.append(mFrame.copy())
+                    mIllumination.setEnabled(True)
+                    
+                    # always mmake sure we get a frame that is not the same as the one with illumination off eventually
+                    timeoutFrameRequest = 1 # seconds # TODO: Make dependent on exposure time
+                    cTime = time.time()
+                    frameSync=3
+                    lastFrameNumber=-1
+                    while(1):
+                        # get frame and frame number to get one that is newer than the one with illumination off eventually
+                        mFrame, currentFrameNumber = self.detector.getLatestFrame(returnFrameNumber=True)
+                        if lastFrameNumber==-1:
+                            # first round
+                            lastFrameNumber = currentFrameNumber
+                        if time.time()-cTime> timeoutFrameRequest:
+                            # in case exposure time is too long we need break at one point 
+                            break
+                        if currentFrameNumber <= lastFrameNumber+frameSync:
+                            time.sleep(0.01) # off-load CPU
+                        else:
+                            break
+                    # store frames
+                    allChannelFrames.append(mFrame)
                     
                     # store positions
                     mPositions = self.positioner.getPosition()
                     allPositions.append((mPositions["X"], mPositions["Y"], mPositions["Z"]))
-
-
-                    # switch off illumination
-                    mIllumination.setEnabled(False, getReturn=True)
                     '''
                     elif mIllumination=="LEDMatrix":
                         self.illu.setAll(1, (self.Illu3Value,self.Illu3Value,self.Illu3Value))
@@ -490,10 +500,7 @@ class MCTController(ImConWidgetController):
                     '''
                 allZStackFrames.append(allChannelFrames)
             
-            # diplay image in Napari
-            self.tiledImage = np.array(allZStackFrames)
-            self.sigImageReceived.emit(np.array(self.tiledImage),"MCT Stack")
-
+            
             # ensure all illus are off
             self.switchOffIllumination()
             
@@ -510,6 +517,28 @@ class MCTController(ImConWidgetController):
             if self.zStackEnabled and self.positioner is not None:
                 self.positioner.move(value=(self.initialPositionZ), axis="Z", is_absolute=True, is_blocking=True)
 
+            if self.xyScanEnabled:
+                # lets try to visualize each slice in napari
+                # def setImage(self, im, colormap="gray", name="", pixelsize=(1,1,1)):
+                # construct the tiled image
+                iX = int(np.floor((iXYPos[0]-self.xScanMin) // self.xScanStep))
+                iY = int(np.floor((iXYPos[1]-self.yScanMin) // self.yScanStep))
+                # handle rgb => turn to mono for now
+                ''' FIXME: This is currently not working
+                if len(lastFrame.shape)>2:
+                    lastFrame = np.uint16(np.mean(lastFrame, 0))
+                # add tile to large canvas
+                lastFrameScaled = cv2.resize(lastFrame, None, fx = 1/downScaleFactor, fy = 1/downScaleFactor, interpolation = cv2.INTER_NEAREST)
+                try:
+                    self.tiledImage[int(iY*imageDimensionsDownscaled[1]):int(iY*imageDimensionsDownscaled[1]+imageDimensionsDownscaled[1]),
+                        int(iX*imageDimensionsDownscaled[0]):int(iX*imageDimensionsDownscaled[0]+imageDimensionsDownscaled[0])] = lastFrameScaled
+                except Exception as e:
+                    self._logger.error(e)
+                    self._logger.error("Failed to parse a frame into the tiledImage array")
+                '''
+                self.sigImageReceived.emit() # => displays image
+
+
         # initialize xy coordinates
         if self.xyScanEnabled and self.positioner is not None:
             self.positioner.move(value=(self.initialPosition[0], self.initialPosition[1]), axis="XY", is_absolute=True, is_blocking=True)
@@ -520,24 +549,6 @@ class MCTController(ImConWidgetController):
         # disable motors to prevent overheating
         if self.positioner is not None:
             self.positioner.enalbeMotors(enable=self.positioner.is_enabled)
-
-    def forceGetNewFrame(self, nextNewestFrame = 1, timeoutFrameRequest=1):
-        cTime = time.time()
-        frameRequestNumber = 0
-        lastFrameNumber = -1
-        while(1):
-            # something went wrong while capturing the frame
-            if time.time()-cTime> timeoutFrameRequest:
-                return None
-            mFrame, currentFrameNumber = self.detector.getLatestFrame(returnFrameNumber=True)
-            if currentFrameNumber <= lastFrameNumber:
-                time.sleep(0.01)
-                continue  
-            frameRequestNumber += 1
-            if frameRequestNumber > nextNewestFrame:
-                #print(f"Frame number used for stack: {currentFrameNumber}") 
-                return mFrame
-            lastFrameNumber = currentFrameNumber
 
     def switchOffIllumination(self):
         # switch off all illu sources
@@ -561,7 +572,7 @@ class MCTController(ImConWidgetController):
     def valueIllu1Changed(self, value):
         # turn on current illumination based on slider value
         currIllu = 0
-        self.Illu1Value = value*10 # FIXME: Hardcoded but WHY?!?!?!?!
+        self.Illu1Value = value
         self._widget.mctLabelIllu1.setText('Intensity (Laser 1):'+str(value))
         self.changeValueIlluSlider(currIllu, value)        
         
@@ -591,16 +602,13 @@ class MCTController(ImConWidgetController):
 
         return newPath
 
-    def setAutoFocusIsRunning(self, isRunning):
+    def setAutoFocusIsRunning(self, isRunning: bool):
         # this is set by the AutofocusController once the AF is finished/initiated
         self.isAutofocusRunning = isRunning
 
-    def displayImage(self, stack=None, name=None):
+    def displayImage(self):
         # a bit weird, but we cannot update outside the main thread
-        if stack is None:
-            stack = self.tiledImage
-        if name is None:
-            name = "imageStack"
+        name = "tilescanning"
         self._widget.setImage(np.uint16(self.tiledImage), colormap="gray", name=name, pixelsize=(1,1), translation=(0,0))
 
 
@@ -643,34 +651,31 @@ class HDF5File(object):
             meta_group = file.create_group('Metadata')
 
     def append_data(self, timepoint, frame_data, xyz_coordinates):
-        try:
-            with h5py.File(self.filename, 'a') as file:
-                dset = file['ImageData']
-                meta_group = file['Metadata']
-                
-                # Resize the dataset to accommodate the new timepoint
-                current_size = dset.shape[0]
-                dset.resize(current_size + 1, axis=0)
-                
-                # Add the new frame data
-                try:
-                    if self.isRGB:
-                        dset[current_size, :, :, :, :, :] = np.uint16(frame_data)
-                    else:
-                        dset[current_size, :, :, :, :] = np.uint16(frame_data)
-                except:
-                    # in case X/Y are swapped 
-                    if self.isRGB:
-                        dset[current_size, :, :, :, :, :] = np.transpose(np.uint16(frame_data), (0,1,2,4,3))
-                    else:
-                        dset[current_size, :, :, :, :] = np.transpose(np.uint16(frame_data), (0,1,3,2))
-                                
-                # Add metadata for the new frame
-                for channel, xyz in enumerate(xyz_coordinates):
-                    meta_group.create_dataset(f'Time_{timepoint}_Channel_{channel}', data=np.float32(xyz))
-        except Exception as e:
-            print(e)
-            print("Error saving to HDF5 file.")
+        with h5py.File(self.filename, 'a') as file:
+            dset = file['ImageData']
+            meta_group = file['Metadata']
+            
+            # Resize the dataset to accommodate the new timepoint
+            current_size = dset.shape[0]
+            dset.resize(current_size + 1, axis=0)
+            
+            # Add the new frame data
+            try:
+                if self.isRGB:
+                    dset[current_size, :, :, :, :, :] = np.uint16(frame_data)
+                else:
+                    dset[current_size, :, :, :, :] = np.uint16(frame_data)
+            except:
+                # in case X/Y are swapped 
+                if self.isRGB:
+                    dset[current_size, :, :, :, :, :] = np.transpose(np.uint16(frame_data), (0,1,2,4,3))
+                else:
+                    dset[current_size, :, :, :, :] = np.transpose(np.uint16(frame_data), (0,1,3,2))
+                            
+            # Add metadata for the new frame
+            for channel, xyz in enumerate(xyz_coordinates):
+                meta_group.create_dataset(f'Time_{timepoint}_Channel_{channel}', data=np.float32(xyz))
+
 
 
 '''

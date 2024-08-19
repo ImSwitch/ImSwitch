@@ -9,7 +9,7 @@ from imswitch.imcontrol.view import guitools
 from ..basecontrollers import ImConWidgetController
 from imswitch.imcommon.model import APIExport, dirtools, initLogger
 from datetime import datetime
-import imswitch
+from imswitch import IS_HEADLESS
 class TemperatureController(ImConWidgetController):
     """ Linked to TemperatureWidget."""
 
@@ -41,7 +41,7 @@ class TemperatureController(ImConWidgetController):
         self.temperatureController = self._master.rs232sManager["ESP32"]._esp32.temperature
         
         # Connect TemperatureWidget signals
-        if not imswitch.IS_HEADLESS:
+        if not IS_HEADLESS:
             self._widget.sigPIDToggled.connect(self.setPID)
             self._widget.sigsliderTemperatureValueChanged.connect(self.valueTemperatureValueChanged)
             self._widget.sigShowTemperatureToggled.connect(self.switchTemperatureMonitor)

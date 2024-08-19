@@ -88,8 +88,6 @@ class CommunicationChannel(SignalInterface):
 
     sigSendScanFreq = Signal(float)  # (scanPeriod)
 
-    sigDisplayImageNapari = Signal(str, np.ndarray, bool)  # (layername, image, isRGB)
-
     #sigRequestScannersInScan = Signal()
 
     #sigSendScannersInScan = Signal(object)  # (scannerList)
@@ -117,13 +115,25 @@ class CommunicationChannel(SignalInterface):
     sigSetSyncInMovementSettings = Signal(str, float)  # (rotatorName, position)
 
     sigNewFrame = Signal()
+    
+    # signal to control actions from the ESP32
+    sigESP32Message = Signal(str, str)  # (key, message)
 
     # useq-schema related signals
     sigSetXYPosition = Signal(float, float)
     sigSetZPosition = Signal(float)
     sigSetExposure = Signal(float)
     sigSetSpeed = Signal(float)
-
+    
+    # light-sheet related signals
+    sigStartLightSheet = Signal(float, float, float, str, str, float) # (startX, startY, speed, axis, lightsource, lightsourceIntensity)
+    sigStopLightSheet = Signal()
+    
+    # scanning-related signals
+    sigStartTileBasedTileScanning = Signal(int, int, int, int, int, int, str, int, int, bool, bool, bool) # (numb erTilesX, numberTilesY, stepSizeX, stepSizeY, nTimes, tPeriod, illuSource, initPosX, initPosY, isStitchAshlar, isStitchAshlarFlipX, isStitchAshlarFlipY)
+    sigStopTileBasedTileScanning = Signal()
+    
+    
     @property
     def sharedAttrs(self):
         return self.__sharedAttrs

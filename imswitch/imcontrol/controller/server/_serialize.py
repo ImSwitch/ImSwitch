@@ -85,6 +85,7 @@ def remove_shm_from_resource_tracker():
     """
     from multiprocessing import resource_tracker
 
+
     def fix_register(name, rtype):  # pragma: no cover
         if rtype == "shared_memory":
             return

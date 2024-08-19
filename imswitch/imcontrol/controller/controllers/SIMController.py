@@ -20,7 +20,7 @@ import numpy as np
 from pathlib import Path
 import tifffile
 
-import imswitch
+from imswitch import IS_HEADLESS
 
 from datetime import datetime
 
@@ -71,8 +71,8 @@ isDEBUG = False
 class SIMController(ImConWidgetController):
     """Linked to SIMWidget."""
 
-    sigImageReceived = Signal(np.ndarray, str)
-    sigSIMProcessorImageComputed = Signal(np.ndarray, str)
+    sigImageReceived = Signal(np.ndarray, str, np.float32)
+    
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._logger = initLogger(self)
@@ -86,7 +86,7 @@ class SIMController(ImConWidgetController):
         self.LaserWL = 0
 
         self.simFrameVal = 0
-        self.nsimFrameSyncVal = 3
+        self.nsimFrameSyncVal = 2
 
         # Choose which laser will be recorded
         self.is488 = True
@@ -148,12 +148,9 @@ class SIMController(ImConWidgetController):
         self.SimProcessorLaser1 = SIMProcessor(self, sim_parameters, wavelength=sim_parameters.wavelength_1)
         self.SimProcessorLaser2 = SIMProcessor(self, sim_parameters, wavelength=sim_parameters.wavelength_2)
 
-        # Connect CommunicationChannel signals
-        self.sigSIMProcessorImageComputed.connect(self.displayImage)
-
         self.initFastAPISIM(self._master.simManager.fastAPISIMParams)
 
-        if imswitch.IS_HEADLESS:
+        if IS_HEADLESS:
             return
         self._widget.start_button.clicked.connect(self.startSIM)
         self._widget.stop_button.clicked.connect(self.stopSIM)
@@ -247,9 +244,9 @@ class SIMController(ImConWidgetController):
     def setIlluPatternByID(self, iRot, iPhi):
         self.detector.setIlluPatternByID(iRot, iPhi)
 
-    def displayImage(self, im, name="SIM Reconstruction"):
+    def displayImage(self, im, name="SIM Reconstruction", pixelsize = None):
         """ Displays the image in the view. """
-        self._widget.setImage(im, name=name)
+        self._widget.setImage(im, name=name, pixelsize=pixelsize)
 
     def saveParams(self):
         pass
@@ -267,7 +264,7 @@ class SIMController(ImConWidgetController):
             self.detector.setParameter("buffer_size",-1)
             self.detector.flushBuffers()
 
-
+    
     def startSIM(self):
         #  need to be in trigger mode
         # therefore, we need to stop the camera first and then set the trigger mode
@@ -289,7 +286,7 @@ class SIMController(ImConWidgetController):
         self.simThread.start()
 
     # for timelapse and zstack, check running is still needed also stop
-
+    @APIExport(runOnUIThread=True)
     def startTimelapse(self):
         if self.isPCO:    
             self._commChannel.sigStopLiveAcquisition.emit(True)
@@ -302,15 +299,19 @@ class SIMController(ImConWidgetController):
 
         timePeriod = int(self._widget.period_textedit.text())
         Nframes = int(self._widget.frames_textedit.text())
+        zAntiDrift = int(self._widget.correction_textedit.text())
         self.oldTime = time.time()-timePeriod # to start the timelapse immediately
         iiter = 0
+        self.positioner.enalbeMotors(enable=True)
         # if it is nessary to put timelapse in background
         while iiter < Nframes:
-            if time.time() - self.oldTime > timePeriod:
+            if time.time() - self.oldTime > timePeriod-3:
                 self.oldTime = time.time()
                 self.simThread = threading.Thread(target=self.performSIMTimelapseThread, args=(sim_parameters,), daemon=True)
                 self.simThread.start()
                 iiter += 1
+                time.sleep(3) # move the motor after recording
+                self.positioner.move(zAntiDrift,acceleration = 0, speed=1000)
         self._logger.debug("Timelapse finished")
         self.active = False
         self.lasers[0].setEnabled(False)
@@ -402,15 +403,16 @@ class SIMController(ImConWidgetController):
             else:
                 allZPositions = [0]
 
+            processor = None
             for iColour in range(nColour):
                 # toggle laser
                 if not self.active:
-                    if len(allZPositions)!=1:
+                    if len(allZPositions)!=1: # TODO: maybe this is the blocking line
                         self.positioner.move(value=zPosInitially, axis="Z", is_absolute=True, is_blocking=True)
                         time.sleep(tDebounce)
                     break
 
-                if iColour == 0 and self.is488 and self.lasers[iColour].power>0.0:
+                if iColour == 0 and self.is488 and self.lasers[iColour].power>0.0 and not ( self.lasers[iColour].enabled and processor is not None):
                     # enable laser 1
                     self.lasers[0].setEnabled(True)
                     self.lasers[1].setEnabled(False)
@@ -419,7 +421,7 @@ class SIMController(ImConWidgetController):
                     processor.setParameters(sim_parameters)
                     self.LaserWL = processor.wavelength
                     # set the pattern-path for laser wl 1
-                elif iColour == 1 and self.is635 and self.lasers[iColour].power>0.0:
+                elif iColour == 1 and self.is635 and self.lasers[iColour].power>0.0 and not ( self.lasers[iColour].enabled and processor is not None):
                     # enable laser 2
                     self.lasers[0].setEnabled(False)
                     self.lasers[1].setEnabled(True)
@@ -446,8 +448,8 @@ class SIMController(ImConWidgetController):
                         self.SIMClient.start_viewer_single_loop(1)
 
                         # ensure lasers are off to avoid photo damage
-                        self.lasers[0].setEnabled(False)
-                        self.lasers[1].setEnabled(False)
+                        #self.lasers[0].setEnabled(False)
+                        #self.lasers[1].setEnabled(False)
 
                         # download images from the camera
                         self.SIMStack = self.detector.getChunk(); self.detector.flushBuffers()
@@ -491,7 +493,7 @@ class SIMController(ImConWidgetController):
                             self._logger.error("No image received")
                             continue
 
-                    self.sigImageReceived.emit(np.array(self.SIMStack),"SIMStack"+str(processor.wavelength))
+                    self.sigImageReceived.emit(np.array(self.SIMStack),"SIMStack"+str(processor.wavelength), np.float32(self._widget.pixelsize_textedit.text()))
                     processor.setSIMStack(self.SIMStack)
                     processor.getWF(self.SIMStack)
 
@@ -530,6 +532,7 @@ class SIMController(ImConWidgetController):
         """
         Do timelapse SIM
         Q: should it have a separate thread?
+        TODO: We should join this the other main SIM THREAD!!!!!!
         """
         self.isReconstructing = False
         nColour = 2 #[488, 635]
@@ -564,19 +567,58 @@ class SIMController(ImConWidgetController):
             # select the pattern for the current colour
             self.SIMClient.set_wavelength(dic_wl[iColour])
 
-            # display one round of SIM patterns for the right colour
-            self.SIMClient.start_viewer_single_loop(1)
+            if self.isPCO:
+                # display one round of SIM patterns for the right colour
+                self.SIMClient.start_viewer_single_loop(1)
 
-            # ensure lasers are off to avoid photo damage
-            self.lasers[0].setEnabled(False)
-            self.lasers[1].setEnabled(False)
+                # ensure lasers are off to avoid photo damage
+                #self.lasers[0].setEnabled(False)
+                #self.lasers[1].setEnabled(False)
 
-            # download images from the camera
-            self.SIMStack = self.detector.getChunk(); self.detector.flushBuffers()
-            if self.SIMStack is None:
-                self._logger.error("No image received")
-                continue
-            self.sigImageReceived.emit(np.array(self.SIMStack),"SIMStack"+str(processor.wavelength))
+                # download images from the camera
+                self.SIMStack = self.detector.getChunk(); self.detector.flushBuffers()
+                if self.SIMStack is None:
+                    self._logger.error("No image received")
+                    continue
+            else:
+                # we need to capture images and display patterns one-by-one
+                self.SIMStack = []
+                try:
+                    mExposureTime = self.detector.getParameter("exposure")/1e6 # s^-1
+                except:
+                    mExposureTime = 0.1
+                for iPattern in range(9):
+                    self.SIMClient.display_pattern(iPattern)
+                    time.sleep(mExposureTime) # make sure we take the next newest frame to avoid motion blur from the pattern change
+
+                    # Todo: Need to ensure thatwe have the right pattern displayed and the buffer is free - this heavily depends on the exposure time..
+                    mFrame = None
+                    lastFrameNumber = -1
+                    timeoutFrameRequest = 3 # seconds
+                    cTime = time.time()
+                    frameRequestNumber = 0
+                    while(1):
+                        # something went wrong while capturing the frame
+                        if time.time()-cTime> timeoutFrameRequest:
+                            break
+                        mFrame, currentFrameNumber = self.detector.getLatestFrame(returnFrameNumber=True)
+                        if currentFrameNumber <= lastFrameNumber:
+                            time.sleep(0.05)
+                            continue  
+                        frameRequestNumber += 1
+                        if frameRequestNumber > self.nsimFrameSyncVal:
+                            print(f"Frame number used for stack: {currentFrameNumber}") 
+                            break
+                        lastFrameNumber = currentFrameNumber
+                        
+                        #mFrame = self.detector.getLatestFrame() # get the next frame after the pattern has been updated
+                    self.SIMStack.append(mFrame)
+                if self.SIMStack is None:
+                    self._logger.error("No image received")
+                    continue
+                
+                
+            self.sigImageReceived.emit(np.array(self.SIMStack),"SIMStack"+str(processor.wavelength), np.float32(self._widget.pixelsize_textedit.text()))
             processor.setSIMStack(self.SIMStack)
 
 
@@ -600,16 +642,20 @@ class SIMController(ImConWidgetController):
 
             # reset the per-colour stack to add new frames in the next imaging series
             processor.clearStack()
+            self.lasers[0].setEnabled(False)
+            self.lasers[1].setEnabled(False)
 
     def performSIMZstackThread(self,sim_parameters,zDis,zStep):
         mStep = 0
         acc = 0    #hardcoded acceleration
-        mspeed = 1000   #hardcoded speed
+        mspeed = 500   #hardcoded speed
         while mStep < zStep:
-            self.positioner.move(zDis,acceleration = acc, speed=mspeed)
             mStep += 1
-            self.performSIMTimelapseThread(sim_parameters)
             time.sleep(0.1)
+            self.performSIMTimelapseThread(sim_parameters)
+            time.sleep(0.1) # wait for the motor to move # TODO: Make this blocking again!
+            self.positioner.move(value=zDis, axis="X", speed=mspeed, is_absolute=False, is_blocking=False)
+            #self.positioner.move(zDis,acceleration = acc, speed=mspeed)
         self.active = False
         self.lasers[0].setEnabled(False)
         self.lasers[1].setEnabled(False)
@@ -633,7 +679,7 @@ class SIMController(ImConWidgetController):
         try:
             self.folder = self._widget.getRecFolder()
             self.filename = os.path.join(self.folder,filename) #FIXME: Remove hardcoded path
-            tif.imwrite(self.filename, image)
+            tif.imwrite(self.filename, image, dtype='uint16')
             self._logger.debug("Saving file: "+self.filename)
         except  Exception as e:
             self._logger.error(e)
@@ -747,7 +793,8 @@ class SIMProcessor(object):
         import cv2
 
         if path is None:
-            path = sim_parameters["patternPath"]
+            pass 
+            # FIXME: not implemented: path = sim_parameters["patternPath"]
         allPatternPaths = sorted(glob.glob(os.path.join(path, "*."+filetype)))
         self.allPatterns = []
         for iPatternPath in allPatternPaths:
@@ -797,7 +844,7 @@ class SIMProcessor(object):
     def getWF(self, mStack):
         # display the BF image
         bfFrame = np.sum(np.array(mStack[-3:]), 0)
-        self.parent.sigSIMProcessorImageComputed.emit(bfFrame, "Widefield SUM")
+        self.parent.sigImageReceived.emit(bfFrame, "Widefield SUM", self.pixelsize)
 
     def setSIMStack(self, stack):
         self.stack = stack
@@ -953,9 +1000,8 @@ class SIMProcessor(object):
             mFilenameRecon = f"{self.date}_SIM_Reconstruction_{self.LaserWL}nm.tif"
             threading.Thread(target=saveImageInBackground, args=(SIMReconstruction, mFilenameRecon,)).start()
 
-        self.parent.sigSIMProcessorImageComputed.emit(np.array(SIMReconstruction), "SIM Reconstruction")
+        self.parent.sigImageReceived.emit(np.array(SIMReconstruction), "SIM Reconstruction", np.float32(self.pixelsize/2.0))
         self.isReconstructing = False
-
 
     def reconstruct(self, currentImage):
         '''

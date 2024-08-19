@@ -1,13 +1,14 @@
 import glob
 from sys import platform
-# used to be, but actions will replace this with the current release TAG ->1.2.9
-__version__ = "1.2.9"
+# used to be, but actions will replace this with the current release TAG -> >2.1.0
+__version__ = "2.1.0"
+__httpport__ = 8001
+__ssl__ = True
 
-if platform == "linux" or platform == "linux2":
-    IS_HEADLESS = True
-else:
-    IS_HEADLESS = False
-
+IS_HEADLESS = True
+DEFAULT_SETUP_FILE = None
+DEFAULT_CONFIG_PATH = None
+DEFAULT_DATA_PATH = None
 
 # Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.

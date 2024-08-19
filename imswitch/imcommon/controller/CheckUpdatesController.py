@@ -9,7 +9,7 @@ import urllib.request
 import threading
 import datetime
 
-import imswitch
+from imswitch import IS_HEADLESS, __version__
 from imswitch.imcommon.framework import Signal, Thread
 from imswitch.imcommon.model import initLogger
 from .basecontrollers import WidgetController
@@ -55,7 +55,7 @@ class CheckUpdatesThread(Thread):
         self.__logger = initLogger(self, tryInheritParent=True)
 
     def run(self):
-        currentVersion = imswitch.__version__
+        currentVersion = __version__
         try:
             if 'IMSWITCH_IS_BUNDLE' in os.environ and os.environ['IMSWITCH_IS_BUNDLE'] == '1':
                 # Installed from bundle - check GitHub

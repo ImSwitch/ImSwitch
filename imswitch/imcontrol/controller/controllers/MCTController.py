@@ -487,7 +487,8 @@ class MCTController(ImConWidgetController):
                             break
                     # store frames
                     allChannelFrames.append(mFrame)
-                    
+                    mIllumination.setEnabled(False)
+                
                     # store positions
                     mPositions = self.positioner.getPosition()
                     allPositions.append((mPositions["X"], mPositions["Y"], mPositions["Z"]))
@@ -499,8 +500,7 @@ class MCTController(ImConWidgetController):
                         self.LastStackLED.append(lastFrame.copy())
                     '''
                 allZStackFrames.append(allChannelFrames)
-                mIllumination.setEnabled(False)
-            
+                
             
             # ensure all illus are off
             self.switchOffIllumination()

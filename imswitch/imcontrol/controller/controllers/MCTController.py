@@ -499,6 +499,7 @@ class MCTController(ImConWidgetController):
                         self.LastStackLED.append(lastFrame.copy())
                     '''
                 allZStackFrames.append(allChannelFrames)
+                mIllumination.setEnabled(False)
             
             
             # ensure all illus are off

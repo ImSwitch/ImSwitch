@@ -73,5 +73,5 @@ data_slice = reader.read_slice(time_idx=1, channel_idx=1, z_slice=slice(0, 1), y
 print(data_slice)
 
 # Reading metadata for a specific time point and channel
-metadata = reader.read_metadata(time_idx=0, channel_idx=1)
+metadata = reader.read_metadata(time_idx=1, channel_idx=1)
 print(metadata)

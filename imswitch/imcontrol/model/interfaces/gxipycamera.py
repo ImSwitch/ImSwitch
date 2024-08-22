@@ -3,6 +3,7 @@ import numpy as np
 import time
 import cv2
 from imswitch.imcommon.model import initLogger
+from PIL import Image
 
 from skimage.filters import gaussian, median
 import imswitch.imcontrol.model.interfaces.gxipy as gx
@@ -47,6 +48,12 @@ class CameraGXIPY:
         self.lastFrameId = -1
         self.frameNumber = -1
         self.frame = None
+        
+        # For RGB
+        self.contrast_lut = None        
+        self.gamma_lut = None
+        self.color_correction_param = 0
+
 
         #%% starting the camera thread
         self.camera = None
@@ -65,20 +72,11 @@ class CameraGXIPY:
             raise Exception("No camera GXIPY connected")
 
 
-
-
     def _init_cam(self, cameraNo=1, binning = 1, callback_fct=None):
         # start camera
         self.is_connected = True
 
-        # open the first device
         self.camera = self.device_manager.open_device_by_index(cameraNo)
-
-        # exit when the camera is a color camera
-        if self.camera.PixelColorFilter.is_implemented() is True:
-            self.__logger.debug("This sample does not support color camera.")
-            self.camera.close_device()
-            return
 
         # reduce pixel number
         self.setBinning(binning)
@@ -98,23 +96,33 @@ class CameraGXIPY:
         # set blacklevel
         self.camera.BlackLevel.set(self.blacklevel)
 
-        # set the acq buffer count
-        self.camera.data_stream[0].set_acquisition_buffer_number(1)
-
         # set camera to mono12 mode
-        try:
-            self.camera.PixelFormat.set(gx.GxPixelFormatEntry.MONO10)
-        # set camera to mono8 mode
-        except:
-            self.camera.PixelFormat.set(gx.GxPixelFormatEntry.MONO8)
+        availablePixelFormats = self.camera.PixelFormat.get_range()
+        if self.camera.PixelColorFilter.is_implemented() is True: self.isRGB = True
+        else: self.isRGB = False # TODO: Need to have an effect of the super class
+        try: self.set_pixel_format(list(availablePixelFormats)[-1]) # last one is RGB at highest bitrate
+        except Exception as e: 
+            self.__logger.error(e)
 
         # get framesize
         self.SensorHeight = self.camera.HeightMax.get()//self.binning
         self.SensorWidth = self.camera.WidthMax.get()//self.binning
 
-        # register the frame callback
-        user_param = None
-        self.camera.register_capture_callback(user_param, callback_fct)
+        # set the acq buffer count
+        data_stream = self.camera.data_stream[0]
+        data_stream.set_acquisition_buffer_number(1)
+        data_stream.register_capture_callback(callback_fct)
+
+        # set things if RGB camera is used
+        # get param of improving image quality
+        if self.camera.GammaParam.is_readable():
+            gamma_value = self.camera.GammaParam.get()
+            self.gamma_lut = gx.Utility.get_gamma_lut(gamma_value)
+        if self.camera.ContrastParam.is_readable():
+            contrast_value = self.camera.ContrastParam.get()
+            self.contrast_lut = gx.Utility.get_contrast_lut(contrast_value)
+        if self.camera.ColorCorrectionParam.is_readable():
+            self.color_correction_param = self.camera.ColorCorrectionParam.get()
 
     def start_live(self):
         if not self.is_streaming:
@@ -177,19 +185,24 @@ class CameraGXIPY:
     def set_pixel_format(self,format):
         if self.camera.PixelFormat.is_implemented() and self.camera.PixelFormat.is_writable():
             if format == 'MONO8':
-                self.camera.PixelFormat.set(gx.GxPixelFormatEntry.MONO8)
+                return self.camera.PixelFormat.set(gx.GxPixelFormatEntry.MONO8)
+            if format == 'MONO10':
+                return self.camera.PixelFormat.set(gx.GxPixelFormatEntry.MONO10)
             if format == 'MONO12':
-                self.camera.PixelFormat.set(gx.GxPixelFormatEntry.MONO12)
+                return self.camera.PixelFormat.set(gx.GxPixelFormatEntry.MONO12)
             if format == 'MONO14':
-                self.camera.PixelFormat.set(gx.GxPixelFormatEntry.MONO14)
+                return self.camera.PixelFormat.set(gx.GxPixelFormatEntry.MONO14)
             if format == 'MONO16':
-                self.camera.PixelFormat.set(gx.GxPixelFormatEntry.MONO16)
+                return self.camera.PixelFormat.set(gx.GxPixelFormatEntry.MONO16)
             if format == 'BAYER_RG8':
-                self.camera.PixelFormat.set(gx.GxPixelFormatEntry.BAYER_RG8)
+                return self.camera.PixelFormat.set(gx.GxPixelFormatEntry.BAYER_RG8)
+            if format == 'BAYER_RG10':
+                return self.camera.PixelFormat.set(gx.GxPixelFormatEntry.BAYER_RG10)
             if format == 'BAYER_RG12':
-                self.camera.PixelFormat.set(gx.GxPixelFormatEntry.BAYER_RG12)
+                return self.camera.PixelFormat.set(gx.GxPixelFormatEntry.BAYER_RG12)
         else:
             self.__logger.debug("pixel format is not implemented or not writable")
+            return -1
 
     def setBinning(self, binning=1):
         # Unfortunately this does not work
@@ -379,14 +392,35 @@ class CameraGXIPY:
     def openPropertiesGUI(self):
         pass
 
-    def set_frame(self, user_param, frame):
+    def set_frame(self, frame):
         if frame is None:
             self.__logger.error("Getting image failed.")
             return
         if frame.get_status() != 0:
             self.__logger.error("Got an incomplete frame")
             return
-        numpy_image = frame.get_numpy_array()
+
+        
+        # if RGB
+        if self.isRGB:
+            rgb_image = frame.convert("RGB")
+            if rgb_image is None:
+                return
+
+            # improve image quality
+            rgb_image.image_improvement(self.color_correction_param, self.contrast_lut, self.gamma_lut)
+
+            # create numpy array with data from raw image
+            numpy_image = rgb_image.get_numpy_array()
+            if numpy_image is None:
+                return
+
+            # show acquired image
+            numpy_image = Image.fromarray(numpy_image, 'RGB')
+            self.__logger.debug("Shape: "+str(numpy_image.size))
+
+        else:
+            numpy_image = frame.get_numpy_array()
 
         # flip image if needed
         if self.flipImage[0]: # Y
@@ -402,7 +436,6 @@ class CameraGXIPY:
 
         #if self.binning > 1:
         #    numpy_image = cv2.resize(numpy_image, dsize=None, fx=1/self.binning, fy=1/self.binning, interpolation=cv2.INTER_AREA)
-
         self.frame_buffer.append(numpy_image)
         self.frameid_buffer.append(self.frameNumber)
 

@@ -105,7 +105,7 @@ class RecordingController(ImConWidgetController):
         # by default save as it's noted in the widget
         if mSaveFormat is None:
             if not IS_HEADLESS:
-                mSaveFormat = SaveFormat(self._widget.getSnapSaveMode())
+                mSaveFormat = SaveFormat(self._widget.getsaveFormat())
             else:
                 mSaveFormat = SaveFormat(1) # TIFF
 

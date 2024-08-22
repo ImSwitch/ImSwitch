@@ -93,6 +93,7 @@ class PositionerController(ImConWidgetController):
         #self.updatePosition(positionerName, axis)
 
     def moveForever(self, speed=(0, 0, 0, 0), is_stop=False):
+        """ Moves positioner forever. """
         self._master.positionersManager.execOnAll(lambda p: p.moveForever(speed=speed, is_stop=is_stop))
 
     def setPos(self, positionerName, axis, position):
@@ -148,8 +149,10 @@ class PositionerController(ImConWidgetController):
         self._commChannel.sigUpdateMotorPosition.emit()
 
     @APIExport()
-    def stopAxis(self, positionerName, axis):
+    def stopAxis(self, positionerName=None, axis="X"):
         self.__logger.debug(f"Stopping axis {axis}")
+        if positionerName is None:
+            positionerName = self._master.positionersManager.getAllDeviceNames()[0] 
         self._master.positionersManager[positionerName].forceStop(axis)
 
     def attrChanged(self, key, value):
@@ -220,8 +223,14 @@ class PositionerController(ImConWidgetController):
             self.move(positionerName, axis, dist)
 
     @APIExport(runOnUIThread=True)
-    def movePositionerForever(self, speed=(0, 0, 0, 0), is_stop=False):
-        self.move_forever(speed=speed, is_stop=is_stop)
+    def movePositionerForever(self, axis="X", speed=0, is_stop=False):
+        speed = float(speed)
+        if axis == "X": speed = (0, speed, 0, 0)
+        elif axis == "Y": speed = (0, 0, speed, 0)
+        elif axis == "Z": speed = (0, 0, 0, speed)
+        elif axis == "A": speed = (speed, 0, 0, 0)
+        else: return
+        self.moveForever(speed=speed, is_stop=is_stop)
 
     @APIExport(runOnUIThread=True)
     def setPositioner(self, positionerName: str, axis: str, position: float) -> None:

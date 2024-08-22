@@ -1676,8 +1676,8 @@ class RGBImage:
 
 class RawImage:
     def __init__(self, frame_data):
+        #breakpoint()
         self.frame_data = frame_data
-
         if self.frame_data.image_buf is not None:
             self.__image_array = string_at(self.frame_data.image_buf, self.frame_data.image_size)
         else:
@@ -1698,7 +1698,7 @@ class RawImage:
 
         bpp16_tup = (GxPixelFormatEntry.MONO16, GxPixelFormatEntry.BAYER_GR16, GxPixelFormatEntry.BAYER_RG16,
                      GxPixelFormatEntry.BAYER_GB16, GxPixelFormatEntry.BAYER_BG16)
-
+        #breakpoint()
         if (pixel_format & PIXEL_BIT_MASK) == GX_PIXEL_8BIT:
             return GxPixelSizeEntry.BPP8
         elif pixel_format in bpp10_tup:
@@ -1733,7 +1733,7 @@ class RawImage:
         mono_tup = (GxPixelFormatEntry.MONO8, GxPixelFormatEntry.MONO8_SIGNED,
                     GxPixelFormatEntry.MONO10, GxPixelFormatEntry.MONO12,
                     GxPixelFormatEntry.MONO14, GxPixelFormatEntry.MONO16)
-
+        #breakpoint()
         if pixel_format in gr_tup:
             return DxPixelColorFilter.GR
         elif pixel_format in rg_tup:
@@ -1759,7 +1759,7 @@ class RawImage:
         bg16_tup = (GxPixelFormatEntry.BAYER_BG10, GxPixelFormatEntry.BAYER_BG12, GxPixelFormatEntry.BAYER_BG16)
         mono16_tup = (GxPixelFormatEntry.MONO10, GxPixelFormatEntry.MONO12,
                       GxPixelFormatEntry.MONO14, GxPixelFormatEntry.MONO16)
-
+        #breakpoint()
         if pixel_format in gr16_tup:
             return GxPixelFormatEntry.BAYER_GR8
         elif pixel_format in rg16_tup:
@@ -1787,7 +1787,7 @@ class RawImage:
         else:
             print("RawImage.__dx_raw16_to_raw8: Only support 10bit and 12bit")
             return None
-
+        #breakpoint()
         frame_data = GxFrameData()
         frame_data.status = self.frame_data.status
         frame_data.width = self.frame_data.width
@@ -1831,7 +1831,7 @@ class RawImage:
         # frame_data.buf_id = self.frame_data.buf_id
         frame_data.image_buf = None
         image_rgb = RGBImage(frame_data)
-
+        #breakpoint()
         status = dx_raw8_to_rgb24(raw8_image.frame_data.image_buf, image_rgb.frame_data.image_buf,
                                   raw8_image.frame_data.width, raw8_image.frame_data.height,
                                   convert_type, pixel_color_filter, flip)

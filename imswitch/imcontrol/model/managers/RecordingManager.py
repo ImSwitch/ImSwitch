@@ -109,8 +109,11 @@ class TiffStorer(Storer):
     def snap(self, images: Dict[str, np.ndarray], attrs: Dict[str, str] = None):
         for channel, image in images.items():
             with AsTemporayFile(f'{self.filepath}_{channel}.tiff') as path:
-                tiff.imwrite(path, image,) # TODO: Parse metadata to tiff meta data
-                logger.info(f"Saved image to tiff file {path}")
+                if hasattr(image, "shape"):
+                    tiff.imwrite(path, image,) # TODO: Parse metadata to tiff meta data
+                    logger.info(f"Saved image to tiff file {path}")
+                else:
+                    logger.error(f"Could not save image to tiff file {path}")
 
 class PNGStorer(Storer):
     """ A storer that stores the images in a series of png files """

@@ -98,20 +98,26 @@ class CameraGXIPY:
 
         # set camera to mono12 mode
         availablePixelFormats = self.camera.PixelFormat.get_range()
-        if self.camera.PixelColorFilter.is_implemented() is True: self.isRGB = True
-        else: self.isRGB = False # TODO: Need to have an effect of the super class
-        try: self.set_pixel_format(list(availablePixelFormats)[-1]) # last one is RGB at highest bitrate
-        except Exception as e: 
-            self.__logger.error(e)
+        if self.camera.PixelColorFilter.is_implemented() is True: 
+            self.isRGB = True
+            self.set_pixel_format('BAYER_RG8')
+        else: 
+            self.isRGB = False # TODO: Need to have an effect of the super class
+            try: 
+                self.set_pixel_format(list(availablePixelFormats)[-1]) # last one is at highest bitrate
+            except Exception as e: 
+                self.__logger.error(e)
 
         # get framesize
         self.SensorHeight = self.camera.HeightMax.get()//self.binning
         self.SensorWidth = self.camera.WidthMax.get()//self.binning
 
         # set the acq buffer count
-        data_stream = self.camera.data_stream[0]
-        data_stream.set_acquisition_buffer_number(1)
-        data_stream.register_capture_callback(callback_fct)
+        #data_stream = self.camera.data_stream[0]
+        #data_stream.set_acquisition_buffer_number(1)
+        #data_stream.register_capture_callback(callback_fct)
+        user_param = None
+        self.camera.register_capture_callback(user_param, callback_fct)
 
         # set things if RGB camera is used
         # get param of improving image quality
@@ -181,7 +187,7 @@ class CameraGXIPY:
     def set_blacklevel(self,blacklevel):
         self.blacklevel = blacklevel
         self.camera.BlackLevel.set(self.blacklevel)
-
+    
     def set_pixel_format(self,format):
         if self.camera.PixelFormat.is_implemented() and self.camera.PixelFormat.is_writable():
             if format == 'MONO8':
@@ -392,7 +398,7 @@ class CameraGXIPY:
     def openPropertiesGUI(self):
         pass
 
-    def set_frame(self, frame):
+    def set_frame(self, params, frame):
         if frame is None:
             self.__logger.error("Getting image failed.")
             return
@@ -403,6 +409,9 @@ class CameraGXIPY:
         
         # if RGB
         if self.isRGB:
+            print(frame)
+            print(type(frame))
+            #breakpoint()
             rgb_image = frame.convert("RGB")
             if rgb_image is None:
                 return
@@ -414,10 +423,6 @@ class CameraGXIPY:
             numpy_image = rgb_image.get_numpy_array()
             if numpy_image is None:
                 return
-
-            # show acquired image
-            numpy_image = Image.fromarray(numpy_image, 'RGB')
-            self.__logger.debug("Shape: "+str(numpy_image.size))
 
         else:
             numpy_image = frame.get_numpy_array()

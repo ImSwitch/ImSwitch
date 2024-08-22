@@ -100,13 +100,12 @@ class CameraGXIPY:
         availablePixelFormats = self.camera.PixelFormat.get_range()
         if self.camera.PixelColorFilter.is_implemented() is True: 
             self.isRGB = True
-            self.set_pixel_format('BAYER_RG8')
         else: 
             self.isRGB = False # TODO: Need to have an effect of the super class
-            try: 
-                self.set_pixel_format(list(availablePixelFormats)[-1]) # last one is at highest bitrate
-            except Exception as e: 
-                self.__logger.error(e)
+        try: 
+            self.set_pixel_format(list(availablePixelFormats)[-1]) # last one is at highest bitrate
+        except Exception as e: 
+            self.__logger.error(e)
 
         # get framesize
         self.SensorHeight = self.camera.HeightMax.get()//self.binning
@@ -189,6 +188,7 @@ class CameraGXIPY:
         self.camera.BlackLevel.set(self.blacklevel)
     
     def set_pixel_format(self,format):
+        format = format.upper()
         if self.camera.PixelFormat.is_implemented() and self.camera.PixelFormat.is_writable():
             if format == 'MONO8':
                 return self.camera.PixelFormat.set(gx.GxPixelFormatEntry.MONO8)
@@ -411,7 +411,6 @@ class CameraGXIPY:
         if self.isRGB:
             print(frame)
             print(type(frame))
-            #breakpoint()
             rgb_image = frame.convert("RGB")
             if rgb_image is None:
                 return
@@ -425,6 +424,7 @@ class CameraGXIPY:
                 return
 
         else:
+            #breakpoint()
             numpy_image = frame.get_numpy_array()
 
         # flip image if needed

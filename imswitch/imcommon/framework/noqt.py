@@ -28,7 +28,7 @@ class SignalInterface(base.SignalInterface):
     pass
 
 
-class Thread(threading.Thread, base.Thread):
+class Thread(threading.Thread): #TODO: Fix this by adding, base.Thread):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._stop_event = threading.Event()

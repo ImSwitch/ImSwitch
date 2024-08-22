@@ -20,7 +20,21 @@
 # sudo docker run -it -e MODE=terminal ghcr.io/openuc2/imswitch-noqt-x64:latest
 
 
-
+# Witht he following configuration we can do the following:
+# 1. Update the ImSwitch repository and install the changes and make them persistent by mounting a volume to /tmp/ImSwitch-changes and /persistent_pip_packages respectively
+# both of which are mounted to the host machine directories
+# 2. Use a ImSwitchConfig folder that is mounted to the host machine directory /root/ImSwitchConfig
+# 3. Use a dataset folder that is mounted to the host machine directory /media/uc2/SD2
+# 4. Install additional pip packages by setting the PIP_PACKAGES environment variable to a space separated list of packages and make them persistent by mounting a volume to /persistent_pip_packages
+# sudo docker run -it --rm -p 8001:8001 \
+# -e UPDATE_INSTALL_GIT=1 \
+# -e PIP_PACKAGES="arkitekt UC2-REST" imswitch_hik \
+# -e DATA_PATH=/dataset \
+# -e CONFIG_PATH=/config \
+# -v ~/Documents/imswitch_docker/imswitch_git:/tmp/ImSwitch-changes \
+# -v ~/Documents/imswitch_docker/imswitch_pip:/persistent_pip_packages \
+# -v /media/uc2/SD2/:/dataset \
+# -v ~/Downloads:/config 
 
 
 # Use an appropriate base image for multi-arch support
@@ -160,7 +174,7 @@ CMD ["/bin/bash", "-c", "\
         ls /media && \
         /usr/sbin/sshd -D & \
         /usr/sbin/vsftpd /etc/vsftpd.conf & \
-        ls /root/ImSwitchConfig && \
+        ls /root/ImSwitchConfig/imcontrol_setups && \
         if [ \"$UPDATE_GIT\" = \"true\" ] || [ \"$UPDATE_GIT\" = \"1\" ]; then \
             echo 'Pulling the ImSwitch repository' && \
             cd /tmp/ImSwitch && \
@@ -189,9 +203,19 @@ CMD ["/bin/bash", "-c", "\
             git pull; \
         fi && \
         if [ -z \"$CONFIG_PATH\" ]; then \
-            CONFIG_FILE=${CONFIG_FILE:-/root/ImSwitchConfig/imcontrol_setup/example_virtual_microscope.json}; \
+            CONFIG_FILE=${CONFIG_FILE:-/root/ImSwitchConfig/imcontrol_setups/example_virtual_microscope.json}; \
         else \
             CONFIG_FILE=None; \
+        fi && \
+        PERSISTENT_PIP_DIR=${PERSISTENT_PIP_DIR:-/persistent_pip_packages} && \
+        mkdir -p $PERSISTENT_PIP_DIR && \
+        export PYTHONUSERBASE=$PERSISTENT_PIP_DIR && \
+        export PATH=$PERSISTENT_PIP_DIR/bin:$PATH && \
+        if [ ! -z \"$PIP_PACKAGES\" ]; then \
+            echo 'Installing additional pip packages: $PIP_PACKAGES' && \
+            for package in $PIP_PACKAGES; do \
+                /opt/conda/bin/conda run -n imswitch pip install --user $package; \
+            done; \
         fi && \
         source /opt/conda/bin/activate imswitch && \
         HEADLESS=${HEADLESS:-1} && \
@@ -202,6 +226,7 @@ CMD ["/bin/bash", "-c", "\
         echo \"python3 /tmp/ImSwitch/main.py --headless $HEADLESS --config-file $CONFIG_FILE --http-port $HTTP_PORT --config-folder $CONFIG_PATH --ext-data-folder $DATA_PATH \" && \
         python3 /tmp/ImSwitch/main.py --headless $HEADLESS --config-file $CONFIG_FILE --http-port $HTTP_PORT --config-folder $CONFIG_PATH --ext-data-folder $DATA_PATH; \
     fi"]
+
 
 # source /opt/conda/bin/activate imswitch
 # python3 /tmp/ImSwitch/main.py  --headless 1 --config-file example_virtual_microscope.json --config-folder /config

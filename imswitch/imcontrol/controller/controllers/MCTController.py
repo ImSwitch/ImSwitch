@@ -120,12 +120,7 @@ class MCTController(ImConWidgetController):
         # this is not a thread!
         # this is called from the GUI
 
-        # get active illuminations 
-        self.activeIlluminations = []
-        if self.Illu1Value>0: self.activeIlluminations.append(self.availableIlliminations[0])
-        if self.Illu2Value>0 and len(self.availableIlliminations)>1: self.activeIlluminations.append(self.availableIlliminations[1])
-        if self.Illu3Value>0 and len(self.availableIlliminations)>2: self.activeIlluminations.append(self.availableIlliminations[2])
-        
+
         # start the timelapse
         if not self.isMCTrunning and len(self.activeIlluminations)>0:
             self.nImagesTaken = 0
@@ -148,7 +143,7 @@ class MCTController(ImConWidgetController):
                 self._widget.mctShowLastButton.setEnabled(False)
 
             # start the timelapse - otherwise we have to wait for the first run after timePeriod to take place..
-            self.takeTimelapse(self.timePeriod, self.nImagesToCapture, 
+            self.startTimelapseImaging(self.timePeriod, self.nImagesToCapture, 
                                self.MCTFilename, self.MCTDate,
                                self.zStackEnabled, self.zStackMin, self.zStackMax, self.zStackStep,
                                self.xyScanEnabled, self.xScanMin, self.xScanMax, self.xScanStep, self.yScanMin, self.yScanMax, self.yScanStep)
@@ -160,10 +155,6 @@ class MCTController(ImConWidgetController):
 
     def stopMCT(self):
         self.isMCTrunning = False
-
-        self._widget.setMessageGUI("Stopping timelapse...")
-
-        self._widget.mctStartButton.setEnabled(True)
 
         # go back to initial position
         try:
@@ -184,7 +175,11 @@ class MCTController(ImConWidgetController):
         except:
             pass
 
-        self._widget.setMessageGUI("Done wit timelapse...")
+        if not IS_HEADLESS: 
+            self._widget.setMessageGUI("Stopping timelapse...")
+            self._widget.mctStartButton.setEnabled(True)
+            self._widget.setMessageGUI("Done wit timelapse...")
+        
 
     def showLast(self, isCleanStack=False):
         #  isCleanStack=False => subtract backgroudn or not
@@ -226,10 +221,11 @@ class MCTController(ImConWidgetController):
         self._widget.setImage(im)
 
     @APIExport(runOnUIThread=True)
-    def takeTimelapse(self, tperiod, nImagesToCapture, 
-                      MCTFilename, MCTDate, 
-                      zStackEnabled, zStackMin, zStackMax, zStackStep, 
-                      xyScanEnabled, xScanMin, xScanMax, xScanStep, yScanMin, yScanMax, yScanStep):
+    def startTimelapseImaging(self, tperiod:int, nImagesToCapture:int, 
+                      MCTFilename:str, MCTDate:str, 
+                      zStackEnabled:bool, zStackMin:int, zStackMax:int, zStackStep:int, 
+                      xyScanEnabled:bool, xScanMin:int, xScanMax:int, xScanStep:int, yScanMin:int, yScanMax:int, yScanStep:int, 
+                      IlluValue1:int =-1, IlluValue2:int =-1, IlluValue3:int =-1):
         # this is called periodically by the timer
         if not self.isMCTrunning:
             try:
@@ -238,9 +234,21 @@ class MCTController(ImConWidgetController):
             except:
                 pass
 
+            # retreive from REST API
+            if IlluValue1>=0: self.Illu1Value = IlluValue1
+            if IlluValue2>=0: self.Illu2Value = IlluValue2
+            if IlluValue3>=0: self.Illu3Value = IlluValue3
+        
+            # get active illuminations 
+            self.activeIlluminations = []
+            if self.Illu1Value>0: self.activeIlluminations.append(self.availableIlliminations[0])
+            if self.Illu2Value>0 and len(self.availableIlliminations)>1: self.activeIlluminations.append(self.availableIlliminations[1])
+            if self.Illu3Value>0 and len(self.availableIlliminations)>2: self.activeIlluminations.append(self.availableIlliminations[2])
+                        
+            
             # this should decouple the hardware-related actions from the GUI
             self.isMCTrunning = True
-            self.MCTThread = threading.Thread(target=self.takeTimelapseThread, args=(tperiod, nImagesToCapture, 
+            self.MCTThread = threading.Thread(target=self.startTimelapseImagingThread, args=(tperiod, nImagesToCapture, 
                                                                                      MCTFilename, MCTDate, 
                                                                                      zStackEnabled, zStackMin, zStackMax, zStackStep, 
                                                                                     xyScanEnabled, xScanMin, xScanMax, xScanStep, 
@@ -248,6 +256,10 @@ class MCTController(ImConWidgetController):
 
             self.MCTThread.start()
 
+    @APIExport(runOnUIThread=True)
+    def stopTimelapseImaging(self):
+        self.stopMCT()
+        
     def doAutofocus(self, params, timeout=10):
         self._logger.info("Autofocusing...")
         self._widget.setMessageGUI("Autofocusing...")
@@ -265,7 +277,7 @@ class MCTController(ImConWidgetController):
             self._logger.error(e)
 
 
-    def takeTimelapseThread(self, tperiod, nImagesToCapture, 
+    def startTimelapseImagingThread(self, tperiod, nImagesToCapture, 
                                     MCTFilename, MCTDate, 
                                     zStackEnabled, zStackMin, zStackMax, zStackStep, 
                                     xyScanEnabled, xScanMin, xScanMax, xScanStep, 
@@ -343,7 +355,7 @@ class MCTController(ImConWidgetController):
                     self._logger.error("Thread closes with Error: "+str(e))
                     self.isMCTrunning = False
                     self._logger.debug("Done with timelapse")
-                    self._widget.mctStartButton.setEnabled(True)
+                    if not IS_HEADLESS: self._widget.mctStartButton.setEnabled(True)
                     return 
 
             # pause to not overwhelm the CPU
@@ -362,7 +374,8 @@ class MCTController(ImConWidgetController):
             self._widget.mctShowLastButton.setEnabled(True)
 
     def performAutofocus(self):
-        autofocusParams = self._widget.getAutofocusValues()
+        if not IS_HEADLESS: autofocusParams = self._widget.getAutofocusValues()
+        else: return
         if self.positioner is not None and self._widget.isAutofocus() and np.mod(self.nImagesTaken, int(autofocusParams['valuePeriod'])) == 0:
             self._widget.setMessageGUI("Autofocusing...")
             # turn on illuimination

@@ -12,7 +12,7 @@ from imswitch.imcommon.framework import Signal, Thread, Worker, Mutex, Timer
 from imswitch.imcontrol.view import guitools
 from imswitch.imcommon.model import initLogger
 from ..basecontrollers import LiveUpdatedController
-
+from imswitch import IS_HEADLESS
 
 
 class HoliSheetController(LiveUpdatedController):
@@ -65,6 +65,7 @@ class HoliSheetController(LiveUpdatedController):
         self.imageComputationWorker.set_PSFpara(self.PSFpara)
         #self.imageComputationWorker.sigHoliSheetImageComputed.connect(self.displayImage) # TODO: Why not poassible to connect this signal?
 
+        if IS_HEADLESS: return
         self.imageComputationThread = Thread()
         self.imageComputationWorker.moveToThread(self.imageComputationThread)
         self.sigImageReceived.connect(self.imageComputationWorker.computeHoliSheetImage)

@@ -1210,6 +1210,7 @@ class Device:
         :param      cap_call:  callback function
         :return:    none
         """
+        #breakpoint()
         self.__user_param = user_param
         self.__py_capture_callback = cap_call
         self.__CaptureCallBack = CAP_CALL(self.__on_capture_call_back)

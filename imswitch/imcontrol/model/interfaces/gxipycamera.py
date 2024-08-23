@@ -116,6 +116,9 @@ class CameraGXIPY:
         #data_stream.set_acquisition_buffer_number(1)
         #data_stream.register_capture_callback(callback_fct)
         user_param = None
+        # set the acq buffer count
+        self.camera.data_stream[0].set_acquisition_buffer_number(1)
+
         self.camera.register_capture_callback(user_param, callback_fct)
 
         # set things if RGB camera is used
@@ -409,8 +412,6 @@ class CameraGXIPY:
         
         # if RGB
         if self.isRGB:
-            print(frame)
-            print(type(frame))
             rgb_image = frame.convert("RGB")
             if rgb_image is None:
                 return

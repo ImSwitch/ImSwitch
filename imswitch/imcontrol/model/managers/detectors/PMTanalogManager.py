@@ -10,13 +10,12 @@ class PMTanalogManager(DetectorManager):
     counter input on a Nidaq card.
 
     Manager properties:
-
-    - ``terminal`` -- the physical input terminal on the Nidaq to which the APD
+    - ``terminal`` -- the physical input terminal on the Nidaq to which the PMT
       is connected
-    - ``ctrInputLine`` -- the counter that the physical input terminal is
-      connected to
     """
-
+    #- ``ctrInputLine`` -- the counter that the physical input terminal is
+    #  connected to
+    
     def __init__(self, detectorInfo, name, nidaqManager, **_lowLevelManagers):
         # TODO: use the same manager for the PMT, with the type of detector as an argument.
         #       NidaqPointDetectorManager
@@ -35,10 +34,12 @@ class PMTanalogManager(DetectorManager):
         self._detection_samplerate = float(1e6)
         self.acquisition = True
 
+        """
         self._channel = detectorInfo.managerProperties["ctrInputLine"]
         if isinstance(self._channel, int):
             self._channel = f'Dev1/ctr{self._channel}'  # for backwards compatibility
-
+        """
+            
         self._terminal = detectorInfo.managerProperties["terminal"]
 
         self._scanWorker = None

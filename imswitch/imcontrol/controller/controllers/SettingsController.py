@@ -158,7 +158,17 @@ class SettingsController(ImConWidgetController):
 
         # Adjust frame
         params = self.allParams[detector.name]
+        
+        binning_value = params.binning.value()
+        """
+        if binning_value and binning_value.isdigit():
+            binning = int(binning_value)
+        else:
+            print(f"Valeur invalide pour le binning : '{binning_value}'")
+            binning = 1  # ou une autre valeur par défaut  
+        """     
         binning = int(params.binning.value())
+
         width = params.width.value()
         height = params.height.value()
         x0 = params.x0.value()
@@ -377,6 +387,8 @@ class SettingsController(ImConWidgetController):
                 params.width.setValue(fullChipShape[0])
                 params.height.setValue(fullChipShape[1])
             else:
+                print("frameMode=")
+                print(frameMode)
                 roiInfo = self._setupInfo.rois[frameMode]
                 params.x0.setValue(roiInfo.x)
                 params.y0.setValue(roiInfo.y)

@@ -1,0 +1,74 @@
+{
+	"detectors": {
+		"PMTanalog": {
+			"analogChannel": null,
+			"digitalLine": null,
+			"managerName": "APDManager",
+			"managerProperties": {
+				"ctrInputLine": "Dev1/ctr0",
+				"terminal": "AI0",
+				"cameraListIndex": null
+				},
+			"forAcquisition": true
+		}
+	},
+	"positioners": {
+        "ND-GalvoX": {
+			"analogChannel": "Dev1/ao0",
+			"digitalLine": null,
+			"managerName": "NidaqPositionerManager",
+			"managerProperties": {
+				"conversionFactor": 10,
+				"minVolt": -10,
+				"maxVolt": 10,
+				"vel_max": 7e-2,
+				"acc_max": 1e-4
+			},
+			"axes": ["X"],
+			"forScanning": true
+		},
+		"ND-GalvoY": {
+			"analogChannel": "Dev1/ao1",
+			"digitalLine": null,
+			"managerName": "NidaqPositionerManager",
+			"managerProperties": {
+				"conversionFactor": 10,
+				"minVolt": -10,
+				"maxVolt": 10,
+				"vel_max": 7e-2,
+				"acc_max": 1e-4
+			},
+			"axes": ["Y"],
+			"forScanning": true
+		}
+    },
+    "scan": {
+		"scanWidgetType": "PointScan",
+		"scanDesigner": "GalvoScanDesigner",
+		"scanDesignerParams": {},
+		"TTLCycleDesigner": "PointScanTTLCycleDesigner",
+		"TTLCycleDesignerParams": {},
+		"sampleRate": 100000,
+		"lineClockLine": "Dev1/port0/line5",
+		"frameClockLine": "Dev1/port0/line6"
+    },
+    "nidaq": {
+		"timerCounterChannel": "Dev1/ctr2",
+		"startTrigger": true
+	},
+	"rois": {
+		"Full chip": {
+			"x": 0,
+			"y": 0,
+			"w": 2448,
+			"h": 2048
+		}
+	},
+    "availableWidgets": [
+		"View",
+		"Scan",
+		"Image",
+		"Settings",
+		"Recording"
+    ]
+}

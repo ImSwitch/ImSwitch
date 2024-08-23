@@ -1,0 +1,260 @@
+{
+	"detectors": {
+		"APDred": {
+			"analogChannel": null,
+			"digitalLine": null,
+			"managerName": "APDManager",
+			"managerProperties": {
+				"ctrInputLine": "Dev1/ctr0",
+				"terminal": "PFI0",
+				"cameraListIndex": null
+				},
+			"forAcquisition": true
+		},
+		"APDgreen": {
+			"analogChannel": null,
+			"digitalLine": null,
+			"managerName": "APDManager",
+			"managerProperties": {
+				"ctrInputLine": "Dev1/ctr1",
+				"terminal": "PFI12",
+				"cameraListIndex": null
+			},
+			"forAcquisition": true
+		},
+		"WidefieldCamera": {
+			"analogChannel": null,
+			"digitalLine": null,
+			"managerName": "TISManager",
+			"managerProperties": {
+				"cameraListIndex": 1,
+				"tis": {
+					"exposure": 0,
+					"gain": 0,
+					"brightness": 0,
+					"image_width": 2448,
+					"image_height": 2048
+				}
+			},
+		"forAcquisition": true
+		}
+	},
+    "lasers": {
+		"640": {
+			"analogChannel": null,
+			"digitalLine": "Dev1/port0/line2",
+			"managerName": "NidaqLaserManager",
+			"managerProperties": {},
+			"wavelength": 640,
+			"valueRangeMin": 0,
+			"valueRangeMax": 1,
+			"valueRangeStep": 1
+		},
+		"640AOTF": {
+			"analogChannel": null,
+			"digitalLine": null,
+			"managerName": "AAAOTFLaserManager",
+			"managerProperties": {
+				"rs232device": "aaaotf",
+				"channel": 2
+			},
+			"wavelength": 640,
+			"valueRangeMin": 0,
+			"valueRangeMax": 1023,
+			"valueRangeStep": 1
+		},
+        "775AOM": {
+			"analogChannel": "Dev1/ao3",
+			"digitalLine": "Dev1/port0/line4",
+			"managerName": "NidaqLaserManager",
+			"managerProperties": {},
+			"wavelength": 775,
+			"valueRangeMin": 0,
+			"valueRangeMax": 10,
+			"valueRangeStep": 1
+		}  
+    },
+	"positioners": {
+        "X": {
+            "analogChannel": "Dev1/ao0",
+            "digitalLine": null,
+            "managerName": "NidaqPositionerManager",
+            "managerProperties": {
+                "conversionFactor": 1.587,
+                "minVolt": -10,
+                "maxVolt": 10
+            },
+            "axes": ["X"],
+            "forScanning": true,
+            "forPositioning": true
+        },
+        "Y": {
+            "analogChannel": "Dev1/ao1",
+            "digitalLine": null,
+            "managerName": "NidaqPositionerManager",
+            "managerProperties": {
+                "conversionFactor": 1.587,
+                "minVolt": -10,
+                "maxVolt": 10
+            },
+            "axes": ["Y"],
+            "forScanning": true,
+            "forPositioning": true
+        },
+        "Z": {
+            "analogChannel": "Dev1/ao2",
+            "digitalLine": null,
+            "managerName": "NidaqPositionerManager",
+            "managerProperties": {
+                "conversionFactor": 10,
+                "minVolt": 0,
+                "maxVolt": 10
+            },
+            "axes": ["Z"],
+            "forScanning": true,
+            "forPositioning": true
+        },
+		"ND-GalvoX": {
+			"analogChannel": "Dev1/ao0",
+			"digitalLine": null,
+			"managerName": "NidaqPositionerManager",
+			"managerProperties": {
+				"conversionFactor": 17.44,
+				"minVolt": -10,
+				"maxVolt": 10,
+				"vel_max": 1e-1,
+				"acc_max": 1e-4
+			},
+			"axes": ["X"],
+			"forScanning": true
+		},
+		"ND-GalvoY": {
+			"analogChannel": "Dev1/ao1",
+			"digitalLine": null,
+			"managerName": "NidaqPositionerManager",
+			"managerProperties": {
+				"conversionFactor": 16.63,
+				"minVolt": -10,
+				"maxVolt": 10,
+				"vel_max": 1e-1,
+				"acc_max": 1e-4
+			},
+			"axes": ["Y"],
+			"forScanning": true
+		},
+		"PiezoZ": {
+			"analogChannel": null,
+			"digitalLine": null,
+			"managerName": "PiezoconceptZManager",
+			"managerProperties": {
+				"rs232device": "pczpiezo"
+			},
+			"axes": ["Z"],
+			"forPositioning": true
+		}
+    },
+    "scan": {
+		"scanWidgetType": "PointScan",
+		"scanDesigner": "GalvoScanDesigner",
+		"scanDesignerParams": {},
+		"TTLCycleDesigner": "PointScanTTLCycleDesigner",
+		"TTLCycleDesignerParams": {},
+		"sampleRate": 100000,
+		"lineClockLine": "Dev1/port0/line5",
+		"frameClockLine": "Dev1/port0/line6"
+    },
+    "nidaq": {
+		"timerCounterChannel": "Dev1/ctr2",
+		"startTrigger": true
+	},
+	"rs232devices": {
+		"coolLED": {
+			"managerName": "RS232Manager",
+			"managerProperties": {
+				"port": "COM8",
+				"encoding": "ascii",
+				"recv_termination": "\n",
+				"send_termination": "\r \n",
+				"baudrate": 57600,
+				"bytesize": 8,
+				"parity": "none",
+				"stopbits": 1,
+				"rtscts": "false",
+				"dsrdtr": "false",
+				"xonxoff": "false"
+			}
+		},
+	    "aaaotf": {
+			"managerName": "RS232Manager",
+			"managerProperties": {
+				"port": "ASRL4::INSTR",
+				"encoding": "ascii",
+				"recv_termination": "\n",
+				"send_termination": "\r \n",
+				"baudrate": 57600,
+				"bytesize": 8,
+				"parity": "none",
+				"stopbits": 1,
+				"rtscts": "false",
+				"dsrdtr": "false",
+				"xonxoff": "false"
+			}
+		},
+		"pczpiezo": {
+			"managerName": "RS232Manager",
+			"managerProperties": {
+				"port": "ASRL5::INSTR",
+				"encoding": "ascii",
+				"recv_termination": "\n",
+				"send_termination": "\n",
+				"baudrate": 115200,
+				"bytesize": 8,
+				"parity": "none",
+				"stopbits": 1,
+				"rtscts": "false",
+				"dsrdtr": "false",
+				"xonxoff": "false"
+			}
+		}
+    },
+	"rois": {
+		"Full chip": {
+			"x": 0,
+			"y": 0,
+			"w": 2448,
+			"h": 2048
+		}
+	},
+	"rotators": {
+		"HWP": {
+			"managerName": "StandaRotatorManager",
+			"managerProperties": {
+				"motorListIndex": 0,
+				"ximcLibLocation": "T:\\RedSTED\\Standa\\Standa\\ximc-2.13.6\\ximc",
+				"stepsPerTurn": 200,
+				"microstepsPerStep": 255
+			}
+		},
+		"QWP": {
+			"managerName": "StandaRotatorManager",
+			"managerProperties": {
+				"motorListIndex": 1,
+				"ximcLibLocation": "T:\\RedSTED\\Standa\\Standa\\ximc-2.13.6\\ximc",
+				"stepsPerTurn": 200,
+				"microstepsPerStep": 255
+			}
+		}
+	},
+
+    "availableWidgets": [
+        "Laser",
+		"View",
+		"Scan",
+		"Image",
+		"Settings",
+		"Positioner",
+		"Rotation",
+		"RotationScan",
+		"Recording"
+    ]
+}

@@ -569,7 +569,7 @@ class HistoScanController(LiveUpdatedController):
 
     @APIExport()
     def startHistoScanTileBasedByParameters(self, numberTilesX:int=2, numberTilesY:int=2, stepSizeX:int=100, stepSizeY:int=100, nTimes:int=1, tPeriod:int=1, initPosX:int=0, initPosY:int=0, 
-                                            isStitchAshlar:bool=False, isStitchAshlarFlipX:bool=False, isStitchAshlarFlipY:bool=False, resizeFactor=0.25):
+                                            isStitchAshlar:bool=False, isStitchAshlarFlipX:bool=False, isStitchAshlarFlipY:bool=False, resizeFactor:float=0.25):
         def computePositionList(numberTilesX, numberTilesY, stepSizeX, stepSizeY, initPosX, initPosY):
             positionList = []
             for i in range(numberTilesX):

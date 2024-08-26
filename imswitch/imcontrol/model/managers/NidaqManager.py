@@ -90,6 +90,23 @@ class NidaqManager(SignalInterface):
         #self.__logger.debug(f'Created DO task: {name}')
         return dotask
 
+    def __createChanCOTask(self, name, channel, rate, sampsInScan=1000, starttrig=False,
+                           reference_trigger='ai/StartTrigger'):
+        cotask = nidaqmx.Task(name)
+        self.cotaskchannel = cotask.co_channels.add_co_pulse_chan_freq(
+            channel, freq=rate, units=nidaqmx.constants.FrequencyUnits.HZ
+        )
+        # cotask.timing.cfg_implicit_timing(sample_mode=nidaqmx.constants.AcquisitionType.CONTINUOUS)
+        cotask.timing.cfg_implicit_timing(sample_mode=nidaqmx.constants.AcquisitionType.FINITE,
+                                          samps_per_chan=sampsInScan)
+
+        if starttrig:
+            cotask.triggers.arm_start_trigger.dig_edge_src = reference_trigger
+            cotask.triggers.arm_start_trigger.trig_type = nidaqmx.constants.TriggerType.DIGITAL_EDGE
+
+        #self.__logger.debug(f'Created CO task: {name}')
+        return cotask
+
     def __createChanCITask(self, name, channel, acquisitionType, source, rate, sampsInScan=1000,
                            starttrig=False, reference_trigger='ai/StartTrigger', terminal='PFI0'):
         """ Simplified function to create a counter input task """
@@ -120,33 +137,29 @@ class NidaqManager(SignalInterface):
         #self.__logger.debug(f'Created CI task: {name}')
         return citask
 
-    def __createChanCOTask(self, name, channel, rate, sampsInScan=1000, starttrig=False,
-                           reference_trigger='ai/StartTrigger'):
-        cotask = nidaqmx.Task(name)
-        self.cotaskchannel = cotask.co_channels.add_co_pulse_chan_freq(
-            channel, freq=rate, units=nidaqmx.constants.FrequencyUnits.HZ
-        )
-        # cotask.timing.cfg_implicit_timing(sample_mode=nidaqmx.constants.AcquisitionType.CONTINUOUS)
-        cotask.timing.cfg_implicit_timing(sample_mode=nidaqmx.constants.AcquisitionType.FINITE,
-                                          samps_per_chan=sampsInScan)
-
-        if starttrig:
-            cotask.triggers.arm_start_trigger.dig_edge_src = reference_trigger
-            cotask.triggers.arm_start_trigger.trig_type = nidaqmx.constants.TriggerType.DIGITAL_EDGE
-
-        #self.__logger.debug(f'Created CO task: {name}')
-        return cotask
-
-    def __createChanAITask(self, name, channels, acquisitionType, source, rate,
-                           min_val=-0.5, max_val=10.0, sampsInScan=1000, starttrig=False,
+    def __createChanAITask(self, name, channel, acquisitionType, source, rate,
+                           #min_val=-0.5, max_val=10.0,
+                           sampsInScan=1000, starttrig=False,
                            reference_trigger='ai/StartTrigger'):
         """ Simplified function to create an analog input task """
+        # Check if a task with the same name already exists and clear it
+        try:
+            existing_task = nidaqmx.Task(name)
+            existing_task.close()  # Close the existing task to avoid conflicts
+        except nidaqmx.errors.DaqError as e:
+            # Handle case where task does not exist (normal behavior)
+            pass
+         # Now proceed with task creation
         aitask = nidaqmx.Task(name)
-        for channel in channels:
-            aitask.ai_channels.add_ai_voltage_chan(channel)
+
+        if acquisitionType == 'finite':
+            acqType = nidaqmx.constants.AcquisitionType.FINITE
+
+        #for channel in channels:
+        aitask.ai_channels.add_ai_voltage_chan(channel)
         aitask.timing.cfg_samp_clk_timing(source=source,
                                           rate=rate,
-                                          sample_mode=acquisitionType,
+                                          sample_mode=acqType,
                                           samps_per_chan=sampsInScan)
         if starttrig:
             aitask.triggers.start_trigger.cfg_dig_edge_start_trig(reference_trigger)

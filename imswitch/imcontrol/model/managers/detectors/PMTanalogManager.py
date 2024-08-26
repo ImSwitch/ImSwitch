@@ -9,7 +9,7 @@ class PMTanalogManager(DetectorManager):
 
     Manager properties:
 
-    - ``terminal`` -- the physical input terminal on the Nidaq to which the PMT
+    - ``AIchannel`` -- the physical input terminal on the Nidaq to which the PMT
       is connected (e.g., AI0)
     """
 
@@ -28,7 +28,10 @@ class PMTanalogManager(DetectorManager):
         self._detection_samplerate = float(1e6)
         self.acquisition = True
 
-        self._terminal = detectorInfo.managerProperties.get("terminal")
+        self._channel = detectorInfo.managerProperties["AIchannel"]
+        if isinstance(self._channel, int):
+            self._channel = f'Dev1/ai{self._channel}'  # for backwards compatibility
+        #self._terminal = detectorInfo.managerProperties.get("terminal")
         
         self._scanWorker = None
         self._scanThread = None
@@ -198,7 +201,7 @@ class ScanWorker(Worker):
         self._last_value = 0
         self._manager = manager
         self._name = self._manager._name
-        self._channel = self._manager._terminal
+        self._channel = self._manager._channel
 
         # time step of scanning, in seconds
         self._scan_dwell_time = scanInfoDict['dwell_time']
@@ -232,12 +235,14 @@ class ScanWorker(Worker):
         self._phase_delay = int(scanInfoDict['phase_delay'])
         self._samples_throw_init = self._throw_startzero
 
+        # samples to throw due to smooth between d>2 step transitioning
+        self._throw_init_d2_step = (self._throw_initpos + self._throw_settling + self._throw_startacc + self._phase_delay)
+
         # Additional setup for managing analog input instead of digital counts
-        self._manager._nidaqManager.startInputTask(self._name, 'ai', "Dev1/ai0", 'finite',
+        self._manager._nidaqManager.startInputTask(self._name, 'ai', self._channel, 'finite',
                                                    self._manager._nidaq_clock_source,
                                                    self._manager._detection_samplerate,
-                                                   self._samples_total, True, 'ao/StartTrigger',
-                                                   self._manager._terminal)
+                                                   self._samples_total, True, 'ao/StartTrigger')
         self._manager.initiateImage(self._img_dims)
         self._manager.setPixelSize(scanInfoDict['pixel_sizes'])  # 'pixel_sizes' order: low dim to high dim
 

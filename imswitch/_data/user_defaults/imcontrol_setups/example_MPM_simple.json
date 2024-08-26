@@ -3,14 +3,25 @@
 		"PMTanalog": {
 			"analogChannel": null,
 			"digitalLine": null,
-			"managerName": "APDManager",
+			"managerName": "PMTanalogManager",
 			"managerProperties": {
-				"ctrInputLine": "Dev1/ctr0",
-				"terminal": "AI0",
-				"cameraListIndex": null
-				},
+			  "AIchannel": "Dev1/ai0",
+			  "cameraListIndex": null
+			},
 			"forAcquisition": true
 		}
+	},
+	"lasers": {
+		"MockLaser": {
+			"analogChannel": null,
+			"digitalLine": "Dev1/port0/line1",
+			"managerName": "NidaqLaserManager",
+			"managerProperties": {},
+			"wavelength": 561,
+			"valueRangeMin": 0,
+			"valueRangeMax": 1,
+			"valueRangeStep": 1
+		  }
 	},
 	"positioners": {
         "ND-GalvoX": {
@@ -66,6 +77,7 @@
 	},
     "availableWidgets": [
 		"View",
+		"Laser",
 		"Scan",
 		"Image",
 		"Settings",

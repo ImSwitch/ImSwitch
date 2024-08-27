@@ -14,12 +14,15 @@
 	"lasers": {
 		"MockLaser": {
 			"analogChannel": null,
-			"digitalLine": "Dev1/port0/line1",
-			"managerName": "NidaqLaserManager",
-			"managerProperties": {},
+			"digitalLine": null,
+			"managerName": "ThorlabsMockLaserManager",
+			"managerProperties": {
+				"serial_no_shutter": 68800404,
+				"serial_no_rotator": 0
+			},
 			"wavelength": 561,
 			"valueRangeMin": 0,
-			"valueRangeMax": 1,
+			"valueRangeMax": 180,
 			"valueRangeStep": 1
 		  }
 	},
@@ -51,6 +54,17 @@
 			},
 			"axes": ["Y"],
 			"forScanning": true
+		},
+		"PiFOC": {
+			"analogChannel": null,
+			"digitalLine": null,
+			"managerName": "PiezoconceptZManager",
+			"managerProperties": {
+				"rs232device": "pczpiezo"
+			},
+			"axes": ["Z"],
+			"forPositioning": true,
+			"forScanning": true
 		}
     },
     "scan": {
@@ -67,6 +81,24 @@
 		"timerCounterChannel": "Dev1/ctr2",
 		"startTrigger": true
 	},
+	"rs232devices": {
+		"pczpiezo": {
+      		"managerName": "RS232Manager",
+      		"managerProperties": {
+        		"port": "ASRL5::INSTR",
+        		"encoding": "ascii",
+        		"recv_termination": "\n",
+        		"send_termination": "\n",
+        		"baudrate": 115200,
+        		"bytesize": 8,
+        		"parity": "none",
+        		"stopbits": 1,
+        		"rtscts": "false",
+        		"dsrdtr": "false",
+        		"xonxoff": "false"
+      		}
+    	}
+  	},
 	"rois": {
 		"Full chip": {
 			"x": 0,
@@ -78,6 +110,7 @@
     "availableWidgets": [
 		"View",
 		"Laser",
+		"Positioner",
 		"Scan",
 		"Image",
 		"Settings",

@@ -1,75 +1,101 @@
 import clr
+import time
 import os
 from .LaserManager import LaserManager
 from imswitch.imcommon.model import initLogger
-
-
-# import sys
-# import time
 
 # Ajouter les chemins complets vers les assemblées Thorlabs
 clr.AddReference("C:\\Program Files\\Thorlabs\\Kinesis\\Thorlabs.MotionControl.DeviceManagerCLI.dll")
 #clr.AddReference("C:\\Program Files\\Thorlabs\\Kinesis\\Thorlabs.MotionControl.GenericMotorCLI.dll")
 clr.AddReference("C:\\Program Files\\Thorlabs\\Kinesis\\Thorlabs.MotionControl.KCube.SolenoidCLI.dll")
+clr.AddReference("C:\\Program Files\\Thorlabs\\Kinesis\\Thorlabs.MotionControl.KCube.DCServoCLI.dll")
 
 from Thorlabs.MotionControl.DeviceManagerCLI import DeviceManagerCLI
 #from Thorlabs.MotionControl.GenericMotorCLI import GenericMotorCLI
 from Thorlabs.MotionControl.KCube.SolenoidCLI import KCubeSolenoid, SolenoidStatus
-#from System import Decimal  # nécessaire pour les unités du monde réel
 
 class ThorlabsMockLaserManager(LaserManager):
     """ LaserManager for analog-value NI-DAQ-controlled lasers.
-    Manager properties: "serial_no"
+    Manager properties:
+    - "serial_no_shutter": serial number of the Thorlabs shutter
+    - "serial_no_rotator": serial number of the motorized rotation half waveplate use to adjust laser power
     """
 
     def __init__(self, laserInfo, name, **lowLevelManagers):
         self.__logger = initLogger(self, tryInheritParent=True)
-        super().__init__(laserInfo, name, isBinary=True, valueUnits='V', valueDecimals=2)  # Appel du constructeur de la classe de base
-        # self.serial_no = "68800404"  # Remplacez cette ligne par le numéro de série de votre appareil
+        super().__init__(laserInfo, name, isBinary=False, valueUnits='mW',
+                         valueDecimals=1)  # Appel du constructeur de la classe de base
+        
         # Initialize Thorlabs shutter
-        self._shutter_serial_no = laserInfo.managerProperties['serial_no']
-        self.device = None
+        self._shutter_serial_no = laserInfo.managerProperties['serial_no_shutter']
+        self._motor_serial_no = laserInfo.managerProperties['serial_no_rotator']
+        self.shutter_device = None
+        self.motor_device = None
         # Initialisation de l'API Thorlabs Kinesis
         try:
             DeviceManagerCLI.BuildDeviceList()
 
             # Liste des dispositifs connectés          
-            self.device = KCubeSolenoid.CreateKCubeSolenoid(self._shutter_serial_no)
-            self.device.Connect(self._shutter_serial_no)
+            self.shutter_device = KCubeSolenoid.CreateKCubeSolenoid(self._shutter_serial_no)
+            self.motor_device = KCubeDCServo.CreateKCubeDCServo(self._motor_serial_no)
+            # Ouvrir la connexion aux dispositifs
+            self.shutter_device.Connect(self._shutter_serial_no)
+            self.motor_device.Connect(self.motor_device)
+            # Se connecter au KDC101 via son numéro de série
             
-            if not self.device.IsSettingsInitialized():
-                self.device.WaitForSettingsInitialized(10000)  # Timeout de 10 secondes
-                assert self.device.IsSettingsInitialized() is True
+            if not self.shutter_device.IsSettingsInitialized():
+                self.shutter_device.WaitForSettingsInitialized(10000)  # Timeout de 10 secondes
+                assert self.shutter_device.IsSettingsInitialized() is True
             
-            self.device.StartPolling(250)  # 250ms polling rate
-            #time.sleep(0.25)
-            self.device.EnableDevice()
+            self.shutter_device.StartPolling(250)  # 250ms polling rate
+            time.sleep(0.25)
+            self.shutter_device.EnableDevice()
             #time.sleep(0.5)  # Attendre que le dispositif soit activé
           
-            self.device.SetOperatingMode(SolenoidStatus.OperatingModes.Manual)
+            self.shutter_device.SetOperatingMode(SolenoidStatus.OperatingModes.Manual)
             self.__logger.info(f"Shutter {self._shutter_serial_no} initialized successfully.")
+
+            if not self.motor_device.IsSettingsInitialized():
+                self.motor_device.WaitForSettingsInitialized(10000)  # Timeout de 10 secondes
+                assert self.motor_device.IsSettingsInitialized() is True
+
+            self.motor_device.StartPolling(250)  # 250ms polling rate
+            time.sleep(0.25)
+            
+            # Référencer la position de la monture (home)
+            self.motor_device.Home(60000)  # Timeout en ms
+            while self.motor_device.Status.IsHoming:
+                time.sleep(0.1)
+
+            # self.shutter_device.EnableDevice()
+            #time.sleep(0.5)  # Attendre que le dispositif soit activé
 
         except Exception as e:
             self.__logger.error(f"Failed to initialize Thorlabs shutter: {e}")
-         
+
     def setEnabled(self, enabled):
         try:
-            if self.device:
+            if self.shutter_device:
                 if enabled:
-                    self.device.SetOperatingState(SolenoidStatus.OperatingStates.Active)  # Ouvrir l'obturateur
+                    self.shutter_device.SetOperatingState(SolenoidStatus.OperatingStates.Active)  # Ouvrir l'obturateur
                     self.__logger.info("Shutter enabled.")
                 else:
-                    self.device.SetOperatingState(SolenoidStatus.OperatingStates.Inactive)  # Fermer l'obturateur
+                    self.shutter_device.SetOperatingState(SolenoidStatus.OperatingStates.Inactive)  # Fermer l'obturateur
                     self.__logger.info("Shutter disabled.")
             else:
                 self.__logger.error("Shutter device is not initialized.")
         except Exception as e:
             self.__logger.error(f"Error trying to enable/disable shutter: {e}")
 
-    def setValue(self, voltage):
+    def setValue(self, target_position):
         if self.isBinary:
             return
         try:
+            self.motor_device(target_position, 60000)
+            # Attendre que la monture atteigne la position cible
+            while device.Status.IsMoving:
+                time.sleep(0.1)
+            
             self._nidaqManager.setAnalog(
                 target=self.name, voltage=voltage,
                 min_val=self.valueRangeMin, max_val=self.valueRangeMax
@@ -90,12 +116,15 @@ class ThorlabsMockLaserManager(LaserManager):
 
 
     def close(self):
-        #◙ Clean up resources when done
+        #◙ Stop polling and clean clean up resources when done
         try:
-            if self.device:
-                self.device.StopPolling()
-                self.device.Disconnect()
+            if self.shutter_device:
+                self.shutter_device.StopPolling()
+                self.shutter_device.Disconnect()
                 self.__logger.info("Shutter device disconnected.")
+            if self.motor_device:
+                self.motor_device.StopPolling()
+                self.motor_device.Disconnect()
         except Exception as e:
             self.__logger.error(f"Failed to close shutter device: {e}")
 

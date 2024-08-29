@@ -28,6 +28,14 @@ from imswitch.imcommon.framework import Signal, Thread, Worker, Mutex, Timer
 import time
 from ..basecontrollers import LiveUpdatedController
 
+try:
+    from ashlar.scripts.ashlar import process_images
+    IS_ASHLAR_AVAILABLE = True
+except ImportError:
+    IS_ASHLAR_AVAILABLE = False
+
+        
+        
 class HistoScanController(LiveUpdatedController):
     """Linked to HistoScanWidget."""
 
@@ -889,7 +897,7 @@ class ImageStitcher:
         self.processing_thread.start()
         
         # differentiate between ASHLAR and simple memory based stitching
-        if self.isStitchAshlar:
+        if self.isStitchAshlar and IS_ASHLAR_AVAILABLE:
             self.ashlarImageList = []
             self.ashlarPositionList = []
         else:
@@ -908,7 +916,6 @@ class ImageStitcher:
         position_list => list of tuples with (x,y) positions
         pixel_size => pixel size in microns
         '''
-        from ashlar.scripts.ashlar import process_images
         print("Stitching tiles with ashlar..")
         # Process numpy arrays
         if len(arrays[0].shape)>4:
@@ -955,7 +962,7 @@ class ImageStitcher:
             
 
     def _place_on_canvas(self, img, coords, flipX=True, flipY=True):
-        if self.isStitchAshlar:
+        if self.isStitchAshlar and IS_ASHLAR_AVAILABLE:
             # in case we want to process it with ASHLAR later on
             self.ashlarImageList.append(img)
             self.ashlarPositionList.append(coords)
@@ -977,7 +984,7 @@ class ImageStitcher:
     def get_stitched_image(self):
         # introduce a little delay to free the queue ? # TODO
         time.sleep(0.5)
-        if self.isStitchAshlar:
+        if self.isStitchAshlar and IS_ASHLAR_AVAILABLE:
             # convert the image and positionlist 
             arrays = [np.expand_dims(np.array(self.ashlarImageList),1)]  # (num_images, num_channels, height, width)
             position_list = np.array(self.ashlarPositionList)

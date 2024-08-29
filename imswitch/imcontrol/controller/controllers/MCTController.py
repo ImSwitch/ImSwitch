@@ -515,8 +515,8 @@ class MCTController(ImConWidgetController):
                 allZStackFrames.append(allChannelFrames)
                 
             
-            # ensure all illus are off
-            self.switchOffIllumination()
+                # ensure all illus are off
+                self.switchOffIllumination()
             
             # save to HDF5
             if self.isRGB:

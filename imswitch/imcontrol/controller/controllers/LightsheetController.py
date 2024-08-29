@@ -292,18 +292,24 @@ class LightsheetController(ImConWidgetController):
             timeoutFrameRequest = .3 # seconds
             cTime = time.time()
             
+            timeoutFrameRequest = 1 # seconds # TODO: Make dependent on exposure time
+            cTime = time.time()
+            frameSync=2
+            lastFrameNumber=-1
             while(1):
-                # something went wrong while capturing the frame
+                # get frame and frame number to get one that is newer than the one with illumination off eventually
+                mFrame, currentFrameNumber = self.microscopeDetector.getLatestFrame(returnFrameNumber=True)
+                if lastFrameNumber==-1:
+                    # first round
+                    lastFrameNumber = currentFrameNumber
                 if time.time()-cTime> timeoutFrameRequest:
+                    # in case exposure time is too long we need break at one point 
                     break
-                mFrame, currentFrameNumber = self.detector.getLatestFrame(returnFrameNumber=True)
-                if currentFrameNumber <= lastFrameNumber:
-                    time.sleep(0.01)
-                    continue  
-                print(f"Frame number used for stack: {currentFrameNumber}") 
-                lastFrameNumber = currentFrameNumber
-                break
-                            
+                if currentFrameNumber <= lastFrameNumber+frameSync:
+                    time.sleep(0.01) # off-load CPU
+                else:
+                    break
+       
             if mFrame is not None and mFrame.shape[0] != 0:
                 allFrames.append(mFrame.copy())
             if controller.is_target_reached():

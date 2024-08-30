@@ -1,8 +1,8 @@
 name: imswitch-test
 
 on:
-  push:
   pull_request:
+  workflow_dispatch:
   schedule:
     - cron: '30 7 * * *'
 
@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-latest, windows-latest]
+        os: [macos-13, macos-latest, windows-latest]
         python-version: [3.8, 3.9]
 
     steps:

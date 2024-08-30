@@ -131,6 +131,8 @@ class FlowStopWidget(NapariHybridWidget):
         self.textEditVolumePerImage = QtWidgets.QLineEdit('1')
         self.labelTimeToStabilize = QtWidgets.QLabel('Time to Stabilize')
         self.textEditTimeToStabilize = QtWidgets.QLineEdit('0.5')
+        self.labelPumpSpeed = QtWidgets.QLabel('Pump Speed')
+        self.textEditPumpSpeed = QtWidgets.QLineEdit('1000')
         
         self.labelExperimentalSettings = QtWidgets.QLabel('Experimental Settings:')
         self.switchPumpDirection = QtWidgets.QPushButton('Switch Pump Direction')
@@ -154,6 +156,8 @@ class FlowStopWidget(NapariHybridWidget):
         self.tabAutoLayout.addWidget(self.textEditVolumePerImage, 5, 1)
         self.tabAutoLayout.addWidget(self.labelTimeToStabilize, 6, 0)
         self.tabAutoLayout.addWidget(self.textEditTimeToStabilize, 6, 1)
+        self.tabAutoLayout.addWidget(self.labelPumpSpeed, 7, 0)
+        self.tabAutoLayout.addWidget(self.textEditPumpSpeed, 7, 1)
 
         self.tabAutoLayout.addWidget(self.labelExperimentalSettings, 8, 0)
         self.tabAutoLayout.addWidget(self.switchPumpDirection, 9, 0)
@@ -189,6 +193,7 @@ class FlowStopWidget(NapariHybridWidget):
             'numImages': self.textEditNumImages.text(),
             'volumePerImage': self.textEditVolumePerImage.text(),
             'timeToStabilize': self.textEditTimeToStabilize.text(),
+            'pumpSpeed': self.textEditPumpSpeed.text(),
         }
         
     def getImage(self):

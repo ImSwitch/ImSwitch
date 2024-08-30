@@ -12,7 +12,7 @@ from imswitch.imcommon.framework import Signal, Thread, Worker, Mutex, Timer
 from imswitch.imcontrol.view import guitools
 from imswitch.imcommon.model import initLogger
 from ..basecontrollers import LiveUpdatedController
-
+from imswitch import IS_HEADLESS
 
 
 class HoliSheetController(LiveUpdatedController):
@@ -63,8 +63,9 @@ class HoliSheetController(LiveUpdatedController):
         self.imageComputationWorker.set_pixelsize(self.pixelsize)
         self.imageComputationWorker.set_dz(self.dz)
         self.imageComputationWorker.set_PSFpara(self.PSFpara)
-        self.imageComputationWorker.sigHoliSheetImageComputed.connect(self.displayImage)
+        #self.imageComputationWorker.sigHoliSheetImageComputed.connect(self.displayImage) # TODO: Why not poassible to connect this signal?
 
+        if IS_HEADLESS: return
         self.imageComputationThread = Thread()
         self.imageComputationWorker.moveToThread(self.imageComputationThread)
         self.sigImageReceived.connect(self.imageComputationWorker.computeHoliSheetImage)
@@ -86,6 +87,14 @@ class HoliSheetController(LiveUpdatedController):
         except Exception as e:
             self._logger.debug("No camera found - in debug mode?")
 
+        # get all Lasers
+        self.lasers = self._master.lasersManager.getAllDeviceNames()
+        self.laser = self.lasers[0]
+        try: 
+            self._master.lasersManager[self.laser].setGalvo(channel=1, frequency=10, offset=0, amplitude=1, clk_div=0, phase=0, invert=1, timeout=1)
+        except  Exception as e:
+            self._logger.error(e)
+        
         # connect camera and stage
         #self.camera = self._setupInfo.autofocus.camera
         #self._master.detectorsManager[self.camera].startAcquisition()
@@ -94,28 +103,32 @@ class HoliSheetController(LiveUpdatedController):
         self.imageComputationWorker.setPositioner(self.positioner)
 
         # Connect HoliSheetWidget signals
-        self._widget.sigShowToggled.connect(self.setShowHoliSheet)
-        self._widget.sigPIDToggled.connect(self.setPID)
-        self._widget.sigUpdateRateChanged.connect(self.changeRate)
-        self._widget.sigSliderFocusValueChanged.connect(self.valueFocusChanged)
-        self._widget.sigSliderPumpSpeedValueChanged.connect(self.valuePumpSpeedChanged)
-        self._widget.sigSliderRotationSpeedValueChanged.connect(self.valueRotationSpeedChanged)
+        if self._widget is not None:
+            self._widget.sigShowToggled.connect(self.setShowHoliSheet)
+            self._widget.sigPIDToggled.connect(self.setPID)
+            self._widget.sigUpdateRateChanged.connect(self.changeRate)
+            self._widget.sigSliderFocusValueChanged.connect(self.valueFocusChanged)
+            self._widget.sigSliderPumpSpeedValueChanged.connect(self.valuePumpSpeedChanged)
+            self._widget.sigSliderRotationSpeedValueChanged.connect(self.valueRotationSpeedChanged)
+            self._widget.sigToggleLightsheet.connect(self.toggleLightsheet)
+            # Connect buttons
+            self._widget.snapRotationButton.clicked.connect(self.captureFullRotation)
 
         self.changeRate(self._widget.getUpdateRate())
         self.setShowHoliSheet(self._widget.getShowHoliSheetChecked())
-        self.setPID(self._widget.getPIDChecked())
+        #self.setPID(self._widget.getPIDChecked())
 
-
-        # Connect buttons
-        self._widget.snapRotationButton.clicked.connect(self.captureFullRotation)
         # start measurment thread (pressure)
-
-        # initiliazing the update scheme for pulling pressure measurement values
-        self.timer = Timer()
-        self.timer.timeout.connect(self.updateMeasurements)
-        self.timer.start(self.tMeasure)
         self.startTime = time.time()
 
+    def toggleLightsheet(self, enabled):
+        """ Toggle lightsheet. """
+        if enabled:
+            self._master.lasersManager[self.laser].setGalvo(channel=1, frequency=10, offset=0, amplitude=1, clk_div=2, phase=0, invert=1, timeout=1)
+        else:
+            self._master.lasersManager[self.laser].setGalvo(channel=1, frequency=0, offset=0, amplitude=1, clk_div=0, phase=0, invert=1, timeout=1)
+        
+        
     def valueFocusChanged(self, magnitude):
         """ Change magnitude. """
         self.dz = magnitude*1e-3

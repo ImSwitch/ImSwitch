@@ -1,7 +1,6 @@
 from qtpy import QtCore, QtWidgets
 
-import imswitch
-
+from imswitch import IS_HEADLESS, __version__
 
 class CheckUpdatesDialog(QtWidgets.QDialog):
     """ Dialog for checking for ImSwitch updates. """
@@ -56,7 +55,7 @@ class CheckUpdatesDialog(QtWidgets.QDialog):
     def showPyInstallerUpdate(self, newVersion):
         self.informationLabel.setText(
             f'ImSwitch {newVersion} is now available. '
-            f' Your current version is {imswitch.__version__}.'
+            f' Your current version is {__version__}.'
             f'\n\nTo update, download the new version archive from the link below and extract it'
             f' into a new folder. Do NOT overwrite your current installation; instead, delete it'
             f' after you have updated.'
@@ -79,7 +78,7 @@ class CheckUpdatesDialog(QtWidgets.QDialog):
     def showPyPIUpdate(self, newVersion):
         self.informationLabel.setText(
             f'ImSwitch {newVersion} is now available. '
-            f' Your current version is {imswitch.__version__}.'
+            f' Your current version is {__version__}.'
             f'\n\nTo update, run the command: pip install --upgrade imswitch'
         )
         self.linkLabel.setText(

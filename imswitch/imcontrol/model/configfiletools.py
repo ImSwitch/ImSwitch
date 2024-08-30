@@ -10,7 +10,13 @@ def getSetupList():
     return [Path(file).name for file in glob.glob(os.path.join(_setupFilesDir, '*.json'))]
 
 def loadSetupInfo(options, setupInfoType):
-    with open(os.path.join(_setupFilesDir, options.setupFileName)) as setupFile:
+    # if options.setupFileName contains absolute path, don't concatenate 
+    if os.path.isabs(options.setupFileName):
+        mPath = options.setupFileName
+    else:
+        mPath = os.path.join(_setupFilesDir, options.setupFileName)
+    print("Loading setup info from: " + mPath)
+    with open(mPath) as setupFile:
         return setupInfoType.from_json(setupFile.read(), infer_missing=True)
 
 def saveSetupInfo(options, setupInfo):

@@ -66,9 +66,12 @@ class UC2ConfigManager(SignalInterface):
     def interruptSerialCommunication(self):
         self.ESP32.serial.interruptCurrentSerialCommunication()
         
-    def initSerial(self):
-        self.ESP32.serial.reconnect()
-        
+    def initSerial(self, baudrate=None):
+        try:
+            self.ESP32.serial.reconnect(baudrate=baudrate)
+        except:
+            self.ESP32.serial.reconnect() # fall back to old version of UC2-REST
+            
     def pairBT(self):
         self.ESP32.state.pairBT()
 

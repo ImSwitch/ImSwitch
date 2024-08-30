@@ -120,7 +120,6 @@ class LaserWidget(Widget):
             f'font-size: 16px; font-weight: bold; padding: 0 6px 0 12px;'
             f'border-left: 4px solid {color}'
         )
-
         self.lasersGrid.addWidget(nameLabel, len(self.laserModules), 0)
         self.lasersGrid.addWidget(control, len(self.laserModules), 1)
         self.laserModules[laserName] = control
@@ -251,6 +250,9 @@ class LaserModule(QtWidgets.QWidget):
         self.setPointEdit = QtWidgets.QLineEdit(str(initialPower))
         self.setPointEdit.setFixedWidth(50)
         self.setPointEdit.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+        self.buttonPlus = QtWidgets.QPushButton('+')
+        self.buttonMinus = QtWidgets.QPushButton('-')
+        
 
         self.minpower = QtWidgets.QLabel()
         self.minpower.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
@@ -272,6 +274,7 @@ class LaserModule(QtWidgets.QWidget):
             self.slider.setTickInterval(tickInterval)
             self.slider.setSingleStep(singleStep)
             self.slider.setValue(0)
+    
 
         powerFrame = QtWidgets.QFrame(self)
         self.powerGrid = QtWidgets.QGridLayout()
@@ -281,8 +284,11 @@ class LaserModule(QtWidgets.QWidget):
         self.powerGrid.addWidget(self.setPointLabel, 0, 0, 2, 1)
         self.powerGrid.addWidget(self.setPointEdit, 0, 1, 2, 1)
         self.powerGrid.addWidget(self.minpower, 0, 2, 2, 1)
-        self.powerGrid.addWidget(self.slider, 0, 3, 2, 1)
-        self.powerGrid.addWidget(self.maxpower, 0, 4, 2, 1)
+        self.powerGrid.addWidget(self.buttonMinus, 0, 3, 2, 1)
+        self.powerGrid.addWidget(self.slider, 0, 4, 2, 1)
+        self.powerGrid.addWidget(self.buttonPlus, 0, 5, 2, 1)
+        self.powerGrid.addWidget(self.maxpower, 0, 6, 2, 1)
+        
         
         if isModulated:
             freqRangeMin, freqRangeMax, initialFrequency = frequencyRange
@@ -362,6 +368,12 @@ class LaserModule(QtWidgets.QWidget):
         )
         self.setPointEdit.returnPressed.connect(
             lambda: self.sigValueChanged.emit(self.getValue())
+        )
+        self.buttonPlus.clicked.connect(
+            lambda: self.slider.setValue(self.slider.value() + singleStep)
+        )
+        self.buttonMinus.clicked.connect(
+            lambda: self.slider.setValue(self.slider.value() - singleStep)
         )
 
         if isModulated:

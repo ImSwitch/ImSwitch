@@ -1,5 +1,0 @@
-# Hiding Arkitekt Credential files from git
-*.json
-*.temp
-cache/
-servers/

@@ -1,6 +1,6 @@
 import numpy as np
 import pyqtgraph as pg
-import imswitch
+from imswitch import IS_HEADLESS
 from pyqtgraph.dockarea import Dock, DockArea
 from pyqtgraph.parametertree import Parameter, ParameterTree
 from qtpy import QtCore, QtWidgets
@@ -49,7 +49,7 @@ class ImRecMainView(QtWidgets.QMainWindow):
         self.n_text = 'neg'
 
         # Actions in menubar
-        if not imswitch.IS_HEADLESS:
+        if not IS_HEADLESS:
             menuBar = self.menuBar()
             file = menuBar.addMenu('&File')
 
@@ -98,7 +98,7 @@ class ImRecMainView(QtWidgets.QMainWindow):
         btnFrame.sigReconstructMultiIndividual.connect(self.sigReconstructMultiIndividual)
         btnFrame.sigQuickLoadData.connect(self.sigQuickLoadData)
         btnFrame.sigUpdate.connect(self.sigUpdate)
-        if not imswitch.IS_HEADLESS:
+        if not IS_HEADLESS:
             self.reconstructionWidget = ReconstructionView()
 
         self.parTree = ReconParTree()
@@ -152,7 +152,7 @@ class ImRecMainView(QtWidgets.QMainWindow):
         leftContainer.addWidget(parameterFrame, 1)
         leftContainer.addWidget(btnFrame, 0)
         leftContainer.addWidget(DataDock, 1)
-        if not imswitch.IS_HEADLESS:
+        if not IS_HEADLESS:
             rightContainer.addWidget(self.reconstructionWidget)
 
         layout.addLayout(leftContainer, 1)

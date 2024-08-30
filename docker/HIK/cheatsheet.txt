@@ -1,0 +1,9 @@
+
+    #python3 /tmp/ImSwitch/__main__.py --headless 1 --config-file example_uc2_hik_flowstop.json  --http-port 8001 --ssl 1"]
+    # python3 /tmp/ImSwitch/imswitch/__main__.py --headless 1 --config-file example_uc2_hik_flowstop.json --http-port 8001 --ssl 1
+    
+    # sudo docker run -it -e MODE=terminal imswitch_hik
+
+    
+
+    sudo docker run -it --rm -p 8001:8001 -p 2222:22 -e HEADLESS=1 -e HTTP_PORT=8001 -e CONFIG_FILE=example_uc2_hik_flowstop.json -e UPDATE_GIT=true -e UPDATE_CONFIG=true --privileged imswitch_hik

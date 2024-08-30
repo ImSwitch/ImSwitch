@@ -1,4 +1,4 @@
-import imswitch
+from imswitch import IS_HEADLESS
 from pyqtgraph.dockarea import Dock, DockArea
 from qtpy import QtCore, QtWidgets
 from imswitch.imcommon.model import dirtools
@@ -41,7 +41,7 @@ class ImScrMainView(QtWidgets.QMainWindow):
         self.setWindowTitle('Notebook')
         
         # Actions in menubar
-        if imswitch.IS_HEADLESS:
+        if IS_HEADLESS:
             return 
         
         # setup application

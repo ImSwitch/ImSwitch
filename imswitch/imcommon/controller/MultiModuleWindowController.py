@@ -2,13 +2,15 @@ import webbrowser
 
 import psutil
 
-import imswitch
+from imswitch import IS_HEADLESS, __version__
 from imswitch.imcommon.framework import Timer
 from imswitch.imcommon.model import dirtools, modulesconfigtools, ostools, APIExport
-from imswitch.imcommon.view import guitools
-from .CheckUpdatesController import CheckUpdatesController
-from .PickModulesController import PickModulesController
 from .basecontrollers import WidgetController
+
+if not IS_HEADLESS:
+    from imswitch.imcommon.view import guitools
+    from .CheckUpdatesController import CheckUpdatesController
+    from .PickModulesController import PickModulesController
 
 
 class MultiModuleWindowController(WidgetController):
@@ -64,7 +66,7 @@ class MultiModuleWindowController(WidgetController):
 
     def showDocs(self):
         """ Opens the ImSwitch documentation in a web browser. """
-        webbrowser.open(f'https://imswitch.readthedocs.io/en/v{imswitch.__version__}/')
+        webbrowser.open(f'https://imswitch.readthedocs.io/en/v{__version__}/')
 
     def checkUpdates(self):
         """ Checks if there are any updates to ImSwitch available and notifies

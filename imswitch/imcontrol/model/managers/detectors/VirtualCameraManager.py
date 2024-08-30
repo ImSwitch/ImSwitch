@@ -130,7 +130,8 @@ class VirtualCameraManager(DetectorManager):
     def getChunk(self):
         try:
             return self._camera.getLastChunk()
-        except:
+        except Exception as e:
+            self.__logger.error(f'Error getting chunk: {e}')
             return None
 
     def startAcquisition(self, liveView=False):

@@ -1,4 +1,4 @@
-import imswitch
+from imswitch import IS_HEADLESS
 from pyqtgraph.dockarea import Dock, DockArea
 from qtpy import QtCore, QtWidgets
 

@@ -16,6 +16,7 @@ class HoliSheetWidget(NapariHybridWidget):
     sigSliderFocusValueChanged = QtCore.Signal(float)  # (value)
     sigSliderPumpSpeedValueChanged = QtCore.Signal(float)  # (value)
     sigSliderRotationSpeedValueChanged = QtCore.Signal(float)  # (value)
+    sigToggleLightsheet = QtCore.Signal(bool) # (enabled)
 
     def __post_init__(self):
 
@@ -99,6 +100,11 @@ class HoliSheetWidget(NapariHybridWidget):
         self.pressurePlot.showGrid(x=True, y=True)
         # update this (self.pressurePlotCurve.setData(X,Y)) with update(focusSignal) function
         self.pressurePlotCurve = self.pressurePlot.plot(pen='y')
+        self.btnToggleLightsheet = QtWidgets.QPushButton('Toggle Lightsheet')
+        self.btnToggleLightsheet.setCheckable(True)
+        self.btnToggleLightsheet.setSizePolicy(QtWidgets.QSizePolicy.Preferred,
+                                        QtWidgets.QSizePolicy.Expanding)
+        self.btnToggleLightsheet.clicked.connect(self.sigToggleLightsheet)
 
         # Add elements to GridLayout
         grid = QtWidgets.QGridLayout()
@@ -121,6 +127,7 @@ class HoliSheetWidget(NapariHybridWidget):
         grid.addWidget(self.lineRate, 3, 3, 1, 1)
         grid.addWidget(self.pressureSenseGraph, 4, 0, 1, 4)
         grid.addWidget(self.PIDCheck, 2, 3, 1, 1)
+        grid.addWidget(self.btnToggleLightsheet, 4, 2, 1, 2)
 
         # grid.setRowMinimumHeight(0, 300)
 
@@ -143,13 +150,13 @@ class HoliSheetWidget(NapariHybridWidget):
         self.layer = None
 
     def updatePumpSpeed(self, speed):
-        self.labelPumpSpeed.setText(f'Speed Pump {speed} [stp\s]')
+        self.labelPumpSpeed.setText(f'Speed Pump {speed} [stp"\"s]')
     
     def updatePumpPressure(self, pressure):
         self.labelPumpPressure.setText(f'Pump Pressure {"{0:.2f}".format(pressure)} [psi]')
 
     def updateRotationSpeed(self, speed):
-        self.labelRotationSpeed.setText(f'Speed Rotation {speed} [stp\s]')
+        self.labelRotationSpeed.setText(f'Speed Rotation {speed} [stp"\"s]')
 
     def getWvl(self):
         return float(self.wvlEdit.text())

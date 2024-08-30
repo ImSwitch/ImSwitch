@@ -1,6 +1,6 @@
 import serial
 import time
-from threading import Event, Thread
+from threading import Event, Thread, Lock
 import serial.tools.list_ports
 
 if not __name__ == "__main__":
@@ -19,14 +19,16 @@ class GRBLController:
         self.ser = serial.Serial(self.port, BAUD_RATE)
         self.ser.timeout = .5
         self.ser.write_timeout = .5
-        self.debug = 1 #debug
+        self.debug = debug
         self.speed = {'X': 10000, 'Y': 10000, 'Z': 10000}
         self.idle_counter_limit = 3
+        self.mLock = Lock()
         self.send_wake_up()
 
     def write(self, command):
         try:
-            self.ser.write(command)
+            with self.mLock:
+                self.ser.write(command)
         except Exception as e:
             print(f"Error writing to serial port: {e}")
 

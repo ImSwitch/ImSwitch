@@ -1,4 +1,4 @@
-import imswitch
+from imswitch import IS_HEADLESS
 
 import time
 
@@ -51,7 +51,7 @@ class AutofocusController(ImConWidgetController):
         self.sigImageReceived.connect(self.displayImage)
         
         # Connect AutofocusWidget buttons
-        if not imswitch.IS_HEADLESS: # TODO: We need to have signals instead!
+        if not IS_HEADLESS: # TODO: We need to have signals instead!
             self._widget.focusButton.clicked.connect(self.focusButton)
             self._commChannel.sigAutoFocus.connect(self.autoFocus)
 

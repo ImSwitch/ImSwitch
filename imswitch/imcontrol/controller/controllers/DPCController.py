@@ -19,6 +19,7 @@ import time
 import numpy as np
 from pathlib import Path
 import tifffile
+from imswitch import IS_HEADLESS
 
 pi    = np.pi
 naxis = np.newaxis
@@ -41,7 +42,7 @@ class DPCController(ImConWidgetController):
 
         # load config file
         if self._setupInfo.dpc is None:
-            self._widget.replaceWithError('DPC is not configured in your setup file.')
+            if not IS_HEADLESS: self._widget.replaceWithError('DPC is not configured in your setup file.')
             return
 
         # define patterns
@@ -50,6 +51,7 @@ class DPCController(ImConWidgetController):
         self.brightfieldPattern = {"0": [1,2,4,5,6,7,8,9,10,11,13,14]}
         self.allDPCPatternNames = ("top", "bottom", "right", "left")
         if False:
+            # TODO: We need to generalize this interface in a better way
             #self.brightfieldPattern = {"0": [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23]}
             self.allDPCPatterns = {self.allDPCPatternNames[0]: [0,1,2,7,8,9,10,11,12,21,22,23,24], 
                                     self.allDPCPatternNames[1]: [3,4,5,6,13,14,15,16,17,18,19,20,21,22], 
@@ -67,9 +69,6 @@ class DPCController(ImConWidgetController):
                         self.allDPCPatternNames[2]: [13,21,22,29,30,31,37,38,39,45,46,47,53,54,61], 
                         self.allDPCPatternNames[3]: [11,18,19,25,26,27,33,34,35,41,42,43,50,51,59]}
             self.nLEDs = 64
-        #self._widget.applyChangesButton.clicked.connect(self.applyParams)
-        self._widget.startDPCAcquisition.clicked.connect(self.startDPC)
-        self._widget.isRecordingButton.clicked.connect(self.toggleRecording)
         
         # dpc parameters
         self.rotation  = self._master.dpcManager.rotations 
@@ -84,7 +83,7 @@ class DPCController(ImConWidgetController):
         # select LEDArray
         allLEDMatrixNames = self._master.LEDMatrixsManager.getAllDeviceNames()
         if len(allLEDMatrixNames) == 0:
-            self._widget.replaceWithError('No LEDMatrix found in your setup file.')
+            if not IS_HEADLESS: self._widget.replaceWithError('No LEDMatrix found in your setup file.')
             return
         self.ledMatrix = self._master.LEDMatrixsManager[allLEDMatrixNames[0]]
         
@@ -151,37 +150,43 @@ class DPCController(ImConWidgetController):
         # connect the reconstructed image to the displayer
         self.sigDPCProcessorImageComputed.connect(self.displayImage)
         
+        if not IS_HEADLESS:
+            #self._widget.applyChangesButton.clicked.connect(self.applyParams)
+            self._widget.startDPCAcquisition.clicked.connect(self.startDPC)
+            self._widget.isRecordingButton.clicked.connect(self.toggleRecording)
+        
     def __del__(self):
         pass
 
     def displayImage(self, im, name="DPC Reconstruction"):
         """ Displays the image in the view. """
-        self._widget.setImage(im, name=name)
+        if not IS_HEADLESS:
+            self._widget.setImage(im, name=name)
 
     def startDPC(self):
-        if self._widget.startDPCAcquisition.text() == "Start":
-            # start live processing => every frame is captured by the update() function. It also handles the pattern addressing
-            self.iReconstructed = 0
-            #  Start acquisition if not started already
-            self._master.detectorsManager.startAcquisition(liveView=False)
-            
+        if not IS_HEADLESS:
+            if self._widget.startDPCAcquisition.text() == "Start":
+                # start live processing => every frame is captured by the update() function. It also handles the pattern addressing
+                self.iReconstructed = 0
+                #  Start acquisition if not started already
+                self._master.detectorsManager.startAcquisition(liveView=False)
 
-
-
-            # start the background thread
-            self.active = True
-            dpc_info_dict = self.getInfoDict(generalParams=self._widget.DPCParameterTree.p)
-            self.dpcThread = threading.Thread(target=self.performDPCExperimentThread, args=(dpc_info_dict,), daemon=True)
-            self.dpcThread.start()
-            self._widget.startDPCAcquisition.setText("Stop")
-        else:
-            # stop live processing 
-            self.active = False
-            self._master.detectorsManager.startAcquisition(liveView=True)
-            self.dpcThread.join()
-            self._widget.startDPCAcquisition.setText("Start")
+                # start the background thread
+                self.active = True
+                dpc_info_dict = self.getInfoDict(generalParams=self._widget.DPCParameterTree.p)
+                self.dpcThread = threading.Thread(target=self.performDPCExperimentThread, args=(dpc_info_dict,), daemon=True)
+                self.dpcThread.start()
+                self._widget.startDPCAcquisition.setText("Stop")
+            else:
+                # stop live processing 
+                self.active = False
+                self._master.detectorsManager.startAcquisition(liveView=True)
+                self.dpcThread.join()
+                self._widget.startDPCAcquisition.setText("Start")
             
     def toggleRecording(self):
+        if IS_HEADLESS:
+            return
         self.isRecording = not self.isRecording
         if self.isRecording:
             self._widget.isRecordingButton.setText("Stop Recording")

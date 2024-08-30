@@ -7,6 +7,8 @@ tools/
 # mypy
 .mypy_cache/
 
+.arkitek/*
+
 # C extensions
 *.so
 
@@ -98,3 +100,4 @@ pip-wheel-metadata/ImSwitch-1.2.1.dist-info/top_level.txt
 /imswitch/_data/user_defaults/imnotebook/.ipynb_checkpoints
 
 stitchedImage.tif
+/ImTools

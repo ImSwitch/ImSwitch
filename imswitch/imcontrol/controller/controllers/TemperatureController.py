@@ -9,7 +9,7 @@ from imswitch.imcontrol.view import guitools
 from ..basecontrollers import ImConWidgetController
 from imswitch.imcommon.model import APIExport, dirtools, initLogger
 from datetime import datetime
-import imswitch
+from imswitch import IS_HEADLESS
 class TemperatureController(ImConWidgetController):
     """ Linked to TemperatureWidget."""
 
@@ -28,7 +28,7 @@ class TemperatureController(ImConWidgetController):
         self.startTime = time.time()
 
         # settings for the controller
-        self.controlTarget = 37
+        self.controlTarget = 0
 
         # Hard-coded PID values..
         self.Kp = 100
@@ -41,7 +41,7 @@ class TemperatureController(ImConWidgetController):
         self.temperatureController = self._master.rs232sManager["ESP32"]._esp32.temperature
         
         # Connect TemperatureWidget signals
-        if not imswitch.IS_HEADLESS:
+        if not IS_HEADLESS:
             self._widget.sigPIDToggled.connect(self.setPID)
             self._widget.sigsliderTemperatureValueChanged.connect(self.valueTemperatureValueChanged)
             self._widget.sigShowTemperatureToggled.connect(self.switchTemperatureMonitor)
@@ -114,7 +114,7 @@ class TemperatureController(ImConWidgetController):
                                 Kp=self.Kp, Ki=self.Ki, Kd=self.Kd, target=self.controlTarget)
         
     @APIExport(runOnUIThread=False)
-    def set_temperature(self, active, Kp=None, Ki=None, Kd=None, target=None):
+    def set_temperature(self, active, Kp=None, Ki=None, Kd=None, target=None, sensorOffset = 3):
         """ Set the temperature. """
         if Kp is not None:
             self.Kp = Kp
@@ -125,8 +125,10 @@ class TemperatureController(ImConWidgetController):
         if target is not None:
             self.controlTarget = target
 
+        
+
         self.temperatureController.set_temperature(active=active
-            , Kp=self.Kp, Ki=self.Ki, Kd=self.Kd, target=self.controlTarget)
+            , Kp=self.Kp, Ki=self.Ki, Kd=self.Kd, target=self.controlTarget+sensorOffset)
 
     def updateSetPointData(self):
         if self.currPoint < self.nBuffer:

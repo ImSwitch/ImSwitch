@@ -1,4 +1,4 @@
-import imswitch
+from imswitch import IS_HEADLESS
 from pyqtgraph.dockarea import Dock, DockArea
 from qtpy import QtCore, QtWidgets
 
@@ -29,7 +29,7 @@ class ImScrMainView(QtWidgets.QMainWindow):
             return
 
         # Actions in menubar
-        if not imswitch.IS_HEADLESS:
+        if not IS_HEADLESS:
             menuBar = self.menuBar()
             file = menuBar.addMenu('&File')
 
@@ -59,7 +59,7 @@ class ImScrMainView(QtWidgets.QMainWindow):
         self.editorDock.addWidget(self.editor)
         self.dockArea.addDock(self.editorDock)
 
-        if not imswitch.IS_HEADLESS:
+        if not IS_HEADLESS:
             self.files = FilesView()
             self.filesDock = Dock('Files')
             self.filesDock.addWidget(self.files)

@@ -49,13 +49,13 @@ class GXPIPYManager(DetectorManager):
 
 
         try: 
-            self._isRGB = detectorInfo.managerProperties['gxipycam']['isRGB']
+            isRGB = detectorInfo.managerProperties['isRGB']
         except:
-            self._isRGB = False
+            isRGB = False
 
         self.flipImage = (self.flipX, self.flipY)
 
-        self._camera = self._getGXObj(self.cameraId, self.binningValue, self.flipImage, self._isRGB)
+        self._camera = self._getGXObj(self.cameraId, self.binningValue, self.flipImage, isRGB)
 
         fullShape = (self._camera.SensorWidth,
                 self._camera.SensorHeight)
@@ -279,7 +279,12 @@ class GXPIPYManager(DetectorManager):
         self.parameters['Camera pixel size'].value = pixelSizeUm
 
     def crop(self, hpos, vpos, hsize, vsize):
-
+        '''
+        hpos - horizontal start position of crop window
+        vpos - vertical start position of crop window
+        hsize - horizontal size of crop window
+        vsize - vertical size of crop window
+        '''
         def cropAction():
             self.__logger.debug(
                 f'{self._camera.model}: crop frame to {hsize}x{vsize} at {hpos},{vpos}.'

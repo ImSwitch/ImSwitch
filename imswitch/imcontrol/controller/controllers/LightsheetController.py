@@ -249,8 +249,7 @@ class LightsheetController(ImConWidgetController):
     @APIExport()
     def performScanningRecording(self, minPos=0, maxPos=1000, speed=1000, axis="A", illusource=None, illuvalue=512):
         if not self.isLightsheetRunning:
-            if maxPos - minPos <= 0: return
-            if speed < 100: speed = 100 
+            
             # check parameters
             if axis not in ("A", "X", "Y", "Z"):
                 axis = "A"
@@ -289,13 +288,9 @@ class LightsheetController(ImConWidgetController):
             # Todo: Need to ensure thatwe have the right pattern displayed and the buffer is free - this heavily depends on the exposure time..
             mFrame = None
             lastFrameNumber = -1
-            timeoutFrameRequest = .3 # seconds
+            timeoutFrameRequest = .3 # seconds # TODO: Make dependent on exposure time
             cTime = time.time()
-            
-            timeoutFrameRequest = 1 # seconds # TODO: Make dependent on exposure time
-            cTime = time.time()
-            frameSync=2
-            lastFrameNumber=-1
+            frameSync = 2
             while(1):
                 # get frame and frame number to get one that is newer than the one with illumination off eventually
                 mFrame, currentFrameNumber = self.microscopeDetector.getLatestFrame(returnFrameNumber=True)

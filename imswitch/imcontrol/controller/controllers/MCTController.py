@@ -104,7 +104,7 @@ class MCTController(ImConWidgetController):
             self._widget.mctShowLastButton.setEnabled(False)
 
             # setup gui limits for sliders
-            if len(self.availableIlliminations) == 1:
+            if len(self.availableIlliminations) > 0:
                 self._widget.sliderIllu1.setMaximum(self.availableIlliminations[0].valueRangeMax)
                 self._widget.sliderIllu1.setMinimum(self.availableIlliminations[0].valueRangeMin)           
             if len(self.availableIlliminations) > 1:
@@ -407,7 +407,7 @@ class MCTController(ImConWidgetController):
             downScaleFactor = 4
             nTilesX = int(np.ceil((self.xScanMax-self.xScanMin)/self.xScanStep))
             nTilesY = int(np.ceil((self.yScanMax-self.yScanMin)/self.yScanStep))
-            imageDimensions = self.detector.getLatestFrame().shape
+            imageDimensions = self.detector.getLatestFrame().shape # self.detector._camera.CameraWidth TODO not good!
             imageDimensionsDownscaled = (imageDimensions[1]//downScaleFactor, imageDimensions[0]//downScaleFactor) # Y/X
             tiledImageDimensions = (nTilesX*imageDimensions[1]//downScaleFactor, nTilesY*imageDimensions[0]//downScaleFactor)
             self.tiledImage = np.zeros(tiledImageDimensions)

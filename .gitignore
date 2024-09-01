@@ -69,9 +69,6 @@ target/
 # PyCharm
 .idea/
 
-# Visual Studio Code
-.vscode/
-
 # Specific files
 imswitch/imcontrol/model/managers/lasers/KatanaLaserManager.py
 imswitch/imcontrol/model/managers/stands/LeicaDMIManager.py

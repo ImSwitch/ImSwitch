@@ -32,12 +32,15 @@ class Thread(threading.Thread): #TODO: Fix this by adding, base.Thread):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._stop_event = threading.Event()
+        self.isRunning = False
 
     def run(self):
+        self.isRunning = True
         while not self._stop_event.is_set():
             if self._target:
                 self._target()
                 break  
+        self.isRunning = False
 
     def quit(self, timeout=None) -> None:
         self._stop_event.set()

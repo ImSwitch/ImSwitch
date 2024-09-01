@@ -5,7 +5,7 @@ __version__ = "2.1.0"
 __httpport__ = 8001
 __ssl__ = True
 
-IS_HEADLESS = True
+IS_HEADLESS = False
 DEFAULT_SETUP_FILE = None
 DEFAULT_CONFIG_PATH = None
 DEFAULT_DATA_PATH = None

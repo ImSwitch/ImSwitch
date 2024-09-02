@@ -1,5 +1,3 @@
-import glob
-from sys import platform
 # used to be, but actions will replace this with the current release TAG -> >2.1.0
 __version__ = "2.1.0"
 __httpport__ = 8001

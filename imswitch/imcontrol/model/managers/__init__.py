@@ -1,3 +1,5 @@
+import warnings
+
 from .AutofocusManager import AutofocusManager
 from .FOVLockManager import FOVLockManager
 from .DetectorsManager import DetectorsManager, NoDetectorsError
@@ -16,7 +18,10 @@ from .ScanManagerBase import ScanManagerBase
 from .ScanManagerMoNaLISA import ScanManagerMoNaLISA
 from .StandManager import StandManager
 from .RotatorsManager import RotatorsManager
-from .UC2ConfigManager import UC2ConfigManager
+try:
+    from .UC2ConfigManager import UC2ConfigManager
+except ModuleNotFoundError:
+    warnings.warn("UC2ConfigManager not available; please install uc2rest module")
 from .SIMManager import SIMManager
 from .DPCManager import DPCManager
 from .MCTManager import MCTManager

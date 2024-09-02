@@ -43,7 +43,6 @@ if not IS_HEADLESS:
     from .ROIScanWidget import ROIScanWidget
     from .LightsheetWidget import LightsheetWidget
     from .WebRTCWidget import WebRTCWidget
-    from .HyphaWidget import HyphaWidget
     from .MockXXWidget import MockXXWidget
     from .JetsonNanoWidget import JetsonNanoWidget
     from .HistoScanWidget import HistoScanWidget
@@ -58,3 +57,7 @@ if not IS_HEADLESS:
     from .ULensesWidget import ULensesWidget
     from .ViewWidget import ViewWidget
     from .WatcherWidget import WatcherWidget
+    try:
+        from .HyphaWidget import HyphaWidget
+    except ModuleNotFoundError:
+        warnings.warn("HyphaWidget not available; please install imjoy-rpc module")

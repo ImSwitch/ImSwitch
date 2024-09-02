@@ -2,7 +2,7 @@ import pipython  # PI Python wrapper, ensure it's installed via pip (pip install
 
 from .PositionerManager import PositionerManager
 
-from pipython import GCSDevice
+from pipython import GCSDevice, GCSError
 
 class PIFOCManager(PositionerManager):
     """ PositionerManager for control of a PI PiFOC V-308 stage through USB communication.
@@ -24,10 +24,26 @@ class PIFOCManager(PositionerManager):
         
         # Initialisation de la connexion USB avec le stage PI
         self._controller = GCSDevice()
-        self._controller.OpenUSBDaisyChain(description=positionerInfo.managerProperties['usbdevice'])
 
-        # Initialisation du stage (vous pouvez ajouter plus de configurations si nécessaire)
-        self._controller.SVO(positionerInfo.axes, True)  # Activer la boucle fermée
+        try:
+            self._controller.OpenUSBDaisyChain(description=positionerInfo.managerProperties['usbdevice'])
+
+            # Vérification de la communication avec le dispositif
+            if not self._controller.IsConnected():
+                raise RuntimeError(f"Échec de la connexion avec le dispositif USB {positionerInfo.managerProperties['usbdevice']}.")
+
+            # Identification du dispositif pour s'assurer que la connexion est correcte
+            device_id = self._controller.qIDN()
+            print(f"Connexion établie avec succès avec le dispositif: {device_id}")
+
+            # Initialisation du stage (vous pouvez ajouter plus de configurations si nécessaire)
+            #self._controller.SVO(positionerInfo.axes, True)  # Activer la boucle fermée
+
+        except GCSError as e:
+            raise RuntimeError(f"Erreur de communication avec le dispositif: {str(e)}")
+
+        except Exception as e:
+            raise RuntimeError(f"Une erreur est survenue lors de la tentative de connexion: {str(e)}")
 
     def move(self, value, _):
         if value == 0:

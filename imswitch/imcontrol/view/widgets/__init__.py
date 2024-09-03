@@ -1,4 +1,6 @@
 from imswitch import IS_HEADLESS
+import warnings
+
 if not IS_HEADLESS:
     from .AlignAverageWidget import AlignAverageWidget
     from .AlignmentLineWidget import AlignmentLineWidget

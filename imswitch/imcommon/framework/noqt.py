@@ -28,7 +28,7 @@ class SignalInterface(base.SignalInterface):
     pass
 
 
-class Thread(threading.Thread): #TODO: Fix this by adding, base.Thread):
+class Thread(threading.Thread, base.Thread): #TODO: @jacopoabramo -> Fix this by adding, base.Thread):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._stop_event = threading.Event()
@@ -51,6 +51,12 @@ class Thread(threading.Thread): #TODO: Fix this by adding, base.Thread):
     def __isWrappedCObjDeleted(self) -> bool:
         # In threading.Thread, this isn't needed but kept for compatibility
         return not self.is_alive()
+    
+    def finished(self) -> bool:
+        return not self.isRunning
+    
+    def started(self) -> bool:
+        return self.isRunning
     
 class Timer(base.Timer):
     def __init__(self, interval, function, args=None, kwargs=None):

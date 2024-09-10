@@ -707,10 +707,16 @@ class HistoScanController(LiveUpdatedController):
         for i in range(nTimes):
             tz = datetime.timezone.utc
             ft = "%Y-%m-%dT%H_%M_%S"
-            t = datetime.datetime.now(tz=tz).strftime(ft)
+            HistoDate = datetime.datetime.now(tz=tz).strftime(ft)
             file_name = "test_"+t
             extension = ".ome.tif"
-            folder = self._widget.getDefaulSavePath()
+            if IS_HEADLESS: 
+                fileExtension = "tif"
+                folder = self.getSaveFilePath(date=HistoDate,
+                                        filename=file_name,
+                                        extension=extension)
+                
+            else: folder = self._widget.getDefaulSavePath()
             t0 = time.time()
             
             # create a new image stitcher          
@@ -825,7 +831,17 @@ class HistoScanController(LiveUpdatedController):
             tifffile.imsave(os.path.join(dirPath, "stitchedImage.tif"), largeImage, append=False) 
             self.setImageForDisplay(largeImage, "histoscanStitch"+mDate)
         threading.Thread(target=getStitchedResult).start()
-        
+    
+    def getSaveFilePath(self, date, filename, extension):
+        mFilename =  f"{date}_{filename}.{extension}"
+        dirPath  = os.path.join(dirtools.UserFileDirs.Data, 'recordings', date)
+        newPath = os.path.join(dirPath,mFilename)
+
+        if not os.path.exists(dirPath):
+            os.makedirs(dirPath)
+
+        return newPath
+    
     def valueIlluChanged(self):
         illuSource = self._widget.getIlluminationSource()
         illuValue = self._widget.illuminationSlider.value()

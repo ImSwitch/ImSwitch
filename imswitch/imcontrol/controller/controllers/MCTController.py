@@ -221,6 +221,28 @@ class MCTController(ImConWidgetController):
         self._widget.setImage(im)
 
     @APIExport(runOnUIThread=True)
+    def getMCTStatus(self) -> dict:
+        statusDict = {}
+        statusDict["isMCTrunning"] = self.isMCTrunning
+        statusDict["nImagesTaken"] = self.nImagesTaken
+        statusDict["timePeriod"] = self.timePeriod
+        statusDict["zStackEnabled"] = self.zStackEnabled
+        statusDict["zStackMin"] = self.zStackMin
+        statusDict["zStackMax"] = self.zStackMax
+        statusDict["zStackStep"] = self.zStackStep
+        statusDict["xyScanEnabled"] = self.xyScanEnabled
+        statusDict["xScanMin"] = self.xScanMin
+        statusDict["xScanMax"] = self.xScanMax
+        statusDict["xScanStep"] = self.xScanStep
+        statusDict["yScanMin"] = self.yScanMin
+        statusDict["yScanMax"] = self.yScanMax
+        statusDict["yScanStep"] = self.yScanStep
+        statusDict["Illu1Value"] = self.Illu1Value
+        statusDict["Illu2Value"] = self.Illu2Value
+        statusDict["Illu3Value"] = self.Illu3Value
+        return statusDict   
+        
+    @APIExport(runOnUIThread=True)
     def startTimelapseImaging(self, tperiod:int=5, nImagesToCapture:int=10, 
                       MCTFilename:str="Test", MCTDate:str="", 
                       zStackEnabled:bool=False, zStackMin:int=0, zStackMax:int=0, zStackStep:int=0, 

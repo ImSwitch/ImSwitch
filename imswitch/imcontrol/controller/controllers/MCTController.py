@@ -221,10 +221,11 @@ class MCTController(ImConWidgetController):
         self._widget.setImage(im)
 
     @APIExport(runOnUIThread=True)
-    def startTimelapseImaging(self, tperiod:int, nImagesToCapture:int, 
-                      MCTFilename:str, MCTDate:str, 
-                      zStackEnabled:bool, zStackMin:int, zStackMax:int, zStackStep:int, 
-                      xyScanEnabled:bool, xScanMin:int, xScanMax:int, xScanStep:int, yScanMin:int, yScanMax:int, yScanStep:int, 
+    def startTimelapseImaging(self, tperiod:int=5, nImagesToCapture:int=10, 
+                      MCTFilename:str="Test", MCTDate:str="", 
+                      zStackEnabled:bool=False, zStackMin:int=0, zStackMax:int=0, zStackStep:int=0, 
+                      xyScanEnabled:bool=False, xScanMin:int=0, xScanMax:int=0, xScanStep:int=0, 
+                      yScanMin:int=0, yScanMax:int=0, yScanStep:int=0, 
                       IlluValue1:int =-1, IlluValue2:int =-1, IlluValue3:int =-1):
         # this is called periodically by the timer
         if not self.isMCTrunning:
@@ -233,6 +234,12 @@ class MCTController(ImConWidgetController):
                 del self.MCTThread
             except:
                 pass
+            
+            # get default date to not overwrite the same files
+            if MCTDate is "":
+                MCTDate = datetime.now().strftime("%Y_%m_%d-%I-%M-%S_%p")
+            uniqueID = np.random.randint(0, 1000)
+            MCTDate = MCTDate + "_"+str(uniqueID) # make sure we do not overwrite files
 
             # retreive from REST API
             if IlluValue1>=0: self.Illu1Value = IlluValue1
@@ -302,6 +309,7 @@ class MCTController(ImConWidgetController):
         fileName = self.getSaveFilePath(date=MCTDate,
                                 filename=MCTFilename,
                                 extension=fileExtension)
+        self._logger.info(f"Saving to {fileName}")
         self.detectorWidth, self.detectorHeight = self.detector._camera.SensorWidth, self.detector._camera.SensorHeight
         if self.isRGB:
             init_dims = (1, len(self.activeIlluminations), nZStack, self.detectorWidth, self.detectorHeight, 3) # time, channels, z, y, x, RGB
@@ -318,7 +326,7 @@ class MCTController(ImConWidgetController):
             if self.nImagesTaken >= nImagesToCapture:
                 self.isMCTrunning = False
                 self._logger.debug("Done with timelapse")
-                self._widget.mctStartButton.setEnabled(True)
+                if not IS_HEADLESS: self._widget.mctStartButton.setEnabled(True)
                 break
 
             # initialize a run
@@ -363,14 +371,16 @@ class MCTController(ImConWidgetController):
 
 
     def updateGUI(self):
-        # update the text in the GUI
-        self._widget.setMessageGUI(self.nImagesTaken)
 
         # sneak images into arrays for displaying stack
         if self.zStackEnabled and not self.xyScanEnabled:
             self.LastStackIllu1ArrayLast = np.array(self.LastStackIllu1)
             self.LastStackIllu2ArrayLast = np.array(self.LastStackIllu2)
             self.LastStackLEDArrayLast = np.array(self.LastStackLED)
+
+        if not IS_HEADLESS:
+            # update the text in the GUI
+            self._widget.setMessageGUI(self.nImagesTaken)
             self._widget.mctShowLastButton.setEnabled(True)
 
     def performAutofocus(self):
@@ -514,7 +524,6 @@ class MCTController(ImConWidgetController):
                     '''
                 allZStackFrames.append(allChannelFrames)
                 
-            
                 # ensure all illus are off
                 self.switchOffIllumination()
             
@@ -524,6 +533,7 @@ class MCTController(ImConWidgetController):
             else:
                 framesToSave = np.transpose(np.array(allZStackFrames), (1,0,2,3)) # time, 
             self.h5File.append_data(self.nImagesTaken, framesToSave, np.array(allPositions))
+            self._logger.debug(f"Saved image {self.nImagesTaken} to HDF5")
             del framesToSave
                 
 
@@ -562,7 +572,8 @@ class MCTController(ImConWidgetController):
 
         # disable motors to prevent overheating
         if self.positioner is not None:
-            self.positioner.enalbeMotors(enable=self.positioner.is_enabled)
+            try:self.positioner.enalbeMotors(enable=self.positioner.is_enabled)
+            except: pass # special case for the ESP32 board
 
     def switchOffIllumination(self):
         # switch off all illu sources
@@ -607,8 +618,7 @@ class MCTController(ImConWidgetController):
 
     def getSaveFilePath(self, date, filename, extension):
         mFilename =  f"{date}_{filename}.{extension}"
-        dirPath  = os.path.join(dirtools.UserFileDirs.Root, 'recordings', date)
-
+        dirPath  = os.path.join(dirtools.UserFileDirs.Data, 'recordings', date)
         newPath = os.path.join(dirPath,mFilename)
 
         if not os.path.exists(dirPath):

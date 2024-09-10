@@ -5,14 +5,12 @@ import argparse
 import os
 
 import imswitch
-# python main.py --headless or
-# python -m imswitch --headless 1 --config-file example_virtual_microscope.json --config-folder /Users/bene/Dowynloads
-# py
 def main(is_headless:bool=None, default_config:str=None, http_port:int=None, ssl:bool=None, config_folder:str=None,
          data_folder: str=None):
     '''
-    is_hedless
-    
+    To start imswitch in headless using the arguments, you can call the main file with the following arguments:
+        python main.py --headless or
+        python -m imswitch --headless 1 --config-file example_virtual_microscope.json --config-folder /Users/bene/Dowynloads
     '''
     try:
         try: # Google Colab does not support argparse

@@ -76,10 +76,6 @@ setup(
         "ashlarUC2",
         "imjoy-rpc==0.5.59"
     ],
-        #"juliacall",
-        # "microscope",
-        #"https://github.com/openUC2/UC2-REST/archive/refs/heads/master.zip",
-        #"https://gitlab.com/bionanoimaging/nanoimagingpack/-/archive/master/nanoimagingpack-master.zip",
 
      extras_require={ # we assume that this is installed in a conda environment or via apt-get
         'PyQt5': [

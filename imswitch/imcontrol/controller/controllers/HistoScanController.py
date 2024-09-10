@@ -708,7 +708,7 @@ class HistoScanController(LiveUpdatedController):
             tz = datetime.timezone.utc
             ft = "%Y-%m-%dT%H_%M_%S"
             HistoDate = datetime.datetime.now(tz=tz).strftime(ft)
-            file_name = "test_"+t
+            file_name = "test_"+HistoDate
             extension = ".ome.tif"
             if IS_HEADLESS: 
                 fileExtension = "tif"

@@ -236,7 +236,7 @@ class MCTController(ImConWidgetController):
                 pass
             
             # get default date to not overwrite the same files
-            if MCTDate is "":
+            if MCTDate == "":
                 MCTDate = datetime.now().strftime("%Y_%m_%d-%I-%M-%S_%p")
             uniqueID = np.random.randint(0, 1000)
             MCTDate = MCTDate + "_"+str(uniqueID) # make sure we do not overwrite files

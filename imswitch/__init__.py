@@ -3,6 +3,9 @@ __version__ = "2.1.0"
 __httpport__ = 8001
 __ssl__ = True
 
+''' 
+These are flags to ensure headless operation and side-loading of the config file 
+'''
 IS_HEADLESS = False
 DEFAULT_SETUP_FILE = None
 DEFAULT_CONFIG_PATH = None

@@ -214,7 +214,8 @@ class Camera:
             )
             
     def getLastChunk(self):
-        return [self.getLast()]
+        mFrame = self.getLast()
+        return np.expand_dims(mFrame, axis=2)
 
     def setPropertyValue(self, propertyName, propertyValue):
         pass
@@ -235,7 +236,6 @@ class Positioner:
             self.psf = None
 
     def move(self, x=None, y=None, z=None, a=None, is_absolute=False):
-        print("Moving to: ", x, y, z, a, is_absolute)
         with self.lock:
             if is_absolute:
                 if x is not None:

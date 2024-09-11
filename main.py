@@ -9,4 +9,4 @@ if __name__ == '__main__':
     - ssl: True or False
     - data_folder: path to the data folder
     '''
-    main()
+    main(is_headless=True, data_folder="/Users/bene/Downloads") # this has to be maintained for DOCKER!

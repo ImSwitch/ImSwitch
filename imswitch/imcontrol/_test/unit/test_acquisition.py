@@ -9,11 +9,6 @@ def getImage(qtbot, detectorsManager):
     receivedImage = None
     numImagesReceived = 0
 
-    '''default
-        sigUpdateImage = Signal(
-        str, np.ndarray, bool, list, bool
-    )  # (detectorName, image, init, scale, isCurrentDetector)
-    '''
     def imageUpdated(_, img, __, ___, isCurrentDetector):
         nonlocal receivedImage, numImagesReceived
         if isCurrentDetector:
@@ -59,9 +54,6 @@ def test_acquisition_liveview_multi(qtbot, currentDetector):
     )
     assert not np.all(receivedImage == receivedImage[0, 0])  # Assert that not all pixels are same
 
-if __name__ == '__main__':
-    import sys
-    sys.exit(pytest.main(['-v', __file__]))
 # Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.
 #

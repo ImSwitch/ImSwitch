@@ -48,9 +48,6 @@ class Thread(threading.Thread, base.Thread): #TODO: @jacopoabramo -> Fix this by
     def wait(self, timeout=None) -> None:
         self.join(timeout)
 
-    def __isWrappedCObjDeleted(self) -> bool:
-        # In threading.Thread, this isn't needed but kept for compatibility
-        return not self.is_alive()
     
     def finished(self) -> bool:
         return not self.isRunning
@@ -98,14 +95,5 @@ class Worker(base.Worker):
         self._task_queue.put(None)
         self._thread.join()
 
-    def is_stopped(self):
-        return self._stop_event.is_set()
-
     def move_to_thread(self, func):
         self._task_queue.put(func)
-
-class FrameworkUtils(base.FrameworkUtils):
-    @staticmethod
-    def processPendingEventsCurrThread():
-        # Implement alternative processPendingEventsCurrThread functionality if needed
-        pass

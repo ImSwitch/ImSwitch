@@ -425,7 +425,6 @@ class CameraGXIPY:
                 return
 
         else:
-            #breakpoint()
             numpy_image = frame.get_numpy_array()
 
         # flip image if needed

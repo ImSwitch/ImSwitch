@@ -8,5 +8,7 @@ if __name__ == '__main__':
     - http_port: port number
     - ssl: True or False
     - data_folder: path to the data folder
+    example:
+    main(is_headless=True, data_folder="/Users/bene/Downloads")
     '''
-    main(is_headless=True, data_folder="/Users/bene/Downloads") # this has to be maintained for DOCKER!
+    main() ## this has to be maintained for DOCKER!

@@ -18,6 +18,7 @@
 # sudo docker run -it --rm -p 8001:8001  -e HEADLESS=1  -e HTTP_PORT=8001    -e UPDATE_GIT=1  -e UPDATE_CONFIG=0  -e CONFIG_PATH=/config  --privileged  -v ~/Downloads:/config  imswitch_hik_arm64
 # sudo docker run -it --rm -p 8001:8001  -e HEADLESS=1  -e HTTP_PORT=8001  -e UPDATE_GIT=1  -e UPDATE_CONFIG=0  --privileged -e DATA_PATH=/dataset  -v /media/uc2/SD2/:/dataset -e CONFIG_FILE=example_uc2_hik_flowstop.json ghcr.io/openuc2/imswitch-noqt-x64:latest
 # sudo docker run -it -e MODE=terminal ghcr.io/openuc2/imswitch-noqt-x64:latest
+# sudo docker run -it --rm -p 8001:8001 -p 2222:22  -e UPDATE_INSTALL_GIT=1  -e PIP_PACKAGES="arkitekt UC2-REST"  -e CONFIG_PATH=/Users/bene/Downloads  -e DATA_PATH=/Users/bene/Downloads  -v ~/Documents/imswitch_docker/imswitch_git:/tmp/ImSwitch-changes  -v ~/Documents/imswitch_docker/imswitch_pip:/persistent_pip_packages  -v /media/uc2/SD2/:/dataset  -v ~/Downloads:/config  --privileged imswitch_hik
 
 
 # Witht he following configuration we can do the following:
@@ -130,6 +131,21 @@ RUN mkdir -p /opt/MVS/bin/fonts
 # Set environment variable for MVCAM_COMMON_RUNENV
 ENV MVCAM_COMMON_RUNENV=/opt/MVS/lib LD_LIBRARY_PATH=/opt/MVS/lib/64:/opt/MVS/lib/32:$LD_LIBRARY_PATH
 
+# Install vsftpd
+RUN apt-get update && apt-get install -y vsftpd
+
+# Configure vsftpd
+RUN echo "listen=YES" >> /etc/vsftpd.conf && \
+    echo "anonymous_enable=YES" >> /etc/vsftpd.conf && \
+    echo "anon_root=/dataset" >> /etc/vsftpd.conf && \
+    echo "local_enable=YES" >> /etc/vsftpd.conf && \
+    echo "write_enable=YES" >> /etc/vsftpd.conf && \
+    echo "chroot_local_user=YES" >> /etc/vsftpd.conf && \
+    echo "allow_writeable_chroot=YES" >> /etc/vsftpd.conf
+
+# Force pull imswitch
+ARG CACHEBUST=1
+
 # Clone the config folder
 RUN git clone https://github.com/openUC2/ImSwitchConfig /root/ImSwitchConfig
 
@@ -143,25 +159,6 @@ RUN git clone https://github.com/openUC2/UC2-REST /tmp/UC2-REST && \
     cd /tmp/UC2-REST && \
     /bin/bash -c "source /opt/conda/bin/activate imswitch && pip install -e /tmp/UC2-REST"
 
-# Force pull imswitch
-ARG CACHEBUST=1
-RUN cd /tmp/ImSwitch && \
-     git pull
-        #/bin/bash -c "source /opt/conda/bin/activate imswitch && pip install -e /tmp/ImSwitch --no-deps"
-
-# Install vsftpd
-RUN apt-get update && apt-get install -y vsftpd
-
-# Configure vsftpd
-RUN echo "listen=YES" >> /etc/vsftpd.conf && \
-    echo "anonymous_enable=YES" >> /etc/vsftpd.conf && \
-    echo "anon_root=/dataset" >> /etc/vsftpd.conf && \
-    echo "local_enable=YES" >> /etc/vsftpd.conf && \
-    echo "write_enable=YES" >> /etc/vsftpd.conf && \
-    echo "chroot_local_user=YES" >> /etc/vsftpd.conf && \
-    echo "allow_writeable_chroot=YES" >> /etc/vsftpd.conf
-
-
 # Expose FTP, SSH port and HTTP port
 EXPOSE  21 22 8001
 
@@ -169,33 +166,22 @@ CMD ["/bin/bash", "-c", "\
     if [ \"$MODE\" = \"terminal\" ]; then \
         /bin/bash; \
     else \
+        echo 'Starting the container' && \
         echo 'LSUSB' && lsusb && \
         echo 'Listing external USB storage devices' && \
         ls /media && \
         /usr/sbin/sshd -D & \
         /usr/sbin/vsftpd /etc/vsftpd.conf & \
         ls /root/ImSwitchConfig/imcontrol_setups && \
-        if [ \"$UPDATE_GIT\" = \"true\" ] || [ \"$UPDATE_GIT\" = \"1\" ]; then \
-            echo 'Pulling the ImSwitch repository' && \
+        PATCH_DIR=/tmp/ImSwitch-changes && \
+        PATCH_FILE=$PATCH_DIR/diff.patch && \
+        mkdir -p $PATCH_DIR && \
+        if [ -f \"$PATCH_FILE\" ]; then \
+            echo 'Applying stored patch from: $PATCH_FILE' && \
             cd /tmp/ImSwitch && \
-            git pull; \
-        fi && \
-        if [ \"$UPDATE_INSTALL_GIT\" = \"true\" ] || [ \"$UPDATE_INSTALL_GIT\" = \"1\" ]; then \
-            echo 'Pulling the ImSwitch repository and installing' && \
-            cd /tmp/ImSwitch && \
-            git pull && \
-            /bin/bash -c 'source /opt/conda/bin/activate imswitch && pip install -e /tmp/ImSwitch'; \
-        fi && \
-        if [ \"$UPDATE_UC2\" = \"true\" ] || [ \"$UPDATE_UC2\" = \"1\" ]; then \
-            echo 'Pulling the UC2-REST repository' && \
-            cd /tmp/UC2-REST && \
-            git pull; \
-        fi && \
-        if [ \"$UPDATE_INSTALL_UC2\" = \"true\" ] || [ \"$UPDATE_INSTALL_UC2\" = \"1\" ]; then \
-            echo 'Pulling the UC2-REST repository and installing' && \
-            cd /tmp/UC2-REST && \
-            git pull && \
-            /bin/bash -c 'source /opt/conda/bin/activate imswitch && pip install -e /tmp/UC2-ESP'; \
+            git apply $PATCH_FILE; \
+        else \
+            echo 'No patch file found, proceeding without applying changes'; \
         fi && \
         if [ \"$UPDATE_CONFIG\" = \"true\" ]; then \
             echo 'Pulling the ImSwitchConfig repository' && \
@@ -217,6 +203,34 @@ CMD ["/bin/bash", "-c", "\
                 /opt/conda/bin/conda run -n imswitch pip install --user $package; \
             done; \
         fi && \
+        if [ \"$UPDATE_GIT\" = \"true\" ] || [ \"$UPDATE_GIT\" = \"1\" ]; then \
+            PATCH_DIR=/tmp/ImSwitch-changes && \
+            PATCH_FILE=$PATCH_DIR/diff.patch && \
+            mkdir -p $PATCH_DIR && \
+            cd /tmp/ImSwitch && \
+            if [ -f \"$PATCH_FILE\" ]; then \
+                echo 'Applying stored patch to ImSwitch from: $PATCH_FILE' && \
+                git apply $PATCH_FILE || { echo 'Failed to apply patch, aborting fetch'; exit 1; }; \
+            fi && \
+            echo 'Fetching the latest changes from ImSwitch repository' && \
+            git fetch origin && \
+            echo 'Checking for differences between local and remote branch' && \
+            git diff HEAD origin/master > $PATCH_FILE && \
+            if [ -s $PATCH_FILE ]; then \
+                echo 'New changes detected, patch saved at: $PATCH_FILE'; \
+            else \
+                echo 'No new changes detected in ImSwitch repository, patch not updated'; \
+                rm -f $PATCH_FILE; \
+            fi && \
+            echo 'Merging fetched changes from origin/master' && \
+            git merge origin/master; \
+        fi && \
+        if [ \"$UPDATE_INSTALL_GIT\" = \"true\" ] || [ \"$UPDATE_INSTALL_GIT\" = \"1\" ]; then \
+            echo 'Pulling the ImSwitch repository and installing' && \
+            cd /tmp/ImSwitch && \
+            git pull && \
+            /bin/bash -c 'source /opt/conda/bin/activate imswitch && pip install --target /persistent_pip_packages /tmp/ImSwitch'; \
+        fi && \        
         source /opt/conda/bin/activate imswitch && \
         HEADLESS=${HEADLESS:-1} && \
         HTTP_PORT=${HTTP_PORT:-8001} && \

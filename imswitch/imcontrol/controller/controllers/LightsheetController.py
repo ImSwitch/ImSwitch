@@ -213,7 +213,7 @@ class LightsheetController(ImConWidgetController):
         if self.lightsheetStack.shape[0] > 200:
             subsample = 10
             self.lightsheetStack = self.lightsheetStack[::subsample,:,:]
-        if IS_HEADLESS: 
+        if not IS_HEADLESS: 
             return self._widget.setImage(np.uint16(self.lightsheetStack ), colormap="gray", name=name, pixelsize=(20,1,1), translation=(0,0,0))
 
     def valueIlluChanged(self):
@@ -293,7 +293,7 @@ class LightsheetController(ImConWidgetController):
             frameSync = 2
             while(1):
                 # get frame and frame number to get one that is newer than the one with illumination off eventually
-                mFrame, currentFrameNumber = self.microscopeDetector.getLatestFrame(returnFrameNumber=True)
+                mFrame, currentFrameNumber = self.detector.getLatestFrame(returnFrameNumber=True)
                 if lastFrameNumber==-1:
                     # first round
                     lastFrameNumber = currentFrameNumber
@@ -333,12 +333,26 @@ class LightsheetController(ImConWidgetController):
             posZ = allPositions["Z"]
             if isSave:
                 # save image stack with metadata
-                tif.imsave(f"lightsheet_stack_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}_x_{posX}_y_{posY}_z_{posZ}_pz_{pixelSizeZ}_pxy_{pixelSizeXY}.tif", self.lightsheetStack)
+                mDate = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+                mExtension = "tif"
+                mFileName = "lightsheet_stack_x_{posX}_y_{posY}_z_{posZ}_pz_{pixelSizeZ}_pxy_{pixelSizeXY}"
+                mFilePath = self.getSaveFilePath(mDate, mFileName, mExtension)
+                self._logger.info(f"Saving lightsheet stack to {mFilePath}")
+                tif.imsave(mFilePath, self.lightsheetStack)
         saveImageThread = threading.Thread(target=displayAndSaveImageStack, args =(isSave,))
         saveImageThread.start()
         self.stopLightsheet()
         
-        
+    def getSaveFilePath(self, date, filename, extension):
+        mFilename =  f"{date}_{filename}.{extension}"
+        dirPath  = os.path.join(dirtools.UserFileDirs.Data, 'recordings', date)
+        newPath = os.path.join(dirPath,mFilename)
+
+        if not os.path.exists(dirPath):
+            os.makedirs(dirPath)
+
+        return newPath
+
         
     def stopLightsheet(self):
         self.isLightsheetRunning = False

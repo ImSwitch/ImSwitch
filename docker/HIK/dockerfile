@@ -143,20 +143,36 @@ RUN echo "listen=YES" >> /etc/vsftpd.conf && \
     echo "chroot_local_user=YES" >> /etc/vsftpd.conf && \
     echo "allow_writeable_chroot=YES" >> /etc/vsftpd.conf
 
-# Force pull imswitch
-ARG CACHEBUST=1
-
-# Clone the config folder
-RUN git clone https://github.com/openUC2/ImSwitchConfig /root/ImSwitchConfig
-
+# first install all the dependencies not not to install them again in a potential "breaking update"
 # Clone the repository and install dependencies
 RUN git clone https://github.com/openUC2/imSwitch /tmp/ImSwitch && \
     cd /tmp/ImSwitch && \
     /bin/bash -c "source /opt/conda/bin/activate imswitch && pip install -e /tmp/ImSwitch"
 
+# Clone the config folder
+RUN git clone https://github.com/openUC2/ImSwitchConfig /root/ImSwitchConfig
+
 # Install UC2-REST
 RUN git clone https://github.com/openUC2/UC2-REST /tmp/UC2-REST && \
     cd /tmp/UC2-REST && \
+    /bin/bash -c "source /opt/conda/bin/activate imswitch && pip install -e /tmp/UC2-REST"
+
+
+# Force a rebuild of the container
+ARG CACHEBUST=1
+
+# Clone the config folder
+RUN cd /root/ImSwitchConfig && \
+    git pull
+
+# now update potential breaking changes
+RUN cd /tmp/ImSwitch && \
+    git pull && \
+    /bin/bash -c "source /opt/conda/bin/activate imswitch && pip install -e /tmp/ImSwitch"
+
+# Install UC2-REST
+RUN cd /tmp/UC2-REST && \
+    git pull && \
     /bin/bash -c "source /opt/conda/bin/activate imswitch && pip install -e /tmp/UC2-REST"
 
 # Expose FTP, SSH port and HTTP port

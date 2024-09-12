@@ -123,9 +123,13 @@ class RecordingController(ImConWidgetController):
         attrs = {detectorName: self._commChannel.sharedAttrs.getHDF5Attributes()
                  for detectorName in detectorNames}
 
+        if not IS_HEADLESS:
+            saveMode = SaveMode(self._widget.getSnapSaveMode())
+        else:
+            saveMode = SaveMode(1) # TODO: Assuming we want to save the image 
         self._master.recordingManager.snap(detectorNames,
                                            savename,
-                                           SaveMode(self._widget.getSnapSaveMode()),
+                                           saveMode,
                                            mSaveFormat,
                                            attrs)
 

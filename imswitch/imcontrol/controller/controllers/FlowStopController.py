@@ -145,6 +145,9 @@ class FlowStopController(LiveUpdatedController):
     def getExperimentParameters(self) -> dict:
         if not IS_HEADLESS:
             self.mExperimentParameters = self._widget.getAutomaticImagingParameters()
+        else:
+            self.mExperimentParameters = self._master.FlowStopManager.defaultConfig
+            self.mExperimentParameters["timeStamp"] = datetime.datetime.now().strftime("%Y_%m_%d-%H-%M-%S")
         return self.mExperimentParameters 
     
     @APIExport()
@@ -157,6 +160,8 @@ class FlowStopController(LiveUpdatedController):
                                 delayToStart: float=1, frameRate: float=1, filePath: str="./", 
                                 fileFormat: str= "TIF", isRecordVideo: bool = True, 
                                 pumpSpeed: float = 10000):
+        try:uniqueId = int(uniqueId)
+        except:uniqueId = np.random.randint(0, 2**16)
         """ Start FlowStop experiment. """
         self.thread = Thread(target=self.flowExperimentThread, 
                              name="FlowStopExperiment", 

@@ -158,7 +158,7 @@ class FlowStopController(LiveUpdatedController):
     def startFlowStopExperiment(self, timeStamp: str, experimentName: str, experimentDescription: str, 
                                 uniqueId: str, numImages: int, volumePerImage: float, timeToStabilize: float, 
                                 delayToStart: float=1, frameRate: float=1, filePath: str="./", 
-                                fileFormat: str= "TIF", isRecordVideo: bool = True, 
+                                fileFormat: str= "JPG", isRecordVideo: bool = True, 
                                 pumpSpeed: float = 10000):
         try:uniqueId = int(uniqueId)
         except:uniqueId = np.random.randint(0, 2**16)

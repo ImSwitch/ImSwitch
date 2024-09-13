@@ -42,7 +42,10 @@ jobs:
       
       - name: Set architecture to lowercase
         run: echo "ARCH=$(echo ${{ runner.arch }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
-  
+      
+      - name: Print Dockerfile
+        run: cat docker/HIK/dockerfile
+
       - name: Build and push container image to registry
         uses: docker/build-push-action@v2
         with:

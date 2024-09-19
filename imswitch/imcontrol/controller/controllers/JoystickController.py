@@ -3,7 +3,7 @@ from imswitch.imcommon.framework import Signal, Thread, Worker, Mutex
 from imswitch.imcontrol.view import guitools
 from imswitch.imcommon.model import initLogger
 from ..basecontrollers import LiveUpdatedController
-
+from imswitch import IS_HEADLESS
 
 class JoystickController(LiveUpdatedController):
     """ Linked to JoystickWidget."""
@@ -17,6 +17,9 @@ class JoystickController(LiveUpdatedController):
         # initialize the positioner
         self.positioner_name = self._master.positionersManager.getAllDeviceNames()[0]
         self.positioner = self._master.positionersManager[self.positioner_name]
+        
+        if IS_HEADLESS:
+            return
         
         self._widget.sigJoystickXY.connect(self.moveXY)
         self._widget.sigJoystickZA.connect(self.moveZA)

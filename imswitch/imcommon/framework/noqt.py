@@ -33,7 +33,13 @@ class Thread(threading.Thread, base.Thread): #TODO: @jacopoabramo -> Fix this by
         super().__init__(*args, **kwargs)
         self._stop_event = threading.Event()
         self.isRunning = False
-
+        # self._thread = Thread() # TODO: @jacopoabramo -> Fix this by adding, base.Thread()
+    
+    def start(self):
+        if self.isRunning:
+            self._thread = Thread()
+        self._thread.run()
+        
     def run(self):
         self.isRunning = True
         while not self._stop_event.is_set():

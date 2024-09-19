@@ -54,7 +54,8 @@ class MCTController(ImConWidgetController):
         self.MCTFilename = ""
         self.activeIlluminations = []
         self.availableIlliminations = []
-
+        self.MCTFilePath = ""
+        
         # time to let hardware settle
         try:
             self.tWait = self._master.mctManager.tWait 
@@ -118,14 +119,10 @@ class MCTController(ImConWidgetController):
     def startMCT(self):
         # initilaze setup
         # this is not a thread!
-        # this is called from the GUI
-
-
+        # this is called from the QT GUI
         # start the timelapse
         if not self.isMCTrunning and len(self.activeIlluminations)>0:
-            self.nImagesTaken = 0
             self.switchOffIllumination()
-            
             # GUI updates
             if not IS_HEADLESS:
                 self._widget.mctStartButton.setEnabled(False)
@@ -240,6 +237,7 @@ class MCTController(ImConWidgetController):
         statusDict["Illu1Value"] = self.Illu1Value
         statusDict["Illu2Value"] = self.Illu2Value
         statusDict["Illu3Value"] = self.Illu3Value
+        statusDict["MCTFilename"] = self.MCTFilePath
         return statusDict   
         
     @APIExport(runOnUIThread=True)
@@ -312,6 +310,7 @@ class MCTController(ImConWidgetController):
                                     xyScanEnabled, xScanMin, xScanMax, xScanStep, 
                                     yScanMin, yScanMax, yScanStep):
         # this wil run in the background
+        self.nImagesTaken=0
         self.timeLast = 0
         if zStackEnabled:
             nZStack = int(np.ceil((zStackMax-zStackMin)/zStackStep))
@@ -328,10 +327,10 @@ class MCTController(ImConWidgetController):
         
         # HDF5 file setup: prepare data storage 
         fileExtension = "h5"
-        fileName = self.getSaveFilePath(date=MCTDate,
+        self.MCTFilePath = self.getSaveFilePath(date=MCTDate,
                                 filename=MCTFilename,
                                 extension=fileExtension)
-        self._logger.info(f"Saving to {fileName}")
+        self._logger.info(f"Saving to {self.MCTFilePath}")
         self.detectorWidth, self.detectorHeight = self.detector._camera.SensorWidth, self.detector._camera.SensorHeight
         if self.isRGB:
             init_dims = (1, len(self.activeIlluminations), nZStack, self.detectorWidth, self.detectorHeight, 3) # time, channels, z, y, x, RGB
@@ -340,7 +339,7 @@ class MCTController(ImConWidgetController):
             init_dims = (1, len(self.activeIlluminations), nZStack, self.detectorWidth, self.detectorHeight) # time, channels, z, y, x
             max_dims = (None, 3, nZStack, None, None)  # Allow unlimited time points and z slices
         
-        self.h5File = HDF5File(filename=fileName, init_dims=init_dims, max_dims=max_dims, isRGB=self.isRGB)
+        self.h5File = HDF5File(filename=self.MCTFilePath, init_dims=init_dims, max_dims=max_dims, isRGB=self.isRGB)
 
         # run as long as the MCT is active
         while(self.isMCTrunning):

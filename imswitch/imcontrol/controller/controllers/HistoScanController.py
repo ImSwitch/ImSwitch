@@ -1,6 +1,7 @@
 import json
 import os
-
+import base64
+from fastapi import FastAPI, Response, HTTPException
 from imswitch import IS_HEADLESS
 from  imswitch.imcontrol.controller.controllers.camera_stage_mapping import OFMStageMapping
 from imswitch.imcommon.model import initLogger, ostools
@@ -20,14 +21,16 @@ import skimage.util
 import skimage
 from ashlarUC2 import utils
 import datetime 
-from itertools import product
 import numpy as np
 from imswitch.imcommon.model import dirtools, initLogger, APIExport
-from ..basecontrollers import ImConWidgetController
 from imswitch.imcommon.framework import Signal, Thread, Worker, Mutex, Timer
 import time
 from ..basecontrollers import LiveUpdatedController
-
+from pydantic import BaseModel
+from typing import List, Optional
+from PIL import Image
+import io
+            
 try:
     from ashlar.scripts.ashlar import process_images
     IS_ASHLAR_AVAILABLE = True
@@ -35,7 +38,10 @@ except ImportError:
     IS_ASHLAR_AVAILABLE = False
 
         
-        
+class StitchedImageResponse(BaseModel):
+    imageList: List[List[float]]
+    image: str
+  
 class HistoScanController(LiveUpdatedController):
     """Linked to HistoScanWidget."""
 
@@ -72,7 +78,7 @@ class HistoScanController(LiveUpdatedController):
         
         # some locking mechanisms
         self.ishistoscanRunning = False
-        self.isStageScanningRunning = False 
+        self.ishistoscanRunning = False 
        
         # select lasers and add to gui
         allLaserNames = self._master.lasersManager.getAllDeviceNames()
@@ -97,6 +103,9 @@ class HistoScanController(LiveUpdatedController):
         self.partialImageCoordinates = (0,0,0,0)
         self.partialHistoscanStack = np.ones((1,1,3))
         self.acceleration = 600000
+        self.currentPosition = (0,0)
+        self.positionList = []
+        self.mScanIndex = 0
         
         # camera-based scanning coordinates   (select from napari layer)      
         self.mCamScanCoordinates = None
@@ -331,8 +340,8 @@ class HistoScanController(LiveUpdatedController):
     @APIExport(runOnUIThread=False)
     def startStageMapping(self, mumPerStep: int=1, calibFilePath: str = "calibFile.json") -> str:
         self.stageMappingResult = None
-        if not self.isStageScanningRunning or not self.ishistoscanRunning:
-            self.isStageScanningRunning = True
+        if not self.ishistoscanRunning or not self.ishistoscanRunning:
+            self.ishistoscanRunning = True
             pixelSize = self.microscopeDetector.pixelSizeUm[-1] # µm
             # mumPerStep = 1 # µm
             try:
@@ -390,8 +399,8 @@ class HistoScanController(LiveUpdatedController):
             except Exception as e:
                 self._logger.error(e)
                 self.stageMappingResult = ((0,0),(0,0))
-            self.isStageScanningRunning = False
-            return self.isStageScanningRunning
+            self.ishistoscanRunning = False
+            return self.ishistoscanRunning
         else:
             return "busy"
         
@@ -667,9 +676,55 @@ class HistoScanController(LiveUpdatedController):
         return coordinates
 
     @APIExport()
-    def getStatusScanRunning(self):
-        return {"ishistoscanRunning": bool(self.ishistoscanRunning)}
+    def getHistoStatus(self) -> dict: 
+        statusDict = {}
+        statusDict["currentPosition"] = self.currentPosition
+        statusDict["ishistoscanRunning"] = bool(self.ishistoscanRunning)
+        statusDict["stitchResultAvailable"] = bool(self.histoscanStack is not None)
+        statusDict["mScanIndex"] = self.mScanIndex
+        statusDict["mScanCount"] = len(self.positionList)
+        #statusDict["positionList"] = self.positionList
+        return statusDict
         
+    @APIExport()
+    def getLastStitchedRawList(self) -> StitchedImageResponse:
+        histoscanStack = self.histoscanStack.copy()
+        if histoscanStack is not None and len(histoscanStack.shape)>1:
+            #if not len(histoscanStack.shape)==3:
+            #    histoscanStack = np.repeat(histoscanStack[:,:,np.newaxis], 3, axis=2)
+                
+            _, buffer = cv2.imencode('.png', histoscanStack)
+            image_base64 = base64.b64encode(buffer).decode('utf-8')
+            return StitchedImageResponse(imageList=histoscanStack.tolist(), image=image_base64)
+        else:
+            raise HTTPException(status_code=404, detail="No image found")
+
+    @APIExport()
+    def getLastStitchedImage(self) -> Response:
+        histoscanStack = self.histoscanStack.copy()
+        if histoscanStack is not None and len(histoscanStack.shape)>1:
+            #_, buffer = cv2.imencode('.png', histoscanStack)
+            #image_base64 = base64.b64encode(buffer).decode('utf-8')
+            #return image_base64
+            
+            # using an in-memory image
+            im = Image.fromarray(histoscanStack)
+            
+            # save image to an in-memory bytes buffer
+            # save image to an in-memory bytes buffer
+            with io.BytesIO() as buf:
+                im = im.convert('L')  # convert image to 'L' mode
+                im.save(buf, format='PNG')
+                im_bytes = buf.getvalue()
+                
+            headers = {'Content-Disposition': 'inline; filename="histo.png"'}
+            return Response(im_bytes, headers=headers, media_type='image/png')
+
+
+        else:
+            raise HTTPException(status_code=404, detail="No image found")
+
+                
     def histoscanThread(self, minPosX, maxPosX, minPosY, maxPosY, overlap=0.75, nTimes=1, 
                         tPeriod=0, positionList=None,
                         flipX=False, flipY=False, tSettle=0.05, 
@@ -745,25 +800,27 @@ class HistoScanController(LiveUpdatedController):
                 lastStagePositionX = self.stages.getPosition()["X"]
                 running=1
                 while running:
-                    currentPosX = self.stages.getPosition()["X"]
-                    print(currentPosX)
-                    if currentPosX-lastStagePositionX > stepSizeX:
+                    self.currentPosX = self.stages.getPosition()["X"]
+                    if self.currentPosX-lastStagePositionX > stepSizeX:
                         print("Taking image")
                         mFrame = self.microscopeDetector.getLatestFrame()  
                         import tifffile as tif
                         tif.imsave("test.tif", mFrame, append=True)
                         
-                        lastStagePositionX = currentPosX
+                        lastStagePositionX = self.currentPosX
                         
             # Scan over all positions in XY 
             for mIndex, iPos in enumerate(positionList):
                 # update the loading bar
-                self.sigUpdateLoadingBar.emit(mIndex, len(positionList))
+                self.currentPosition = iPos # use for status updates in the GUI
+                self.positionList = positionList
+                self.mScanIndex = mIndex
+                self.sigUpdateLoadingBar.emit(self.mScanIndex, len(self.positionList))
             
                 try:
                     if not self.ishistoscanRunning:
                         break
-                    self.stages.move(value=iPos, axis="XY", is_absolute=True, is_blocking=True, acceleration=(self.acceleration,self.acceleration))
+                    self.stages.move(value=self.currentPosition, axis="XY", is_absolute=True, is_blocking=True, acceleration=(self.acceleration,self.acceleration))
                     time.sleep(self.tSettle)
                     
                     # always mmake sure we get a frame that is not the same as the one with illumination off eventually

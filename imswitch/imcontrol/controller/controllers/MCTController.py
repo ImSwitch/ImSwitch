@@ -10,6 +10,8 @@ import scipy.ndimage as ndi
 import scipy.signal as signal
 import skimage.transform as transform
 import tifffile as tif
+from pydantic import BaseModel
+from typing import Optional
 
 from imswitch.imcommon.framework import Signal, Thread, Worker, Mutex, Timer
 from imswitch.imcommon.model import dirtools, initLogger, APIExport
@@ -22,6 +24,27 @@ import numpy as np
 
 
 
+class MCTStatus(BaseModel):
+    isMCTrunning: bool = False
+    nImagesTaken: int = 0
+    timePeriod: int = 60
+    zStackEnabled: bool = False
+    zStackMin: Optional[int] = 0
+    zStackMax: Optional[int] = 0
+    zStackStep: Optional[int] = 0
+    xyScanEnabled: bool = False
+    xScanMin: Optional[int] = 0
+    xScanMax: Optional[int] = 0
+    xScanStep: Optional[int] = 0
+    yScanMin: Optional[int] = 0
+    yScanMax: Optional[int] = 0
+    yScanStep: Optional[int] = 0
+    Illu1Value: Optional[int] = 0
+    Illu2Value: Optional[int] = 0
+    Illu3Value: Optional[int] = 0
+    MCTFilename: str = " "
+    MCTFilePath: str = " "
+    
 class MCTController(ImConWidgetController):
     """Linked to MCTWidget."""
 
@@ -54,7 +77,7 @@ class MCTController(ImConWidgetController):
         self.MCTFilename = ""
         self.activeIlluminations = []
         self.availableIlliminations = []
-        self.MCTFilePath = ""
+        self.MCTFilePath = " "
         
         # time to let hardware settle
         try:
@@ -217,28 +240,34 @@ class MCTController(ImConWidgetController):
         """ Displays the image in the view. """
         self._widget.setImage(im)
 
-    @APIExport(runOnUIThread=True)
+    @APIExport(runOnUIThread=False)
+    def getLastMCTStack(self):
+        if hasattr(self, "LastStackIllu1ArrayLast"):
+            return self.LastStackIllu1ArrayLast
+        else:
+            return None
+    
+    @APIExport(runOnUIThread=False)
     def getMCTStatus(self) -> dict:
-        statusDict = {}
-        statusDict["isMCTrunning"] = self.isMCTrunning
-        statusDict["nImagesTaken"] = self.nImagesTaken
-        statusDict["timePeriod"] = self.timePeriod
-        statusDict["zStackEnabled"] = self.zStackEnabled
-        statusDict["zStackMin"] = self.zStackMin
-        statusDict["zStackMax"] = self.zStackMax
-        statusDict["zStackStep"] = self.zStackStep
-        statusDict["xyScanEnabled"] = self.xyScanEnabled
-        statusDict["xScanMin"] = self.xScanMin
-        statusDict["xScanMax"] = self.xScanMax
-        statusDict["xScanStep"] = self.xScanStep
-        statusDict["yScanMin"] = self.yScanMin
-        statusDict["yScanMax"] = self.yScanMax
-        statusDict["yScanStep"] = self.yScanStep
-        statusDict["Illu1Value"] = self.Illu1Value
-        statusDict["Illu2Value"] = self.Illu2Value
-        statusDict["Illu3Value"] = self.Illu3Value
-        statusDict["MCTFilename"] = self.MCTFilePath
-        return statusDict   
+        return MCTStatus(**{"isMCTrunning":self.isMCTrunning,
+                "nImagesTaken":self.nImagesTaken,
+                "timePeriod":self.timePeriod,
+                "zStackEnabled":self.zStackEnabled,
+                "zStackMin":self.zStackMin,
+                "zStackMax":self.zStackMax,
+                "zStackStep":self.zStackStep,
+                "xyScanEnabled":self.xyScanEnabled,
+                "xScanMin":self.xScanMin,
+                "xScanMax":self.xScanMax,
+                "xScanStep":self.xScanStep,
+                "yScanMin":self.yScanMin,
+                "yScanMax":self.yScanMax,
+                "yScanStep":self.yScanStep,
+                "Illu1Value":self.Illu1Value,
+                "Illu2Value":self.Illu2Value,
+                "Illu3Value":self.Illu3Value,
+                "MCTFilename":self.MCTFilename,
+                "MCTFilepath":self.MCTFilePath})
         
     @APIExport(runOnUIThread=True)
     def startTimelapseImaging(self, tperiod:int=5, nImagesToCapture:int=10, 

@@ -543,11 +543,9 @@ class RecordingController(ImConWidgetController):
         # get the image from the specified detector    
         image = images[detectorName]
 
+        # eventually resize image to save bandwidth
         if resizeFactor <1:
             image = self.resizeImage(image, resizeFactor)
-                
-        # eventually resize image to save bandwidth
-        resizeFactor
         
         # using an in-memory image
         im = Image.fromarray(image)

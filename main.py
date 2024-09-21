@@ -11,4 +11,4 @@ if __name__ == '__main__':
     example:
     main(is_headless=True, data_folder="/Users/bene/Downloads")
     '''
-    main() ## this has to be maintained for DOCKER!
+    main(default_config="/Users/bene/ImSwitchConfig/imcontrol_setups/example_virtual_microscope.json") ## this has to be maintained for DOCKER!

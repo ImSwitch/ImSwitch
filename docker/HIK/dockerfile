@@ -45,7 +45,7 @@ FROM ubuntu:22.04
 ARG TARGETPLATFORM
 ENV TZ=America/Los_Angeles
 
-# Install necessary dependencies
+# Install necessary dependencies and prepare the environment as usual
 RUN apt-get update && apt-get install -y \
     wget \
     unzip \
@@ -158,9 +158,12 @@ RUN git clone https://github.com/openUC2/UC2-REST /tmp/UC2-REST && \
     /bin/bash -c "source /opt/conda/bin/activate imswitch && pip install -e /tmp/UC2-REST"
 
 
-# Force a rebuild of the container
-ARG CACHEBUST=1
-RUN echo "Cache busting at ${CACHEBUST}"
+
+# Always pull the latest version of ImSwitch and UC2-REST repositories
+# Adding a dynamic build argument to prevent caching
+ARG BUILD_DATE
+RUN echo "Building on ${BUILD_DATE}"
+
 
 # Clone the config folder
 RUN cd /root/ImSwitchConfig && \

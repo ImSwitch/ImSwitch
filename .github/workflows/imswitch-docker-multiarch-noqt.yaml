@@ -57,3 +57,5 @@ jobs:
           cache-to: type=inline
           tags: ghcr.io/${{ env.IMAGE_NAME }}-${{ env.ARCH }}:latest
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            BUILD_DATE=${{ github.run_id }}

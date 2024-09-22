@@ -27,7 +27,7 @@ from imswitch.imcommon.framework import Signal, Thread, Worker, Mutex, Timer
 import time
 from ..basecontrollers import LiveUpdatedController
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Optional, Union
 from PIL import Image
 import io
             
@@ -585,7 +585,7 @@ class HistoScanController(LiveUpdatedController):
             self._logger.debug("histoscan scanning stopped.")
 
     @APIExport()
-    def startHistoScanTileBasedByParameters(self, numberTilesX:int=2, numberTilesY:int=2, stepSizeX:int=100, stepSizeY:int=100, nTimes:int=1, tPeriod:int=1, initPosX:int=0, initPosY:int=0, 
+    def startHistoScanTileBasedByParameters(self, numberTilesX:int=2, numberTilesY:int=2, stepSizeX:int=100, stepSizeY:int=100, nTimes:int=1, tPeriod:int=1, initPosX:Optional[Union[int, str]] = None, initPosY:Optional[Union[int, str]] = None, 
                                             isStitchAshlar:bool=False, isStitchAshlarFlipX:bool=False, isStitchAshlarFlipY:bool=False, resizeFactor:float=0.25):
         def computePositionList(numberTilesX, numberTilesY, stepSizeX, stepSizeY, initPosX, initPosY):
             positionList = []
@@ -602,7 +602,10 @@ class HistoScanController(LiveUpdatedController):
             stepSizeX, _ = self.computeOptimalScanStepSize()
         if stepSizeY<=0 or stepSizeY is None:
             _, stepSizeY = self.computeOptimalScanStepSize()          
-        
+        if initPosX is None or type(initPosX)==str :
+            initPosX = self.stages.getPosition()["X"]
+        if initPosY is None or type(initPosY)==str:    
+            initPosY = self.stages.getPosition()["Y"]
         positionList = computePositionList(numberTilesX, numberTilesY, stepSizeX, stepSizeY, initPosX, initPosY)
         minPosX = np.min(positionList, axis=0)[0]
         maxPosX = np.max(positionList, axis=0)[0]

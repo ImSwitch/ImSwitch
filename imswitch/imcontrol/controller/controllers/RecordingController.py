@@ -317,7 +317,8 @@ class RecordingController(ImConWidgetController):
             )
         elif detectorMode == -3:  # A specific detector
             return self._widget.getSelectedSpecificDetectors()
-
+    
+    @APIExport(runOnUIThread=True)
     def getFileName(self):
         """ Gets the filename of the data to save. """
         filename = self._widget.getCustomFilename()
@@ -454,7 +455,19 @@ class RecordingController(ImConWidgetController):
     def setRecFolder(self, folderPath: str) -> None:
         """ Sets the folder to save recordings into. """
         self._widget.setRecFolder(folderPath)
-
+    
+    @APIExport(runOnUIThread=True)
+    def setSpecifyFileName(self,enable=True) -> None:
+        self._widget.specifyfile.setChecked(enable)
+    
+    @APIExport(runOnUIThread=True)
+    def setSnapModeSave(self,mode="tiff") -> None:
+        self._widget.saveSnapFormatList.setCurrentText(mode)
+    
+    @APIExport(runOnUIThread=True)
+    def getRecFolder(self) -> str:
+        return self._widget.folderEdit.text()
+    
 
 _attrCategory = 'Rec'
 _recModeAttr = 'Mode'

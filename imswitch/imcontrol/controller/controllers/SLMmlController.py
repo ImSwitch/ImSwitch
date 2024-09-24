@@ -7,7 +7,7 @@ from imswitch.imcommon.model import dirtools, initLogger
 from imswitch.imcontrol.model.managers.SLMmlManager import MaskMode, Direction
 from ..basecontrollers import ImConWidgetController
 from imswitch.imcontrol.view import guitools
-
+from imswitch.imcommon.model import APIExport
 
 class SLMmlController(ImConWidgetController):
     """Linked to SLMWidget."""
@@ -87,6 +87,7 @@ class SLMmlController(ImConWidgetController):
         self._widget.updateMLAlabel(Path(path).name)
         self._master.slmManager.updateMFApath(path)
 
+    @APIExport(runOnUIThread=True)
     def toggleSLMDisplay(self, enabled):
         self._widget.setSLMDisplayVisible(enabled)
 
@@ -225,7 +226,8 @@ class SLMmlController(ImConWidgetController):
             aberParams.param(maskname).param(aberparamname).setValue(
                 float(state_aber[maskname][aberparamname])
             )
-            
+
+    @APIExport(runOnUIThread=True)
     def setMask(self, maskMode):
         if maskMode != MaskMode.Black:
             slm_info_dict = self.getInfoDict(generalParams=self._widget.slmParameterTree.p,

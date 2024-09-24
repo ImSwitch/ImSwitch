@@ -74,7 +74,8 @@ setup(
         "NanoImagingPack==2.1.3.dev1",
         "pymba==0.3.7",
         "ashlarUC2",
-        "imjoy-rpc==0.5.59"
+        "imjoy-rpc==0.5.59", 
+        "arkitekt_next>=0.8.6"
     ],
 
      extras_require={ # we assume that this is installed in a conda environment or via apt-get

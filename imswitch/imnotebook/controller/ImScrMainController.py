@@ -1,7 +1,5 @@
 from imswitch import IS_HEADLESS
 from imswitch.imcommon.controller import MainController
-from imswitch.imcommon.model import generateAPI, pythontools, APIExport
-from .CommunicationChannel import CommunicationChannel
 from .ImScrMainViewController import ImScrMainViewController
 from .basecontrollers import ImScrWidgetControllerFactory
 

@@ -1,9 +1,9 @@
 from imswitch import IS_HEADLESS
-from qtpy import QtCore, QtWidgets
 from imswitch.imcommon.model import dirtools
 
 
 if not IS_HEADLESS:
+    from qtpy import QtCore, QtWidgets
     from PyQt5.QtCore import pyqtSlot, QSettings, QTimer, QUrl, Qt
     from PyQt5.QtGui import QCloseEvent
     from PyQt5.QtWidgets import QMainWindow, QMessageBox, QDockWidget, QPlainTextEdit, QTabWidget

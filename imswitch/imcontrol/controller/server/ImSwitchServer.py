@@ -31,7 +31,10 @@ from fastapi.openapi.docs import (
 )
 from fastapi.staticfiles import StaticFiles
 
-from arkitekt_next import easy
+try:
+    from arkitekt_next import easy
+except ImportError:
+    print("Arkitekt not found")
 
  
 

@@ -17,7 +17,7 @@ def main(is_headless:bool=None, default_config:str=None, http_port:int=None, ssl
             parser = argparse.ArgumentParser(description='Process some integers.')
 
             # specify if run in headless mode
-            parser.add_argument('--headless', dest='headless', type=bool, default=0,
+            parser.add_argument('--headless', dest='headless', default=False, action='store_true',
                                 help='run in headless mode')
 
             # specify config file name - None for default
@@ -29,7 +29,7 @@ def main(is_headless:bool=None, default_config:str=None, http_port:int=None, ssl
                                 help='specify http port')
 
             # specify ssl
-            parser.add_argument('--ssl', dest='ssl', type=bool, default=True,
+            parser.add_argument('--no-ssl', dest='ssl', default=True, action='store_false',
                                 help='specify ssl')
             
             # specify the config folder (e.g. if running from a different location / container)

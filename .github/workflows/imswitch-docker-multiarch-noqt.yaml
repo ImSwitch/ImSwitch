@@ -49,7 +49,7 @@ jobs:
       - name: Build and push container image to registry
         uses: docker/build-push-action@v2
         with:
-          context: docker
+          context: docker/HIK
           file: docker/HIK/dockerfile
           push: true
           platforms: linux/amd64,linux/arm64

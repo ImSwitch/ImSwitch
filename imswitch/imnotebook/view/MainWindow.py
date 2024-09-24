@@ -1,10 +1,11 @@
 from imswitch import IS_HEADLESS
-from pyqtgraph.dockarea import Dock, DockArea
-from qtpy import QtCore, QtWidgets
 
-from PyQt5.QtCore import pyqtSlot, QSettings, QTimer, QUrl, Qt
-from PyQt5.QtGui import QCloseEvent
-from PyQt5.QtWidgets import QMainWindow, QMessageBox, QDockWidget, QPlainTextEdit, QTabWidget
+if not IS_HEADLESS:
+    from PyQt5.QtCore import pyqtSlot, QSettings, QTimer, QUrl, Qt
+    from PyQt5.QtGui import QCloseEvent
+    from PyQt5.QtWidgets import QMainWindow, QMessageBox, QDockWidget, QPlainTextEdit, QTabWidget
+    from PyQt5.QtWidgets import QMessageBox
+    from .CustomWebView import CustomWebView
 try:
     from PyQt5.QtWebEngineWidgets import QWebEngineView as QWebView, QWebEnginePage as QWebPage
     from PyQt5.QtWebEngineCore import QWebEngineUrlRequestInterceptor
@@ -12,19 +13,10 @@ try:
     IS_QTWEBENGINE = True
 except:
     IS_QTWEBENGINE = False
-from PyQt5.QtCore import QSettings, QDir, QObject, pyqtSignal, QUrl
-from PyQt5.QtWidgets import QFileDialog, QMessageBox, QApplication
 
-from .logger import log, setup_logging, set_logger
-if not IS_HEADLESS: from .CustomWebView import CustomWebView
-from .notebook_process import testnotebook, startnotebook, stopnotebook
-import os
-import sys
 from .logger import log
 
 SETTING_GEOMETRY = "io.github.openuc2/JupyterQt/geometry"
-
-
 
 class LoggerDock(QDockWidget):
 

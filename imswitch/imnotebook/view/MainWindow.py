@@ -16,7 +16,7 @@ from PyQt5.QtCore import QSettings, QDir, QObject, pyqtSignal, QUrl
 from PyQt5.QtWidgets import QFileDialog, QMessageBox, QApplication
 
 from .logger import log, setup_logging, set_logger
-from .CustomWebView import CustomWebView
+if not IS_HEADLESS: from .CustomWebView import CustomWebView
 from .notebook_process import testnotebook, startnotebook, stopnotebook
 import os
 import sys
@@ -42,7 +42,7 @@ class LoggerDock(QDockWidget):
 class MainWindow(QMainWindow):
 
     def __init__(self, parent=None, homepage=None):
-        if not IS_QTWEBENGINE: return
+        if not IS_QTWEBENGINE or IS_HEADLESS: return
         super(MainWindow, self).__init__(parent)
         self.homepage = homepage
         self.windows = []

@@ -31,6 +31,9 @@ from fastapi.openapi.docs import (
 )
 from fastapi.staticfiles import StaticFiles
 
+from arkitekt_next import easy
+
+ 
 
 import logging
 
@@ -43,6 +46,10 @@ imswitchapp_dir = os.path.join(_baseDataFilesDir,  'static', 'imswitch')
 app = FastAPI(docs_url=None, redoc_url=None)
 app.mount("/static", StaticFiles(directory=static_dir), name="static")  # serve static files such as the swagger UI
 app.mount("/imswitch", StaticFiles(directory=imswitchapp_dir), name="imswitch") # serve react app
+
+
+#arpp = easy()
+
 
 if IS_SSL:
     app.add_middleware(HTTPSRedirectMiddleware)
@@ -190,6 +197,7 @@ class ImSwitchServer(Worker):
             else:
                 @app.get(str) # TODO: Perhaps we want POST instead?
                 @wraps(func)
+                #@register
                 async def wrapper(*args, **kwargs):
                     return func(*args, **kwargs)
             return wrapper

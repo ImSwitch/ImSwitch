@@ -101,10 +101,9 @@ def main(is_headless:bool=None, default_config:str=None, http_port:int=None, ssl
                 # Ensure that imscripting is added last
                 enabledModuleIds.append(enabledModuleIds.pop(enabledModuleIds.index('imscripting')))
 
-        if 'imnotebook' in enabledModuleIds and not imswitch.IS_HEADLESS:
+        if 'imnotebook' in enabledModuleIds:
             # Ensure that imnotebook is added last
             try:
-                from PyQt5 import QtWebEngine
                 enabledModuleIds.append(enabledModuleIds.pop(enabledModuleIds.index('imnotebook')))
             except ImportError:
                 logger.error('QtWebEngineWidgets not found, disabling imnotebook')

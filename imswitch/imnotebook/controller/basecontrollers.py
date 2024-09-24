@@ -14,8 +14,6 @@ class ImScrWidgetController(WidgetController):
 
     def __init__(self, scriptScope, commChannel, *args, **kwargs):
         # Protected attributes, which should only be accessed from controller and its subclasses
-        self._scriptScope = scriptScope
-        self._commChannel = commChannel
 
         # Init superclass
         super().__init__(*args, **kwargs)

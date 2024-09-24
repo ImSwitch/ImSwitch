@@ -106,4 +106,5 @@ then
     python3 /tmp/ImSwitch/main.py $params
 else
     echo 'Starting the container in terminal mode'
+    exec bash
 fi

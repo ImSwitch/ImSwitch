@@ -37,3 +37,6 @@ class LaunchNotebookServer:
         # start the notebook process
         webaddr = startnotebook(execname, directory=directory)
         return webaddr
+    
+    def stopServer(self):
+        stopnotebook()

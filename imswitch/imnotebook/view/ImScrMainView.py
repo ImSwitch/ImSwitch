@@ -1,5 +1,5 @@
 from imswitch import IS_HEADLESS
-
+from .LaunchNotebookServer import LaunchNotebookServer
 
 if not IS_HEADLESS:
     from qtpy import QtCore, QtWidgets
@@ -39,8 +39,8 @@ class ImScrMainView(QtWidgets.QMainWindow):
             return 
         
         # test and launch notebook server        
-        notebookServer = LaunchNotebookServer()
-        webaddr = notebookServer.start()
+        self.notebookServer = LaunchNotebookServer()
+        webaddr = self.notebookServer.start()
 
         # setup webview
         self.view = MainWindow(None, None)
@@ -76,7 +76,7 @@ class ImScrMainView(QtWidgets.QMainWindow):
         #self.sigClosing.emit()
         event.accept()
         # stop the notebook process
-        stopnotebook()
+        self.notebookServer.stopnotebook()
 
 
 

@@ -257,7 +257,7 @@ CMD ["/bin/bash", "-c", "\
         USB_DEVICE_PATH=${USB_DEVICE_PATH:-/dev/bus/usb} && \
         CONFIG_PATH=${CONFIG_PATH:-None} && \
         DATA_PATH=${DATA_PATH:-None} && \        
-        ssl=${ssl: -True} && \
+        ssl=${ssl:-True} && \
         echo \"python3 /tmp/ImSwitch/main.py --headless $HEADLESS --config-file $CONFIG_FILE --http-port $HTTP_PORT --config-folder $CONFIG_PATH --ext-data-folder $DATA_PATH --ssl $ssl \" && \
         python3 /tmp/ImSwitch/main.py --headless $HEADLESS --config-file $CONFIG_FILE --http-port $HTTP_PORT --config-folder $CONFIG_PATH --ext-data-folder $DATA_PATH --ssl $ssl; \
     fi"]

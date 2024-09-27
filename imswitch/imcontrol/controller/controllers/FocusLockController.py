@@ -43,8 +43,8 @@ class FocusLockController(ImConWidgetController):
         self._widget.zStackBox.stateChanged.connect(self.zStackVarChange)
         self._widget.twoFociBox.stateChanged.connect(self.twoFociVarChange)
 
-        #self._commChannel.sigScanStarted.connect(self.scanUnlockFocus)
-        #self._commChannel.sigScanDone.connect(self.scanLockFocus)
+        self._commChannel.sigScanStarted.connect(self.scanUnlockFocus)
+        self._commChannel.sigScanDone.connect(self.scanLockFocus)
 
         self.setPointSignal = 0
         self.locked = False
@@ -81,13 +81,15 @@ class FocusLockController(ImConWidgetController):
             super().__del__()
 
 
-    #def scanUnlockFocus(self):
-        #print('unlock')
-        #self.locked = False
-    #def scanLockFocus(self):
-        #print('lock')
-        #if self._widget.lockButton.isChecked():
-            #self.locked = True
+    def scanUnlockFocus(self):
+        # print('unlock')
+        if self._widget.ScanBlock.isChecked():
+            self.locked = False
+
+    def scanLockFocus(self):
+        # print('lock')
+        if self._widget.ScanBlock.isChecked() and self._widget.lockButton.isChecked():
+            self.locked = True
 
     def unlockFocus(self):
         if self.locked:
@@ -238,11 +240,11 @@ class ProcessDataThread(Thread):
                     else:
                         maxvals[0] = imagearraygf[allmaxcoords[n][0], allmaxcoords[n][1]]
                         maxvalpos[0] = n
-            xcenter = allmaxcoords[maxvalpos[0]][0]
-            ycenter = allmaxcoords[maxvalpos[0]][1]
-            if allmaxcoords[maxvalpos[1]][1] < ycenter:
-                xcenter = allmaxcoords[maxvalpos[1]][0]
-                ycenter = allmaxcoords[maxvalpos[1]][1]
+            xcenter = allmaxcoords[int(maxvalpos[0])][0]
+            ycenter = allmaxcoords[int(maxvalpos[0])][1]
+            if allmaxcoords[int(maxvalpos[1])][0] < xcenter:
+                xcenter = allmaxcoords[int(maxvalpos[1])][0]
+                ycenter = allmaxcoords[int(maxvalpos[1])][1]
             centercoords2 = np.array([xcenter, ycenter])
         else:
             centercoords = np.where(imagearraygf == np.array(imagearraygf.max()))

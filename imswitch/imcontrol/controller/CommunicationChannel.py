@@ -1,17 +1,9 @@
-import asyncio
 from typing import Mapping
-
 import numpy as np
 from imswitch.imcommon.framework import Signal, SignalInterface
 from imswitch.imcommon.model import pythontools, APIExport, SharedAttributes
 from imswitch.imcommon.model import initLogger
-
 import numpy as np
-from PIL import Image
-from io import BytesIO
-from fastapi.responses import StreamingResponse
-from fastapi import FastAPI, Response
-import cv2
 
 class CommunicationChannel(SignalInterface):
     """
@@ -191,7 +183,7 @@ class CommunicationChannel(SignalInterface):
     def isExecuting(self):
         return self._scriptExecution
 
-    #@APIExport()
+    @APIExport()
     def signals(self) -> Mapping[str, Signal]:
         """ Returns signals that can be used with e.g. the getWaitForSignal
         action. Currently available signals are:

@@ -212,6 +212,10 @@ class Camera:
                 light_intensity=intensity,
                 defocusPSF=defocusPSF,
             )
+            
+    def getLastChunk(self):
+        mFrame = self.getLast()
+        return np.expand_dims(mFrame, axis=2)
 
     def setPropertyValue(self, propertyName, propertyValue):
         pass

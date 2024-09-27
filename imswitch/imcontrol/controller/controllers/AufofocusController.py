@@ -26,34 +26,28 @@ T_DEBOUNCE = .2
 
 class AutofocusController(ImConWidgetController):
     """Linked to AutofocusWidget."""
-
-
-    sigImageReceived = Signal()
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.__logger = initLogger(self)
 
-        if self._setupInfo.autofocus is None:
-            return
 
         self.isAutofusRunning = False
 
-        self.camera = self._setupInfo.autofocus.camera
-        self.positioner = self._setupInfo.autofocus.positioner
+        if self._setupInfo.autofocus is not None:
+            self.cameraName = self._setupInfo.autofocus.camera
+            self.stageName = self._setupInfo.autofocus.positioner
+        else:
+            self.cameraName = self._master.detectorsManager.getAllDeviceNames()[0]
+            self.stageName = self._master.positionersManager.getAllDeviceNames()[0]
 
         # select stage
-        self.stages = self._master.positionersManager[self._master.positionersManager.getAllDeviceNames()[0]]
+        self.camera = self._master.detectorsManager[self.cameraName]
+        self.stages = self._master.positionersManager[self.stageName]
 
-        # for display on Napari
-        self.imageToDisplayName = ""
-        self.imageToDisplay = None
-        self.sigImageReceived.connect(self.displayImage)
-        
         # Connect AutofocusWidget buttons
+        self._commChannel.sigAutoFocus.connect(self.autoFocus)
         if not IS_HEADLESS: # TODO: We need to have signals instead!
             self._widget.focusButton.clicked.connect(self.focusButton)
-            self._commChannel.sigAutoFocus.connect(self.autoFocus)
 
 
     def __del__(self):
@@ -74,7 +68,7 @@ class AutofocusController(ImConWidgetController):
 
     @APIExport(runOnUIThread=True)
     # Update focus lock
-    def autoFocus(self, rangez=100, resolutionz=10, defocusz=0):
+    def autoFocus(self, rangez:int=100, resolutionz:int=10, defocusz:int=0):
         '''
         The stage moves from -rangez...+rangez with a resolution of resolutionz
         For every stage-position a camera frame is captured and a contrast curve is determined
@@ -86,14 +80,12 @@ class AutofocusController(ImConWidgetController):
                                                 daemon=True)
         self._AutofocusThead.start()
 
+    @APIExport(runOnUIThread=True)
+    def stopAutofocus(self):
+        self.isAutofusRunning = False
+        
     def grabCameraFrame(self):
-        detectorManager = self._master.detectorsManager[self.camera]
-        return detectorManager.getLatestFrame()
-
-    def displayImage(self):
-        # a bit weird, but we cannot update outside the main thread
-        name = self.imageToDisplayName
-        self._widget.setImageNapari(np.uint16(self.imageToDisplay), colormap="gray", name=name, pixelsize=(1,1), translation=(0,0))
+        return self.camera.getLatestFrame()
 
     def recordFlatfield(self, nFrames=10, nGauss=16, defocusPosition = 200, defocusAxis="Z"):
         '''
@@ -119,13 +111,10 @@ class AutofocusController(ImConWidgetController):
         self._commChannel.sigAutoFocusRunning.emit(True)  # inidicate that we are running the autofocus
         bestzpos_rel = None
         mProcessor = FrameProcessor()
-        # record a flatfield Image and display
+        # record a flatfield Image
         if defocusz !=0:
             flatfieldImage = self.recordFlatfield(defocusPosition=defocusz)
-            self.imageToDisplay = flatfieldImage
             mProcessor.setFlatfieldFrame(flatfieldImage)
-            self.imageToDisplayName = "FlatFieldImage"
-        #self.sigImageReceived.emit()
 
         initialPosition = self.stages.getPosition()["Z"]
 
@@ -151,22 +140,10 @@ class AutofocusController(ImConWidgetController):
 
         allfocusvalsList = mProcessor.getFocusValueList(nFrameExpected=Nz)
         mProcessor.stop()
-
-        if 0: # only for debugging
-            allProcessedFrames = mProcessor.getAllProcessedSlices()
-            self.imageToDisplay = allProcessedFrames
-            self.imageToDisplayName = "ProcessedStack"
-            self.sigImageReceived.emit()
-            import tifffile as tif
-            tif.imsave("autofocus_rawimages.tif", mAllImages)
-            tif.imsave("autofocus_processed.tif", allProcessedFrames)
-            self.imageToDisplay = mAllImages
-            self.imageToDisplayName = "RAWImages"
-            self.sigImageReceived.emit()
-
+        
         if self.isAutofusRunning:
             oordinate = relative_positions + initialPosition
-            self._widget.focusPlotCurve.setData(oordinate[:len(allfocusvalsList)], np.array(allfocusvalsList))
+            if not IS_HEADLESS: self._widget.focusPlotCurve.setData(oordinate[:len(allfocusvalsList)], np.array(allfocusvalsList))
 
             allfocusvals = np.array(allfocusvalsList)
             zindex = np.where(np.max(allfocusvals) == allfocusvals)[0]
@@ -196,6 +173,7 @@ import queue
 
 class FrameProcessor:
     def __init__(self, nGauss=7, nCropsize=2048):
+        self.isRunning = True
         self.frame_queue = queue.Queue()
         self.allfocusimages = []
         self.allfocusvals = []
@@ -205,7 +183,6 @@ class FrameProcessor:
         self.allLaplace = []
         self.nGauss = nGauss
         self.nCropsize = nCropsize
-        self.isRunning = True
 
 
     def setFlatfieldFrame(self, flatfieldFrame):

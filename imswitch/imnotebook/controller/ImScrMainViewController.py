@@ -1,13 +1,3 @@
-from .ConsoleController import ConsoleController
-try:
-    from PyQt5 import Qsci
-    from .EditorController import EditorController
-    isQsciAvailable = True
-except:
-    isQsciAvailable = False
-    
-from .FilesController import FilesController
-from .OutputController import OutputController
 from .basecontrollers import ImScrWidgetController
 from imswitch import IS_HEADLESS
 

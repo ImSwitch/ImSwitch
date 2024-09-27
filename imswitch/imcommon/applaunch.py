@@ -3,17 +3,20 @@ import os
 import sys
 import traceback
 
-from qtpy import QtCore, QtGui, QtWidgets
-
 from .model import dirtools, pythontools, initLogger
-from .view.guitools import getBaseStyleSheet
+from imswitch import IS_HEADLESS
+if not IS_HEADLESS:
+    from qtpy import QtCore, QtGui, QtWidgets
+    from .view.guitools import getBaseStyleSheet
+    from PyQt5.QtCore import Qt
+    from PyQt5.QtWidgets import QApplication
 
 
 def prepareApp():
     """ This function must be called before any views are created. """
-    from PyQt5.QtCore import Qt
-    from PyQt5.QtWidgets import QApplication
-
+    if IS_HEADLESS:
+        """We won't have any GUI, so we don't need to prepare the app."""
+        return None
     # Initialize exception handling
     pythontools.installExceptHook()
 
@@ -48,6 +51,9 @@ def prepareApp():
 
 def launchApp(app, mainView, moduleMainControllers):
     """ Launches the app. The program will exit when the app is exited. """
+    if IS_HEADLESS:
+        """We won't have any GUI, so we don't need to prepare the app."""
+        return None
 
     logger = initLogger('launchApp')
 

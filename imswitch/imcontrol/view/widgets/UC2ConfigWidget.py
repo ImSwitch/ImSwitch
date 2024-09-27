@@ -18,10 +18,12 @@ class UC2ConfigWidget(Widget):
         self.reconnectButton = QPushButton("Reconnect to Device", self)
         self.reconnectBaudrateLabel = QLabel("Baudrate:", self)
         self.reconnectBaudrateEdit = QLineEdit(self)
+        self.closeConnectionButton = QPushButton("Close", self)
         reconnectLayout.addWidget(self.reconnectButton)
         reconnectLayout.addWidget(self.reconnectDeviceLabel)
         reconnectLayout.addWidget(self.reconnectBaudrateLabel)
         reconnectLayout.addWidget(self.reconnectBaudrateEdit)
+        reconnectLayout.addWidget(self.closeConnectionButton)
 
         self.stopCommunicationButton = QPushButton("Interrupt communication", self)
         reconnectLayout.addWidget(self.stopCommunicationButton)

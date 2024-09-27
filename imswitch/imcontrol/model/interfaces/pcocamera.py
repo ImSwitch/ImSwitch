@@ -37,7 +37,7 @@ class CameraPCO:
         self.exposure_time = exposure_time
         self.preview_width = 600
         self.preview_height = 600
-        self.defaultBufferSize = 5
+        self.defaultBufferSize = 9
         # dict for different trigger mode
         self.trigger_type = ['software trigger', 
                              'auto sequence',

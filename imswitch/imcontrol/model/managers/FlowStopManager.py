@@ -21,7 +21,8 @@ class FlowStopManager(SignalInterface):
         self.flowStopConfigFilename = "config.json"
         self.allParameterKeys = ["wasRunning", "defaultFlowRate", "defaultNumberOfFrames",
                                  "defaultExperimentName","defaultFrameRate","defaultSavePath",
-                                 "defaultAxisFocus", "defaultAxisFlow", "defaultDelayTimeAfterRestart"]
+                                 "defaultFileFormat", "defaultAxisFocus", 
+                                 "defaultAxisFlow", "defaultDelayTimeAfterRestart", "defaultIsRecordVideo"]
         
         # get default configs
         self.defaultConfigPath = os.path.join(dirtools.UserFileDirs.Root, "flowStopController")
@@ -42,15 +43,17 @@ class FlowStopManager(SignalInterface):
         except Exception as e:
             self.__logger.error(f"Could not load default config from {self.defaultConfigPath}: {e}")
             self.defaultConfig = {}
-            self.defaultConfig["wasRunning"] = False
+            self.defaultConfig["wasRunning"] = True
             self.defaultConfig["defaultFlowRate"] = 100
             self.defaultConfig["defaultNumberOfFrames"] = -1
             self.defaultConfig["defaultExperimentName"] = "FlowStopExperiment"
             self.defaultConfig["defaultFrameRate"] = 1
             self.defaultConfig["defaultSavePath"] = "./"
-            self.defaultConfig["defaultAxisFlow"] = "A"
+            self.defaultConfig["defaultFileFormat"] = "JPG"
+            self.defaultConfig["defaultAxisFlow"] = "X"
             self.defaultConfig["defaultAxisFocus"] = "Z"
             self.defaultConfig["defaultDelayTimeAfterRestart"]=1
+            self.defaultConfig["defaultIsRecordVideo"]=True
             self.writeConfig(self.defaultConfig)
                 
     def updateConfig(self, parameterName, value):

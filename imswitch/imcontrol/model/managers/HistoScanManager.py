@@ -34,7 +34,8 @@ class HistoScanManager(SignalInterface):
                 self.offsetX = self.defaultConfig["offsetX"]
                 self.offsetY = self.defaultConfig["offsetY"]
         except Exception as e:
-            self.__logger.error(f"Could not load default config from {self.defaultConfigPath}: {e}")
+            self.__logger.debug(f"Could not load default config from {self.defaultConfigPath}: {e}")
+            self.__logger.debug("Setting default values to 0, need to save them later, once they are set and experiment is saved")
             self.offsetX = 0
             self.offsetY = 0
 

@@ -7,6 +7,8 @@ tools/
 # mypy
 .mypy_cache/
 
+.arkitek/*
+
 # C extensions
 *.so
 
@@ -31,6 +33,7 @@ var/
 .installed.cfg
 *.egg
 .build_temp
+
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
@@ -67,9 +70,6 @@ target/
 # PyCharm
 .idea/
 
-# Visual Studio Code
-.vscode/
-
 # Specific files
 imswitch/imcontrol/model/managers/lasers/KatanaLaserManager.py
 imswitch/imcontrol/model/managers/stands/LeicaDMIManager.py
@@ -99,3 +99,6 @@ pip-wheel-metadata/ImSwitch-1.2.1.dist-info/top_level.txt
 
 stitchedImage.tif
 /ImTools
+/.vscode
+docker/HIK/cheatsheet.txt
+docker/HIK/cheatsheet.txt

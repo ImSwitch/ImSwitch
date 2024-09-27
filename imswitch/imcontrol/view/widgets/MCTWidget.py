@@ -75,7 +75,6 @@ class MCTWidget(NapariHybridWidget):
         self.sliderIllu1.valueChanged.connect(
             lambda value: self.sigSliderIllu1ValueChanged.emit(value)
         )
-
         self.sliderIllu2, self.mctLabelIllu2 = self.setupSliderGui('Intensity (Laser 2):', valueDecimalsLaser, valueRangeLaser, tickIntervalLaser, singleStepLaser)
         self.sliderIllu2.valueChanged.connect(
             lambda value: self.sigSliderIllu2ValueChanged.emit(value)

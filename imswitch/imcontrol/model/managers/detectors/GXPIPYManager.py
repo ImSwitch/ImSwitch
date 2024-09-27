@@ -49,13 +49,13 @@ class GXPIPYManager(DetectorManager):
 
 
         try: 
-            self._isRGB = detectorInfo.managerProperties['gxipycam']['isRGB']
+            isRGB = detectorInfo.managerProperties['isRGB']
         except:
-            self._isRGB = False
+            isRGB = False
 
         self.flipImage = (self.flipX, self.flipY)
 
-        self._camera = self._getGXObj(self.cameraId, self.binningValue, self.flipImage, self._isRGB)
+        self._camera = self._getGXObj(self.cameraId, self.binningValue, self.flipImage, isRGB)
 
         fullShape = (self._camera.SensorWidth,
                 self._camera.SensorHeight)

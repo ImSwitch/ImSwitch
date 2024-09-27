@@ -1,6 +1,5 @@
 from typing import Dict, List
 from functools import partial
-from qtpy import QtCore, QtWidgets
 
 from imswitch.imcommon.model import APIExport
 from ..basecontrollers import ImConWidgetController

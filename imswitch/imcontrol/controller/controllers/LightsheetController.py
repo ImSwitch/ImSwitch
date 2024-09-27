@@ -10,7 +10,7 @@ import scipy.ndimage as ndi
 import scipy.signal as signal
 import skimage.transform as transform
 import tifffile as tif
-
+from imswitch import IS_HEADLESS
 from imswitch.imcommon.framework import Signal, Thread, Worker, Mutex, Timer
 from imswitch.imcommon.model import dirtools, initLogger, APIExport
 from skimage.registration import phase_cross_correlation
@@ -26,8 +26,6 @@ class LightsheetController(ImConWidgetController):
 
         self.lightsheetTask = None
         self.lightsheetStack = np.ones((1,1,1))
-        self._widget.startButton.clicked.connect(self.startLightsheet)
-        self._widget.stopButton.clicked.connect(self.stopLightsheet)
         
         # select detectors
         allDetectorNames = self._master.detectorsManager.getAllDeviceNames()
@@ -35,20 +33,23 @@ class LightsheetController(ImConWidgetController):
         
         # select lasers and add to gui
         allLaserNames = self._master.lasersManager.getAllDeviceNames()
-        self._widget.setAvailableIlluSources(allLaserNames)
-        
-        # select stage
         self.stageName = self._master.positionersManager.getAllDeviceNames()[0]
         self.stages = self._master.positionersManager[self.stageName]
-        self._widget.setAvailableStageAxes(self.stages.axes)
         self.isLightsheetRunning = False
         
         # connect signals
-        self._widget.sigSliderIlluValueChanged.connect(self.valueIlluChanged)
         self.sigImageReceived.connect(self.displayImage)
         self._commChannel.sigStartLightSheet.connect(self.performScanningRecording)
         self._commChannel.sigStopLightSheet.connect(self.stopLightsheet)
         self._commChannel.sigUpdateMotorPosition.connect(self.updateAllPositionGUI)
+
+        if IS_HEADLESS: 
+            return
+        self._widget.startButton.clicked.connect(self.startLightsheet)
+        self._widget.stopButton.clicked.connect(self.stopLightsheet)
+        self._widget.setAvailableIlluSources(allLaserNames)
+        self._widget.setAvailableStageAxes(self.stages.axes)
+        self._widget.sigSliderIlluValueChanged.connect(self.valueIlluChanged)
         
         # Connect all GUI elements from the SCAN tab
         self._widget.button_scan_xyz_start.clicked.connect(self.onButtonScanStart)
@@ -76,6 +77,8 @@ class LightsheetController(ImConWidgetController):
 
     # Event handler methods
     def onButtonScanStart(self):
+        if IS_HEADLESS: # TODO: implement headless parameters
+            return
         mScanParams = self._widget.get_scan_parameters()
         # returns => (self.scan_x_min[1].value(), self.scan_x_max[1].value(), self.scan_y_min[1].value(), self.scan_y_max[1].value(), 
         # self.scan_z_min[1].value(), self.scan_z_max[1].value(), self.scan_overlap[1].value())
@@ -118,6 +121,8 @@ class LightsheetController(ImConWidgetController):
         self.isLightsheetRunning = False
 
     def onButtonXYUp(self):
+        if IS_HEADLESS:  # TODO: implement headless parameters
+            return
         mStepsizeXY,_ = self._widget.get_step_size_xy_zf()
         self._master.positionersManager.execOn(self.stageName, lambda c: c.move(axis="X", value=mStepsizeXY, is_absolute=False, is_blocking=False))
         
@@ -208,9 +213,12 @@ class LightsheetController(ImConWidgetController):
         if self.lightsheetStack.shape[0] > 200:
             subsample = 10
             self.lightsheetStack = self.lightsheetStack[::subsample,:,:]
-        self._widget.setImage(np.uint16(self.lightsheetStack ), colormap="gray", name=name, pixelsize=(20,1,1), translation=(0,0,0))
+        if not IS_HEADLESS: 
+            return self._widget.setImage(np.uint16(self.lightsheetStack ), colormap="gray", name=name, pixelsize=(20,1,1), translation=(0,0,0))
 
     def valueIlluChanged(self):
+        if IS_HEADLESS: 
+            return 
         illuSource = self._widget.getIlluminationSource()
         illuValue = self._widget.illuminationSlider.value()
         self._master.lasersManager
@@ -221,6 +229,8 @@ class LightsheetController(ImConWidgetController):
         self._master.lasersManager[illuSource].setValue(illuValue)
 
     def startLightsheet(self):
+        if IS_HEADLESS: 
+            return 
         minPos = self._widget.getMinPosition()
         maxPos = self._widget.getMaxPosition()
         speed = self._widget.getSpeed()
@@ -239,8 +249,7 @@ class LightsheetController(ImConWidgetController):
     @APIExport()
     def performScanningRecording(self, minPos=0, maxPos=1000, speed=1000, axis="A", illusource=None, illuvalue=512):
         if not self.isLightsheetRunning:
-            if maxPos - minPos <= 0: return
-            if speed < 100: speed = 100 
+            
             # check parameters
             if axis not in ("A", "X", "Y", "Z"):
                 axis = "A"
@@ -279,21 +288,23 @@ class LightsheetController(ImConWidgetController):
             # Todo: Need to ensure thatwe have the right pattern displayed and the buffer is free - this heavily depends on the exposure time..
             mFrame = None
             lastFrameNumber = -1
-            timeoutFrameRequest = .3 # seconds
+            timeoutFrameRequest = .3 # seconds # TODO: Make dependent on exposure time
             cTime = time.time()
-            
+            frameSync = 2
             while(1):
-                # something went wrong while capturing the frame
-                if time.time()-cTime> timeoutFrameRequest:
-                    break
+                # get frame and frame number to get one that is newer than the one with illumination off eventually
                 mFrame, currentFrameNumber = self.detector.getLatestFrame(returnFrameNumber=True)
-                if currentFrameNumber <= lastFrameNumber:
-                    time.sleep(0.01)
-                    continue  
-                print(f"Frame number used for stack: {currentFrameNumber}") 
-                lastFrameNumber = currentFrameNumber
-                break
-                            
+                if lastFrameNumber==-1:
+                    # first round
+                    lastFrameNumber = currentFrameNumber
+                if time.time()-cTime> timeoutFrameRequest:
+                    # in case exposure time is too long we need break at one point 
+                    break
+                if currentFrameNumber <= lastFrameNumber+frameSync:
+                    time.sleep(0.01) # off-load CPU
+                else:
+                    break
+       
             if mFrame is not None and mFrame.shape[0] != 0:
                 allFrames.append(mFrame.copy())
             if controller.is_target_reached():
@@ -322,15 +333,31 @@ class LightsheetController(ImConWidgetController):
             posZ = allPositions["Z"]
             if isSave:
                 # save image stack with metadata
-                tif.imsave(f"lightsheet_stack_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}_x_{posX}_y_{posY}_z_{posZ}_pz_{pixelSizeZ}_pxy_{pixelSizeXY}.tif", self.lightsheetStack)
+                mDate = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+                mExtension = "tif"
+                mFileName = "lightsheet_stack_x_{posX}_y_{posY}_z_{posZ}_pz_{pixelSizeZ}_pxy_{pixelSizeXY}"
+                mFilePath = self.getSaveFilePath(mDate, mFileName, mExtension)
+                self._logger.info(f"Saving lightsheet stack to {mFilePath}")
+                tif.imsave(mFilePath, self.lightsheetStack)
         saveImageThread = threading.Thread(target=displayAndSaveImageStack, args =(isSave,))
         saveImageThread.start()
         self.stopLightsheet()
         
-        
+    def getSaveFilePath(self, date, filename, extension):
+        mFilename =  f"{date}_{filename}.{extension}"
+        dirPath  = os.path.join(dirtools.UserFileDirs.Data, 'recordings', date)
+        newPath = os.path.join(dirPath,mFilename)
+
+        if not os.path.exists(dirPath):
+            os.makedirs(dirPath)
+
+        return newPath
+
         
     def stopLightsheet(self):
         self.isLightsheetRunning = False
+        if IS_HEADLESS: 
+            return 
         self._widget.startButton.setEnabled(True)
         self._widget.stopButton.setEnabled(False)
         self._widget.illuminationSlider.setValue(0)

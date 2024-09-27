@@ -1,11 +1,14 @@
 from imswitch import IS_HEADLESS
-from pyqtgraph.dockarea import Dock, DockArea
-from qtpy import QtCore, QtWidgets
-from imswitch.imcommon.model import dirtools
+from .LaunchNotebookServer import LaunchNotebookServer
 
-from PyQt5.QtCore import pyqtSlot, QSettings, QTimer, QUrl, Qt
-from PyQt5.QtGui import QCloseEvent
-from PyQt5.QtWidgets import QMainWindow, QMessageBox, QDockWidget, QPlainTextEdit, QTabWidget
+if not IS_HEADLESS:
+    from qtpy import QtCore, QtWidgets
+    from PyQt5.QtCore import pyqtSlot, QSettings, QTimer, QUrl, Qt
+    from PyQt5.QtGui import QCloseEvent
+    from PyQt5.QtWidgets import QMainWindow, QMessageBox, QDockWidget, QPlainTextEdit, QTabWidget
+    from PyQt5.QtCore import QSettings, QDir, QObject, pyqtSignal, QUrl
+    from PyQt5.QtWidgets import QFileDialog, QMessageBox, QApplication
+    from .MainWindow import MainWindow
 try:
     from PyQt5.QtWebEngineWidgets import QWebEngineView as QWebView, QWebEnginePage as QWebPage
     from PyQt5.QtWebEngineWidgets import QWebEngineView as QWebView, QWebEnginePage as QWebPage
@@ -14,16 +17,8 @@ try:
     IS_QTWEBENGINE = True
 except:
     IS_QTWEBENGINE = False
-from PyQt5.QtCore import QSettings, QDir, QObject, pyqtSignal, QUrl
-from PyQt5.QtWidgets import QFileDialog, QMessageBox, QApplication
 
-from .logger import log, setup_logging, set_logger
-from .CustomWebView import CustomWebView
-from .MainWindow import MainWindow
-from .notebook_process import testnotebook, startnotebook, stopnotebook
-import os
-import sys
-from .logger import log
+from .logger import set_logger
 
 SETTING_BASEDIR = "io.github.openuc2/JupyterQt/basedir"
 SETTING_EXECUTABLE = "io.github.openuc2/JupyterQt/executable"
@@ -36,7 +31,6 @@ class ImScrMainView(QtWidgets.QMainWindow):
     sigClosing = QtCore.Signal()
     
     def __init__(self, *args, **kwargs):
-        if not IS_QTWEBENGINE: return
         super().__init__(*args, **kwargs)
         self.setWindowTitle('Notebook')
         
@@ -44,34 +38,13 @@ class ImScrMainView(QtWidgets.QMainWindow):
         if IS_HEADLESS:
             return 
         
-        # setup application
-        python_exec_path = os.path.dirname(sys.executable)
-        execname = os.path.join(python_exec_path, 'jupyter-notebook')
+        # test and launch notebook server        
+        self.notebookServer = LaunchNotebookServer()
+        webaddr = self.notebookServer.startServer()
 
-        # check if jupyter notebook is installed
-        if not testnotebook(execname):
-            QMessageBox.information(None, "Error", "It appears that Jupyter Notebook isn't where it usually is. " +
-                                    "Ensure you've installed Jupyter correctly in your current environment "+
-                                    "test it by running  'jupyter-notebook' in your terminal"+ 
-                                    "ImSwitch will run without it now. If you don't wanted to "+
-                                    "use imnotebook module in the firstplace, remove it from the config.json", QMessageBox.Ok)
-            return
-                
-        # setup logging
-        # try to write to a log file, or redirect to stdout if debugging
-        logfile = os.path.join(str(QDir.homePath()), ".JupyterQt", "JupyterQt.log")
-            
-        setup_logging(None)
-
-        log("Setting home directory...")
-        directory = None
-        file = None
-        directory =  os.path.join(dirtools.UserFileDirs.Root, "imnotebook")
-        if not os.path.exists(directory):
-            os.makedirs(directory)
         # setup webview
         self.view = MainWindow(None, None)
-        self.view.setWindowTitle("JupyterQt: %s" % directory)
+        self.view.setWindowTitle("JupyterQt%s")
 
         # redirect logging to self.view.loggerdock.log
         class QtLogger(QObject):
@@ -85,10 +58,10 @@ class ImScrMainView(QtWidgets.QMainWindow):
         set_logger(lambda message: qtlogger.newlog.emit(message))
 
         # start the notebook process
-        webaddr = startnotebook(execname, directory=directory)
         self.view.loadmain(webaddr)
 
         # if notebook file is trying to get opened, open that window as well
+        file = None
         if file is not None and file.endswith('.ipynb'):
             self.view.basewebview.handlelink(QUrl(webaddr + 'notebooks/' + file))
         elif file is not None and file.endswith('.jproj'):
@@ -97,17 +70,13 @@ class ImScrMainView(QtWidgets.QMainWindow):
             # unrecognized file type
             QMessageBox.information(None, "Error", "File type of %s was unrecognized" % file, QMessageBox.Ok)
 
-        log("Starting Qt Event Loop")
         self.setCentralWidget(self.view)
-
-        # resume regular logging
-        setup_logging(logfile)
 
     def closeEvent(self, event):
         #self.sigClosing.emit()
         event.accept()
         # stop the notebook process
-        stopnotebook()
+        self.notebookServer.stopnotebook()
 
 
 

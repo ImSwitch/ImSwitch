@@ -1,6 +1,5 @@
 from abc import ABCMeta
-
-import sip
+from PyQt5 import sip
 from qtpy import QtCore
 
 import imswitch.imcommon.framework.base as base

@@ -1,13 +1,23 @@
 __imswitch_module__ = True
 __title__ = 'Jupyter Notebook'
 
+from imswitch import IS_HEADLESS
+if not IS_HEADLESS:
+    from .view import ImScrMainView
+from .controller import ImScrMainController
+from .view import LaunchNotebookServer
+
 
 def getMainViewAndController(moduleCommChannel, multiModuleWindowController, moduleMainControllers,
                              *_args, **_kwargs):
-    from .controller import ImScrMainController
-    from .view import ImScrMainView
-
-    view = ImScrMainView()
+    if IS_HEADLESS: 
+        view = None
+        notebookServer = LaunchNotebookServer()
+        webaddr = notebookServer.startServer()
+        print(webaddr)
+    else:
+        view = ImScrMainView()
+    
     try:
         controller = ImScrMainController(
             view,
@@ -16,7 +26,7 @@ def getMainViewAndController(moduleCommChannel, multiModuleWindowController, mod
             moduleMainControllers=moduleMainControllers
         )
     except Exception as e:
-        view.close()
+        if not IS_HEADLESS: view.close()
         raise e
 
     return view, controller

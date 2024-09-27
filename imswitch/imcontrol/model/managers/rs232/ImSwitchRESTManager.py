@@ -2,9 +2,11 @@ import uc2rest as uc2  # pip install UC2-REST
 from imswitch.imcommon.model import initLogger
 from imswitch.imcommon.model import APIExport
 import imswitchclient.ImSwitchClient as imc 
+from imswitch import IS_HEADLESS
 
 class ImSwitchRESTManager:
-    """ A low-level wrapper for TCP-IP communication (ESP32 REST API)
+    """ 
+    A low-level wrapper for TCP-IP communication (ESP32 REST API)
     """
 
     def __init__(self, rs232Info, name, **_lowLevelManagers):
@@ -25,7 +27,7 @@ class ImSwitchRESTManager:
             self._ssl = True
 
         # initialize the ESP32 device adapter
-        self._imswitch_client = imc.ImSwitchClient(host=self._host, port=self._port, ssl=self._ssl, logger=self.__logger)
+        self._imswitch_client = imc.ImSwitchClient(host=self._host, port=self._port, isHttps=self._ssl)
 
     def finalize(self):
         pass

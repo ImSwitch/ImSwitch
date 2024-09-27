@@ -1,7 +1,5 @@
+from imswitch import IS_HEADLESS
 from imswitch.imcommon.controller import MainController
-from imswitch.imcommon.model import generateAPI, pythontools, APIExport
-from imswitch.imscripting.model import getActionsScope
-from .CommunicationChannel import CommunicationChannel
 from .ImScrMainViewController import ImScrMainViewController
 from .basecontrollers import ImScrWidgetControllerFactory
 
@@ -12,55 +10,21 @@ class ImScrMainController(MainController):
                  moduleMainControllers):
         self.__mainView = mainView
         self.__moduleCommChannel = moduleCommChannel
-        self.__scriptScope = self._createScriptScope(moduleCommChannel, multiModuleWindowController,
-                                                     moduleMainControllers)
-
-        # Connect view signals
-        self.__mainView.sigClosing.connect(self.closeEvent)
-
-        # Init communication channel and master controller
-        self.__commChannel = CommunicationChannel()
 
         # List of Controllers for the GUI Widgets
         self.__factory = ImScrWidgetControllerFactory(
-            self.__scriptScope, self.__commChannel, self.__moduleCommChannel
+            None, None, self.__moduleCommChannel
         )
-
         self.mainViewController = self.__factory.createController(
             ImScrMainViewController, self.__mainView
         )
 
         # Connect signals from ModuleCommunicationChannel
-        self.__moduleCommChannel.sigRunScript.connect(self.__commChannel.sigRunScript)
+        if IS_HEADLESS:
+            
+            return
+        self.__mainView.sigClosing.connect(self.closeEvent)
 
-
-        # create jupyter notebook controller
-        #self._startJupyterNotebook()
-        
-    def _createScriptScope(self, moduleCommChannel, multiModuleWindowController,
-                           moduleMainControllers):
-        """ Generates a scope of objects that are intended to be accessible by scripts. """
-
-        scope = {}
-        scope.update({
-            'moduleCommChannel': moduleCommChannel,
-            'mainWindow': generateAPI([multiModuleWindowController]),
-            'controllers': pythontools.dictToROClass(moduleMainControllers),
-            'api': pythontools.dictToROClass(
-                {key: controller.api
-                 for key, controller in moduleMainControllers.items()
-                 if hasattr(controller, 'api')}
-            )
-        })
-        scope.update(getActionsScope(scope.copy()))
-
-        return scope
-
-    
-    @APIExport(runOnUIThread=True)
-    def _returnScriptScope(self) -> dict:
-        return self.__scriptScope
-    
     def closeEvent(self):
         self.__factory.closeAllCreatedControllers()
 

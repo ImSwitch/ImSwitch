@@ -1,6 +1,6 @@
 from imswitch.imcontrol.model import Options
 from imswitch.imcontrol.view import ViewSetupInfo
-
+import json
 optionsBasic = Options.from_json("""
 {
     "setupFileName": "",
@@ -13,37 +13,176 @@ optionsBasic = Options.from_json("""
 
 setupInfoBasic = ViewSetupInfo.from_json("""
 {
+    "positioners": {
+        "VirtualStage": {
+          "managerNameGRBL": "GRBLStageManager",
+          "managerName": "VirtualStageManager",
+          "managerProperties": {
+            "rs232device": "VirtualMicroscope",
+            "isEnable": true, 
+            "enableauto": false,
+            "isDualaxis": 0,
+            "stepsizeX": 1,
+            "stepsizeY": 1,
+            "stepsizeZ": 1,
+            "stepsizeA": 1,
+            "homeSpeedX": 15000,
+            "homeSpeedY": 15000,
+            "homeSpeedZ": 15000,
+            "homeSpeedA": 15000,
+            "homeDirectionX": 1,
+            "homeDirectionY": 1,
+            "homeDirectionZ": -1,
+            "initialSpeed": {"X": 15000, "Y":  15000,"Z": 15000, "A": 15000}
+          },
+          "axes": [
+            "X",
+            "Y",
+            "Z", 
+            "A"
+          ],
+          "forScanning": true,
+          "forPositioning": true
+        }
+      },
+    "rs232devices": {
+    "VirtualMicroscope": {
+      "managerName": "VirtualMicroscopeManager",
+      "managerProperties": {
+      }
+    }
+  },
+ "lasers": {
+    "LED": {
+      "analogChannel": null,
+      "digitalLine": null,
+      "managerName": "VirtualLaserManager",
+      "managerProperties": {
+        "rs232device": "VirtualMicroscope",
+        "channel_index": 1
+      },
+      "wavelength": 635,
+      "valueRangeMin": 0,
+      "valueRangeMax": 1023
+    }
+  },
+  "detectors": {
+    "WidefieldCamera": {
+        "analogChannel": null,
+        "digitalLine": null,
+        "managerName": "VirtualCameraManager",
+        "managerProperties": {
+            "isRGB": 0,
+            "cameraListIndex": 0,
+            "cameraEffPixelsize": 0.2257,
+            "virtcam": {
+                "exposure": 0,
+                "gain": 0,
+                "blacklevel": 100,
+                "image_width": 1000,
+                "image_height": 1000
+            }
+        },
+        "forAcquisition": true,
+        "forFocusLock": true
+    }
+    },
+  "rois": {
+    "Full chip": {
+      "x": 600,
+      "y": 600,
+      "w": 1200,
+      "h": 1200
+    }
+  },
+  "fovLock": {
+    "camera": "WidefieldCamera",
+    "positioner": "VirtualStage",
+    "updateFreq": 1, 
+    "piKp":1, 
+    "piKi":1
+    },
+    "sim": {
+      "monitorIdx": 2,
+      "width": 1080,
+      "height": 1920,
+      "wavelength": 0,
+      "pixelSize": 0,
+      "angleMount": 0,
+      "patternsDir": "/users/bene/ImSwitchConfig/imcontrol_sim/488"
+    },
+    "dpc": {
+      "wavelength": 0.53,
+      "pixelsize": 0.2,
+      "NA": 0.3,
+      "NAi": 0.3,
+      "n": 1.0,
+      "rotations": [0, 180, 90, 270]
+    },
+  "PixelCalibration": {},
+  "availableWidgets": [
+    "Settings",
+    "View",
+    "Recording",
+    "Image",
+    "Laser",
+    "Positioner",
+    "Autofocus",
+    "MCT",
+    "ROIScan",
+    "HistoScan",
+    "Hypha" 
+  ],
+  "nonAvailableWidgets":[
+    "FocusLock",
+    "SIM", 
+    "DPC",
+    "FOVLock",
+    "Temperature", 
+    "HistoScan",
+    "PixelCalibration", 
+    "Lightsheet", 
+    "WebRTC", 
+    "Flatfield", 
+    "STORMRecon",
+    "DPC",    
+    "ImSwitchServer",
+    "PixelCalibration",
+    "FocusLock"]
+}
+""", infer_missing=True)
+
+setupInfoWithoutWidgets = ViewSetupInfo.from_json("""
+{
   "positioners": {
-    "StageX": {
+    "ESP32Stage": {
       "managerName": "ESP32StageManager",
       "managerProperties": {
         "rs232device": "ESP32",
-        "enableauto": 1,
-        "isEnable": 1
+        "enableauto": 0,
+        "isEnable": 1,
+        "homeXenabled": true, 
+        "homeStepsX":10000, 
+        "homeOnStartX": true,
+        "homeEndposReleaseX":5000,
+        "homeYenabled": true, 
+        "homeStepsY":10000, 
+        "homeOnStartY": true,
+        "homeEndposReleaseY":5000,
+        "homeAenabled": true, 
+        "homeStepsA":10000, 
+        "homeOnStarta": true,
+        "homeEndposReleaseA":5000,
+        "stepsizeX": -0.3125,
+        "stepsizeY": -0.3125,
+        "stepsizeZ": 0.3125
       },
-      "axes": ["X"],
-      "forScanning": true,
-      "forPositioning": true
-    },
-    "StageY": {
-      "managerName": "ESP32StageManager",
-      "managerProperties": {
-        "rs232device": "ESP32",
-        "enableauto": 1,
-        "isEnable": 1
-      },
-      "axes": ["Y"],
-      "forScanning": true,
-      "forPositioning": true
-    },
-    "StageZ": {
-      "managerName": "ESP32StageManager",
-      "managerProperties": {
-        "rs232device": "ESP32",
-        "enableauto": 1,
-        "isEnable": 1
-      },
-      "axes": ["Z"],
+      "axes": [
+        "X",
+        "Y",
+        "Z",
+        "A"
+      ],
       "forScanning": true,
       "forPositioning": true
     }
@@ -54,8 +193,10 @@ setupInfoBasic = ViewSetupInfo.from_json("""
       "managerProperties": {
         "host_": "192.168.43.129",
         "serialport_": "COM3",
-        "serialport": "/dev/cu.usbserial-A50285BI"
-      }
+        "serialport": "COM3",
+        "baudrate":500000, 
+        "debug":1
+       }
     }
   },
   "lasers": {
@@ -65,37 +206,22 @@ setupInfoBasic = ViewSetupInfo.from_json("""
       "managerName": "ESP32LEDLaserManager",
       "managerProperties": {
         "rs232device": "ESP32",
-        "channel_index": 2,
+        "channel_index":1,
         "filter_change": false,
         "laser_despeckle_period": 10,
         "laser_despeckle_amplitude": 0
       },
       "wavelength": 488,
       "valueRangeMin": 0,
-      "valueRangeMax": 1024
+      "valueRangeMax": 512
     },
-    "635 Laser": {
+    "LED Matrix": {
       "analogChannel": null,
       "digitalLine": null,
       "managerName": "ESP32LEDLaserManager",
       "managerProperties": {
         "rs232device": "ESP32",
-        "channel_index": 1,
-        "filter_change": false,
-        "laser_despeckle_period": 10,
-        "laser_despeckle_amplitude": 0
-      },
-      "wavelength": 635,
-      "valueRangeMin": 0,
-      "valueRangeMax": 1024
-    },
-    "LED": {
-      "analogChannel": null,
-      "digitalLine": null,
-      "managerName": "ESP32LEDLaserManager",
-      "managerProperties": {
-        "rs232device": "ESP32",
-        "channel_index": "3",
+        "channel_index": "LED",
         "filter_change": false,
         "filter_axis": 3,
         "filter_position": 32000,
@@ -103,52 +229,30 @@ setupInfoBasic = ViewSetupInfo.from_json("""
       },
       "wavelength": 635,
       "valueRangeMin": 0,
-      "valueRangeMax": 1023
+      "valueRangeMax": 255
     }
   },
   "detectors": {
     "WidefieldCamera": {
-      "analogChannel": null,
-      "digitalLine": null,
-      "managerName": "HikCamManager",
-      "managerProperties": {
-        "isRGB": 0,
-        "cameraListIndex": 0,
-        "cameraEffPixelsize": 0.2257,
-        "hikcam": {
-          "exposure": 0,
-          "gain": 0,
-          "blacklevel": 100,
-          "image_width": 1000,
-          "image_height": 1000
-        }
-      },
-      "forAcquisition": true,
-      "forFocusLock": true
-    },
-    "ESP32Cam": {
-      "ExtPackage": "imswitch_det_webcam",
-      "analogChannel": null,
-      "digitalLine": null,
-      "managerName": "ESP32SerialCamManager",
-      "managerProperties": {
-        "cameraListIndex": 1,
-        "gxipycam": {
-          "exposure": 20,
-          "gain": 0,
-          "blacklevel": 10,
-          "image_width": 1000,
-          "image_height": 1000
-        }
-      },
-      "forAcquisition": true,
-      "forFocusLock": true
+        "analogChannel": null,
+        "digitalLine": null,
+        "managerName": "HikCamManager",
+        "managerProperties": {
+            "isRGB": 0,
+            "cameraListIndex": 0,
+            "cameraEffPixelsize": 0.2257,
+            "hikcam": {
+                "exposure": 0,
+                "gain": 0,
+                "blacklevel": 100,
+                "image_width": 1000,
+                "image_height": 1000
+            }
+        },
+        "forAcquisition": true,
+        "forFocusLock": true
     }
-  },
-  "nidaq": {
-    "timerCounterChannel": "Dev1/ctr2",
-    "startTrigger": true
-  },
+    },
   "rois": {
     "Full chip": {
       "x": 600,
@@ -156,9 +260,6 @@ setupInfoBasic = ViewSetupInfo.from_json("""
       "w": 1200,
       "h": 1200
     }
-  },
-  "HistoScan": {
-    "PreviewCamera": "ESP32Cam"
   },
   "LEDMatrixs": {
     "ESP32 LEDMatrix": {
@@ -195,191 +296,18 @@ setupInfoBasic = ViewSetupInfo.from_json("""
     "height": 1920,
     "wavelength": 0,
     "pixelSize": 0,
-    "angleMount": 0
-  },
-  "dpc": {
-    "wavelength": 0.53,
-    "pixelsize": 0.2,
-    "NA": 0.3,
-    "NAi": 0.3,
-    "n": 1.0,
-    "rotations": [0, 180, 90, 270]
-  },
-  "webrtc": {},
-  "PixelCalibration": {},
-  "focusLock": {
-    "camera": "ESP32Cam",
-    "port": "COM5",
-    "positioner": "ESP32StageManager",
-    "updateFreq": 4,
-    "frameCropx": 0,
-    "frameCropy": 0,
-    "frameCropw": 0,
-    "frameCroph": 0
+    "angleMount": 0,
+    "patternsDir": "/users/bene/ImSwitchConfig/imcontrol_sim/488"
   },
   "availableWidgets": [
-    "Settings",
-    "Positioner",
-    "View",
-    "Recording",
-    "Image",
-    "Laser",
-    "UC2Config",
-    "Joystick",
-    "Lightsheet",
-    "ROIScan",
-    "Scan"
-  ],
-  "scan": {
-    "scanWidgetType": "PointScan",
-    "scanDesigner": "GalvoScanDesigner",
-    "scanDesignerParams": {},
-    "TTLCycleDesigner": "PointScanTTLCycleDesigner",
-    "TTLCycleDesignerParams": {},
-    "sampleRate": 100000,
-    "lineClockLine": "Dev1/port0/line5",
-    "frameClockLine": "Dev1/port0/line6"
-  }
+    ]
 }
 """, infer_missing=True)
 
-setupInfoWithoutWidgets = ViewSetupInfo.from_json("""
-{
-    "detectors": {
-        "CAM": {
-            "analogChannel": null,
-            "digitalLine": 3,
-            "managerName": "HamamatsuManager",
-            "managerProperties": {
-                "cameraListIndex": 0,
-                "hamamatsu": {
-                    "readout_speed": 3,
-                    "trigger_global_exposure": 5,
-                    "trigger_active": 2,
-                    "trigger_polarity": 2,
-                    "exposure_time": 0.01,
-                    "trigger_source": 1,
-                    "subarray_hpos": 0,
-                    "subarray_vpos": 0,
-                    "subarray_hsize": 2304,
-                    "subarray_vsize": 2304
-                }
-            },
-            "forAcquisition": true
-        }
-    },
-    "lasers": {
-        "405": {
-            "analogChannel": null,
-            "digitalLine": 0,
-            "managerName": "Cobolt0601LaserManager",
-            "managerProperties": {
-                "digitalPorts": [
-                    "COM9"
-                ]
-            },
-            "wavelength": 405,
-            "valueRangeMin": 0,
-            "valueRangeMax": 200
-        },
-        "488": {
-            "analogChannel": null,
-            "digitalLine": 1,
-            "managerName": "Cobolt0601LaserManager",
-            "managerProperties": {
-                "digitalPorts": [
-                    "COM4",
-                    "COM14"
-                ]
-            },
-            "wavelength": 488,
-            "valueRangeMin": 0,
-            "valueRangeMax": 200
-        }
-    },
-      "rs232devices": {
-    "ESP32": {
-      "managerName": "ESP32Manager",
-      "managerProperties": {
-        "host_": "192.168.43.129",
-        "serialport_": "COM3",
-        "serialport": "/dev/cu.usbserial-A50285BI"
-      }
-    }
-  },
-      "nidaq": {
-    "timerCounterChannel": "Dev1/ctr2",
-    "startTrigger": true
-    },
-  "positioners": {
-    "ESP32Stage": {
-      "managerName": "ESP32StageManager",
-      "managerProperties": {
-        "rs232device": "ESP32",
-        "enableauto": 1,
-        "isEnable": 1
-      },
-      "axes": [
-        "X",
-        "Y",
-        "Z",
-        "A"
-      ],
-      "forScanning": true,
-      "forPositioning": true
-    }
-  },
-    "scan": {
-        "scanDesigner": "BetaScanDesigner",
-        "scanDesignerParams": {
-            "return_time": 0.01
-        },
-        "TTLCycleDesigner": "BetaTTLCycleDesigner",
-        "TTLCycleDesignerParams": {},
-        "sampleRate": 100000
-    },
-    "rois": {
-        "Imaging": {
-            "x": 520,
-            "y": 292,
-            "w": 1308,
-            "h": 1308
-        },
-        "Test 2": {
-            "x": 256,
-            "y": 256,
-            "w": 256,
-            "h": 256
-        },
-        "imaging_20201215": {
-            "x": 589,
-            "y": 444,
-            "w": 1308,
-            "h": 1308
-        },
-        "beadscan_centre": {
-            "x": 577,
-            "y": 539,
-            "w": 1345,
-            "h": 1345
-        },
-        "Imaging-20212101": {
-            "x": 616,
-            "y": 572,
-            "w": 1304,
-            "h": 1304
-        },
-        "image-210121": {
-            "x": 560,
-            "y": 588,
-            "w": 1308,
-            "h": 1308
-        }
-    },
-    "availableWidgets": []
-}
-""", infer_missing=True)
-
+if __name__ == '__main__':
+    print(setupInfoBasic)
+    print(setupInfoWithoutWidgets)
+    print(optionsBasic)
 
 # Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.

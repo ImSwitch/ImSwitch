@@ -10,6 +10,8 @@ import scipy.ndimage as ndi
 import scipy.signal as signal
 import skimage.transform as transform
 import tifffile as tif
+from pydantic import BaseModel
+from typing import Optional
 
 from imswitch.imcommon.framework import Signal, Thread, Worker, Mutex, Timer
 from imswitch.imcommon.model import dirtools, initLogger, APIExport
@@ -22,6 +24,27 @@ import numpy as np
 
 
 
+class MCTStatus(BaseModel):
+    isMCTrunning: bool = False
+    nImagesTaken: int = 0
+    timePeriod: int = 60
+    zStackEnabled: bool = False
+    zStackMin: Optional[int] = 0
+    zStackMax: Optional[int] = 0
+    zStackStep: Optional[int] = 0
+    xyScanEnabled: bool = False
+    xScanMin: Optional[int] = 0
+    xScanMax: Optional[int] = 0
+    xScanStep: Optional[int] = 0
+    yScanMin: Optional[int] = 0
+    yScanMax: Optional[int] = 0
+    yScanStep: Optional[int] = 0
+    Illu1Value: Optional[int] = 0
+    Illu2Value: Optional[int] = 0
+    Illu3Value: Optional[int] = 0
+    MCTFilename: str = " "
+    MCTFilePath: str = " "
+    
 class MCTController(ImConWidgetController):
     """Linked to MCTWidget."""
 
@@ -54,7 +77,8 @@ class MCTController(ImConWidgetController):
         self.MCTFilename = ""
         self.activeIlluminations = []
         self.availableIlliminations = []
-
+        self.MCTFilePath = " "
+        
         # time to let hardware settle
         try:
             self.tWait = self._master.mctManager.tWait 
@@ -104,7 +128,7 @@ class MCTController(ImConWidgetController):
             self._widget.mctShowLastButton.setEnabled(False)
 
             # setup gui limits for sliders
-            if len(self.availableIlliminations) == 1:
+            if len(self.availableIlliminations) > 0:
                 self._widget.sliderIllu1.setMaximum(self.availableIlliminations[0].valueRangeMax)
                 self._widget.sliderIllu1.setMinimum(self.availableIlliminations[0].valueRangeMin)           
             if len(self.availableIlliminations) > 1:
@@ -118,19 +142,10 @@ class MCTController(ImConWidgetController):
     def startMCT(self):
         # initilaze setup
         # this is not a thread!
-        # this is called from the GUI
-
-        # get active illuminations 
-        self.activeIlluminations = []
-        if self.Illu1Value>0: self.activeIlluminations.append(self.availableIlliminations[0])
-        if self.Illu2Value>0 and len(self.availableIlliminations)>1: self.activeIlluminations.append(self.availableIlliminations[1])
-        if self.Illu3Value>0 and len(self.availableIlliminations)>2: self.activeIlluminations.append(self.availableIlliminations[2])
-        
+        # this is called from the QT GUI
         # start the timelapse
         if not self.isMCTrunning and len(self.activeIlluminations)>0:
-            self.nImagesTaken = 0
             self.switchOffIllumination()
-            
             # GUI updates
             if not IS_HEADLESS:
                 self._widget.mctStartButton.setEnabled(False)
@@ -148,7 +163,7 @@ class MCTController(ImConWidgetController):
                 self._widget.mctShowLastButton.setEnabled(False)
 
             # start the timelapse - otherwise we have to wait for the first run after timePeriod to take place..
-            self.takeTimelapse(self.timePeriod, self.nImagesToCapture, 
+            self.startTimelapseImaging(self.timePeriod, self.nImagesToCapture, 
                                self.MCTFilename, self.MCTDate,
                                self.zStackEnabled, self.zStackMin, self.zStackMax, self.zStackStep,
                                self.xyScanEnabled, self.xScanMin, self.xScanMax, self.xScanStep, self.yScanMin, self.yScanMax, self.yScanStep)
@@ -160,10 +175,6 @@ class MCTController(ImConWidgetController):
 
     def stopMCT(self):
         self.isMCTrunning = False
-
-        self._widget.setMessageGUI("Stopping timelapse...")
-
-        self._widget.mctStartButton.setEnabled(True)
 
         # go back to initial position
         try:
@@ -184,7 +195,11 @@ class MCTController(ImConWidgetController):
         except:
             pass
 
-        self._widget.setMessageGUI("Done wit timelapse...")
+        if not IS_HEADLESS: 
+            self._widget.setMessageGUI("Stopping timelapse...")
+            self._widget.mctStartButton.setEnabled(True)
+            self._widget.setMessageGUI("Done wit timelapse...")
+        
 
     def showLast(self, isCleanStack=False):
         #  isCleanStack=False => subtract backgroudn or not
@@ -225,11 +240,42 @@ class MCTController(ImConWidgetController):
         """ Displays the image in the view. """
         self._widget.setImage(im)
 
+    @APIExport(runOnUIThread=False)
+    def getLastMCTStack(self):
+        if hasattr(self, "LastStackIllu1ArrayLast"):
+            return self.LastStackIllu1ArrayLast
+        else:
+            return None
+    
+    @APIExport(runOnUIThread=False)
+    def getMCTStatus(self) -> dict:
+        return MCTStatus(**{"isMCTrunning":self.isMCTrunning,
+                "nImagesTaken":self.nImagesTaken,
+                "timePeriod":self.timePeriod,
+                "zStackEnabled":self.zStackEnabled,
+                "zStackMin":self.zStackMin,
+                "zStackMax":self.zStackMax,
+                "zStackStep":self.zStackStep,
+                "xyScanEnabled":self.xyScanEnabled,
+                "xScanMin":self.xScanMin,
+                "xScanMax":self.xScanMax,
+                "xScanStep":self.xScanStep,
+                "yScanMin":self.yScanMin,
+                "yScanMax":self.yScanMax,
+                "yScanStep":self.yScanStep,
+                "Illu1Value":self.Illu1Value,
+                "Illu2Value":self.Illu2Value,
+                "Illu3Value":self.Illu3Value,
+                "MCTFilename":self.MCTFilename,
+                "MCTFilepath":self.MCTFilePath})
+        
     @APIExport(runOnUIThread=True)
-    def takeTimelapse(self, tperiod, nImagesToCapture, 
-                      MCTFilename, MCTDate, 
-                      zStackEnabled, zStackMin, zStackMax, zStackStep, 
-                      xyScanEnabled, xScanMin, xScanMax, xScanStep, yScanMin, yScanMax, yScanStep):
+    def startTimelapseImaging(self, tperiod:int=5, nImagesToCapture:int=10, 
+                      MCTFilename:str="Test", MCTDate:str="", 
+                      zStackEnabled:bool=False, zStackMin:int=0, zStackMax:int=0, zStackStep:int=0, 
+                      xyScanEnabled:bool=False, xScanMin:int=0, xScanMax:int=0, xScanStep:int=0, 
+                      yScanMin:int=0, yScanMax:int=0, yScanStep:int=0, 
+                      IlluValue1:int =-1, IlluValue2:int =-1, IlluValue3:int =-1):
         # this is called periodically by the timer
         if not self.isMCTrunning:
             try:
@@ -237,10 +283,28 @@ class MCTController(ImConWidgetController):
                 del self.MCTThread
             except:
                 pass
+            
+            # get default date to not overwrite the same files
+            if MCTDate == "":
+                MCTDate = datetime.now().strftime("%Y_%m_%d-%I-%M-%S_%p")
+            uniqueID = np.random.randint(0, 1000)
+            MCTDate = MCTDate + "_"+str(uniqueID) # make sure we do not overwrite files
 
+            # retreive from REST API
+            if IlluValue1>=0: self.Illu1Value = IlluValue1
+            if IlluValue2>=0: self.Illu2Value = IlluValue2
+            if IlluValue3>=0: self.Illu3Value = IlluValue3
+        
+            # get active illuminations 
+            self.activeIlluminations = []
+            if self.Illu1Value>0: self.activeIlluminations.append(self.availableIlliminations[0])
+            if self.Illu2Value>0 and len(self.availableIlliminations)>1: self.activeIlluminations.append(self.availableIlliminations[1])
+            if self.Illu3Value>0 and len(self.availableIlliminations)>2: self.activeIlluminations.append(self.availableIlliminations[2])
+                        
+            
             # this should decouple the hardware-related actions from the GUI
             self.isMCTrunning = True
-            self.MCTThread = threading.Thread(target=self.takeTimelapseThread, args=(tperiod, nImagesToCapture, 
+            self.MCTThread = threading.Thread(target=self.startTimelapseImagingThread, args=(tperiod, nImagesToCapture, 
                                                                                      MCTFilename, MCTDate, 
                                                                                      zStackEnabled, zStackMin, zStackMax, zStackStep, 
                                                                                     xyScanEnabled, xScanMin, xScanMax, xScanStep, 
@@ -248,6 +312,10 @@ class MCTController(ImConWidgetController):
 
             self.MCTThread.start()
 
+    @APIExport(runOnUIThread=True)
+    def stopTimelapseImaging(self):
+        self.stopMCT()
+        
     def doAutofocus(self, params, timeout=10):
         self._logger.info("Autofocusing...")
         self._widget.setMessageGUI("Autofocusing...")
@@ -265,12 +333,13 @@ class MCTController(ImConWidgetController):
             self._logger.error(e)
 
 
-    def takeTimelapseThread(self, tperiod, nImagesToCapture, 
+    def startTimelapseImagingThread(self, tperiod, nImagesToCapture, 
                                     MCTFilename, MCTDate, 
                                     zStackEnabled, zStackMin, zStackMax, zStackStep, 
                                     xyScanEnabled, xScanMin, xScanMax, xScanStep, 
                                     yScanMin, yScanMax, yScanStep):
         # this wil run in the background
+        self.nImagesTaken=0
         self.timeLast = 0
         if zStackEnabled:
             nZStack = int(np.ceil((zStackMax-zStackMin)/zStackStep))
@@ -287,9 +356,10 @@ class MCTController(ImConWidgetController):
         
         # HDF5 file setup: prepare data storage 
         fileExtension = "h5"
-        fileName = self.getSaveFilePath(date=MCTDate,
+        self.MCTFilePath = self.getSaveFilePath(date=MCTDate,
                                 filename=MCTFilename,
                                 extension=fileExtension)
+        self._logger.info(f"Saving to {self.MCTFilePath}")
         self.detectorWidth, self.detectorHeight = self.detector._camera.SensorWidth, self.detector._camera.SensorHeight
         if self.isRGB:
             init_dims = (1, len(self.activeIlluminations), nZStack, self.detectorWidth, self.detectorHeight, 3) # time, channels, z, y, x, RGB
@@ -298,7 +368,7 @@ class MCTController(ImConWidgetController):
             init_dims = (1, len(self.activeIlluminations), nZStack, self.detectorWidth, self.detectorHeight) # time, channels, z, y, x
             max_dims = (None, 3, nZStack, None, None)  # Allow unlimited time points and z slices
         
-        self.h5File = HDF5File(filename=fileName, init_dims=init_dims, max_dims=max_dims, isRGB=self.isRGB)
+        self.h5File = HDF5File(filename=self.MCTFilePath, init_dims=init_dims, max_dims=max_dims, isRGB=self.isRGB)
 
         # run as long as the MCT is active
         while(self.isMCTrunning):
@@ -306,7 +376,7 @@ class MCTController(ImConWidgetController):
             if self.nImagesTaken >= nImagesToCapture:
                 self.isMCTrunning = False
                 self._logger.debug("Done with timelapse")
-                self._widget.mctStartButton.setEnabled(True)
+                if not IS_HEADLESS: self._widget.mctStartButton.setEnabled(True)
                 break
 
             # initialize a run
@@ -343,7 +413,7 @@ class MCTController(ImConWidgetController):
                     self._logger.error("Thread closes with Error: "+str(e))
                     self.isMCTrunning = False
                     self._logger.debug("Done with timelapse")
-                    self._widget.mctStartButton.setEnabled(True)
+                    if not IS_HEADLESS: self._widget.mctStartButton.setEnabled(True)
                     return 
 
             # pause to not overwhelm the CPU
@@ -351,18 +421,21 @@ class MCTController(ImConWidgetController):
 
 
     def updateGUI(self):
-        # update the text in the GUI
-        self._widget.setMessageGUI(self.nImagesTaken)
 
         # sneak images into arrays for displaying stack
         if self.zStackEnabled and not self.xyScanEnabled:
             self.LastStackIllu1ArrayLast = np.array(self.LastStackIllu1)
             self.LastStackIllu2ArrayLast = np.array(self.LastStackIllu2)
             self.LastStackLEDArrayLast = np.array(self.LastStackLED)
+
+        if not IS_HEADLESS:
+            # update the text in the GUI
+            self._widget.setMessageGUI(self.nImagesTaken)
             self._widget.mctShowLastButton.setEnabled(True)
 
     def performAutofocus(self):
-        autofocusParams = self._widget.getAutofocusValues()
+        if not IS_HEADLESS: autofocusParams = self._widget.getAutofocusValues()
+        else: return
         if self.positioner is not None and self._widget.isAutofocus() and np.mod(self.nImagesTaken, int(autofocusParams['valuePeriod'])) == 0:
             self._widget.setMessageGUI("Autofocusing...")
             # turn on illuimination
@@ -394,7 +467,7 @@ class MCTController(ImConWidgetController):
             downScaleFactor = 4
             nTilesX = int(np.ceil((self.xScanMax-self.xScanMin)/self.xScanStep))
             nTilesY = int(np.ceil((self.yScanMax-self.yScanMin)/self.yScanStep))
-            imageDimensions = self.detector.getLatestFrame().shape
+            imageDimensions = self.detector.getLatestFrame().shape # self.detector._camera.CameraWidth TODO not good!
             imageDimensionsDownscaled = (imageDimensions[1]//downScaleFactor, imageDimensions[0]//downScaleFactor) # Y/X
             tiledImageDimensions = (nTilesX*imageDimensions[1]//downScaleFactor, nTilesY*imageDimensions[0]//downScaleFactor)
             self.tiledImage = np.zeros(tiledImageDimensions)
@@ -463,11 +536,32 @@ class MCTController(ImConWidgetController):
                     elif mIllumination.name==self.availableIlliminations[2].name:
                         illuValue = self.Illu3Value
                     
+                    # change illumination
                     mIllumination.setValue(illuValue)
                     mIllumination.setEnabled(True)
-                    time.sleep(self.tWait)
-                    allChannelFrames.append(self.detector.getLatestFrame().copy())
                     
+                    # always mmake sure we get a frame that is not the same as the one with illumination off eventually
+                    timeoutFrameRequest = 1 # seconds # TODO: Make dependent on exposure time
+                    cTime = time.time()
+                    frameSync=3
+                    lastFrameNumber=-1
+                    while(1):
+                        # get frame and frame number to get one that is newer than the one with illumination off eventually
+                        mFrame, currentFrameNumber = self.detector.getLatestFrame(returnFrameNumber=True)
+                        if lastFrameNumber==-1:
+                            # first round
+                            lastFrameNumber = currentFrameNumber
+                        if time.time()-cTime> timeoutFrameRequest:
+                            # in case exposure time is too long we need break at one point 
+                            break
+                        if currentFrameNumber <= lastFrameNumber+frameSync:
+                            time.sleep(0.01) # off-load CPU
+                        else:
+                            break
+                    # store frames
+                    allChannelFrames.append(mFrame)
+                    mIllumination.setEnabled(False)
+                
                     # store positions
                     mPositions = self.positioner.getPosition()
                     allPositions.append((mPositions["X"], mPositions["Y"], mPositions["Z"]))
@@ -479,10 +573,9 @@ class MCTController(ImConWidgetController):
                         self.LastStackLED.append(lastFrame.copy())
                     '''
                 allZStackFrames.append(allChannelFrames)
-            
-            
-            # ensure all illus are off
-            self.switchOffIllumination()
+                
+                # ensure all illus are off
+                self.switchOffIllumination()
             
             # save to HDF5
             if self.isRGB:
@@ -490,6 +583,7 @@ class MCTController(ImConWidgetController):
             else:
                 framesToSave = np.transpose(np.array(allZStackFrames), (1,0,2,3)) # time, 
             self.h5File.append_data(self.nImagesTaken, framesToSave, np.array(allPositions))
+            self._logger.debug(f"Saved image {self.nImagesTaken} to HDF5")
             del framesToSave
                 
 
@@ -528,7 +622,8 @@ class MCTController(ImConWidgetController):
 
         # disable motors to prevent overheating
         if self.positioner is not None:
-            self.positioner.enalbeMotors(enable=self.positioner.is_enabled)
+            try:self.positioner.enalbeMotors(enable=self.positioner.is_enabled)
+            except: pass # special case for the ESP32 board
 
     def switchOffIllumination(self):
         # switch off all illu sources
@@ -573,8 +668,7 @@ class MCTController(ImConWidgetController):
 
     def getSaveFilePath(self, date, filename, extension):
         mFilename =  f"{date}_{filename}.{extension}"
-        dirPath  = os.path.join(dirtools.UserFileDirs.Root, 'recordings', date)
-
+        dirPath  = os.path.join(dirtools.UserFileDirs.Data, 'recordings', date)
         newPath = os.path.join(dirPath,mFilename)
 
         if not os.path.exists(dirPath):
@@ -582,7 +676,7 @@ class MCTController(ImConWidgetController):
 
         return newPath
 
-    def setAutoFocusIsRunning(self, isRunning):
+    def setAutoFocusIsRunning(self, isRunning: bool):
         # this is set by the AutofocusController once the AF is finished/initiated
         self.isAutofocusRunning = isRunning
 

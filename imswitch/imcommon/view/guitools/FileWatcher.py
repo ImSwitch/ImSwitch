@@ -1,15 +1,14 @@
 from os import listdir
 from os.path import isfile, join, isdir
 import time
-from qtpy import QtCore
 from datetime import datetime
 import os
 import json
 import socket
+from imswitch.imcommon.framework import Thread, Signal
 
-
-class FileWatcher(QtCore.QThread):
-    sigNewFiles = QtCore.Signal(list)
+class FileWatcher(Thread):
+    sigNewFiles = Signal(list)
 
     def __init__(self, path, extension, pollTime):
         super().__init__()

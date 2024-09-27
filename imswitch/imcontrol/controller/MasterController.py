@@ -1,5 +1,4 @@
 from imswitch.imcommon.model import VFileItem, initLogger
-from imswitch import IS_HEADLESS
 
 import pkg_resources
         
@@ -123,10 +122,7 @@ class MasterController:
         self.recordingManager.sigRecordingFrameNumUpdated.connect(cc.sigUpdateRecFrameNum)
         self.recordingManager.sigRecordingTimeUpdated.connect(cc.sigUpdateRecTime)
         self.recordingManager.sigMemorySnapAvailable.connect(cc.sigMemorySnapAvailable)
-        if 0: #IS_HEADLESS:
-            self.recordingManager.sigMemoryRecordingAvailable.connect(self.memoryRecordingAvailable, check_nargs=False) 
-        else:
-            self.recordingManager.sigMemoryRecordingAvailable.connect(self.memoryRecordingAvailable) 
+        self.recordingManager.sigMemoryRecordingAvailable.connect(self.memoryRecordingAvailable) 
             
         self.slmManager.sigSLMMaskUpdated.connect(cc.sigSLMMaskUpdated)
         self.simManager.sigSIMMaskUpdated.connect(cc.sigSIMMaskUpdated)

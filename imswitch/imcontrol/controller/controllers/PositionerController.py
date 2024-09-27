@@ -36,7 +36,7 @@ class PositionerController(ImConWidgetController):
                     self.setSharedAttr(pName, axis, _stopAttr, pManager.stop[axis])
 
         # Connect CommunicationChannel signals
-        if IS_HEADLESS: 
+        if 0: #IS_HEADLESS:IS_HEADLESS: 
             self._commChannel.sharedAttrs.sigAttributeSet.connect(self.attrChanged, check_nargs=False)
         else:
             self._commChannel.sharedAttrs.sigAttributeSet.connect(self.attrChanged)

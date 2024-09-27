@@ -18,14 +18,14 @@ MAX_ACCEL = 500000
 PHYS_FACTOR = 1
 gTIMEOUT = 100
 
-class ImSwitchREST(PositionerManager):
+class ImSwitchRESTStageManager(PositionerManager):
     def __init__(self, positionerInfo, name, **lowLevelManagers):
-        super().__init__(positionerInfo, name, initialPosition={axis: 0 for axis in positionerInfo.axes})
         self._rs232manager = lowLevelManagers['rs232sManager'][positionerInfo.managerProperties['rs232device']]
-        self._commChannel = lowLevelManagers['commChannel']
-        self.__logger = initLogger(self, instanceName=name)
         self._imswitch_client = self._rs232manager._imswitch_client
         self.positioner_name = self._imswitch_client.positionersManager.getAllDeviceNames()[0]
+        self._commChannel = lowLevelManagers['commChannel']
+        self.__logger = initLogger(self, instanceName=name)
+        super().__init__(positionerInfo, name, initialPosition={axis: 0 for axis in positionerInfo.axes})
         
 
     def move(self, value=0, axis="X", is_absolute=False, is_blocking=True, acceleration=None, speed=None, isEnable=None, timeout=gTIMEOUT):
@@ -44,7 +44,11 @@ class ImSwitchREST(PositionerManager):
         self._motor.move_forever(speed=speed, is_stop=is_stop)
 
     def setSpeed(self, speed, axis=None):
-        self._imswitch_client.setPositionerSpeed(self.positioner_name, axis=axis, speed=speed)
+        if type(speed) is dict:
+            for axis, value in speed.items():
+                self._imswitch_client.positionersManager.setPositionerSpeed(self.positioner_name, axis=axis, speed=value)
+        else:
+            self._imswitch_client.positionersManager.setPositionerSpeed(self.positioner_name, axis=axis, speed=speed)
 
     def setPosition(self, value, axis):
         pass #TODO: Not implemented yet

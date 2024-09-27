@@ -40,7 +40,7 @@ class ImScrMainView(QtWidgets.QMainWindow):
         
         # test and launch notebook server        
         self.notebookServer = LaunchNotebookServer()
-        webaddr = self.notebookServer.start()
+        webaddr = self.notebookServer.startServer()
 
         # setup webview
         self.view = MainWindow(None, None)

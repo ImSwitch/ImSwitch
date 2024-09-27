@@ -5,8 +5,8 @@ if not IS_HEADLESS:
     from PyQt5.QtGui import QCloseEvent
     from PyQt5.QtWidgets import QMainWindow, QMessageBox, QDockWidget, QPlainTextEdit, QTabWidget
     from PyQt5.QtWidgets import QMessageBox
-    from .CustomWebView import CustomWebView
 try:
+    from .CustomWebView import CustomWebView
     from PyQt5.QtWebEngineWidgets import QWebEngineView as QWebView, QWebEnginePage as QWebPage
     from PyQt5.QtWebEngineCore import QWebEngineUrlRequestInterceptor
     from PyQt5.QtWebEngineWidgets import QWebEngineProfile

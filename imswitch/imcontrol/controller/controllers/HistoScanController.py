@@ -692,7 +692,12 @@ class HistoScanController(LiveUpdatedController):
     @APIExport()
     def getLastStitchedRawList(self) -> StitchedImageResponse:
         histoscanStack = self.histoscanStack.copy()
+        self._logger.debug(f"Shape of histoscanStack: {histoscanStack.shape}")
         if histoscanStack is not None and len(histoscanStack.shape)>1:
+            # if size of image exceeds 1000x1000, we need to resize it 
+            if histoscanStack.shape[0]>1000 or histoscanStack.shape[1]>1000:
+                histoscanStack = cv2.resize(histoscanStack, (0,0), fx=0.25, fy=0.25)
+                
             #if not len(histoscanStack.shape)==3:
             #    histoscanStack = np.repeat(histoscanStack[:,:,np.newaxis], 3, axis=2)
                 

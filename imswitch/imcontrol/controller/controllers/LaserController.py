@@ -38,7 +38,7 @@ class LaserController(ImConWidgetController):
                 self.valueChanged(lName, lManager.valueRangeMin)
 
         # Connect CommunicationChannel signals
-        if IS_HEADLESS:
+        if 0: #IS_HEADLESS:
             self._commChannel.sharedAttrs.sigAttributeSet.connect(self.attrChanged, check_nargs=False) # TODO: !!!!!!
         else:
             self._commChannel.sharedAttrs.sigAttributeSet.connect(self.attrChanged) 

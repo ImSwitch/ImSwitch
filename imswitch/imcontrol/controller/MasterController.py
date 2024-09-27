@@ -123,7 +123,7 @@ class MasterController:
         self.recordingManager.sigRecordingFrameNumUpdated.connect(cc.sigUpdateRecFrameNum)
         self.recordingManager.sigRecordingTimeUpdated.connect(cc.sigUpdateRecTime)
         self.recordingManager.sigMemorySnapAvailable.connect(cc.sigMemorySnapAvailable)
-        if IS_HEADLESS:
+        if 0: #IS_HEADLESS:
             self.recordingManager.sigMemoryRecordingAvailable.connect(self.memoryRecordingAvailable, check_nargs=False) 
         else:
             self.recordingManager.sigMemoryRecordingAvailable.connect(self.memoryRecordingAvailable) 

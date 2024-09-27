@@ -197,7 +197,8 @@ class RecordingManager(SignalInterface):
         self._memRecordings = {}  # { filePath: bytesIO }
         self.__detectorsManager = detectorsManager
         self.__record = False
-        if not IS_HEADLESS: # TODO: Merge the two RecordingWorkers
+        
+        if 1: #not IS_HEADLESS: # TODO: Merge the two RecordingWorkers
             self._thread = Thread()
             self.__recordingWorker = RecordingWorker(self)
             self.__recordingWorker.moveToThread(self._thread)
@@ -243,7 +244,7 @@ class RecordingManager(SignalInterface):
         self.__recordingWorker.singleLapseFile = singleLapseFile
         self.__detectorsManager.execOnAll(lambda c: c.flushBuffers(),
                                           condition=lambda c: c.forAcquisition)
-        if IS_HEADLESS:
+        if 0: #IS_HEADLESS:
             self._thread = Thread(target=self.__recordingWorker.run) # TODO: Merge the two RecordingWorkers
         self._thread.start()
 

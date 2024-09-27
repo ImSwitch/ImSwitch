@@ -131,14 +131,20 @@ class BetaScanDesigner(ScanDesigner):
                     self.__smoothRamp(sliceValues[s], slow_axis_start, returnSamples)
         slowAxisSignal = fullCubeSignal
 
-        sig_dict = {parameterDict['target_device'][0]: fastAxisSignal,
-                    parameterDict['target_device'][1]: middleAxisSignal,
-                    parameterDict['target_device'][2]: slowAxisSignal}
+        if slow_axis_size > 0:
+            sig_dict = {parameterDict['target_device'][0]: fastAxisSignal,
+                        parameterDict['target_device'][1]: middleAxisSignal,
+                        parameterDict['target_device'][2]: slowAxisSignal}
+            positions = [fast_axis_positions, middle_axis_positions, slow_axis_positions]
+        else:
+            sig_dict = {parameterDict['target_device'][0]: fastAxisSignal,
+                        parameterDict['target_device'][1]: middleAxisSignal}
+            positions = [fast_axis_positions, middle_axis_positions]
 
         # scanInfoDict, for parameters that are important to relay to TTLCycleDesigner and/or image
         # acquisition managers
         scanInfoDict = {
-            'positions': [fast_axis_positions, middle_axis_positions, slow_axis_positions],
+            'positions': positions,
             'return_time': parameterDict['return_time']
         }
 

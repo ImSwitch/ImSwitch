@@ -36,10 +36,6 @@ try:
 except ImportError:
     print("Arkitekt not found")
 
- 
-
-import logging
-
 PORT = __httpport__
 IS_SSL = __ssl__
 
@@ -171,9 +167,6 @@ class ImSwitchServer(Worker):
         finally:
             s.close()
         return IP
-    #@expose: FIXME: Remove
-    def testMethod(self):
-        return "Hello World"
 
 
     @app.get("/docs", include_in_schema=False)

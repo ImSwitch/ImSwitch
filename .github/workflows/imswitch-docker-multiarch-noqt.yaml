@@ -44,7 +44,7 @@ jobs:
         run: echo "ARCH=$(echo ${{ runner.arch }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
       
       - name: Print Dockerfile
-        run: cat docker/HIK/dockerfile
+        run: cat dockerfile
 
       - name: Build and push container image to registry
         uses: docker/build-push-action@v2

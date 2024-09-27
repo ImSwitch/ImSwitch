@@ -1,105 +1,167 @@
-from abc import ABCMeta
-import psygnal
-import imswitch.imcommon.framework.base as base
-import threading 
-import queue 
+from typing import TYPE_CHECKING
+from psygnal import SignalInstance, emit_queued
+from functools import lru_cache
+import asyncio
+import threading
+import imswitch.imcommon.framework.base as abstract
 
-class Mutex(base.Mutex):
+if TYPE_CHECKING:
+    from typing import Tuple, Callable, Any, Union
+
+class Mutex(abstract.Mutex):
+    """ Wrapper around the `threading.Lock` class. 
+    """
+    def __init__(self) -> None:
+        self.__lock = threading.Lock()
+    
+    def lock(self) -> None:
+        self.__lock.acquire()
+    
+    def unlock(self) -> None:
+        self.__lock.release()
+
+class Signal(SignalInstance, abstract.Signal):
+    """ `psygnal` implementation of the `base.Signal` abstract class.
+    """
+
+    def __init__(self, *argtypes: 'Any', info: str = "ImSwitch signal") -> None:
+        SignalInstance.__init__(self, signature=argtypes)
+        self._info = info
+
+    def connect(self, func: 'Union[Callable, abstract.Signal]') -> None:
+        if isinstance(func, abstract.Signal):
+            if any([t1 != t2 for t1, t2 in zip(self.types, func.types)]):
+                raise TypeError(f"Source and destination must have the same signature. Source signature: {self.types}, destination signature: {func.types}")
+            func = func.emit
+        super().connect(func)
+    
+    def disconnect(self, func: 'Union[Callable, abstract.Signal, None]' = None) -> None:
+        if func is None:
+            super().disconnect()
+        super().disconnect(func)
+    
+    def emit(self, *args) -> None:
+        super().emit(*args)
+    
+    @property
+    @lru_cache
+    def types(self) -> 'Tuple[type, ...]':
+        return tuple([param.annotation for param in self._signature.parameters.values()])
+    
+    @property
+    def info(self) -> str:
+        return self._info
+
+class SignalInterface(abstract.SignalInterface):
+    """ Base implementation of `abstract.SignalInterface`.
+    """
+    def __init__(self) -> None:
+        ...
+
+class Worker(abstract.Worker):
+    def __init__(self) -> None:
+        self._thread = None
+
+    def moveToThread(self, thread : abstract.Thread) -> None:
+        self._thread = thread
+        thread._worker = self
+
+class Thread(abstract.Thread):
+    
+    _started = Signal()
+    _finished = Signal()
+    
     def __init__(self):
-        self._lock = threading.Lock()
-
-    def lock(self):
-        self._lock.acquire()
-
-    def unlock(self):
-        self._lock.release()
-
-    def try_lock(self):
-        return self._lock.acquire(blocking=False)
-
-
-class Signal(base.Signal):
-    def __new__(cls, *argtypes) -> base.Signal:
-        # psygnal.Signal does not take argument types in the same way
-        return psygnal.Signal(argtypes)
-
-class SignalInterface(base.SignalInterface):
-    # Implement alternative SignalInterface functionality if needed
-    pass
-
-
-class Thread(threading.Thread, base.Thread): #TODO: @jacopoabramo -> Fix this by adding, base.Thread):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._stop_event = threading.Event()
-        self.isRunning = False
-        # self._thread = Thread() # TODO: @jacopoabramo -> Fix this by adding, base.Thread()
-    
-    def start(self):
-        if self.isRunning:
-            self._thread = Thread()
-        self._thread.run()
-        
-    def run(self):
-        self.isRunning = True
-        while not self._stop_event.is_set():
-            if self._target:
-                self._target()
-                break  
-        self.isRunning = False
-
-    def quit(self, timeout=None) -> None:
-        self._stop_event.set()
-
-    def wait(self, timeout=None) -> None:
-        self.join(timeout)
-
-    
-    def finished(self) -> bool:
-        return not self.isRunning
-    
-    def started(self) -> bool:
-        return self.isRunning
-    
-class Timer(base.Timer):
-    def __init__(self, interval, function, args=None, kwargs=None):
-        super().__init__()
-        self._timer = threading.Timer(interval, function, args=args, kwargs=kwargs)
+        self._thread = None
+        self._loop = None
+        self._running = threading.Event()
+        self._worker : Worker = None
 
     def start(self):
-        self._timer.start()
-
-    def stop(self):
-        self._timer.cancel()
-
-class Worker(base.Worker):
-    def __init__(self, target=None):
-        super().__init__()
-        self._thread = threading.Thread(target=self._run)
-        self._task_queue = queue.Queue()
-        self._stop_event = threading.Event()
-        self._target = target
+        if self._thread is None or not self._thread.is_alive():
+            self._thread = threading.Thread(target=self._run, daemon=True)
+            if self._worker is not None:
+                # reassign worker to the new thread in case
+                # it was moved to another thread before
+                self._worker._thread = self
+            self._running.set()
+            self._thread.start()
 
     def _run(self):
-        while not self._stop_event.is_set():
-            try:
-                task = self._task_queue.get(timeout=0.1)  # adjust timeout as needed
-                if task is None:
-                    break
-                task()
-            except queue.Empty:
-                continue
+        self._loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self._loop)
+        self._started.emit()
+        try:
+            while self._running.is_set():
+                self._loop.run_forever()
+        finally:
+            self._loop.run_until_complete(self._loop.shutdown_asyncgens())
+            self._loop.close()
+            self._loop = None
+            self._finished.emit()
 
-        if self._target:
-            self._target()
+    def quit(self):
+        self._running.clear()
+        if self._loop and self._loop.is_running():
+            self._loop.call_soon_threadsafe(self._loop.stop)
 
-    def start(self):
+    def wait(self):
+        if self._thread and self._thread.is_alive():
+            self._thread.join()
+    
+    @property
+    def started(self) -> Signal:
+        return self._started
+
+    @property
+    def finished(self) -> Signal:
+        return self._finished
+
+class Timer(abstract.Timer):
+    
+    _timeout = Signal()
+    
+    def __init__(self, singleShot=False):
+        self._task = None
+        self._singleShot = singleShot
+        self._loop = asyncio.new_event_loop()
+        self._thread = threading.Thread(target=self._run_loop, daemon=True)
         self._thread.start()
 
-    def stop(self):
-        self._stop_event.set()
-        self._task_queue.put(None)
-        self._thread.join()
+    def _run_loop(self):
+        asyncio.set_event_loop(self._loop)
+        self._loop.run_forever()
 
-    def move_to_thread(self, func):
-        self._task_queue.put(func)
+    def start(self, millisecs):
+        self._interval = millisecs / 1000.0
+        if self._task:
+            self._task.cancel()
+        self._task = asyncio.run_coroutine_threadsafe(self._run(), self._loop)
+
+    def stop(self):
+        if self._task:
+            self._task.cancel()
+            self._task = None
+
+    async def _run(self):
+        await asyncio.sleep(self._interval)
+        self.timeout.emit()
+        if not self._singleShot:
+            self._task = self._loop.create_task(self._run())
+    
+    @property
+    def timeout(self) -> Signal:
+        return self._timeout
+
+def threadCount() -> int:
+    """ Returns the current number of active threads of this framework.
+    
+    Returns:
+        ``int``: number of active threads
+    """
+    return threading.active_count()
+
+class FrameworkUtils(abstract.FrameworkUtils):
+    @staticmethod
+    def processPendingEventsCurrThread():
+        emit_queued()

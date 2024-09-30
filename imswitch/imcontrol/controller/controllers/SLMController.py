@@ -70,8 +70,6 @@ class SLMController(ImConWidgetController):
         self._widget.setSLMDisplayMonitor(monitor)
 
     def displayMask(self, maskCombined):
-        """ Display the mask in the SLM display. Originates from slmPy:
-        https://github.com/wavefrontshaping/slmPy """
 
         arr = maskCombined.image()
 
@@ -235,7 +233,7 @@ class SLMController(ImConWidgetController):
         self._widget.img.setImage(image, autoLevels=True, autoDownsample=False)
 
 
-# Copyright (C) 2020-2021 ImSwitch developers
+# Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

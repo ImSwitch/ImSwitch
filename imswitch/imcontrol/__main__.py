@@ -1,9 +1,16 @@
 from imswitch import imcontrol
 from imswitch.imcommon import prepareApp, launchApp
 from imswitch.imcommon.controller import ModuleCommunicationChannel
+from imswitch import IS_HEADLESS
+import os
+
+if IS_HEADLESS:
+    os.environ["DISPLAY"] = ":0"
+    os.environ["QT_QPA_PLATFORM"] = "offscreen"
 
 
 def main():
+    global app
     app = prepareApp()
     moduleCommChannel = ModuleCommunicationChannel()
     moduleCommChannel.register(imcontrol)
@@ -14,7 +21,7 @@ def main():
 if __name__ == '__main__':
     main()
 
-# Copyright (C) 2020-2021 ImSwitch developers
+# Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

@@ -1,6 +1,6 @@
 from imswitch.imcontrol.view import guitools
 from ..basecontrollers import LiveUpdatedController
-from imswitch.imcommon.model import initLogger
+from imswitch.imcommon.model import initLogger, APIExport
 import numpy as np
 import re
 
@@ -10,15 +10,26 @@ class ImageController(LiveUpdatedController):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.__logger = initLogger(self, tryInheritParent=True)
+        self.__logger = initLogger(self, tryInheritParent=False)
         if not self._master.detectorsManager.hasDevices():
             return
 
         self._lastShape = self._master.detectorsManager.execOnCurrent(lambda c: c.shape)
         self._shouldResetView = False
 
+        names =  self._master.detectorsManager.getAllDeviceNames(lambda c: c.forAcquisition)
+        if type(names) is not list:
+            names = [names]
+        
+        isRGB = []
+        for name in names:
+            try:
+                isRGB.append(self._master.detectorsManager[name]._isRGB)
+            except:
+                isRGB.append(False)
+
         self._widget.setLiveViewLayers(
-            self._master.detectorsManager.getAllDeviceNames(lambda c: c.forAcquisition)
+            self._master.detectorsManager.getAllDeviceNames(lambda c: c.forAcquisition), isRGB
         )
 
         # Connect CommunicationChannel signals
@@ -30,6 +41,11 @@ class ImageController(LiveUpdatedController):
         self._commChannel.sigRemoveItemFromVb.connect(self.removeItemFromVb)
         self._commChannel.sigMemorySnapAvailable.connect(self.memorySnapAvailable)
         self._commChannel.sigSetExposure.connect(lambda t: self.setExposure(t))
+        
+        
+    @APIExport(runOnUIThread=False)
+    def displayImageNapari(self, layerName, mImage, isRGB=False, scale=(1,1), isCurrentDetector=None): # TODO: Flag of RGB is not used!
+        self._commChannel.sigUpdateImage.emit(layerName, mImage, scale, isCurrentDetector) 
 
     def autoLevels(self, detectorNames=None, im=None):
         """ Set histogram levels automatically with current detector image."""
@@ -104,8 +120,15 @@ class ImageController(LiveUpdatedController):
         self.__logger.debug(f"Change exposure of {detectorName}, to {str(exp)}")
         #self._master.detectorsManager[detectorName].setParameter('Readout time', exp)
 
+    @APIExport(runOnUIThread=True)
+    def setImageLayer(self, layerName, image, isRGB=False): #(layername, image, isRGB)
+        """ Set image layer to widget. """
+        self._commChannel.sigUpdateImage.emit(layerName, image, True, (1,1), True) 
+        ## (detectorName, image, init, scale, isCurrentDetector)
+    
 
-# Copyright (C) 2020-2021 ImSwitch developers
+
+# Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

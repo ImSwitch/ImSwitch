@@ -4,13 +4,13 @@ from qtpy import QtWidgets
 
 from imswitch.imcontrol.view import guitools as guitools
 from .basewidgets import Widget
+from .basewidgets import NapariHybridWidget
 
-
-class AutofocusWidget(Widget):
+class AutofocusWidget(NapariHybridWidget):
     """ Widget containing focus lock interface. """
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __post_init__(self):
+        #super().__init__(*args, **kwargs)
 
         # Focus lock
         self.focusButton = guitools.BetterPushButton('Autofocus')
@@ -19,24 +19,20 @@ class AutofocusWidget(Widget):
                                       QtWidgets.QSizePolicy.Expanding)
 
         self.zStepRangeEdit = QtWidgets.QLineEdit('100')
-        self.zStepRangeLabel = QtWidgets.QLabel('Focus search range (nm)')
+        self.zStepRangeLabel = QtWidgets.QLabel('Focus search range (mm)')
         self.zStepSizeEdit = QtWidgets.QLineEdit('10')
-        self.zStepSizeLabel = QtWidgets.QLabel('Stepsize (nm)')
-
+        self.zStepSizeLabel = QtWidgets.QLabel('Stepsize (mm)')
+        self.zBackgroundDefocusEdit = QtWidgets.QLineEdit('0')
+        self.zBackgroundDefocusLabel = QtWidgets.QLabel('Defocus Move (mm)')
         # self.focusDataBox = QtWidgets.QCheckBox('Save data')  # Connect to exportData
         #self.camDialogButton = guitools.BetterPushButton('Camera Dialog')
 
-        # Piezo absolute positioning
-        self.positionLabel = QtWidgets.QLabel(
-            'Position (µm)')  # Potentially disregard this and only use in the positioning widget?
-        self.positionEdit = QtWidgets.QLineEdit('50')
-        #self.positionSetButton = guitools.BetterPushButton('Set')
 
         # Focus lock graph
         self.AutofocusGraph = pg.GraphicsLayoutWidget()
         self.AutofocusGraph.setAntialiasing(True)
         self.focusPlot = self.AutofocusGraph.addPlot(row=1, col=0)
-        self.focusPlot.setLabels(bottom=('Motion', 'µm'), left=('Contrast', 'A.U.'))
+        self.focusPlot.setLabels(bottom=('Motion', 'mm'), left=('Contrast', 'A.U.'))
         self.focusPlot.showGrid(x=True, y=True)
         # update this (self.focusPlotCurve.setData(X,Y)) with update(focusSignal) function
         self.focusPlotCurve = self.focusPlot.plot(pen='y')
@@ -61,12 +57,21 @@ class AutofocusWidget(Widget):
         grid.addWidget(self.zStepRangeEdit, 4, 4)
         grid.addWidget(self.zStepSizeLabel, 3, 5)
         grid.addWidget(self.zStepSizeEdit, 4, 5)
-        grid.addWidget(self.positionLabel, 1, 6)
-        grid.addWidget(self.positionEdit, 1, 7)
-        #grid.addWidget(self.positionSetButton, 2, 6, 1, 2)
+        grid.addWidget(self.zBackgroundDefocusLabel, 1, 6)
+        grid.addWidget(self.zBackgroundDefocusEdit, 1, 7)
+        self.layer = None
+        
+    def setImageNapari(self, im, colormap="gray", isRGB = False, name="", pixelsize=(1,1), translation=(0,0)):
+        if len(im.shape) == 2:
+            translation = (translation[0], translation[1])
+        if self.layer is None or name not in self.viewer.layers:
+            self.layer = self.viewer.add_image(im, rgb=isRGB, colormap=colormap, 
+                                               scale=pixelsize,translate=translation,
+                                               name=name, blending='additive')
+        self.layer.data = im
         
 
-# Copyright (C) 2020-2021 ImSwitch developers
+# Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

@@ -1,6 +1,6 @@
 import uc2rest as uc2  # pip install UC2-REST
 from imswitch.imcommon.model import initLogger
-
+from imswitch.imcommon.model import APIExport
 
 class ESP32Manager:
     """ A low-level wrapper for TCP-IP communication (ESP32 REST API)
@@ -14,7 +14,10 @@ class ESP32Manager:
             self._host = rs232Info.managerProperties['host']
         except:
             self._host = None
-
+        try:
+            self._port = rs232Info.managerProperties['port']
+        except:
+            self._port = None
         try:
             self._serialport = rs232Info.managerProperties['serialport']
         except:
@@ -25,15 +28,27 @@ class ESP32Manager:
         except:
             self._identity = "UC2_Feather"
 
+        try:
+            self._debugging = rs232Info.managerProperties['debug']
+        except:
+            self._debugging = False
+
+        try:
+            baudrate = rs232Info.managerProperties['baudrate']
+        except:
+            baudrate = 115200
+
+
         # initialize the ESP32 device adapter
-        self._esp32 = uc2.UC2Client(host=self._host, port=80, identity=self._identity, serialport=self._serialport,
-                                    baudrate=115200)
+        self.__logger.info(f"Initializing ESP32 device adapter with host: {self._host}, port: {self._port}, identity: {self._identity}, serialport: {self._serialport}, baudrate: {baudrate}")
+        self._esp32 = uc2.UC2Client(host=self._host, port=80, identity=self._identity, serialport=self._serialport, baudrate=baudrate, DEBUG=self._debugging, logger=self.__logger)
+
 
     def finalize(self):
-        pass
+        self._esp32.close()
 
 
-# Copyright (C) 2020-2021 ImSwitch developers
+# Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

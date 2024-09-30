@@ -1,10 +1,9 @@
 from typing import Mapping
-
 import numpy as np
 from imswitch.imcommon.framework import Signal, SignalInterface
 from imswitch.imcommon.model import pythontools, APIExport, SharedAttributes
 from imswitch.imcommon.model import initLogger
-
+import numpy as np
 
 class CommunicationChannel(SignalInterface):
     """
@@ -61,6 +60,7 @@ class CommunicationChannel(SignalInterface):
     sigScanEnded = Signal()
 
     sigSLMMaskUpdated = Signal(object)  # (mask)
+    sigSIMMaskUpdated = Signal(object) # (mask)
 
     sigToggleBlockScanWidget = Signal(bool)
 
@@ -77,29 +77,55 @@ class CommunicationChannel(SignalInterface):
     sigStartRecordingExternal = Signal()
 
     sigRequestScanFreq = Signal()
-    
+
     sigSendScanFreq = Signal(float)  # (scanPeriod)
 
     #sigRequestScannersInScan = Signal()
 
     #sigSendScannersInScan = Signal(object)  # (scannerList)
+    sigFlatFieldRunning = Signal(bool)
+    sigFlatFieldImage = Signal(object)
+    
+    sigAutoFocus =  Signal(float, float) # scanrange and stepsize
+    sigAutoFocusRunning = Signal(bool) # indicate if autofocus is running or not
+
+    sigStartLiveAcquistion = Signal(bool)
+    sigStopLiveAcquisition = Signal(bool)
+    
+    sigInitialFocalPlane = Signal(float) # initial focal plane for DeckScanController
+
+    sigBroadcast = Signal(str, str, object)
 
     sigSaveFocus = Signal()
 
     sigScanFrameFinished = Signal()  # TODO: emit this signal when a scanning frame finished, maybe in scanController if possible? Otherwise in APDManager for now, even if that is not general if you want to do camera-based experiments. Could also create a signal specifically for this from the scan curve generator perhaps, specifically for the rotation experiments, would that be smarter?
+
+    sigUpdateRotatorPosition = Signal(str, str)  # (rotatorName)
     
-    sigUpdateRotatorPosition = Signal(str)  # (rotatorName)
+    sigUpdateMotorPosition = Signal()  # # TODO: Just forcely update the positoin in the GUI
 
     sigSetSyncInMovementSettings = Signal(str, float)  # (rotatorName, position)
 
     sigNewFrame = Signal()
+    
+    # signal to control actions from the ESP32
+    sigESP32Message = Signal(str, str)  # (key, message)
 
     # useq-schema related signals
     sigSetXYPosition = Signal(float, float)
     sigSetZPosition = Signal(float)
     sigSetExposure = Signal(float)
     sigSetSpeed = Signal(float)
-
+    
+    # light-sheet related signals
+    sigStartLightSheet = Signal(float, float, float, str, str, float) # (startX, startY, speed, axis, lightsource, lightsourceIntensity)
+    sigStopLightSheet = Signal()
+    
+    # scanning-related signals
+    sigStartTileBasedTileScanning = Signal(int, int, int, int, int, int, str, int, int, bool, bool, bool) # (numb erTilesX, numberTilesY, stepSizeX, stepSizeY, nTimes, tPeriod, illuSource, initPosX, initPosY, isStitchAshlar, isStitchAshlarFlipX, isStitchAshlarFlipY)
+    sigStopTileBasedTileScanning = Signal()
+    
+    
     @property
     def sharedAttrs(self):
         return self.__sharedAttrs
@@ -111,6 +137,9 @@ class CommunicationChannel(SignalInterface):
         self.__logger = initLogger(self)
         self._scriptExecution = False
         self.__main._moduleCommChannel.sigExecutionFinished.connect(self.executionFinished)
+        self.output = []
+
+        self.streamstarted = False
 
     def getCenterViewbox(self):
         """ Returns the center point of the viewbox, as an (x, y) tuple. """
@@ -133,6 +162,9 @@ class CommunicationChannel(SignalInterface):
 
     def get_image(self, detectorName=None):
         return self.__main.controllers['View'].get_image(detectorName)
+
+    def move(self, positionerName, axis="X", dist=0):
+        return self.__main.controllers['Positioner'].move(positionerName, axis=axis, dist=dist)
 
     @APIExport(runOnUIThread=True)
     def acquireImage(self) -> None:

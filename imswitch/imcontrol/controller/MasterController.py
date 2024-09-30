@@ -1,7 +1,13 @@
 from imswitch.imcommon.model import VFileItem, initLogger
+
+import pkg_resources
+        
 from imswitch.imcontrol.model import (
-    DetectorsManager, LasersManager, MultiManager, NidaqManager, PositionersManager, RecordingManager, RS232sManager, 
-    ScanManagerPointScan, ScanManagerBase, ScanManagerMoNaLISA, SLMManager, StandManager, RotatorsManager
+    DetectorsManager, LasersManager, MultiManager, PositionersManager,
+    RecordingManager, RS232sManager, SLMManager, SIMManager, DPCManager, LEDMatrixsManager, MCTManager, ROIScanManager, MockXXManager, WebRTCManager, HyphaManager,
+    ISMManager, UC2ConfigManager, AutofocusManager, HistoScanManager, PixelCalibrationManager, LightsheetManager, NidaqManager, FOVLockManager,
+    StandManager, RotatorsManager, JetsonNanoManager, LEDsManager, ScanManagerBase, ScanManagerPointScan, ScanManagerMoNaLISA, FlatfieldManager, 
+    FlowStopManager
 )
 
 
@@ -18,28 +24,71 @@ class MasterController:
         self.__moduleCommChannel = moduleCommChannel
 
         # Init managers
-        self.nidaqManager = NidaqManager(self.__setupInfo)
-        #self.pulseStreamerManager = PulseStreamerManager(self.__setupInfo)
         self.rs232sManager = RS232sManager(self.__setupInfo.rs232devices)
 
         lowLevelManagers = {
-            'nidaqManager': self.nidaqManager,
-            #'pulseStreamerManager' : self.pulseStreamerManager,
             'rs232sManager': self.rs232sManager
         }
 
-        self.detectorsManager = DetectorsManager(self.__setupInfo.detectors, updatePeriod=300,
+        self.detectorsManager = DetectorsManager(self.__setupInfo.detectors, updatePeriod=100,
                                                  **lowLevelManagers)
         self.lasersManager = LasersManager(self.__setupInfo.lasers,
                                            **lowLevelManagers)
         self.positionersManager = PositionersManager(self.__setupInfo.positioners,
+                                                     self.__commChannel,
                                                      **lowLevelManagers)
+        self.LEDMatrixsManager = LEDMatrixsManager(self.__setupInfo.LEDMatrixs,
+                                           **lowLevelManagers)
         self.rotatorsManager = RotatorsManager(self.__setupInfo.rotators,
-                                               **lowLevelManagers)
+                                            **lowLevelManagers)
 
+        self.LEDsManager = LEDsManager(self.__setupInfo.LEDs)
+        #self.scanManager = ScanManager(self.__setupInfo)
         self.recordingManager = RecordingManager(self.detectorsManager)
         self.slmManager = SLMManager(self.__setupInfo.slm)
-
+        self.UC2ConfigManager = UC2ConfigManager(self.__setupInfo.uc2Config, lowLevelManagers)
+        self.simManager = SIMManager(self.__setupInfo.sim)
+        self.dpcManager = DPCManager(self.__setupInfo.dpc)
+        self.mctManager = MCTManager(self.__setupInfo.mct)
+        self.nidaqManager = NidaqManager(self.__setupInfo.nidaq)
+        self.roiscanManager = ROIScanManager(self.__setupInfo.roiscan)
+        self.lightsheetManager = LightsheetManager(self.__setupInfo.lightsheet)
+        self.webrtcManager = WebRTCManager(self.__setupInfo.webrtc)
+        self.hyphaManager = HyphaManager(self.__setupInfo.hypha)
+        self.MockXXManager = MockXXManager(self.__setupInfo.mockxx)
+        self.jetsonnanoManager = JetsonNanoManager(self.__setupInfo.jetsonnano)
+        self.HistoScanManager = HistoScanManager(self.__setupInfo.HistoScan)
+        self.FlowStopManager = FlowStopManager(self.__setupInfo.FlowStop)
+        self.FlatfieldManager = FlatfieldManager(self.__setupInfo.Flatfield)
+        self.PixelCalibrationManager = PixelCalibrationManager(self.__setupInfo.PixelCalibration)
+        self.AutoFocusManager = AutofocusManager(self.__setupInfo.autofocus)
+        self.FOVLockManager = FOVLockManager(self.__setupInfo.fovLock)
+        self.ismManager = ISMManager(self.__setupInfo.ism)
+        # load all implugin-related managers and add them to the class
+        # try to get it from the plugins
+        # If there is a imswitch_sim_manager, we want to add this as self.imswitch_sim_widget to the 
+        # MasterController Class
+        try:
+            for entry_point in pkg_resources.iter_entry_points(f'imswitch.implugins'):
+                if entry_point.name.find("manager")>=0:
+                    ManagerClass = entry_point.load()  # Load the manager class
+                    self.__setupInfo.add_attribute(attr_name=entry_point.name.split("_manager")[0], attr_value={})
+                    manager_setup_info = getattr(self.__setupInfo, entry_point.name.split("_manager")[0], None)
+                    
+                    # get info from user config dict
+                    # sideload the simInfo from the user config dict
+                    moduleInfo_dict = self.__setupInfo._catchAll[entry_point.name.split("_manager")[0]]
+                    class ModuleInfoClass:
+                        def __init__(self, dictionary):
+                            for key, value in dictionary.items():
+                                setattr(self, key, value)
+                    moduleInfo = ModuleInfoClass(moduleInfo_dict) # assign class structure
+                    
+                    manager = ManagerClass(moduleInfo)  # Initialize the manager
+                    setattr(self, entry_point.name, manager)  # Add the manager to the class
+        except Exception as e:
+            self.__logger.error(e)
+            
         if self.__setupInfo.microscopeStand:
             self.standManager = StandManager(self.__setupInfo.microscopeStand,
                                              **lowLevelManagers)
@@ -73,9 +122,10 @@ class MasterController:
         self.recordingManager.sigRecordingFrameNumUpdated.connect(cc.sigUpdateRecFrameNum)
         self.recordingManager.sigRecordingTimeUpdated.connect(cc.sigUpdateRecTime)
         self.recordingManager.sigMemorySnapAvailable.connect(cc.sigMemorySnapAvailable)
-        self.recordingManager.sigMemoryRecordingAvailable.connect(self.memoryRecordingAvailable)
-
+        self.recordingManager.sigMemoryRecordingAvailable.connect(self.memoryRecordingAvailable) 
+            
         self.slmManager.sigSLMMaskUpdated.connect(cc.sigSLMMaskUpdated)
+        self.simManager.sigSIMMaskUpdated.connect(cc.sigSIMMaskUpdated)
 
     def memoryRecordingAvailable(self, name, file, filePath, savedToDisk):
         self.__moduleCommChannel.memoryRecordings[name] = VFileItem(
@@ -91,7 +141,7 @@ class MasterController:
                 attr.finalize()
 
 
-# Copyright (C) 2020-2021 ImSwitch developers
+# Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

@@ -1,4 +1,2 @@
--e .
-
-pytest >= 6.2
-pytest-qt >= 3.3
+pytest
+pytest-qt

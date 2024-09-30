@@ -1,7 +1,7 @@
 from time import sleep
-
+import threading
 import numpy as np
-
+from imswitch import IS_HEADLESS
 from imswitch.imcommon.framework import Mutex, Signal, SignalInterface, Thread, Timer, Worker
 from .MultiManager import MultiManager
 
@@ -31,11 +31,13 @@ class DetectorsManager(MultiManager, SignalInterface):
             if not self._subManagers[detectorName].forAcquisition:
                 continue
             # Connect signals
-            self._subManagers[detectorName].sigImageUpdated.connect(
-                lambda image, init, scale, detectorName=detectorName: self.sigImageUpdated.emit(
-                    detectorName, image, init, scale, detectorName==self._currentDetectorName
+            import imswitch # FXIME: THIS IS NOT CORRECT FIX IT!!!!!!!!
+            if not IS_HEADLESS:
+                self._subManagers[detectorName].sigImageUpdated.connect(
+                    lambda image, init, scale, detectorName=detectorName: self.sigImageUpdated.emit(
+                        detectorName, image, init, scale, detectorName==self._currentDetectorName
+                    )
                 )
-            )
             self._subManagers[detectorName].sigNewFrame.connect(lambda: self.sigNewFrame.emit())
 
             # Set as default if first detector
@@ -43,15 +45,23 @@ class DetectorsManager(MultiManager, SignalInterface):
                 self._currentDetectorName = detectorName
 
         # A timer will collect the new frame and update it through the communication channel
-        self._lvWorker = LVWorker(self, updatePeriod)
-        self._thread = Thread()
-        self._lvWorker.moveToThread(self._thread)
-        self._thread.started.connect(self._lvWorker.run)
-        self._thread.finished.connect(self._lvWorker.stop)
+        if IS_HEADLESS:
+            self._lvWorker = LVWorkerNOQT(self, updatePeriod)
+            self._thread = threading.Thread(target=self._lvWorker.run)
+        else:
+            # A timer will collect the new frame and update it through the communication channel
+            self._lvWorker = LVWorker(self, updatePeriod)
+            self._thread = Thread()
+            self._lvWorker.moveToThread(self._thread)
+            self._thread.started.connect(self._lvWorker.run)
+            self._thread.finished.connect(self._lvWorker.stop)
 
     def __del__(self):
-        self._thread.quit()
-        self._thread.wait()
+        if IS_HEADLESS:
+            self._lvWorker.stop()
+        else:
+            self._thread.quit()
+            self._thread.wait()
         if hasattr(super(), '__del__'):
             super().__del__()
 
@@ -152,14 +162,48 @@ class DetectorsManager(MultiManager, SignalInterface):
         if disableAcq:
             self.execOnAll(lambda c: c.stopAcquisition(), condition=lambda c: c.forAcquisition)
             self.sigAcquisitionStopped.emit()
-
+    
+    def getAcquistionHandles(self):
+        """ Returns the list of active acquisition handles. """
+        return self._activeAcqHandles + self._activeAcqLVHandles
+    
+    def checkIfIsLiveView(self):
+        """ Returns if there is live view ongoing """
+        if self._activeAcqLVHandles and len(self._activeAcqLVHandles):
+            return True
+        else:
+            return False
+    
     def setUpdatePeriod(self, updatePeriod):
         self._lvWorker.setUpdatePeriod(updatePeriod)
         self._thread.quit()
         self._thread.wait()
         self._thread.start()
 
+class LVWorkerNOQT(Worker):
+    def __init__(self, detectorsManager, updatePeriod):
+        super().__init__()
+        self._detectorsManager = detectorsManager
+        self._updatePeriod = updatePeriod
+        self._stop_event = threading.Event()
 
+    def moveToThread(self, thread) -> None:
+        return super().moveToThread(thread)
+    
+    def run(self):
+        while not self._stop_event.is_set():
+            self._detectorsManager.execOnAll(
+                lambda c: c.updateLatestFrame(True),
+                condition=lambda c: c.forAcquisition
+            )
+            sleep(self._updatePeriod / 1000.0)
+
+    def stop(self):
+        self._stop_event.set()
+
+    def setUpdatePeriod(self, updatePeriod):
+        self._updatePeriod = updatePeriod
+        
 class LVWorker(Worker):
     def __init__(self, detectorsManager, updatePeriod):
         super().__init__()
@@ -184,7 +228,33 @@ class LVWorker(Worker):
     def setUpdatePeriod(self, updatePeriod):
         self._updatePeriod = updatePeriod
 
+class LVWorker_old(Worker):
+    def __init__(self, detectorsManager, updatePeriod):
+        super().__init__()
+        self._detectorsManager = detectorsManager
+        self._updatePeriod = updatePeriod
+        self._vtimer = None
 
+    def run(self):
+        self._detectorsManager.execOnAll(lambda c: c.updateLatestFrame(False),
+                                         condition=lambda c: c.forAcquisition)
+        self._vtimer = Timer()
+        self._vtimer.timeout.connect(
+            lambda: self._detectorsManager.execOnAll(lambda c: c.updateLatestFrame(True),
+                                                     condition=lambda c: c.forAcquisition)
+        )
+        self._vtimer.start(self._updatePeriod)
+
+    def stop(self):
+        if self._vtimer is not None:
+            self._vtimer.stop()
+
+    def setUpdatePeriod(self, updatePeriod):
+        self._updatePeriod = updatePeriod
+
+    def moveToThread(self):
+        # Implementieren Sie die Methode hier
+        pass
 class NoDetectorsError(RuntimeError):
     """ Error raised when a function related to the current detector is called
     if the DetectorsManager doesn't manage any detectors (i.e. the manager is
@@ -192,7 +262,7 @@ class NoDetectorsError(RuntimeError):
     pass
 
 
-# Copyright (C) 2020-2021 ImSwitch developers
+# Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

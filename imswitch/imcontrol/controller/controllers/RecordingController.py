@@ -2,12 +2,17 @@ import os
 import time
 from typing import Optional, Union, List
 import numpy as np
-
+import datetime
+from fastapi.responses import StreamingResponse
+from fastapi import FastAPI, Response, HTTPException
+import cv2
+from PIL import Image
+import io
+from imswitch import IS_HEADLESS
 from imswitch.imcommon.framework import Timer
-from imswitch.imcommon.model import ostools, APIExport
+from imswitch.imcommon.model import ostools, APIExport, initLogger, dirtools
 from imswitch.imcontrol.model import RecMode, SaveMode, SaveFormat
 from ..basecontrollers import ImConWidgetController
-from imswitch.imcommon.model import initLogger
 
 
 class RecordingController(ImConWidgetController):
@@ -16,10 +21,10 @@ class RecordingController(ImConWidgetController):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.__logger = initLogger(self)
-        self._widget.setDetectorList(
-            self._master.detectorsManager.execOnAll(lambda c: c.model,
-                                                    condition=lambda c: c.forAcquisition)
-        )
+        
+        
+        # Define a dictionary to store variables accessible to the function
+        self.shared_variables: dict[str, any] = {}
 
         self.settingAttr = False
         self.recording = False
@@ -27,8 +32,38 @@ class RecordingController(ImConWidgetController):
         self.endedRecording = False
         self.lapseCurrent = -1
         self.lapseTotal = 0
+        
+        self.streamstarted = False
 
-        self._widget.setsaveFormat(SaveFormat.HDF5.value)
+        # Connect CommunicationChannel signals
+        self._commChannel.sigRecordingStarted.connect(self.recordingStarted)
+        self._commChannel.sigRecordingEnded.connect(self.recordingEnded)
+        self._commChannel.sigScanDone.connect(self.scanDone)
+        self._commChannel.sigUpdateRecFrameNum.connect(self.updateRecFrameNum)
+        self._commChannel.sigUpdateRecTime.connect(self.updateRecTime)
+        self._commChannel.sigSnapImg.connect(self.snap)
+        self._commChannel.sigSnapImgPrev.connect(self.snapImagePrev)
+        self._commChannel.sigStartRecordingExternal.connect(self.startRecording)
+        self._commChannel.sigRequestScanFreq.connect(self.sendScanFreq)
+        if 0: #IS_HEADLESS:IS_HEADLESS: 
+            self._commChannel.sharedAttrs.sigAttributeSet.connect(self.attrChanged, check_nargs=False)
+            return
+        else:
+            self._commChannel.sharedAttrs.sigAttributeSet.connect(self.attrChanged)
+        
+        if IS_HEADLESS:
+            self._widget = None
+            return  
+        
+        
+        self.untilStop()
+        
+        # ADD GUI elements just in case
+        self._widget.setDetectorList(
+            self._master.detectorsManager.execOnAll(lambda c: c.model,
+                                                    condition=lambda c: c.forAcquisition)
+        )
+        self._widget.setsaveFormat(SaveFormat.TIFF.value)
         self._widget.setSnapSaveMode(SaveMode.Disk.value)
         self._widget.setSnapSaveModeVisible(self._setupInfo.hasWidget('Image'))
 
@@ -37,19 +72,6 @@ class RecordingController(ImConWidgetController):
             self._moduleCommChannel.isModuleRegistered('imreconstruct')
         )
 
-        self.untilStop()
-
-        # Connect CommunicationChannel signals
-        self._commChannel.sigRecordingStarted.connect(self.recordingStarted)
-        self._commChannel.sigRecordingEnded.connect(self.recordingEnded)
-        self._commChannel.sigScanDone.connect(self.scanDone)
-        self._commChannel.sigUpdateRecFrameNum.connect(self.updateRecFrameNum)
-        self._commChannel.sigUpdateRecTime.connect(self.updateRecTime)
-        self._commChannel.sharedAttrs.sigAttributeSet.connect(self.attrChanged)
-        self._commChannel.sigSnapImg.connect(self.snap)
-        self._commChannel.sigSnapImgPrev.connect(self.snapImagePrev)
-        self._commChannel.sigStartRecordingExternal.connect(self.startRecording)
-        self._commChannel.sigRequestScanFreq.connect(self.sendScanFreq)
 
         # Connect RecordingWidget signals
         self._widget.sigDetectorModeChanged.connect(self.detectorChanged)
@@ -81,27 +103,41 @@ class RecordingController(ImConWidgetController):
         if saveMode == SaveMode.RAM:
             self._widget.setsaveFormat(SaveFormat.TIFF.value)
 
-    def snap(self):
+    def snap(self, name=None, mSaveFormat=None):
         """ Take a snap and save it to a file. """
         self.updateRecAttrs(isSnapping=True)
 
-        folder = self._widget.getRecFolder()
+        # by default save as it's noted in the widget
+        if mSaveFormat is None:
+            if not IS_HEADLESS:
+                mSaveFormat = SaveFormat(self._widget.getsaveFormat())
+            else:
+                mSaveFormat = SaveFormat(1) # TIFF
+
+        timeStamp = datetime.datetime.now().strftime("%Y_%m_%d-%I-%M-%S_%p")
+        folder = os.path.join(dirtools.UserFileDirs.Data, 'recordings', timeStamp)
         if not os.path.exists(folder):
             os.makedirs(folder)
-        time.sleep(0.01)
+            time.sleep(0.01)
 
         detectorNames = self.getDetectorNamesToCapture()
-        savename = os.path.join(folder, self.getFileName()) + '_snap'
+        if name is None:
+            name = '_snap'
+        savename = os.path.join(folder, self.getFileName()) + name
 
         attrs = {detectorName: self._commChannel.sharedAttrs.getHDF5Attributes()
                  for detectorName in detectorNames}
-        
+
+        if not IS_HEADLESS:
+            saveMode = SaveMode(self._widget.getSnapSaveMode())
+        else:
+            saveMode = SaveMode(1) # TODO: Assuming we want to save the image 
         self._master.recordingManager.snap(detectorNames,
                                            savename,
-                                           SaveMode(self._widget.getSnapSaveMode()),
-                                           SaveFormat(self._widget.getsaveFormat()),
+                                           saveMode,
+                                           mSaveFormat,
                                            attrs)
-        
+
     def snapNumpy(self):
         self.updateRecAttrs(isSnapping=True)
         detectorNames = self.getDetectorNamesToCapture()
@@ -218,24 +254,25 @@ class RecordingController(ImConWidgetController):
         self._commChannel.sigRunScan.emit(isFirstLapse, not isFinalLapse)
 
     def recordingStarted(self):
-        self._widget.setFieldsEnabled(False)
+        if not IS_HEADLESS: self._widget.setFieldsEnabled(False)
 
     def recordingCycleEnded(self):
-        if (self._widget.isRecButtonChecked() and self.recMode == RecMode.ScanLapse and
+        if (self.recording and self.recMode == RecMode.ScanLapse and
                 0 < self.lapseCurrent + 1 < self.lapseTotal):
             self.lapseCurrent += 1
-            self._widget.updateRecLapseNum(self.lapseCurrent)
+            if not IS_HEADLESS: self._widget.updateRecLapseNum(self.lapseCurrent)
             self.timer = Timer(singleShot=True)
             self.timer.timeout.connect(self.nextLapse)
             self.timer.start(int(self._widget.getTimelapseFreq() * 1000))
         else:
             self.recording = False
             self.lapseCurrent = -1
-            self._widget.updateRecFrameNum(0)
-            self._widget.updateRecTime(0)
-            self._widget.updateRecLapseNum(0)
-            self._widget.setRecButtonChecked(False)
-            self._widget.setFieldsEnabled(True)
+            if not IS_HEADLESS: 
+                self._widget.updateRecFrameNum(0)
+                self._widget.updateRecTime(0)
+                self._widget.updateRecLapseNum(0)
+                self._widget.setRecButtonChecked(False)
+                self._widget.setFieldsEnabled(True)
 
     def scanDone(self):
         self.doneScan = True
@@ -303,7 +340,8 @@ class RecordingController(ImConWidgetController):
 
     def getDetectorNamesToCapture(self):
         """ Returns a list of which detectors the user has selected to be captured. """
-        detectorMode = self._widget.getDetectorMode()
+        if not IS_HEADLESS: detectorMode = self._widget.getDetectorMode()
+        else: detectorMode = -1
         if detectorMode == -1:  # Current detector at start
             return [self._master.detectorsManager.getCurrentDetectorName()]
         elif detectorMode == -2:  # All acquisition detectors
@@ -318,7 +356,10 @@ class RecordingController(ImConWidgetController):
 
     def getFileName(self):
         """ Gets the filename of the data to save. """
-        filename = self._widget.getCustomFilename()
+        if IS_HEADLESS: 
+            filename =  time.strftime('%Hh%Mm%Ss')+"_ImSwitch_ImageFile"
+        else:
+            filename = self._widget.getCustomFilename()
         if filename is None:
             filename = time.strftime('%Hh%Mm%Ss')
         return filename
@@ -372,23 +413,204 @@ class RecordingController(ImConWidgetController):
     def getTimelapseFreq(self):
         return self._widget.getTimelapseFreq()
 
+
+    def stop_stream(self):
+        self.streamRunning = False
+        self.streamstarted = False
+        self.manager = None
+        
+    def start_stream(self):
+        '''
+        return a generator that converts frames into jpeg's reads to stream
+        '''
+        detectorManager = self._master.detectorsManager
+        detectorNum1Name = detectorManager.getAllDeviceNames()[0]
+        detectorNum1 = detectorManager[detectorNum1Name]
+        detectorNum1.startAcquisition()
+        
+        self.fx = self.fy = .1
+        
+        try:
+            while self.streamRunning:
+                output_frame = detectorNum1.getLatestFrame()
+                if output_frame is None:
+                    continue
+                try:
+                    # adaptive resize: Keep them below 640x480
+                    if output_frame.shape[0] > 640 or output_frame.shape[1] > 480:
+                        self.fx = self.fy = min(640/output_frame.shape[0], 480/output_frame.shape[1])
+                    else:
+                        self.fx = self.fy = 1
+                    output_frame = cv2.resize(output_frame, dsize=None, fx=self.fx,fy=self.fx)
+                except: 
+                    output_frame = np.zeros((640,460))
+                (flag, encodedImage) = cv2.imencode(".jpg", output_frame)
+                if not flag:
+                    continue
+                self.manager.put(encodedImage)
+        except:
+            self.streamRunning = False
+                
+    def streamer(self):
+        from multiprocessing import Queue
+        if not self.streamstarted:
+            import threading
+            self.manager = Queue(maxsize=10)
+            self.streamRunning = True
+            threading.Thread(target=self.start_stream).start()
+        try:
+
+            while self.manager:
+                yield (b'--frame\r\n' b'Content-Type: image/jpeg\r\n\r\n' +
+                    bytearray(self.manager.get()) + b'\r\n')
+        except GeneratorExit:
+            self.__logger.debug("cancelled")
+
+
+    @APIExport(runOnUIThread=False)
+    def video_feeder(self, startStream: bool = True) -> StreamingResponse:
+        '''
+        return a generator that converts frames into jpeg's reads to stream
+        '''
+        if startStream:
+            return StreamingResponse(self.streamer(), media_type="multipart/x-mixed-replace;boundary=frame")
+        else:
+            self.stop_stream()
+            return "stream stopped"
+
+    #@app.post("/execute-function/")
+    ''' TODO: Maybe a little bit of a security risk, but it's a nice feature
+    @APIExport(runOnUIThread=False)
+    def executeFunction(self, code: str):
+        try:
+            # Create a new dictionary for local variables
+            local_variables = {'self': self}
+            global_variables = {'self': self}
+
+            # Execute the provided code within the context of the current FastAPI runtime
+            exec(code, globals(), local_variables)
+
+            # Add the local variables to the shared dictionary
+            self.shared_variables.update(local_variables)
+
+            return {"message": "Function executed successfully", "result": local_variables}
+        except Exception as e:
+            self._logger.error(e)
+            return HTTPException(detail=str(e), status_code=400)
+    '''
+    
+    
+    @APIExport(runOnUIThread=False)
+    #@app.get("/get-variable/{variable_name}")
+    def getVariable(self, variable_name: str):
+        if variable_name in self.shared_variables:
+            return {"variable_value": self.shared_variables[variable_name]}
+        else:
+            return HTTPException(detail="Variable not found", status_code=404)
+
     @APIExport(runOnUIThread=True)
-    def snapImage(self, output: bool = False) -> Optional[np.ndarray]:
-        """ Take a snap and save it to a .tiff file at the set file path. """
+    def snapImageToPath(self, fileName: str = "."):
+        """ Take a snap and save it to a .tiff file at the given fileName. """
+        self.snap(name = fileName, mSaveFormat=SaveFormat.TIFF)
+    
+    @APIExport(runOnUIThread=False)
+    def snapImage(self, output: bool = False, toList: bool = True) -> Union[None, list]:
+        """ 
+        Take a snap and save it to a .tiff file at the set file path. 
+        output: if True, return the numpy array of the image as a list if toList is True, or as a numpy array if toList is False
+        toList: if True, return the numpy array of the image as a list, otherwise return it as a numpy array
+        """
         if output:
-            return self.snapNumpy()
+            numpy_array_list = self.snapNumpy()
+            mDetector = list(numpy_array_list.keys())[0]
+            numpy_array = numpy_array_list[mDetector]
+            if toList:
+                return numpy_array.tolist()  # Convert the numpy array to a list
+            else:
+                return np.array(numpy_array)
         else:
             self.snap()
 
+    @APIExport(runOnUIThread=False)
+    def snapNumpyToFastAPI(self, detectorName: str=None, resizeFactor: float=1) -> Response:
+        '''
+        Taking a snap and return it as a FastAPI Response object.
+        detectorName: the name of the detector to take the snap from. If None, take the snap from the first detector.
+        resizeFactor: the factor by which to resize the image. If <1, the image will be downscaled, if >1, nothing will happen.
+        '''
+        # Create a 2D NumPy array representing the image
+        images = self.snapNumpy()
+
+        # get the image from the first detector if detectorName is not specified
+        if detectorName is None:
+            detectorName = self.getDetectorNamesToCapture()[0]
+
+        # get the image from the specified detector    
+        image = images[detectorName]
+
+        # eventually resize image to save bandwidth
+        if resizeFactor <1:
+            image = self.resizeImage(image, resizeFactor)
+        
+        # using an in-memory image
+        im = Image.fromarray(image)
+        
+        # save image to an in-memory bytes buffer
+        # save image to an in-memory bytes buffer
+        with io.BytesIO() as buf:
+            im = im.convert('L')  # convert image to 'L' mode
+            im.save(buf, format='PNG')
+            im_bytes = buf.getvalue()
+            
+        headers = {'Content-Disposition': 'inline; filename="test.png"'}
+        return Response(im_bytes, headers=headers, media_type='image/png')
+
     @APIExport(runOnUIThread=True)
-    def startRecording(self) -> None:
+    def startRecording(self, mSaveFormat: int = SaveFormat.TIFF) -> None:
         """ Starts recording with the set settings to the set file path. """
-        self._widget.setRecButtonChecked(True)
+        mSaveFormat = SaveFormat(mSaveFormat)
+        if not IS_HEADLESS:
+            self._widget.setRecButtonChecked(True)
+        else:
+            # we probably call from the FASTAPI server
+            if self.recording: # Already recording
+                return
+
+            timeStamp = datetime.datetime.now().strftime("%Y_%m_%d-%I-%M-%S_%p")
+            folder = os.path.join(dirtools.UserFileDirs.Data, 'recordings', timeStamp)
+            if not os.path.exists(folder):
+                os.makedirs(folder)
+            time.sleep(0.01)
+            self.savename = os.path.join(folder, self.getFileName()) + '_rec'
+
+            detectorsBeingCaptured = self.getDetectorNamesToCapture()
+            self.recMode = RecMode.UntilStop
+            self.recordingArgs = {
+                'detectorNames': detectorsBeingCaptured,
+                'recMode': self.recMode,
+                'savename': self.savename,
+                'saveMode': SaveMode(1), # Disk
+                'saveFormat': mSaveFormat, # TIFF
+                'attrs': {detectorName: self._commChannel.sharedAttrs.getHDF5Attributes()
+                          for detectorName in detectorsBeingCaptured},
+            }
+            self._master.recordingManager.startRecording(**self.recordingArgs)
+            self.recording = True
+            self.endedRecording = False
+
+            
 
     @APIExport(runOnUIThread=True)
     def stopRecording(self) -> None:
         """ Stops recording. """
-        self._widget.setRecButtonChecked(False)
+        if not IS_HEADLESS:
+            self._widget.setRecButtonChecked(True)
+        else:    
+            self.recording = False
+            self.endedRecording = True
+            if self.recMode == RecMode.ScanLapse and self.lapseCurrent != -1:
+                self._commChannel.sigAbortScan.emit()
+            self._master.recordingManager.endRecording()            
 
     @APIExport(runOnUIThread=True)
     def setRecModeSpecFrames(self, numFrames: int) -> None:
@@ -453,6 +675,33 @@ class RecordingController(ImConWidgetController):
         """ Sets the folder to save recordings into. """
         self._widget.setRecFolder(folderPath)
 
+    def resizeImage(self, image, scale_factor):
+        """
+        Resize the input image by a given scale factor using nearest neighbor interpolation.
+
+        Parameters:
+            image (numpy.ndarray): The input image. For RGB, shape should be (height, width, 3),
+                                for monochrome/grayscale, shape should be (height, width).
+            scale_factor (float): The scaling factor by which to resize the image.
+
+        Returns:
+            numpy.ndarray: The resized image.
+        """
+        if len(image.shape) == 3 and image.shape[2] == 3:  # RGB image
+            height, width, _ = image.shape
+        elif len(image.shape) == 2:  # Monochrome/grayscale image
+            height, width = image.shape
+        else:
+            raise ValueError("Invalid image shape. Supported shapes are (height, width, 3) for RGB and (height, width) for monochrome.")
+
+        new_height, new_width = int(height * scale_factor), int(width * scale_factor)
+
+        # Use OpenCV's resize function with nearest neighbor interpolation
+        resized_image = cv2.resize(image, (new_width, new_height), interpolation=cv2.INTER_NEAREST)
+
+        return resized_image
+
+
 
 _attrCategory = 'Rec'
 _recModeAttr = 'Mode'
@@ -462,7 +711,7 @@ _lapseTimeAttr = 'LapseTime'
 _freqAttr = 'LapseFreq'
 
 
-# Copyright (C) 2020-2021 ImSwitch developers
+# Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

@@ -1,15 +1,14 @@
 from os import listdir
 from os.path import isfile, join, isdir
 import time
-from qtpy import QtCore
 from datetime import datetime
 import os
 import json
 import socket
+from imswitch.imcommon.framework import Thread, Signal
 
-
-class FileWatcher(QtCore.QThread):
-    sigNewFiles = QtCore.Signal(list)
+class FileWatcher(Thread):
+    sigNewFiles = Signal(list)
 
     def __init__(self, path, extension, pollTime):
         super().__init__()
@@ -73,7 +72,7 @@ class FileWatcher(QtCore.QThread):
             f.write(json.dumps(self._log, indent=4))
 
 # Adapted from https://towardsdatascience.com/implementing-a-file-watcher-in-python-73f8356a425d
-# Copyright (C) 2020-2021 ImSwitch developers
+# Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

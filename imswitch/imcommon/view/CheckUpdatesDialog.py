@@ -1,7 +1,6 @@
 from qtpy import QtCore, QtWidgets
 
-import imswitch
-
+from imswitch import IS_HEADLESS, __version__
 
 class CheckUpdatesDialog(QtWidgets.QDialog):
     """ Dialog for checking for ImSwitch updates. """
@@ -56,24 +55,30 @@ class CheckUpdatesDialog(QtWidgets.QDialog):
     def showPyInstallerUpdate(self, newVersion):
         self.informationLabel.setText(
             f'ImSwitch {newVersion} is now available. '
-            f' Your current version is {imswitch.__version__}.'
+            f' Your current version is {__version__}.'
             f'\n\nTo update, download the new version archive from the link below and extract it'
             f' into a new folder. Do NOT overwrite your current installation; instead, delete it'
             f' after you have updated.'
         )
         self.linkLabel.setText(
             'The new version may be downloaded from '
-            '<a href="https://github.com/kasasxav/ImSwitch/releases" style="color: orange">'
+            '<a href="https://github.com/openUC2/ImSwitch/releases" style="color: orange">'
             'the GitHub releases page'
             '</a>'
             '.'
         )
         self.linkLabel.setVisible(True)
 
+    def showInfo(self, text):
+        self.informationLabel.setText(text)
+        self.linkLabel.setText("")
+        self.linkLabel.setVisible(False)
+
+
     def showPyPIUpdate(self, newVersion):
         self.informationLabel.setText(
             f'ImSwitch {newVersion} is now available. '
-            f' Your current version is {imswitch.__version__}.'
+            f' Your current version is {__version__}.'
             f'\n\nTo update, run the command: pip install --upgrade imswitch'
         )
         self.linkLabel.setText(
@@ -87,7 +92,7 @@ class CheckUpdatesDialog(QtWidgets.QDialog):
         self.linkLabel.setVisible(True)
 
 
-# Copyright (C) 2020-2021 ImSwitch developers
+# Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

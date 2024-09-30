@@ -11,22 +11,25 @@ class MockPositionerManager(PositionerManager):
 
     def __init__(self, positionerInfo, name, **lowLevelManagers):
 
-        if len(positionerInfo.axes) != 1:
-            raise RuntimeError(f'{self.__class__.__name__} only supports one axis,'
-                               f' {len(positionerInfo.axes)} provided.')
+        # if len(positionerInfo.axes) != 1:
+        #     raise RuntimeError(f'{self.__class__.__name__} only supports one axis,'
+        #                        f' {len(positionerInfo.axes)} provided.')
                                
         super().__init__(positionerInfo, name, initialPosition={
             axis: 0 for axis in positionerInfo.axes
-        })
+        }, initialSpeed={axis: 0 for axis in positionerInfo.axes})
 
-    def move(self, dist, axis):
-        self.setPosition(self._position[self.axes[0]] + dist, axis)
+    def move(self, dist, axis, is_blocking = False):
+        for d,a in zip(dist,axis):
+            self.setPosition(self._position[a] + d, a)
 
     def setPosition(self, position, axis):
-        self._position[self.axes[0]] = position
+        self._position[axis] = position
 
+    def get_position(self):
+        return [p for p in self._position.values()]
 
-# Copyright (C) 2020-2021 ImSwitch developers
+# Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

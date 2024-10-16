@@ -1,8 +1,9 @@
 import numpy as np
+import matplotlib.pyplot as plt
+
 from scipy.interpolate import BPoly
 
 from .basesignaldesigners import ScanDesigner
-
 from imswitch.imcommon.model import initLogger
 
 
@@ -23,6 +24,8 @@ class GalvoScanDesigner(ScanDesigner):
                                     'axis_startpos',
                                     'sequence_time']
 
+        self._debug_mode = False  # run mode for generating detected samples and plotting detected samples
+
     def checkSignalComp(self, scanParameters, setupInfo, scanInfo):
         """ Check analog scanning signals so that they are inside the range of
         the acceptable scanner voltages."""
@@ -39,10 +42,9 @@ class GalvoScanDesigner(ScanDesigner):
     def checkSignalLength(self, scanParameters, setupInfo):
         """ Check that the signal would not be too large (to be stored in
         the RAM and to be generated and run inside a reasonable time). """
-        #TODO: change limits below later, to be more representative of what we want. Also think about changing the
-        # way >d3 steps are generated and sent to the nidaq - probably should run those scans as simple d2 scans and
-        # repeat them, with steps on the axes that needs steps between. Keep track of that in ScanController for
-        # example, alternatively directly in NidaqController.runScan?
+        # TODO: Think about changing the way >d3 steps are generated and sent to the nidaq -
+        # could run scans as simple d2 scans and repeat them, with steps on the axes that needs steps between.
+        # Keep track of that in ScanController for example, alternatively directly in NidaqController.runScan?
         device_count = len([positioner for positioner in setupInfo.positioners.values() if positioner.forScanning])
         # retrieve axis lengths in um of active axes
         axis_length = [scanParameters['axis_length'][i] for i in range(device_count)
@@ -53,10 +55,10 @@ class GalvoScanDesigner(ScanDesigner):
                             if np.ceil(scanParameters['axis_length'][i]/scanParameters['axis_step_size'][i]) > 1]
         # get list of number of axis steps
         n_steps_dx = [int(axis_length[i] / axis_step_size[i]) for i in range(axis_count_scan)]
-        # get list of number of axis scan samples, for first two axes initially
+        # TODO: Update these limits, arbitrarly 
         scan_steps = np.prod(n_steps_dx)
-        scan_time = scan_steps * scanParameters['sequence_time']
-        if scan_time > 60*10:  # 10 minutes
+        min_scan_time = scan_steps * scanParameters['sequence_time'] * 2
+        if setupInfo.scan.maxScanTimeMin and min_scan_time > 60*setupInfo.scan.maxScanTimeMin:
             return False
         elif scan_steps > 1e7:
             return False
@@ -67,9 +69,14 @@ class GalvoScanDesigner(ScanDesigner):
         self.__timestep = 1e6 / setupInfo.scan.sampleRate
         # arbitrary for now - should calculate this based on the abs(biggest) axis_centerpos and the
         # max speed/acc, as that is what limits time it takes for axes to get to the right position
-        self.__minsettlingtime = 1000
+        self.__paddingtime_d3step = int(parameterDict['d3step_delay'])
         # arbitrary for now  µs
-        self.__paddingtime = 1000
+        self.__paddingtime_full = 100 #1000
+        # initiate default sample lengths
+        self._samples_initpos = []
+        self._samples_finalpos = []
+        self._samples_settling = 0
+        self._samples_startacc = 0
 
         positioners = [positioner for positioner in setupInfo.positioners.values()
                        if positioner.forScanning]
@@ -121,8 +128,8 @@ class GalvoScanDesigner(ScanDesigner):
         # get list of number of axis steps
         n_steps_dx = [int(self.axis_length[i] / self.axis_step_size[i]) for i in range(axis_count_scan)]
         # get list of number of axis scan samples, for first two axes initially
-        n_scan_samples_dx = [int(round(n_steps_dx[i] * parameterDict['sequence_time'] * 1e6 / self.__timestep)) for i in range(1)]
-        n_scan_samples_dx.insert(0, 1)
+        n_scan_samples_dx = [int(parameterDict['sequence_time'] * 1e6 / self.__timestep)]
+        n_scan_samples_dx.append(int(round(n_steps_dx[0] * parameterDict['sequence_time'] * 1e6 / self.__timestep)))
         pixel_sizes = [parameterDict['axis_step_size'][i] for i in range(axis_count_scan)]
 
         # get list of d1 positions for each active axis
@@ -130,42 +137,58 @@ class GalvoScanDesigner(ScanDesigner):
         for i in range(axis_count_scan):
             axis_positions.append(int(np.ceil(self.axis_length[i] / self.axis_step_size[i])))
 
-        self.__settlingtime = self.__calc_settling_time(self.axis_length, self.axis_centerpos,
-                                                        self.axis_vel_max, self.axis_acc_max)
+        # get parameter for which axes should be smooth
+        self.__smooth_axis = [False if 'mock' in axis_name.lower() else True for axis_name in self.axis_devs_order]
 
         # generate axis signals for all d axes
         pos = []  # list with all axis positions lists
         # d1 axis signal
         axis = 0
-        pos_temp, samples_d2_period = self.__generate_smooth_scan(parameterDict, self.axis_vel_max[0], self.axis_acc_max[0], n_steps_dx[1])
+        #smooth = False if 'mock' in self.axis_devs_order[axis].lower() else True
+        if self.__smooth_axis[axis]:
+            # calculate settling time to add to smooth axis
+            self.__settlingtime = self.__calc_settling_time(self.axis_length, self.axis_centerpos, self.axis_vel_max, self.axis_acc_max)
+            pos_temp, samples_d2_period = self.__generate_smooth_scan(parameterDict, self.axis_vel_max[axis], self.axis_acc_max[axis], n_steps_dx[axis+1])
+            samples_d2_period_read = samples_d2_period - 1
+        else:
+            pos_temp, _ = self.__generate_step_scan(axis, n_scan_samples_dx[axis], n_steps_dx[axis], self.__smooth_axis, v_max=self.axis_vel_max[axis], a_max=self.axis_acc_max[axis])
+            pos_temp = self.__generate_tiledstep_multid2(pos_temp, n_steps_dx[axis+1])
+            samples_d2_period = n_scan_samples_dx[axis+1]
+            samples_d2_period_read = samples_d2_period
         pos.append(pos_temp)
 
         # initiate pad length list
-        pad_maxes = [0,0]
+        #pad_prev_axes = []
 
         # d2 axis signal
         if axis_count_scan > 1:
             axis = 1
-            axis_reps = self.__get_axis_reps(pos[0], samples_d2_period, n_steps_dx[1])
-            smooth = False if 'mock' in self.axis_devs_order[axis].lower() else True
-            pos_temp = self.__generate_step_scan(axis, n_scan_samples_dx[axis], n_steps_dx[axis], self.axis_devs_order[axis], smooth, v_max=self.axis_vel_max[axis], a_max=self.axis_acc_max[axis], axis_reps=axis_reps)
+            axis_reps = self.__get_axis_reps(pos[0], samples_d2_period, n_steps_dx[1], self.__smooth_axis[axis-1])
+            pos_temp, pad_prev_axis = self.__generate_step_scan(axis, n_scan_samples_dx[axis], n_steps_dx[axis], self.__smooth_axis, v_max=self.axis_vel_max[axis], a_max=self.axis_acc_max[axis], axis_reps=axis_reps)
+            if pad_prev_axis:
+                pos, _ = self.__zero_padding(pos, padlen_base=pad_prev_axis)
+                #pad_prev_axes.append(pad_prev_axis)
             pos.append(pos_temp)
             n_scan_samples_dx.append(len(pos[0]))
 
         # d>2 axes signals - all generated as pure step signals
         if axis_count_scan > 2:
             for axis in range(2, axis_count_scan):
-                pos, pad_max = self.__zero_padding(pos, padlen_base=0)
-                pad_maxes.append(pad_max)
+                pos, pad_max = self.__zero_padding(pos, padlen_base=[0,0])
                 pos = self.__repeat_dlower(pos, n_steps_dx[axis])
-                smooth = False if 'mock' in self.axis_devs_order[axis].lower() else True
-                pos_temp = self.__generate_step_scan(axis, n_scan_samples_dx[axis], n_steps_dx[axis], self.axis_devs_order[axis], smooth, v_max=self.axis_vel_max[axis], a_max=self.axis_acc_max[axis])
+                n_scan_samples_dx[-1] = n_scan_samples_dx[-1] + pad_max
+                pos_temp, pad_prev_axis = self.__generate_step_scan(axis, n_scan_samples_dx[axis], n_steps_dx[axis], self.__smooth_axis, v_max=self.axis_vel_max[axis], a_max=self.axis_acc_max[axis])
+                if pad_prev_axis:
+                    pos, _ = self.__zero_padding(pos, padlen_base=pad_prev_axis)
+                    #pad_prev_axes.append(pad_prev_axis)
                 pos.append(pos_temp)
                 n_scan_samples_dx.append(len(pos[0]))
 
+        pos, pad_max = self.__zero_padding(pos, padlen_base=[0,0])
+        n_scan_samples_dx[-1] = n_scan_samples_dx[-1] + pad_max
+
         # pad all signals with zeros, for initial and final settling of galvos and safety start and end
-        axis_signals, pad_max = self.__zero_padding(pos, padlen_base=int(round(self.__paddingtime / self.__timestep)))
-        pad_maxes.append(pad_max)
+        axis_signals, pad_max = self.__zero_padding(pos, padlen_base=[int(round(self.__paddingtime_full / self.__timestep)),int(round(self.__paddingtime_full / self.__timestep))])
 
         # add all signals to a signal dictionary
         sig_dict = {parameterDict['target_device'][i]: axis_signals[i] for i in range(axis_count_scan)}
@@ -173,6 +196,7 @@ class GalvoScanDesigner(ScanDesigner):
         # create scan information dictionary scanInfoDict
         # with parameters that are important to relay to TTLCycleDesigner
         # and/or image acquisition managers (such as APDManager)
+        tot_scan_time = n_scan_samples_dx[-1] * self.__timestep * 1e-6
         scanInfoDict = {
             'axis_names': self.axis_devs_order,
             'img_dims': n_steps_dx,
@@ -180,46 +204,31 @@ class GalvoScanDesigner(ScanDesigner):
             'pixel_sizes': pixel_sizes,
             'minmaxes': [[min(axis_signals[i]), max(axis_signals[i])] for i in range(axis_count_scan)],
             'scan_samples_total': len(axis_signals[0]),
-            'scan_throw_startzero': int(round(self.__paddingtime / self.__timestep)),
-            'scan_throw_initpos': self._samples_initpos,
+            'scan_throw_startzero': int(round(self.__paddingtime_full / self.__timestep)),
+            'scan_pads_initpos': self._samples_initpos,
             'scan_throw_settling': self._samples_settling,
             'scan_throw_startacc': self._samples_startacc,
-            'scan_throw_finalpos': self._samples_finalpos,
             'scan_time_step': round(self.__timestep * 1e-6, ndigits=10),
             'dwell_time': parameterDict['sequence_time'],
             'phase_delay': parameterDict['phase_delay'],
-            'scan_samples_d2_period': samples_d2_period - 1,
-            'padlens': pad_maxes
+            'scan_samples_d2_period': samples_d2_period_read,
+            'tot_scan_time_s': tot_scan_time,
+            'smooth_axes': self.__smooth_axis
         }
-        #'extra_laser_on': parameterDict['extra_laser_on']
-        #self._logger.debug(scanInfoDict)
 
-        self.__plot_curves(plot=False, signals=axis_signals)  # for debugging
+        if self._debug_mode:
+            self._logger.debug(scanInfoDict)
+            self.__plot_curves(plot=True, signals=axis_signals)  # for debugging
 
-        self._logger.info(f'Scanning curves generated, third dimension step time: {round(self.__timestep * 1e-6 * n_scan_samples_dx[2], ndigits=5)} s.')
+        self._logger.info(f'Scanning curves generated, third dimension step time: {round(self.__timestep * 1e-6 * n_scan_samples_dx[2], ndigits=5)} s, total scan time: {tot_scan_time} s.')
         return sig_dict, axis_positions, scanInfoDict
 
     def __calc_settling_time(self, axis_length, axis_centerpos, vel_max, acc_max):
-        """ Calculate settling time based on first two axis parameters.
-        TODO: fix this to include all axes, as smooth axes can be in other positions?
-        """
-        print(f"axis_length: {axis_length}")
-        print(f"axis_centerpos: {axis_centerpos}")
-        print(f"vel_max: {vel_max}")
-        print(f"acc_max: {acc_max}")
-
-        # Check if the lists have at least two elements
-        if len(axis_length) < 2 or len(axis_centerpos) < 2 or len(vel_max) < 2:
-            raise ValueError("axis_length, axis_centerpos, and vel_max must have at least two elements")
-
-        t_initpos_vc_d2 = abs(axis_centerpos[1] - axis_length[1] / 2) / vel_max[1]
-        t_initpos_vc_d1 = abs(axis_centerpos[0] - axis_length[0] / 2) / vel_max[0]
-        t_initpos_vc = max(t_initpos_vc_d1, t_initpos_vc_d2)
-        t_acc_d2 = vel_max[1] / acc_max[1]
-        t_acc_d1 = vel_max[0] / acc_max[0]
-        t_initpos_d2 = t_initpos_vc_d2 + 2 * t_acc_d2
-        t_initpos_d1 = t_initpos_vc_d1 + 2 * t_acc_d1
-        settlingtime = self.__minsettlingtime + np.max([0, t_initpos_d2 - t_initpos_d1])
+        """ Calculate settling time based on all axis parameters. """
+        t_initpos_vc = [abs(axis_centerpos[i] - axis_length[i] / 2) / vel_max[i] for i in range(len(axis_length))]
+        t_acc = [vel_max[i] / acc_max[i] for i in range(len(axis_length))]
+        t_initpos = [t_initpos_vc[i] + 2 * t_acc[i] for i in range(len(axis_length)) if self.__smooth_axis[i]]
+        settlingtime = self.__paddingtime_d3step + (np.max(t_initpos) - np.min(t_initpos))
         return settlingtime
 
     def __generate_smooth_scan(self, parameterDict, v_max, a_max, n_d2):
@@ -233,29 +242,49 @@ class GalvoScanDesigner(ScanDesigner):
         pos_ret = self.__add_start_end(pos, pos_fix, v_max, a_max)
         return pos_ret, n_eval
 
-    def __generate_step_scan(self, dim, len_axis, n_axis, axis_name, smooth, v_max=0, a_max=0, axis_reps=[0,0]):
+    def __generate_step_scan(self, dim, len_axis, n_axis, smooth_axis, v_max=0, a_max=0, axis_reps=[0,0]):
         """ Generate a step-function scanning curve, with smooth initial positioning or not. """
         l_scan = self.axis_length[dim]
         c_scan = self.axis_centerpos[dim]
+        pad_prev_axis = False
         # create linspace for axis positions
         positions = (np.linspace(l_scan / n_axis, l_scan, n_axis) -
                      l_scan / (n_axis * 2) - l_scan / 2 + c_scan)
-        if 'mock' in axis_name.lower():
-            positions = positions - positions[0]
-        if smooth:
+        
+        if smooth_axis[dim]:
             # generate the initial smooth positioning curve
             pos_init = self.__init_positioning(positions[0], v_max, a_max)
+            self._samples_initpos.append(len(pos_init))
             # generate the final smooth positioning curve
             pos_final = self.__final_positioning(positions[-1], v_max, a_max)
-        if dim==1: # and 'mock' not in axis_name.lower():
-            if 'mock' not in axis_name.lower():
-                axis_reps[0] = axis_reps[0] - len(pos_init)
-            pos_ret = np.repeat(positions, axis_reps)
-        else:
-            pos_ret = np.repeat(positions, len_axis)
-        if smooth:
+            self._samples_finalpos.append(len(pos_final))
+            
+            if dim==1:
+                if smooth_axis[0] and self._samples_initpos[-1]==np.max(self._samples_initpos):
+                    axis_reps[0] = axis_reps[0] - np.max(self._samples_initpos[:-1])
+                pos_ret = np.repeat(positions, axis_reps)
+            else:
+                reps = np.ones(len(positions))*len_axis
+                if True in smooth_axis[:dim] and self._samples_initpos[-1]==np.max(self._samples_initpos):
+                    reps[0] = reps[0] - np.max(self._samples_initpos[:-1])
+                reps = [int(rep) for rep in reps]
+                pos_ret = np.repeat(positions, reps)
             pos_ret = np.concatenate((pos_init, pos_ret, pos_final))
-        return pos_ret
+
+            padlen_init = (len(pos_init)-np.max(self._samples_initpos[:-1])) if self._samples_initpos[:-1] else len(pos_init)
+            padlen_final = (len(pos_final)-np.max(self._samples_finalpos[:-1])) if self._samples_finalpos[:-1] else len(pos_final)
+            if padlen_init > 0 or padlen_final > 0:
+                pad_prev_axis = [np.max([0,padlen_init]), np.max([0,padlen_final])]
+        else:
+            # realign positions for non-smooth (mock) axes
+            positions = positions - positions[0]
+            if dim==1:
+                pos_ret = np.repeat(positions, axis_reps)
+            else:
+                pos_ret = np.repeat(positions, len_axis)
+
+        pos_ret 
+        return pos_ret, pad_prev_axis
 
     def __repeat_dlower(self, pos, n_steps_axis):
         """ Repeat the current positions, for all dimensions,
@@ -263,15 +292,21 @@ class GalvoScanDesigner(ScanDesigner):
         pos_ret = [np.tile(pos_dim, n_steps_axis) for pos_dim in pos]
         return pos_ret
 
-    def __get_axis_reps(self, pos, samples_period, n_d2):
+    def __get_axis_reps(self, pos, samples_period, n_d2, smooth=True):
         """ Get reps for each step on d2 axis, by looking at the maximum and
         periods of the d1 axis """
-        start_skip = self._samples_initpos + self._samples_settling + self._samples_startacc
-        end_skip = self._samples_finalpos
-        # get length of first d2 step
-        first_d2 = [np.argmax(pos[start_skip:-end_skip]) + start_skip]
-        # get length of all other d2 steps
-        rest_d2s = np.repeat(samples_period - 1, n_d2 - 1)
+        if smooth:
+            # get length of first d2 step
+            start_skip = np.max(self._samples_initpos) + self._samples_settling + self._samples_startacc
+            end_skip = np.max(self._samples_finalpos)
+            first_d2 = [np.argmax(pos[start_skip:-end_skip]) + start_skip]
+            # get length of all other d2 steps
+            rest_d2s = np.repeat(samples_period - 1, n_d2 - 1)
+        else:
+            # get length of first d2 step
+            first_d2 = [samples_period]
+            # get length of all other d2 steps
+            rest_d2s = np.repeat(samples_period, n_d2 - 1)
         # concatenate all repetition lengths
         return np.concatenate((first_d2, rest_d2s))
 
@@ -327,6 +362,7 @@ class GalvoScanDesigner(ScanDesigner):
         a4p = a5 = a_max
         a5p = a6 = 0
         acc = [a1, a2, a2p, a3, a3p, a4, a4p, a5, a5p, a6]
+        
         # if p3 is already past the center of the scan it means that the max_velocity was never
         # reached in this case, remove two fixed points, and change the values to the curr. vel and
         # time in the middle of the flyback
@@ -364,6 +400,10 @@ class GalvoScanDesigner(ScanDesigner):
         pos_ret = []
         # concatenate for number of d2 steps in scan
         pos_ret = np.tile(x_bpoly[:-1], n_d2 - 1)
+        return pos_ret
+    
+    def __generate_tiledstep_multid2(self, pos, n_d2):
+        pos_ret = np.tile(pos, n_d2)
         return pos_ret
 
     def __init_positioning(self, initpos, v_max, a_max):
@@ -513,7 +553,7 @@ class GalvoScanDesigner(ScanDesigner):
         # generate five pieces, three before and two after, to be concatenated to the given positions array
         # initial smooth acceleration piece from 0
         pos_pre1 = self.__init_positioning(initpos=np.min(pos), v_max=v_max, a_max=a_max)
-        self._samples_initpos = len(pos_pre1)
+        self._samples_initpos.append(len(pos_pre1))
         # initial settling time before first d2 step
         settlinglen = int(round(self.__settlingtime / self.__timestep))
         pos_pre2 = np.repeat(np.min(pos), settlinglen)  # settling positions
@@ -528,14 +568,14 @@ class GalvoScanDesigner(ScanDesigner):
         pos_halfscand2step =\
             pos[:np.argmin(abs(pos[:np.where(pos == np.max(pos))[0][0]] - pos_fix[2]))]
         self._samples_startacc = len(pos_pre3) - len(pos_halfscand2step)
-        self._samples_finalpos = len(pos_post2)
+        self._samples_finalpos.append(len(pos_post2))
         return pos_ret
 
     def __zero_padding(self, pos, padlen_base):
         """ Pad zeros to the beginning and end of all scanning curves. """
         pos_ret = []  # return array of padded axis signals
         n_axes = len(pos)  # number of axes
-        padlens = [np.array([padlen_base, padlen_base]) for i in range(n_axes)]  # basic padding length added to arrays for all axes
+        padlens = [np.array(padlen_base) for i in range(n_axes)]  # basic padding length added to arrays for all axes
         # calculate padding lengths for all axes
         # get longest axis index
         pos_lens = [len(pos_i) for pos_i in pos]
@@ -549,23 +589,19 @@ class GalvoScanDesigner(ScanDesigner):
         for axis, pos_axis in enumerate(pos):
             pos_temp = np.pad(pos_axis, padlens[axis], 'constant', constant_values=0)
             pos_ret.append(pos_temp)
-        ## get maximum pad length
-        #pad_max = 0
-        #for padlen in padlens:
-        #    if padlen[1] > pad_max:
-        #        pad_max = padlen[1]
         return pos_ret, padlens[0][1]
 
     def __plot_curves(self, plot, signals):
         """ Plot all scan curves, for debugging. """
         if plot:
-            import matplotlib.pyplot as plt
             plt.figure(1)
             plt.clf()
             for i, signal in enumerate(signals):
+                while np.max(signal) > 1:
+                    signal = np.divide(signal, 10)
                 plt.plot(signal - 0.01 * i)
                 target = self.axis_devs_order[i]
-                self._logger.debug(f'Signal length {target}: {len(signal)}')
+                #self._logger.debug(f'Signal length {target}: {len(signal)}')
             plt.show()
 
 # Copyright (C) 2020-2021 ImSwitch developers

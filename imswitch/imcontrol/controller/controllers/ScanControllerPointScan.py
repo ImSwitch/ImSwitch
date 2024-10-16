@@ -166,6 +166,7 @@ class ScanControllerPointScan(SuperScanController):
         self._digitalParameterDict['sequence_time'] = self._widget.getSeqTimePar()
         self._analogParameterDict['sequence_time'] = self._widget.getSeqTimePar()
         self._analogParameterDict['phase_delay'] = self._widget.getPhaseDelayPar()
+        self._analogParameterDict['d3step_delay'] = self._widget.getd3StepDelayPar()
         #self._analogParameterDict['extra_laser_on'] = self._widget.getExtraLaserOnPar()
 
     def updatePixels(self):

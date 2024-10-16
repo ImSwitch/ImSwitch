@@ -48,33 +48,54 @@ class StandaMotor():
             self._device_id = pyximc.lib.open_device(open_name)
             self.set_def_sync_in_settings()
             self.set_def_sync_out_settings()
+            self.set_def_power_settings()
 
     def close(self):
         if self._imported:
             pyximc.lib.close_device(byref(cast(self._device_id, POINTER(c_int))))
 
-    def set_def_sync_in_settings(self):
+    def set_def_sync_in_settings(self, rel_shift_deg=0, enabled=False):
+        if enabled:
+            enabled = 1
+        else:
+            enabled = 0
+        pos_steps, pos_usteps = self.dist_translate(rel_shift_deg)
         x_sync_in_settings = pyximc.sync_in_settings_t()
-        x_sync_in_settings.Position = int(20*self._steps_per_turn/360)
-        x_sync_in_settings.Speed = 1000
-        x_sync_in_settings.SyncInFlags = 1  # (0x01 (enabled) + 0x02 (trigger on falling edge) + 0x04 (go to position, not relative shift))
+        x_sync_in_settings.Position = pos_steps
+        x_sync_in_settings.uPosition = pos_usteps
+        x_sync_in_settings.Speed = 2000
+        x_sync_in_settings.SyncInFlags = enabled  # (0x01 (enabled) + 0x02 (trigger on falling edge) + 0x04 (go to position, not relative shift))
         _ = pyximc.lib.set_sync_in_settings(self._device_id, x_sync_in_settings)
 
-    def set_sync_in_settings(self, abs_pos_deg):
+    def set_sync_in_settings(self, abs_pos_deg, rel_shift=True, enabled=True):
+        if rel_shift:
+            rel_shift = 0
+        else:
+            rel_shift = 4
+        if enabled:
+            enabled = 1
+        else:
+            enabled = 0
         pos_steps, pos_usteps = self.dist_translate(abs_pos_deg)
         x_sync_in_settings = pyximc.sync_in_settings_t()
         x_sync_in_settings.Position = pos_steps
         x_sync_in_settings.uPosition = pos_usteps
-        x_sync_in_settings.Speed = 1000
+        x_sync_in_settings.Speed = 2000
         x_sync_in_settings.ClutterTime = 1
-        x_sync_in_settings.SyncInFlags = 5  # (0x01 (enabled) + 0x04 (go to position, not relative shift))
+        x_sync_in_settings.SyncInFlags = enabled + rel_shift  # (0x01 (enabled) + 0x04 (True: go to position, False: relative shift))
         _ = pyximc.lib.set_sync_in_settings(self._device_id, x_sync_in_settings)
 
     def set_def_sync_out_settings(self):
         x_sync_out_settings = pyximc.sync_out_settings_t()
         x_sync_out_settings.SyncOutPulseSteps = 100  # (0x01 (enabled))
-        x_sync_out_settings.SyncOutFlags = 17  # (0x01 (enabled) + 0x10 (on motion start) (+ 0x20 (on motion stop)))
+        x_sync_out_settings.SyncOutFlags = 0  # (0x01 (enabled) + 0x10 (on motion start) (+ 0x20 (on motion stop)))
         _ = pyximc.lib.set_sync_out_settings(self._device_id, x_sync_out_settings)
+
+    def set_def_power_settings(self):
+        power_settings = pyximc.power_settings_t()
+        power_settings.CurrentSetTime = 300
+        power_settings.PowerFlags = 4  # (0x01 (power reduction enabled) + 0x02 (power off enabled) + 0x04 (power smooth current))
+        _ = pyximc.lib.set_power_settings(self._device_id, power_settings)
 
     #def set_sync_out_settings(self):
     #    x_sync_out_settings = pyximc.sync_out_settings_t()
@@ -172,7 +193,7 @@ class StandaMotor():
             self.__logger.warning('pyximc library import failed, check lib location in setup json file.')
         except OSError as err:
             self._imported = False
-            self.__logger.error(err.errno, err.filename, err.strerror, err.winerror) # Allows you to display detailed information by mistake.
+            self.__logger.error(err.errno, err.filename, err.strerror, err.winerror)
 
 
 class MockStandaMotor():

@@ -18,8 +18,8 @@ class StandaRotatorManager(RotatorManager):
         self._microsteps_per_step = rotatorInfo.managerProperties['microstepsPerStep']
 
         self._motor = self._getMotorObj(self._device_id, self._lib_loc, self._steps_per_turn, self._microsteps_per_step)
-        self._position = self._motor.get_pos()
-        #self.get_info()
+        
+        self.get_pos()
 
     def get_info(self):
         info = self._motor.test_info()
@@ -30,17 +30,20 @@ class StandaRotatorManager(RotatorManager):
         """ Return the position as a float. """
         return self._position
 
+    def get_pos(self):
+        self._position = self._motor.get_pos()
+
     def move_rel(self, move_dist):
         self._motor.moverel(move_dist)
-        self._position = self._motor.get_pos()
+        self.get_pos()
 
     def move_abs(self, move_pos):
         self._motor.moveabs(move_pos)
-        self._position = self._motor.get_pos()
+        self.get_pos()
 
     def set_zero_pos(self):
         self._motor.set_zero_pos()
-        self._position = self._motor.get_pos()
+        self.get_pos()
 
     def set_rot_speed(self, speed):
         self._motor.set_rot_speed(speed)
@@ -51,8 +54,8 @@ class StandaRotatorManager(RotatorManager):
     def stop_cont_rot(self):
         self._motor.stop_cont_rot()
 
-    def set_sync_in_pos(self, abs_pos_deg):
-        self._motor.set_sync_in_settings(abs_pos_deg)
+    def set_sync_in_set(self, abs_pos_deg, rel_shift, enabled):
+        self._motor.set_sync_in_settings(abs_pos_deg, rel_shift, enabled)
 
     def _getMotorObj(self, device_id, lib_loc, steps_per_turn, microsteps_per_step):
         try:

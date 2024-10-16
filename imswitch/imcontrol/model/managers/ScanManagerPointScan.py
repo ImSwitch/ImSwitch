@@ -27,6 +27,7 @@ class ScanManagerPointScan(SuperScanManager):
                 ' scan.'
             )
             return
+        print(TTLParameters)
         TTLCycleSignalsDict = self.getTTLCycleSignalsDict(TTLParameters, scanInfoDict)
 
         return (

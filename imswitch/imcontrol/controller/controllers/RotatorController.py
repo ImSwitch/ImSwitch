@@ -25,10 +25,11 @@ class RotatorController(ImConWidgetController):
 
         # Connect commChannel signals
         self._commChannel.sigUpdateRotatorPosition.connect(lambda name: self.updatePosition(name))
-        self._commChannel.sigSetSyncInMovementSettings.connect(lambda name, pos: self.setSyncInMovement(name, pos))
+        self._commChannel.sigSetSyncInMovementSettings.connect(lambda name, pos, rel_shift, enabled: self.setSyncInMovement(name, pos, rel_shift, enabled))
 
         # Update current position in GUI
-        self.updatePosition(name)
+        for name, _ in self._master.rotatorsManager:
+            self.updatePosition(name)
 
     def closeEvent(self):
         pass
@@ -61,8 +62,8 @@ class RotatorController(ImConWidgetController):
         pos = self._master.rotatorsManager[name].position()
         self._widget.updatePosition(name, pos)
 
-    def setSyncInMovement(self, name, pos):
-        self._master.rotatorsManager[name].set_sync_in_pos(pos)
+    def setSyncInMovement(self, name, pos, rel_shift, enabled):
+        self._master.rotatorsManager[name].set_sync_in_set(pos, rel_shift, enabled)
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

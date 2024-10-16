@@ -16,7 +16,7 @@ class ImConMainView(QtWidgets.QMainWindow):
 
     def __init__(self, options, viewSetupInfo, *args, **kwargs):
         self.__logger = initLogger(self)
-        self.__logger.debug('Initializing')
+        self.__logger.info('Initializing')
         
         super().__init__(*args, **kwargs)
 

@@ -89,12 +89,18 @@ class HDF5Storer(Storer):
                 dataset.attrs['element_size_um'] = \
                     self.detectorManager[channel].pixelSizeUm
 
-                if image.ndim == 3:
-                    dataset[:, ...] = np.moveaxis(image, [0, 1, 2], [2, 1, 0])
-                elif image.ndim == 4:
-                    dataset[:, ...] = np.moveaxis(image, [0, 1, 2, 3], [3, 2, 1, 0])
+                # REMOVE THE FOLLOWING?
+                if False:
+                    if image.ndim == 3:
+                        dataset[:, ...] = np.moveaxis(image, [0, 1, 2], [2, 1, 0])
+                    elif image.ndim == 4:
+                        dataset[:, ...] = np.moveaxis(image, [0, 1, 2, 3], [3, 2, 1, 0])
+                    elif image.ndim == 5:
+                        dataset[:, ...] = np.moveaxis(image, [0, 1, 2, 3, 4], [4, 3, 2, 1, 0])
+                    else:
+                        dataset[:, ...] = np.moveaxis(image, 0, -1)
                 else:
-                    dataset[:, ...] = np.moveaxis(image, 0, -1)
+                    dataset[:, ...] = np.transpose(image)
             
                 file.close()
                 logger.info(f"Saved image to hdf5 file {path}")

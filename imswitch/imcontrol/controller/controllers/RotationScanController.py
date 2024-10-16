@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import scipy.interpolate as interp
 
+from imswitch.imcommon.framework import Thread, Worker
 from imswitch.imcommon.model import dirtools, initLogger
 from ..basecontrollers import ImConWidgetController
 
@@ -30,17 +31,26 @@ class RotationScanController(ImConWidgetController):
 
         # Create signal function trigger handles
         self.__toggleExperimentHandle = lambda: self.toggleExperiment(True)
-        self.__prepRotationHandle = lambda: self.prepRotationStep()
-
-        # Initiate parameters used during the experiment
-        self.__currentStep = 0
 
         # Initiate parameters used during calibration
-        self.__calibrationPolSteps = np.arange(0,181,15).tolist()
+        self.__calibration_range = 180
+        self.__calibrationPolSteps = np.arange(0,self.__calibration_range+1,20).tolist()
         self.__calibration_filename = 'polarization_calibration.json'
         self.__calibration_dir = os.path.join(dirtools.UserFileDirs.Root, 'imcontrol_rotscan')
         if not os.path.exists(self.__calibration_dir):
             os.makedirs(self.__calibration_dir)
+
+        # initiate thread and worker
+        self._rotationScanWorker = None
+        self._rotationScanThread = None
+
+    def __del__(self):
+        if self._rotationScanThread is not None:
+            self._rotationScanThread.quit()
+            self._rotationScanThread.wait()
+            self._rotationScanWorker.close()
+        if hasattr(super(), '__del__'):
+            super().__del__()
 
     def closeEvent(self):
         pass
@@ -51,9 +61,12 @@ class RotationScanController(ImConWidgetController):
             # initiate experiment
             self.initiateExperiment()
         else:
-            # finalize experiment, disconnect signals
+            # finalize experiment, disconnect signals, shut down scan worker
             self._commChannel.sigScanDone.disconnect(self.__toggleExperimentHandle)
-            self._commChannel.sigNewFrame.disconnect(self.__prepRotationHandle)
+            try:
+                self.closeExperiment()
+            except Exception:
+                pass
 
     def enableWidgetInterface(self, enableBool):
         self._widget.enableInterface(enableBool)
@@ -63,64 +76,64 @@ class RotationScanController(ImConWidgetController):
             text = 'Inactivate'
         self._widget.setActivateButtonText(text)
 
+    def _createRotationScanWorker(self):
+        self._rotationScanWorker = RotationScanWorker(self, self._rotators, self.__rot_step_pos, self.__num_rot_steps)
+        self._rotationScanThread = Thread()
+        self._rotationScanWorker.moveToThread(self._rotationScanThread)
+
+    def closeExperiment(self):
+        self._rotationScanThread.quit()
+        self._rotationScanThread.wait()
+        self._rotationScanWorker.close()
+
     def initiateExperiment(self):
         """ Initiate experiment to be run when scanning steps are taken. """
+        self.getRotators()
+        self.getRotationSteps()
+        self._createRotationScanWorker()
+        self._commChannel.sigScanDone.connect(self.__toggleExperimentHandle)
+
+    def getRotators(self):
+        """ Get a list of all rotators part of the polarization rotation experiment. """
+        self._rotators = self._master.rotatorsManager.getAllDeviceNames()
+
+    def getRotationSteps(self):
         self.__pol_rot_params = self.getPolRotationParams()
         pol_steps = np.arange(*self.__pol_rot_params)
         self.__rot_step_pos = self.getRotationStepPositions(pol_steps)
-        self.__logger.debug(self.__rot_step_pos)
-        self.getRotators()
-        self.__currentStep = 0
-        self.prepRotationStep()
-        #TODO: After a step has been taken, prep the controller with the next step by calling self.prepRotationStep() like in the initiation here. For this to work, I need to know when a step has been taken, how do I find out???
-        # Can I continuously check the position of the rotators in a separate thread and give a signal whenever they were updated? Use sync output of rotator controller - it is activated, but how do I read it, with a NiDAQ DI reading task?
-        # For now, do this with a frame-finished signal from the APDManager, but this is very non general
-        self._commChannel.sigScanDone.connect(self.__toggleExperimentHandle)
-        self._commChannel.sigNewFrame.connect(self.__prepRotationHandle)  # TODO: this will only work for one APDdetector, and nothing else - if no APD it will never trigger, if multiple APD it will trigger multiple times
+        self.__num_rot_steps = len(self.__rot_step_pos[0])
+        self.__logger.info(self.__rot_step_pos)
 
     def getPolRotationParams(self):
         """ Get the total polarization rotation (start, stop, step). """
         return (self._widget.getRotationStart(), self._widget.getRotationStop(), self._widget.getRotationStep())
 
     def getRotationStepPositions(self, pol_steps):
-        """ Get the interpolated rotator step positions for each rotator in the experiment, as a list of lists. """
+        """ Get the interpolated rotator step positions for each rotator in the experiment, as a list of lists.
+        Prep polarization rotation steps by mod (calibration range), to move all values to the calibrated range (normally 180 deg). """
+        pol_steps = np.mod(pol_steps, self.__calibration_range)
         rotator_step_pos = []
         for spline in self.__interp_splines:
             rotator_step_pos.append(interp.splev(pol_steps, spline))
         return rotator_step_pos
-
-    def getRotators(self):
-        """ Get a list of all rotators part of the polarization rotation experiment. """
-        self.__rotators = self._master.rotatorsManager.getAllDeviceNames()
-
-    def prepRotationStep(self):
-        """ Called when a polarization rotation step needs to be prepped, i.e. just after one step has been taken. """
-        for idx, rotator in enumerate(self.__rotators):
-            self.__logger.debug([self.__currentStep, rotator, self.__rot_step_pos[idx][self.__currentStep]])
-            self.moveAbsRotator(rotator, self.__rot_step_pos[idx][self.__currentStep])
-            #self._commChannel.sigSetSyncInMovementSettings.emit(rotator, self.__rot_step_pos[idx][self.__currentStep+1])
-            self._commChannel.sigUpdateRotatorPosition.emit(rotator)
-        if self.__currentStep > len(self.__rot_step_pos[0]) - 2:
-            self.__currentStep = 0
-        else:
-            self.__currentStep += 1
 
     def calibrateRotationsInitiate(self):
         """ Reset and initiate calibration of polarizer rotations. """
         self.__rotCalPos = []
         self.calibrationStep(step=0)
 
-    def calibrateRotationsFinish(self):
+    def calibrateRotationsFinish(self, load_data=False):
         """ Finish calibration by interpolating/fitting the stored positions across the range of polarization rotations. """
         self.__interp_splines = []
-        self.__rotCalPos = np.swapaxes(self.__rotCalPos,0,1).tolist()
+        if not load_data:
+            self.__rotCalPos = np.swapaxes(self.__rotCalPos,0,1).tolist()
         for rotator, positions in enumerate(self.__rotCalPos):
             # get spline interpolation of calibrated positions
             self.__interp_splines.append(interp.splrep(self.__calibrationPolSteps, positions))
             # evaluate and plot spline interpolations
             pol_eval = np.arange(0, self.__calibrationPolSteps[-1], 1)
             pos_eval = interp.splev(pol_eval, self.__interp_splines[rotator])
-            plt.figure(rotator)
+            plt.figure(f"Rotator{rotator}")
             plt.scatter(self.__calibrationPolSteps, positions)
             plt.plot(pol_eval, pos_eval)
             plt.show()
@@ -147,8 +160,9 @@ class RotationScanController(ImConWidgetController):
                 rotator_positions.append(item[1])
         self.__calibrationPolSteps = polarization_steps
         self.__rotCalPos = rotator_positions
-        self.__logger.debug(self.__calibrationPolSteps)
-        self.__logger.debug(self.__rotCalPos)
+        self.__logger.info(self.__calibrationPolSteps)
+        self.__logger.info(self.__rotCalPos)
+        self.calibrateRotationsFinish(load_data=True)
 
     def calibrationStep(self, step):
         """ Takes a step of the calibration routine, saving set rotations and preparing for the next step. """
@@ -183,13 +197,53 @@ class RotationScanController(ImConWidgetController):
             self._widget.sigCalibration.connect(lambda: self.calibrateRotationsInitiate())
             self._widget.setCalibrationButtonText('Calibrate polarization')
 
+    def setCalibrationPrompt(self, text):
+        """ Set calibration prompt text in the widget, during calibration. """
+        self._widget.setCalibrationPrompt(text)
+
+
+class RotationScanWorker(Worker):
+    """ Rotation scan worker, to take care of the rotation step preparations in a separate thread. """
+    def __init__(self, controller, rotators, rotsteps, numrotsteps):
+        super().__init__()
+        self._controller = controller
+        self._rotators = rotators
+        self._master = controller._master
+        self._commChannel = controller._commChannel
+        self.__rot_step_pos = rotsteps
+        self.__num_rot_steps = numrotsteps
+
+        # connect new frame signal to prep next step
+        self.__prepRotationHandle = lambda: self.prepRotationStep()
+        #TODO: After step taken, prep controller with next step by calling self.prepRotationStep(). For this, need to know when step taken.
+        # 1) Continuously check position of rotators in a separate thread and emit signal whenever updated?
+        # 2) Use sync output of rotator controller - how do I read it, with a NiDAQ DI reading task?
+        # 3) For now, do with a frame-finished signal from APDManager - non-general and APDManager specific
+        self._commChannel.sigNewFrame.connect(self.__prepRotationHandle)  # TODO: this will only work for one APDdetector, and nothing else - if no APD it will never trigger, if multiple APD it will trigger multiple times
+
+        # prepare first rotation step
+        self.__currentStep = 0
+        self.prepRotationStep(initial=True)
+
+    def prepRotationStep(self, initial=False):
+        """ Called when a polarization rotation step needs to be prepped, i.e. just after one step has been taken. """
+        for idx, rotator in enumerate(self._rotators):
+            #self.__logger.debug([self.__currentStep, rotator, self.__rot_step_pos[idx][self.__currentStep]])
+            if initial:
+                self.moveAbsRotator(rotator, self.__rot_step_pos[idx][self.__currentStep])
+            self._commChannel.sigSetSyncInMovementSettings.emit(rotator, self.__rot_step_pos[idx][np.mod(self.__currentStep+1,self.__num_rot_steps)], False, True)  # bools: relative shift/absolute position, enabled/not enabled
+            self._commChannel.sigUpdateRotatorPosition.emit(rotator)
+        self.__currentStep += 1
+
     def moveAbsRotator(self, name, pos):
         """ Move a specific rotator to a certain position. """
         self._master.rotatorsManager[name].move_abs(pos)
 
-    def setCalibrationPrompt(self, text):
-        """ Set calibration prompt text in the widget, during calibration. """
-        self._widget.setCalibrationPrompt(text)
+    def close(self):
+        """ Close worker in thread when scan has finished. """
+        for rotator in self._rotators:
+            self._commChannel.sigSetSyncInMovementSettings.emit(rotator, 0, False, False) 
+        self._commChannel.sigNewFrame.disconnect(self.__prepRotationHandle)
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

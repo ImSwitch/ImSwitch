@@ -203,8 +203,18 @@ class GalvoScanDesigner(ScanDesigner):
         """ Calculate settling time based on first two axis parameters.
         TODO: fix this to include all axes, as smooth axes can be in other positions?
         """
+        print(f"axis_length: {axis_length}")
+        print(f"axis_centerpos: {axis_centerpos}")
+        print(f"vel_max: {vel_max}")
+        print(f"acc_max: {acc_max}")
+
+        # Check if the lists have at least two elements
+        if len(axis_length) < 2 or len(axis_centerpos) < 2 or len(vel_max) < 2:
+            raise ValueError("axis_length, axis_centerpos, and vel_max must have at least two elements")
+
         t_initpos_vc_d2 = abs(axis_centerpos[1] - axis_length[1] / 2) / vel_max[1]
         t_initpos_vc_d1 = abs(axis_centerpos[0] - axis_length[0] / 2) / vel_max[0]
+        t_initpos_vc = max(t_initpos_vc_d1, t_initpos_vc_d2)
         t_acc_d2 = vel_max[1] / acc_max[1]
         t_acc_d1 = vel_max[0] / acc_max[0]
         t_initpos_d2 = t_initpos_vc_d2 + 2 * t_acc_d2

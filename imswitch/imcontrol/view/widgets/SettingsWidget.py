@@ -89,7 +89,7 @@ class CamParamTree(ParameterTree):
             detectorParamGroups[detectorAction.group]['children'].append(
                 {'name': detectorActionName, 'type': 'action', 'title': detectorActionName}
             )
-
+            
         params += list(detectorParamGroups.values())
 
         self.p = Parameter.create(name='params', type='group', children=params)

@@ -6,6 +6,7 @@ import numpy as np
 import scipy.ndimage as ndi
 import threading
 
+from imswitch.imcommon.framework import Thread
 from imswitch.imcommon.model import initLogger, APIExport
 from ..basecontrollers import ImConWidgetController
 from skimage.filters import gaussian, median

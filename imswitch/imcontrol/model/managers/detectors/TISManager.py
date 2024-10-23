@@ -1,7 +1,10 @@
 import numpy as np
 
 from imswitch.imcommon.model import initLogger
-from .DetectorManager import DetectorManager, DetectorAction, DetectorNumberParameter
+from .DetectorManager import (
+    DetectorManager, DetectorAction,
+    DetectorNumberParameter,
+    ExposureTimeToUs)
 
 
 class TISManager(DetectorManager):
@@ -19,8 +22,9 @@ class TISManager(DetectorManager):
     def __init__(self, detectorInfo, name, **_lowLevelManagers):
         self.__logger = initLogger(self, instanceName=name)
 
-        self._camera = self._getTISObj(detectorInfo.managerProperties['cameraListIndex'])
-        
+        self._camera = self._getTISObj(
+                            detectorInfo.managerProperties['cameraListIndex'])
+
         self._running = False
         self._adjustingParameters = False
 
@@ -34,28 +38,59 @@ class TISManager(DetectorManager):
 
         # Prepare parameters
         parameters = {
-            'exposure': DetectorNumberParameter(group='Misc', value=100, valueUnits='ms',
+            'exposure': DetectorNumberParameter(group='Misc',
+                                                value=100,
+                                                valueUnits='ms',
                                                 editable=True),
-            'gain': DetectorNumberParameter(group='Misc', value=1, valueUnits='arb.u.',
+
+            'gain': DetectorNumberParameter(group='Misc',
+                                            value=1,
+                                            valueUnits='arb.u.',
                                             editable=True),
-            'brightness': DetectorNumberParameter(group='Misc', value=1, valueUnits='arb.u.',
+
+            'brightness': DetectorNumberParameter(group='Misc',
+                                                  value=1,
+                                                  valueUnits='arb.u.',
                                                   editable=True),
         }
 
         # Prepare actions
         actions = {
-            'More properties': DetectorAction(group='Misc',
-                                              func=self._camera.openPropertiesGUI)
+            'More properties': DetectorAction(
+                                    group='Misc',
+                                    func=self._camera.openPropertiesGUI),
         }
 
-        super().__init__(detectorInfo, name, fullShape=fullShape, supportedBinnings=[1],
-                         model=self._camera.model, parameters=parameters, actions=actions, croppable=True)
+        super().__init__(detectorInfo, name, fullShape=fullShape,
+                         supportedBinnings=[1],
+                         model=self._camera.model, parameters=parameters,
+                         actions=actions, croppable=True)
 
     @property
     def scale(self):
-        return [1,1]
+        return [1, 1]
 
-    def getLatestFrame(self):
+    def getExposure(self) -> int:
+        """ Get camera exposure time in microseconds. This
+        manager uses milliseconds as the unit for exposure time.
+
+        Returns:
+            int: exposure time in microseconds
+        """
+        exposure = self._camera.getPropertyValue('exposure')
+        return ExposureTimeToUs.convert(exposure, 'ms')
+
+    def getLatestFrame(self, is_save=False):
+        """
+        Retrieves the latest frame from the camera.
+
+        Args:
+            is_save (bool, optional): Indicates whether to save the frame.
+                Defaults to False.
+
+        Returns:
+            numpy.ndarray: The latest frame captured by the camera.
+        """
         if not self._adjustingParameters:
             self.__image = self._camera.grabFrame()
         return self.__image
@@ -64,8 +99,7 @@ class TISManager(DetectorManager):
         """Sets a parameter value and returns the value.
         If the parameter doesn't exist, i.e. the parameters field doesn't
         contain a key with the specified parameter name, an error will be
-        raised."""        
-
+        raised."""
         super().setParameter(name, value)
 
         if name not in self._DetectorManager__parameters:
@@ -144,15 +178,17 @@ class TISManager(DetectorManager):
             from imswitch.imcontrol.model.interfaces.tiscamera import CameraTIS
             camera = CameraTIS(cameraId)
         except Exception:
-            self.__logger.warning(f'Failed to initialize TIS camera {cameraId}, loading mocker')
+            self.__logger.warning(
+                f'Failed to initialize TIS camera {cameraId}, loading mocker')
             from imswitch.imcontrol.model.interfaces.tiscamera_mock import MockCameraTIS
             camera = MockCameraTIS()
 
         self.__logger.info(f'Initialized camera, model: {camera.model}')
         return camera
-    
+
     def close(self):
-        self.__logger.info(f'Shutting down camera, model: {self._camera.model}')
+        self.__logger.info(
+                f'Shutting down camera, model: {self._camera.model}')
         pass
 
 

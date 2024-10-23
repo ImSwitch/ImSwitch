@@ -1,9 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import ctypes.util
 from ctypes import *
-import os
 import sys
 
 from . import IC_Structures as structs
@@ -16,11 +14,15 @@ class IC_GrabberDLL:
     
     GrabberHandlePtr = POINTER(structs.GrabberHandle)
     
-    # win32
+    # win64
     if sys.maxsize > 2**32:
-        _ic_grabber_dll = windll.LoadLibrary(ctypes.util.find_library('tisgrabber_x64.dll'))
+        # _ic_grabber_dll = windll.LoadLibrary(ctypes.util.find_library('tisgrabber_x64.dll'))
+        _ic_grabber_dll = cdll.LoadLibrary("tisgrabber_x64.dll")
+
+    # win32
     else:
-        _ic_grabber_dll = windll.LoadLibrary(ctypes.util.find_library('tisgrabber.dll'))
+        # windll.LoadLibrary(ctypes.util.find_library('tisgrabber.dll'))  # win 32 library
+        _ic_grabber_dll = cdll.LoadLibrary("tisgrabber.dll")
 
 
     #//////////////////////////////////////////////////////////////////////////
@@ -1024,7 +1026,10 @@ class IC_GrabberDLL:
     #    @endcode
     #*/
     #HGRABBER AC IC_ShowDeviceSelectionDialog( HGRABBER hGrabber ); ///<Show the device selection dialog.
-    #
+    show_dev_selection_dialog = _ic_grabber_dll.IC_ShowDeviceSelectionDialog
+    show_dev_selection_dialog.restype = GrabberHandlePtr
+    show_dev_selection_dialog.argtypes = (GrabberHandlePtr,)
+
     #//////////////////////////////////////////////////////////////////////////
     #/*!    
     #    Return whether the current video capture device supports an external 

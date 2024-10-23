@@ -12,6 +12,8 @@ class DetectorsManager(MultiManager, SignalInterface):
 
     sigAcquisitionStarted = Signal()
     sigAcquisitionStopped = Signal()
+    sigLiveStarted = Signal()
+    sigLiveStopped = Signal()
     sigDetectorSwitched = Signal(str, str)  # (newDetectorName, oldDetectorName)
     sigImageUpdated = Signal(
         str, np.ndarray, bool, list, bool
@@ -124,11 +126,13 @@ class DetectorsManager(MultiManager, SignalInterface):
 
         # Do actual enabling
         if enableAcq:
-            self.execOnAll(lambda c: c.startAcquisition(), condition=lambda c: c.forAcquisition)
+            self.execOnAll(lambda c: c.startAcquisition(),
+                           condition=lambda c: c.forAcquisition)
             self.sigAcquisitionStarted.emit()
         if enableLV:
             sleep(0.3)
             self._thread.start()
+            self.sigLiveStarted.emit()
 
         return handle
 
@@ -159,6 +163,7 @@ class DetectorsManager(MultiManager, SignalInterface):
         if disableLV:
             self._thread.quit()
             self._thread.wait()
+            self.sigLiveStopped.emit()
         if disableAcq:
             self.execOnAll(lambda c: c.stopAcquisition(), condition=lambda c: c.forAcquisition)
             self.sigAcquisitionStopped.emit()

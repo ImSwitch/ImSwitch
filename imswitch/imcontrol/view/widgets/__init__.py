@@ -2,6 +2,7 @@ from imswitch import IS_HEADLESS
 import warnings
 
 if not IS_HEADLESS:
+    from .AlignOptWidget import AlignOptWidget
     from .AlignAverageWidget import AlignAverageWidget
     from .AlignmentLineWidget import AlignmentLineWidget
     from .AlignXYWidget import AlignXYWidget

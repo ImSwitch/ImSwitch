@@ -1,8 +1,6 @@
 import numpy as np
 from scipy.stats import multivariate_normal
 
-import time
-
 
 class MockCameraTIS:
     def __init__(self, isRGB=False, mocktype = None, mockstackpath=None):
@@ -29,6 +27,7 @@ class MockCameraTIS:
         self.gain = 1
         self.brightness = 1
         self.model = 'mock'
+        self.name = 'mock'
         self.SensorHeight = 500
         self.SensorWidth = 500
         self.shape = (self.SensorHeight,self.SensorWidth)
@@ -132,7 +131,8 @@ class MockCameraTIS:
             img = np.zeros(imgsize)
             # add a random gaussian peak sometimes
             if np.random.rand() > 0.8:
-                x, y = np.meshgrid(np.linspace(0,imgsize[1],imgsize[1]), np.linspace(0,imgsize[0],imgsize[0]))
+                x, y = np.meshgrid(np.linspace(0, imgsize[1], imgsize[1]),
+                                   np.linspace(0, imgsize[0], imgsize[0]))
                 pos = np.dstack((x, y))
                 xc = (np.random.rand()*2-1)*imgsize[0]/2 + imgsize[0]/2
                 yc = (np.random.rand()*2-1)*imgsize[1]/2 + imgsize[1]/2
@@ -168,28 +168,25 @@ class MockCameraTIS:
         if returnFrameNumber:
             return self.grabFrame(), self.iFrame
         return self.grabFrame()
-    
+
     def getLastChunk(self):
-        return np.expand_dims(self.grabFrame(),0)
-    
+        return np.expand_dims(self.grabFrame(), 0)
+
     def setPropertyValue(self, property_name, property_value):
         return property_value
 
     def getPropertyValue(self, property_name):
         try:
             return self.properties[property_name]
-        except Exception as e:
+        except Exception:
             return 0
 
     def openPropertiesGUI(self):
         pass
-    
-    def close(self):
-        pass
 
     def close(self):
         pass
-    
+
     def flushBuffer(self):
         pass 
     

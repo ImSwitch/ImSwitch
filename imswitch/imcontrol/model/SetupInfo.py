@@ -45,6 +45,9 @@ class DetectorInfo(DeviceInfo):
     forFocusLock: bool = False
     """ Whether the detector is used for focus lock. """
 
+    forOpt: bool = False
+    """ Whether the detector is used for OPT. """
+
 
 @dataclass(frozen=True)
 class LaserInfo(DeviceInfo):
@@ -419,6 +422,15 @@ class EtSTEDInfo:
 
 
 @dataclass(frozen=True)
+class OptInfo:
+    detectors: List[str]
+    """ Name of the detector to use. """
+
+    rotator: str
+    """ Name of the laser to use. """
+
+
+@dataclass(frozen=True)
 class MicroscopeStandInfo:
     managerName: str
     """ Name of the manager to use. """
@@ -556,6 +568,9 @@ class SetupInfo:
 
     etSTED: Optional[EtSTEDInfo] = field(default_factory=lambda: None)
     """ EtSTED settings. Required to be defined to use etSTED functionality. """
+
+    optInfo: Optional[OptInfo] = field(default_factory=lambda: None)
+    """ OPT settings. Required to be defined to use OPT functionality. """
 
     rotators: Optional[Dict[str, DeviceInfo]] = field(default_factory=lambda: None)
     """ Standa motorized rotator mounts settings. Required to be defined to use rotator functionality. """

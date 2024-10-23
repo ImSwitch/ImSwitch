@@ -99,6 +99,8 @@ class ImConMainView(QMainWindow):
             'StandaPositioner': _DockInfo(name='StandaPositioner', yPosition=1),
             'StandaStage': _DockInfo(name='StandaStage', yPosition=1),
             'SLM': _DockInfo(name='SLM', yPosition=2),
+            'Opt': _DockInfo(name='OPT Scan', yPosition=2),
+            'AlignOpt': _DockInfo(name='OPT Alignment', yPosition=2),
             'Scan': _DockInfo(name='Scan', yPosition=2),
             'RotationScan': _DockInfo(name='RotationScan', yPosition=2),
             'BeadRec': _DockInfo(name='Bead Rec', yPosition=3),

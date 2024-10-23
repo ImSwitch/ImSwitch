@@ -1,5 +1,6 @@
 from .AlignAverageController import AlignAverageController
 from .AlignmentLineController import AlignmentLineController
+from .AlignOptController import AlignOptController
 from .AlignXYController import AlignXYController
 from .AufofocusController import AutofocusController
 from .BeadRecController import BeadRecController
@@ -20,6 +21,7 @@ from .FOVLockController import FOVLockController
 from .ImageController import ImageController
 from .LaserController import LaserController
 from .MotCorrController import MotCorrController
+from .OptController import OptController
 from .LEDController import LEDController
 from .PositionerController import PositionerController
 from .StandaPositionerController import StandaPositionerController

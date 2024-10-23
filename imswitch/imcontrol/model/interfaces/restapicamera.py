@@ -17,11 +17,9 @@ class RestPiCamera():
 
         self.SensorWidth, self.SensorHeight = self.get_resolution_preview()
 
-
-
     def isConnected(self):
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        if len(self.host.split("http://"))>0:
+        if len(self.host.split("http://")) > 0:
             host = self.host.split("http://")[-1]
         else:
             host = self.host
@@ -32,10 +30,9 @@ class RestPiCamera():
             s.shutdown(2)
             is_up = True
         except:
-            pass 
+            pass
         return is_up
 
-        
     def get_json(self, path, payload=None):
         """Perform an HTTP GET request and return the JSON response"""
         if self.is_connected:

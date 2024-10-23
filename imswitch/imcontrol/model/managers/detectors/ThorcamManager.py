@@ -1,18 +1,23 @@
-import numpy as np
-
 from imswitch.imcommon.model import initLogger
-from .DetectorManager import DetectorManager, DetectorAction, DetectorNumberParameter, DetectorListParameter
+from .DetectorManager import (
+    DetectorManager,
+    DetectorAction,
+    DetectorNumberParameter,
+    ExposureTimeToUs,
+)
 
 
+# TODO: DP 04/2024: unit approach to unit of exposure time is missing,
+# what if camera accepts us? everything here assumes ms
 class ThorcamManager(DetectorManager):
     """ DetectorManager that deals with TheImagingSource cameras and the
     parameters for frame extraction from them.
 
     Manager properties:
 
-    - ``cameraListIndex`` -- the camera's index in the Allied Vision camera list (list
-      indexing starts at 0); set this string to an invalid value, e.g. the
-      string "mock" to load a mocker
+    - ``cameraListIndex`` -- the camera's index in the Allied Vision
+        camera list (list indexing starts at 0); set this string to
+        an invalid value, e.g. the string "mock" to load a mocker
     - ``av`` -- dictionary of Allied Vision camera properties
     """
 
@@ -20,27 +25,33 @@ class ThorcamManager(DetectorManager):
         self.__logger = initLogger(self, instanceName=name)
 
         cameraId = detectorInfo.managerProperties['cameraListIndex']
-        self._camera = self._getGXObj(cameraId ) 
+        self._camera = self._getGXObj(cameraId) 
         
         for propertyName, propertyValue in detectorInfo.managerProperties['thorcam'].items():
             self._camera.setPropertyValue(propertyName, propertyValue)
 
         fullShape = (self._camera.SensorWidth, 
                      self._camera.SensorHeight)
-        
+
         model = self._camera.model
         self._running = False
         self._adjustingParameters = False
 
         # Prepare parameters
         parameters = {
-            'exposure': DetectorNumberParameter(group='Misc', value=100, valueUnits='ms',
+            'exposure': DetectorNumberParameter(group='Misc',
+                                                value=100,
+                                                valueUnits='ms',
                                                 editable=True),
-            'image_width': DetectorNumberParameter(group='Misc', value=fullShape[0], valueUnits='arb.u.',
-                        editable=False),
-            'image_height': DetectorNumberParameter(group='Misc', value=fullShape[1], valueUnits='arb.u.',
-                        editable=False)
-            }            
+            'image_width': DetectorNumberParameter(group='Misc',
+                                                   value=fullShape[0],
+                                                   valueUnits='arb.u.',
+                                                   editable=False),
+            'image_height': DetectorNumberParameter(group='Misc',
+                                                    value=fullShape[1],
+                                                    valueUnits='arb.u.',
+                                                    editable=False)
+            }
 
         # Prepare actions
         actions = {
@@ -48,9 +59,20 @@ class ThorcamManager(DetectorManager):
                                               func=self._camera.openPropertiesGUI)
         }
 
-        super().__init__(detectorInfo, name, fullShape=fullShape, supportedBinnings=[1],
-                         model=model, parameters=parameters, actions=actions, croppable=False)
-        
+        super().__init__(detectorInfo, name, fullShape=fullShape,
+                         supportedBinnings=[1], model=model,
+                         parameters=parameters, actions=actions,
+                         croppable=False)
+
+    def getExposure(self) -> int:
+        """ Get camera exposure time in microseconds. This
+        manager uses milliseconds as the unit for exposure time.
+
+        Returns:
+            int: exposure time in microseconds
+        """
+        exposure = self._camera.getPropertyValue('exposure')
+        return ExposureTimeToUs.convert(exposure, 'ms')
 
     def getLatestFrame(self, is_save=False):
         if is_save:
@@ -84,8 +106,6 @@ class ThorcamManager(DetectorManager):
         value = self._camera.getPropertyValue(name)
         return value
 
-
-        
     def getChunk(self):
         try:
             return self._camera.getLastChunk()
@@ -97,13 +117,13 @@ class ThorcamManager(DetectorManager):
 
     def startAcquisition(self):
         pass
-    
+
     def stopAcquisition(self):
         pass
 
     def stopAcquisitionForROIChange(self):
         pass
-    
+
     def finalize(self) -> None:
         super().finalize()
         self.__logger.debug('Safely disconnecting the camera...')
@@ -114,7 +134,7 @@ class ThorcamManager(DetectorManager):
         return [1, 1, 1]
 
     def crop(self, hpos, vpos, hsize, vsize):
-        pass 
+        pass
 
     def _performSafeCameraAction(self, function):
         """ This method is used to change those camera properties that need

@@ -2,7 +2,8 @@ import numpy as np
 
 from imswitch.imcommon.model import initLogger
 from .DetectorManager import (
-    DetectorManager, DetectorNumberParameter, DetectorListParameter
+    DetectorManager, DetectorNumberParameter,
+    DetectorListParameter, ExposureTimeToUs,
 )
 
 
@@ -29,31 +30,45 @@ class PhotometricsManager(DetectorManager):
         self.__acquisition = False
         # Prepare parameters
         parameters = {
-            'Set exposure time': DetectorNumberParameter(group='Timings', value=1,
-                                                         valueUnits='ms', editable=True),
-            'Real exposure time': DetectorNumberParameter(group='Timings', value=0,
-                                                          valueUnits='ms', editable=False),
-            'Readout time': DetectorNumberParameter(group='Timings', value=0,
-                                                    valueUnits='ms', editable=False),
-            'Trigger source': DetectorListParameter(group='Acquisition mode',
-                                                    value='Internal trigger',
-                                                    options=['Internal trigger',
-                                                             'External "start-trigger"',
-                                                             'External "frame-trigger"'],
-                                                    editable=True),
-            'Readout port': DetectorListParameter(group='ports',
-                                                  value='Sensitivity',
-                                                  options=['Sensitivity',
-                                                           'Speed',
-                                                           'Dynamic range'], editable=True),
-            'Camera pixel size': DetectorNumberParameter(group='Miscellaneous', value=0.1,
-                                                         valueUnits='µm', editable=True),
-            'Number of frames per chunk': DetectorNumberParameter(group='Recording', value=self.__chunkFrameSize,
-                                                         valueUnits='frames', editable=True)
+            'Set exposure time': DetectorNumberParameter(
+                group='Timings', value=1,
+                valueUnits='ms', editable=True),
+
+            'Real exposure time': DetectorNumberParameter(
+                group='Timings', value=0,
+                valueUnits='ms', editable=False),
+
+            'Readout time': DetectorNumberParameter(
+                group='Timings', value=0,
+                valueUnits='ms', editable=False),
+
+            'Trigger source': DetectorListParameter(
+                group='Acquisition mode',
+                value='Internal trigger',
+                options=['Internal trigger',
+                         'External "start-trigger"',
+                         'External "frame-trigger"'],
+                editable=True),
+
+            'Readout port': DetectorListParameter(
+                group='ports',
+                value='Sensitivity',
+                options=['Sensitivity',
+                         'Speed',
+                         'Dynamic range'],
+                editable=True),
+
+            'Camera pixel size': DetectorNumberParameter(
+                group='Miscellaneous', value=0.1,
+                valueUnits='µm', editable=True),
+            'Number of frames per chunk': DetectorNumberParameter(
+                group='Recording', value=self.__chunkFrameSize,
+                valueUnits='frames', editable=True)
         }
 
-        super().__init__(detectorInfo, name, fullShape=fullShape, supportedBinnings=[1, 2, 4],
-                         model=model, parameters=parameters, croppable=True)
+        super().__init__(detectorInfo, name, fullShape=fullShape,
+                         supportedBinnings=[1, 2, 4], model=model,
+                         parameters=parameters, croppable=True)
         self._updatePropertiesFromCamera()
 
         super().setParameter('Set exposure time', self.parameters['Real exposure time'].value)
@@ -63,10 +78,21 @@ class PhotometricsManager(DetectorManager):
                 self.__logger.info(f'Updating user-supplied value for {key}')
                 self.setParameter(key, value)
             self._updatePropertiesFromCamera()
+
     @property
     def pixelSizeUm(self):
         umxpx = self.parameters['Camera pixel size'].value
         return [1, umxpx, umxpx]
+
+    def getExposure(self) -> int:
+        """ Get camera exposure time in microseconds. This
+        manager uses milliseconds as the unit for exposure time.
+
+        Returns:
+            int: exposure time in microseconds
+        """
+        exposure = self._camera.exp_time
+        return ExposureTimeToUs.convert(exposure, 'ms')
 
     def getLatestFrame(self):
         try:

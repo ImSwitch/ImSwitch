@@ -7,8 +7,8 @@ import numpy as np
 
 class CommunicationChannel(SignalInterface):
     """
-    Communication Channel is a class that handles the communication between Master Controller
-    and Widgets, or between Widgets.
+    Communication Channel is a class that handles the communication
+    between Master Controller and Widgets, or between Widgets.
     """
 
     sigUpdateImage = Signal(
@@ -19,11 +19,16 @@ class CommunicationChannel(SignalInterface):
 
     sigAcquisitionStopped = Signal()
 
+    sigLiveStarted = Signal()
+
+    sigLiveStopped = Signal()
+
     sigScriptExecutionFinished = Signal()
 
     sigAdjustFrame = Signal(object)  # (shape)
 
-    sigDetectorSwitched = Signal(str, str)  # (newDetectorName, oldDetectorName)
+    # (newDetectorName, oldDetectorName)
+    sigDetectorSwitched = Signal(str, str)
 
     sigGridToggled = Signal(bool)  # (enabled)
 
@@ -41,11 +46,18 @@ class CommunicationChannel(SignalInterface):
 
     sigUpdateRecTime = Signal(int)  # (recTime)
 
+    sigSetSnapVisualization = Signal(bool)  # for handling snap in OPT
+
     sigMemorySnapAvailable = Signal(
         str, np.ndarray, object, bool
     )  # (name, image, filePath, savedToDisk)
 
-    sigRunScan = Signal(bool, bool)  # (recalculateSignals, isNonFinalPartOfSequence)
+    sigMemoryRecordingAvailable = Signal(
+        str, object, object, bool
+    )  # (name, file, filePath, savedToDisk)
+
+    # (recalculateSignals, isNonFinalPartOfSequence)
+    sigRunScan = Signal(bool, bool)
 
     sigAbortScan = Signal()
 
@@ -59,6 +71,8 @@ class CommunicationChannel(SignalInterface):
 
     sigScanEnded = Signal()
 
+    sigRotatorPositionUpdated = Signal(str)  # rotatorName
+
     sigSLMMaskUpdated = Signal(object)  # (mask)
     sigSIMMaskUpdated = Signal(object) # (mask)
 
@@ -66,13 +80,16 @@ class CommunicationChannel(SignalInterface):
 
     sigSnapImg = Signal()
 
-    sigSnapImgPrev = Signal(str, np.ndarray, str)  # (detector, image, nameSuffix)
+    # (detector, image, nameSuffix)
+    sigSnapImgPrev = Signal(str, np.ndarray, str)
 
     sigRequestScanParameters = Signal()
 
-    sigSendScanParameters = Signal(dict, dict, object)  # (analogParams, digitalParams, scannerList)
+    # (analogParams, digitalParams, scannerList)
+    sigSendScanParameters = Signal(dict, dict, object)
 
-    sigSetAxisCenters = Signal(object, object)  # (axisDeviceList, axisCenterList)
+    # (axisDeviceList, axisCenterList)
+    sigSetAxisCenters = Signal(object, object)
 
     sigStartRecordingExternal = Signal()
 
@@ -80,9 +97,9 @@ class CommunicationChannel(SignalInterface):
 
     sigSendScanFreq = Signal(float)  # (scanPeriod)
 
-    #sigRequestScannersInScan = Signal()
+    # sigRequestScannersInScan = Signal()
 
-    #sigSendScannersInScan = Signal(object)  # (scannerList)
+    # sigSendScannersInScan = Signal(object)  # (scannerList)
     sigFlatFieldRunning = Signal(bool)
     sigFlatFieldImage = Signal(object)
     
@@ -104,7 +121,8 @@ class CommunicationChannel(SignalInterface):
     
     sigUpdateMotorPosition = Signal()  # # TODO: Just forcely update the positoin in the GUI
 
-    sigSetSyncInMovementSettings = Signal(str, float)  # (rotatorName, position)
+    # (rotatorName, position)
+    sigSetSyncInMovementSettings = Signal(str, float)
 
     sigNewFrame = Signal()
     
@@ -136,7 +154,8 @@ class CommunicationChannel(SignalInterface):
         self.__sharedAttrs = SharedAttributes()
         self.__logger = initLogger(self)
         self._scriptExecution = False
-        self.__main._moduleCommChannel.sigExecutionFinished.connect(self.executionFinished)
+        self.__main._moduleCommChannel.sigExecutionFinished.connect(
+            self.executionFinished)
         self.output = []
 
         self.streamstarted = False

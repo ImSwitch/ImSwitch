@@ -1,5 +1,4 @@
 from imswitch.imcommon.model import initLogger
-
 from ..basecontrollers import ImConWidgetController
 
 
@@ -15,7 +14,7 @@ class RotatorController(ImConWidgetController):
         for name, _ in self._master.rotatorsManager:
             self._widget.addRotator(name)
 
-        # Connect PositionerWidget signals
+        # Connect Rotator Widget signals
         self._widget.sigMoveRelClicked.connect(lambda name, dir: self.moveRel(name, dir))
         self._widget.sigMoveAbsClicked.connect(lambda name: self.moveAbs(name))
         self._widget.sigSetZeroClicked.connect(lambda name: self.setZeroPos(name))
@@ -24,8 +23,14 @@ class RotatorController(ImConWidgetController):
         self._widget.sigStopContMovClicked.connect(lambda name: self.stopContMov(name))
 
         # Connect commChannel signals
-        self._commChannel.sigUpdateRotatorPosition.connect(lambda name: self.updatePosition(name))
-        self._commChannel.sigSetSyncInMovementSettings.connect(lambda name, pos: self.setSyncInMovement(name, pos))
+        self._commChannel.sigUpdateRotatorPosition.connect(
+                                    lambda name: self.updatePosition(name))
+        self._commChannel.sigSetSyncInMovementSettings.connect(
+                                    lambda name,
+                                    pos: self.setSyncInMovement(name, pos))
+        self._commChannel.sigRotatorPositionUpdated.connect(
+                                    lambda name: self.updatePosition(name)
+        )
 
         # Update current position in GUI
         self.updatePosition(name)
@@ -33,31 +38,98 @@ class RotatorController(ImConWidgetController):
     def closeEvent(self):
         pass
 
-    def moveRel(self, name, dir=1):
-        dist = dir * self._widget.getRelStepSize(name)
-        self._master.rotatorsManager[name].move_rel(dist)
-        self.updatePosition(name)
+    def moveRel(self, name: str, direction: int = 1) -> None:
+        """ Call manager to rotate angle relative to
+        current position.
 
-    def moveAbs(self, name):
+        Args:
+            name (str): Rotator's name.
+            dir (int, optional): clockwise is 1. Defaults to 1.
+
+        Returns:
+            None
+        """
+        # this is in degrees
+        dist = direction * self._widget.getRelStepSize(name)
+        self.__logger.debug(f'angle to rotate: {dist}')
+        self._master.rotatorsManager[name].move_rel(dist)
+
+    def moveAbs(self, name: str):
+        """
+        Moves the specified rotator to the absolute position in degrees
+        specified in the widget field.
+
+        Args:
+            name (str): The name of the rotator.
+
+        Returns:
+            None
+        """
         pos = self._widget.getAbsPos(name)
         self._master.rotatorsManager[name].move_abs(pos)
-        self.updatePosition(name)
 
-    def setZeroPos(self, name):
+    def setZeroPos(self, name: str) -> None:
+        """
+        Set current position as zero position on the rotator
+        and update value in the widget.
+
+        Args:
+            name (str): The name of the rotator.
+
+        Returns:
+            None
+        """
         self._master.rotatorsManager[name].set_zero_pos()
         self.updatePosition(name)
 
-    def setSpeed(self, name):
+    def setSpeed(self, name: str) -> None:
+        """
+        Set the speed of the rotator.
+
+        Args:
+            name (str): The name of the rotator.
+
+        Returns:
+            None
+        """
         speed = self._widget.getSpeed(name)
         self._master.rotatorsManager[name].set_rot_speed(speed)
 
-    def startContMov(self, name):
+    def startContMov(self, name: str) -> None:
+        """
+        Start continuous rotation of the rotator.
+
+        Args:
+            name (str): The name of the rotator.
+
+        Returns:
+            None
+        """
         self._master.rotatorsManager[name].start_cont_rot()
 
-    def stopContMov(self, name):
-        self._master.rotatorsManager[name].stop_cont_rot()
+    def stopContMov(self, name: str) -> None:
+        """
+        Stop continuous rotation of the rotator.
 
-    def updatePosition(self, name):
+        Args:
+            name (str): The name of the rotator.
+
+        Returns:
+            None
+        """
+        self._master.rotatorsManager[name].stop_cont_rot()
+        self.updatePosition(name)
+
+    def updatePosition(self, name: str) -> None:
+        """
+        Update the position of the rotator in the widget.
+
+        Args:
+            name (str): The name of the rotator.
+
+        Returns:
+            None
+        """
         pos = self._master.rotatorsManager[name].position()
         self._widget.updatePosition(name, pos)
 

@@ -1,7 +1,11 @@
-import numpy as np
-
 from imswitch.imcommon.model import initLogger
-from .DetectorManager import DetectorManager, DetectorAction, DetectorNumberParameter, DetectorListParameter
+from .DetectorManager import (
+    DetectorManager,
+    DetectorAction,
+    DetectorNumberParameter,
+    DetectorListParameter,
+    ExposureTimeToUs,
+)
 
 
 class AVManager(DetectorManager):
@@ -33,7 +37,6 @@ class AVManager(DetectorManager):
 
         model = self._camera.model
         self._running = False
-        
 
         for propertyName, propertyValue in detectorInfo.managerProperties['avcam'].items():
             self._camera.setPropertyValue(propertyName, propertyValue)
@@ -69,6 +72,16 @@ class AVManager(DetectorManager):
         super().__init__(detectorInfo, name, fullShape=fullShape, supportedBinnings=[1],
                          model=model, parameters=parameters, actions=actions, croppable=True)
 
+    def getExposure(self) -> int:
+        """ Get camera exposure time in microseconds. This
+        manager uses milliseconds as the unit for exposure time.
+
+        Returns:
+            int: exposure time in microseconds
+        """
+        exposure = self._camera.getPropertyValue('exposure')
+        return ExposureTimeToUs.convert(exposure, 'ms')
+
     def getLatestFrame(self, is_save=False):
         if is_save:
             return self._camera.getLast(is_resize=False)
@@ -76,7 +89,6 @@ class AVManager(DetectorManager):
             # for preview purpose (speed up GUI?)
             return self._camera.getLast(is_resize=True)
             #return self._camera.getLastChunk()
-            
 
     def setParameter(self, name, value):
         """Sets a parameter value and returns the value.
@@ -106,8 +118,8 @@ class AVManager(DetectorManager):
 
     def setBinning(self, binning):
         super().setBinning(binning) 
-        
-    def getChunk(self):        
+
+    def getChunk(self):
         return self._camera.getLastChunk()
 
     def flushBuffers(self):

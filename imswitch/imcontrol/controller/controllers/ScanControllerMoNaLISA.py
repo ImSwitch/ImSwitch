@@ -44,7 +44,6 @@ class ScanControllerMoNaLISA(SuperScanController):
         self._widget.sigSeqTimeParChanged.connect(self.plotSignalGraph)
         self._widget.sigSignalParChanged.connect(self.plotSignalGraph)
 
-
     def getDimsScan(self):
         # TODO: Make sure this works as intended
         self.getParameters()

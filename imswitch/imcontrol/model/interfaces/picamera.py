@@ -3,7 +3,8 @@ import time
 from imswitch.imcommon.model import initLogger
 import socket
 from imswitch.imcontrol.model.interfaces.restapicamera import RestPiCamera
- 
+
+
 class CameraPiCam:
     def __init__(self, host, port):
         super().__init__()
@@ -24,11 +25,10 @@ class CameraPiCam:
 
         self.SensorWidth = 640
         self.SensorHeight = 480
-        #%% starting the camera thread
-        
+        # starting the camera thread
+
         self.camera = RestPiCamera(self.host, self.port)
 
-    
     def start_live(self):
         # most likely the camera already runs
         pass #TODO:         self.camera.start_live()
@@ -38,34 +38,34 @@ class CameraPiCam:
 
     def suspend_live(self):
         pass        #TODO: self.camera.stop_live()
-        
+
     def prepare_live(self):
         pass
 
     def close(self):
         pass #TODO: self.camera.close()
-        
-    def set_exposure_time(self,exposure_time):
+
+    def set_exposure_time(self, exposure_time):
         self.exposure_time = exposure_time
         self.camera.set_exposuretime(self.exposure_time*1000)
 
-    def set_analog_gain(self,analog_gain):
+    def set_analog_gain(self, analog_gain):
         self.analog_gain = analog_gain
         self.camera.set_iso(self.analog_gain)
-        
-    def set_blacklevel(self,blacklevel):
+
+    def set_blacklevel(self, blacklevel):
         pass
 
-    def set_pixel_format(self,format):
+    def set_pixel_format(self, format):
         pass
-        
+
     def getLast(self):
         # get frame and save
         return self.camera.get_preview()
 
     def getLastChunk(self):
         return self.camera.get_snap()
-       
+
     def setROI(self, hpos, vpos, hsize, vsize):
         hsize = max(hsize, 256)  # minimum ROI size
         vsize = max(vsize, 24)  # minimum ROI size
@@ -74,7 +74,6 @@ class CameraPiCam:
         #     f'{self.model}: setROI started with {hsize}x{vsize} at {hpos},{vpos}.'
         # )
         #self.camera.setROI(vpos, hpos, vsize, hsize)
-
 
     def setPropertyValue(self, property_name, property_value):
         # Check if the property exists.

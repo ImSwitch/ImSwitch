@@ -3,12 +3,16 @@ import os
 import time
 from io import BytesIO
 from typing import Dict, Optional, Type, List
-
 import h5py
-import zarr
+try:
+    import zarr
+except:
+    pass
 import numpy as np
 import tifffile as tiff
+import cv2
 
+from imswitch import IS_HEADLESS
 from imswitch.imcommon.framework import Signal, SignalInterface, Thread, Worker
 from imswitch.imcommon.model import initLogger
 from ome_zarr.writer import write_multiscales_metadata
@@ -95,18 +99,55 @@ class HDF5Storer(Storer):
                     dataset[:, ...] = np.moveaxis(image, [0, 1, 2, 3], [3, 2, 1, 0])
                 else:
                     dataset[:, ...] = np.moveaxis(image, 0, -1)
-            
+
                 file.close()
                 logger.info(f"Saved image to hdf5 file {path}")
-        
+
 
 class TiffStorer(Storer):
     """ A storer that stores the images in a series of tiff files """
     def snap(self, images: Dict[str, np.ndarray], attrs: Dict[str, str] = None):
         for channel, image in images.items():
             with AsTemporayFile(f'{self.filepath}_{channel}.tiff') as path:
-                tiff.imwrite(path, image,) # TODO: Parse metadata to tiff meta data
-                logger.info(f"Saved image to tiff file {path}")
+                if hasattr(image, "shape"):
+                    tiff.imwrite(path, image,) # TODO: Parse metadata to tiff meta data
+                    logger.info(f"Saved image to tiff file {path}")
+                else:
+                    logger.error(f"Could not save image to tiff file {path}")
+
+class PNGStorer(Storer):
+    """ A storer that stores the images in a series of png files """
+    def snap(self, images: Dict[str, np.ndarray], attrs: Dict[str, str] = None):
+        for channel, image in images.items():
+            #with AsTemporayFile(f'{self.filepath}_{channel}.png') as path:
+            path = f'{self.filepath}_{channel}.png'
+            # if image is BW only, we have to convert it to RGB
+            if image.dtype == np.float32 or image.dtype == np.float64:
+                image = cv2.convertScaleAbs(image)
+            if image.ndim == 2:
+                image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
+            cv2.imwrite(path, image)
+            del image
+            logger.info(f"Saved image to png file {path}")
+
+
+class JPGStorer(Storer):
+    """ A storer that stores the images in a series of jpg files """
+    def snap(self, images: Dict[str, np.ndarray], attrs: Dict[str, str] = None):
+        for channel, image in images.items():
+            #with AsTemporayFile(f'{self.filepath}_{channel}.jpg') as path:
+            path = f'{self.filepath}_{channel}.jpg'
+            # if image is BW only, we have to convert it to RGB
+            if image.ndim == 2:
+                image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
+            cv2.imwrite(path, image)
+            logger.info(f"Saved image to jpg file {path}")
+class MP4Storer(Storer):
+    """ A storer that writes the frames to an MP4 file """
+
+    def snap(self, images: Dict[str, np.ndarray], attrs: Dict[str, str] = None):
+        # not yet implemented
+        pass
 
 
 class SaveMode(enum.Enum):
@@ -117,15 +158,21 @@ class SaveMode(enum.Enum):
 
 
 class SaveFormat(enum.Enum):
-    HDF5 = 1
-    TIFF = 2
+    TIFF = 1
+    HDF5 = 2
     ZARR = 3
+    MP4 = 4
+    PNG = 5
+    JPG = 6
 
 
 DEFAULT_STORER_MAP: Dict[str, Type[Storer]] = {
     SaveFormat.ZARR: ZarrStorer,
     SaveFormat.HDF5: HDF5Storer,
-    SaveFormat.TIFF: TiffStorer
+    SaveFormat.TIFF: TiffStorer,
+    SaveFormat.MP4: MP4Storer,
+    SaveFormat.PNG: PNGStorer,
+    SaveFormat.JPG: JPGStorer
 }
 
 
@@ -150,10 +197,10 @@ class RecordingManager(SignalInterface):
         self._memRecordings = {}  # { filePath: bytesIO }
         self.__detectorsManager = detectorsManager
         self.__record = False
+        self._thread = Thread()
         self.__recordingWorker = RecordingWorker(self)
-        self.__thread = Thread()
-        self.__recordingWorker.moveToThread(self.__thread)
-        self.__thread.started.connect(self.__recordingWorker.run)
+        self.__recordingWorker.moveToThread(self._thread)
+        self._thread.started.connect(self.__recordingWorker.run)
 
     def __del__(self):
         self.endRecording(emitSignal=False, wait=True)
@@ -192,7 +239,7 @@ class RecordingManager(SignalInterface):
         self.__recordingWorker.singleLapseFile = singleLapseFile
         self.__detectorsManager.execOnAll(lambda c: c.flushBuffers(),
                                           condition=lambda c: c.forAcquisition)
-        self.__thread.start()
+        self._thread.start()
 
     def endRecording(self, emitSignal=True, wait=True):
         """ Ends the current recording. Unless emitSignal is false, the
@@ -205,24 +252,27 @@ class RecordingManager(SignalInterface):
         if self.__record:
             self.__logger.info('Stopping recording')
         self.__record = False
-        self.__thread.quit()
+        self._thread.quit()
         if emitSignal:
             self.sigRecordingEnded.emit()
         if wait:
-            self.__thread.wait()
+            self._thread.wait()
 
-    def snap(self, detectorNames, savename, saveMode, saveFormat, attrs):
+    def snap(self, detectorNames=None, savename="", saveMode=SaveMode.Disk, saveFormat=SaveFormat.TIFF, attrs=None):
         """ Saves an image with the specified detectors to a file
         with the specified name prefix, save mode, file format and attributes
         to save to the capture per detector. """
         acqHandle = self.__detectorsManager.startAcquisition()
+
+        if detectorNames is None:
+            detectorNames = self.__detectorsManager.detectorNames
 
         try:
             images = {}
 
             # Acquire data
             for detectorName in detectorNames:
-                images[detectorName] = self.__detectorsManager[detectorName].getLatestFrame(is_save=True)
+                images[detectorName] = self.__detectorsManager[detectorName].getLatestFrame()
                 image = images[detectorName]
 
             if saveFormat:
@@ -238,10 +288,14 @@ class RecordingManager(SignalInterface):
                         name = os.path.basename(f'{savename}_{channel}')
                         self.sigMemorySnapAvailable.emit(name, image, savename, saveMode == SaveMode.DiskAndRAM)
 
+        except Exception as e:
+            self.__logger.error(f'Failed to snap image: {e}')
+
         finally:
             self.__detectorsManager.stopAcquisition(acqHandle)
             if saveMode == SaveMode.Numpy:
                 return images
+
 
     def snapImagePrev(self, detectorName, savename, saveFormat, image, attrs):
         """ Saves a previously taken image to a file with the specified name prefix,
@@ -272,6 +326,10 @@ class RecordingManager(SignalInterface):
             file.close()
         elif saveFormat == SaveFormat.TIFF:
             tiff.imwrite(filePath, image)
+        elif saveFormat == SaveFormat.PNG:
+            cv2.imwrite(filePath, image)
+        elif saveFormat == SaveFormat.JPG:
+            cv2.imwrite(filePath, image)
         elif saveFormat == SaveFormat.ZARR:
             path = self.getSaveFilePath(f'{savename}.{fileExtension}')
             store = zarr.storage.DirectoryStore(path)
@@ -301,6 +359,8 @@ class RecordingManager(SignalInterface):
             pathWithoutExt, pathExt = os.path.splitext(path)
             newPath = f'{pathWithoutExt}_{numExisting}{pathExt}'
         return newPath
+
+
 
 
 class RecordingWorker(Worker):
@@ -616,7 +676,6 @@ class RecordingWorker(Worker):
         newFrames = np.array(newFrames)
         return newFrames
 
-
 class RecMode(enum.Enum):
     SpecFrames = 1
     SpecTime = 2
@@ -625,7 +684,7 @@ class RecMode(enum.Enum):
     UntilStop = 5
 
 
-# Copyright (C) 2020-2021 ImSwitch developers
+# Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

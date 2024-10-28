@@ -1,8 +1,13 @@
+from imswitch import IS_HEADLESS
 from pyqtgraph.dockarea import Dock, DockArea
 from qtpy import QtCore, QtWidgets
 
 from .ConsoleView import ConsoleView
-from .EditorView import EditorView
+try:
+    from .EditorView import EditorView
+    editorViewAvailable = True
+except:
+    editorViewAvailable = False
 from .FilesView import FilesView
 from .OutputView import OutputView
 
@@ -19,27 +24,31 @@ class ImScrMainView(QtWidgets.QMainWindow):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.setWindowTitle('Scripting')
+        
+        if not editorViewAvailable: 
+            return
 
         # Actions in menubar
-        menuBar = self.menuBar()
-        file = menuBar.addMenu('&File')
+        if not IS_HEADLESS:
+            menuBar = self.menuBar()
+            file = menuBar.addMenu('&File')
 
-        self.newFileAction = QtWidgets.QAction('New…', self)
-        self.newFileAction.setShortcut('Ctrl+N')
-        self.newFileAction.triggered.connect(self.sigNewFile)
-        file.addAction(self.newFileAction)
-        self.openFileAction = QtWidgets.QAction('Open…', self)
-        self.openFileAction.setShortcut('Ctrl+O')
-        self.openFileAction.triggered.connect(self.sigOpenFile)
-        file.addAction(self.openFileAction)
-        self.saveFileAction = QtWidgets.QAction('Save', self)
-        self.saveFileAction.setShortcut('Ctrl+S')
-        self.saveFileAction.triggered.connect(self.sigSaveFile)
-        file.addAction(self.saveFileAction)
-        self.saveAsFileAction = QtWidgets.QAction('Save as…', self)
-        self.saveAsFileAction.setShortcut('Ctrl+Shift+S')
-        self.saveAsFileAction.triggered.connect(self.sigSaveAsFile)
-        file.addAction(self.saveAsFileAction)
+            self.newFileAction = QtWidgets.QAction('New…', self)
+            self.newFileAction.setShortcut('Ctrl+N')
+            self.newFileAction.triggered.connect(self.sigNewFile)
+            file.addAction(self.newFileAction)
+            self.openFileAction = QtWidgets.QAction('Open…', self)
+            self.openFileAction.setShortcut('Ctrl+O')
+            self.openFileAction.triggered.connect(self.sigOpenFile)
+            file.addAction(self.openFileAction)
+            self.saveFileAction = QtWidgets.QAction('Save', self)
+            self.saveFileAction.setShortcut('Ctrl+S')
+            self.saveFileAction.triggered.connect(self.sigSaveFile)
+            file.addAction(self.saveFileAction)
+            self.saveAsFileAction = QtWidgets.QAction('Save as…', self)
+            self.saveAsFileAction.setShortcut('Ctrl+Shift+S')
+            self.saveAsFileAction.triggered.connect(self.sigSaveAsFile)
+            file.addAction(self.saveAsFileAction)
 
         # Main layout
         self.dockArea = DockArea()
@@ -50,10 +59,11 @@ class ImScrMainView(QtWidgets.QMainWindow):
         self.editorDock.addWidget(self.editor)
         self.dockArea.addDock(self.editorDock)
 
-        self.files = FilesView()
-        self.filesDock = Dock('Files')
-        self.filesDock.addWidget(self.files)
-        self.dockArea.addDock(self.filesDock, 'left', self.editorDock)
+        if not IS_HEADLESS:
+            self.files = FilesView()
+            self.filesDock = Dock('Files')
+            self.filesDock.addWidget(self.files)
+            self.dockArea.addDock(self.filesDock, 'left', self.editorDock)
 
         self.console = ConsoleView()
         self.consoleDock = Dock('Console')
@@ -72,7 +82,7 @@ class ImScrMainView(QtWidgets.QMainWindow):
         event.accept()
 
 
-# Copyright (C) 2020-2021 ImSwitch developers
+# Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

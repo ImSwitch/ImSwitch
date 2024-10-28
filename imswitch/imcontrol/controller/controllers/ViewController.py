@@ -1,4 +1,5 @@
 from imswitch.imcommon.model import APIExport
+from imswitch import IS_HEADLESS
 from ..basecontrollers import ImConWidgetController
 
 
@@ -8,23 +9,34 @@ class ViewController(ImConWidgetController):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._acqHandle = None
-
+        self._commChannel.sigStartLiveAcquistion.connect(self.startLiveView)
+        self._commChannel.sigStopLiveAcquisition.connect(self.stopLiveView)
+        
+        if IS_HEADLESS: return
         self._widget.setViewToolsEnabled(False)
 
         # Connect ViewWidget signals
         self._widget.sigGridToggled.connect(self.gridToggle)
         self._widget.sigCrosshairToggled.connect(self.crosshairToggle)
         self._widget.sigLiveviewToggled.connect(self.liveview)
-
+        
+    def startLiveView(self):
+        self.liveview(enabled=True)
+    
+    def stopLiveView(self):
+        self.liveview(enabled=False)
+     
     def liveview(self, enabled):
         """ Start liveview and activate detector acquisition. """
         if enabled and self._acqHandle is None:
             self._acqHandle = self._master.detectorsManager.startAcquisition(liveView=True)
-            self._widget.setViewToolsEnabled(True)
         elif not enabled and self._acqHandle is not None:
             self._master.detectorsManager.stopAcquisition(self._acqHandle, liveView=True)
             self._acqHandle = None
-
+        if not IS_HEADLESS:
+            self._widget.setViewToolsEnabled(enabled)
+            self._widget.setLiveViewActive(enabled)
+        
     def gridToggle(self, enabled):
         """ Connect with grid toggle from Image Widget through communication channel. """
         self._commChannel.sigGridToggled.emit(enabled)
@@ -46,20 +58,20 @@ class ViewController(ImConWidgetController):
     @APIExport(runOnUIThread=True)
     def setLiveViewActive(self, active: bool) -> None:
         """ Sets whether the LiveView is active and updating. """
-        self._widget.setLiveViewActive(active)
+        if not IS_HEADLESS: self._widget.setLiveViewActive(active)
 
     @APIExport(runOnUIThread=True)
     def setLiveViewGridVisible(self, visible: bool) -> None:
         """ Sets whether the LiveView grid is visible. """
-        self._widget.setLiveViewGridVisible(visible)
+        if not IS_HEADLESS: self._widget.setLiveViewGridVisible(visible)
 
     @APIExport(runOnUIThread=True)
     def setLiveViewCrosshairVisible(self, visible: bool) -> None:
         """ Sets whether the LiveView crosshair is visible. """
-        self._widget.setLiveViewCrosshairVisible(visible)
+        if not IS_HEADLESS: self._widget.setLiveViewCrosshairVisible(visible)
 
 
-# Copyright (C) 2020-2021 ImSwitch developers
+# Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

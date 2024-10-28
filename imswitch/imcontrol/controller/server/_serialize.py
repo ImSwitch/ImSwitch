@@ -6,6 +6,7 @@ from typing import Deque, Generic, TypeVar
 import numpy as np
 import Pyro5
 import Pyro5.api
+# import useq
 
 T = TypeVar("T")
 
@@ -83,6 +84,7 @@ def remove_shm_from_resource_tracker():
     More details at: https://bugs.python.org/issue38119
     """
     from multiprocessing import resource_tracker
+
 
     def fix_register(name, rtype):  # pragma: no cover
         if rtype == "shared_memory":

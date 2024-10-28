@@ -89,7 +89,7 @@ class MultiModuleWindow(QtWidgets.QMainWindow):
                 return
 
     def updateLoadingProgress(self, progressFraction):
-      self.loadingProgressBar.setValue(int(progressFraction * 100))
+        self.loadingProgressBar.setValue(int(progressFraction * 100))
 
     def updateRAMUsage(self, usageFraction):
         self.memBar.setValue(round(usageFraction * 100))
@@ -163,7 +163,7 @@ class MultiModuleWindow(QtWidgets.QMainWindow):
         event.accept()
 
 
-# Copyright (C) 2020-2021 ImSwitch developers
+# Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

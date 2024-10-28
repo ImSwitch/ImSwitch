@@ -24,11 +24,25 @@ class ScanControllerMoNaLISA(SuperScanController):
         self.updateScanStageAttrs()
         self.updateScanTTLAttrs()
 
+        '''
+        self._master.nidaqManager.sigScanStarted.connect(
+            lambda: self.emitScanSignal(self._commChannel.sigScanStarted)
+        )
+        self._master.nidaqManager.sigScanDone.connect(self.scanDone)
+        self._master.nidaqManager.sigScanBuildFailed.connect(self.scanFailed)
+        '''
+        # Connect CommunicationChannel signals
+        self._commChannel.sigRunScan.connect(self.runScanExternal)
+        self._commChannel.sigAbortScan.connect(self.abortScan)
+        self._commChannel.sharedAttrs.sigAttributeSet.connect(self.attrChanged)
+        self._commChannel.sigToggleBlockScanWidget.connect(lambda block: self.toggleBlockWidget(block))
+        self._commChannel.sigRequestScanParameters.connect(self.sendScanParameters)
+        self._commChannel.sigSetAxisCenters.connect(lambda devices, centers: self.setCenterParameters(devices, centers))
+
         # Connect ScanWidget signals
         self._widget.sigContLaserPulsesToggled.connect(self.setContLaserPulses)
         self._widget.sigSeqTimeParChanged.connect(self.plotSignalGraph)
         self._widget.sigSignalParChanged.connect(self.plotSignalGraph)
-
 
     def getDimsScan(self):
         # TODO: Make sure this works as intended
@@ -253,7 +267,8 @@ class ScanControllerMoNaLISA(SuperScanController):
         self.setParameters()
 
 
-# Copyright (C) 2020-2021 ImSwitch developers
+
+# Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

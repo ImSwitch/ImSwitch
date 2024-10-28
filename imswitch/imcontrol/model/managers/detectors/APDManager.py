@@ -109,6 +109,9 @@ class APDManager(DetectorManager):
         except Exception:
             pass
 
+    def getExposure(self) -> int:
+        return 0
+
     def getLatestFrame(self, is_save=True):
         return self._image
 
@@ -408,7 +411,7 @@ class ScanWorker(Worker):
         self._manager._nidaqManager.inputTaskDone(self._name)
 
 
-# Copyright (C) 2020-2021 ImSwitch developers
+# Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

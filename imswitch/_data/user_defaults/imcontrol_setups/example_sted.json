@@ -5,7 +5,7 @@
       "digitalLine": null,
       "managerName": "APDManager",
       "managerProperties": {
-        "ctrInputLine": "Dev1/ctr0",
+        "ctrInputLine": 0,
         "terminal": "PFI0",
         "cameraListIndex": null
       },
@@ -16,7 +16,7 @@
       "digitalLine": null,
       "managerName": "APDManager",
       "managerProperties": {
-        "ctrInputLine": "Dev1/ctr1",
+        "ctrInputLine": 1,
         "terminal": "PFI12",
         "cameraListIndex": null
       },
@@ -58,9 +58,10 @@
   "lasers": {
     "561": {
       "analogChannel": null,
-      "digitalLine": "Dev1/port0/line1",
+      "digitalLine": 1,
       "managerName": "NidaqLaserManager",
-      "managerProperties": {},
+      "managerProperties": {
+      },
       "wavelength": 561,
       "valueRangeMin": 0,
       "valueRangeMax": 1,
@@ -68,9 +69,10 @@
     },
     "640": {
       "analogChannel": null,
-      "digitalLine": "Dev1/port0/line2",
+      "digitalLine": 2,
       "managerName": "NidaqLaserManager",
-      "managerProperties": {},
+      "managerProperties": {
+      },
       "wavelength": 640,
       "valueRangeMin": 0,
       "valueRangeMax": 1,
@@ -81,8 +83,8 @@
       "digitalLine": null,
       "managerName": "AAAOTFLaserManager",
       "managerProperties": {
-        "rs232device": "aaaotf",
-        "channel": 1
+          "rs232device": "aaaotf",
+          "channel": 1
       },
       "wavelength": 561,
       "valueRangeMin": 0,
@@ -94,8 +96,8 @@
       "digitalLine": null,
       "managerName": "AAAOTFLaserManager",
       "managerProperties": {
-        "rs232device": "aaaotf",
-        "channel": 2
+          "rs232device": "aaaotf",
+          "channel": 2
       },
       "wavelength": 640,
       "valueRangeMin": 0,
@@ -103,10 +105,11 @@
       "valueRangeStep": 1
     },
     "775AOM": {
-      "analogChannel": "Dev1/ao3",
-      "digitalLine": "Dev1/port0/line4",
+      "analogChannel": 3,
+      "digitalLine": 4,
       "managerName": "NidaqLaserManager",
-      "managerProperties": {},
+      "managerProperties": {
+      },
       "wavelength": 775,
       "valueRangeMin": 0,
       "valueRangeMax": 10,
@@ -115,7 +118,7 @@
   },
   "positioners": {
     "ND-GalvoX": {
-      "analogChannel": "Dev1/ao0",
+      "analogChannel": 0,
       "digitalLine": null,
       "managerName": "NidaqPositionerManager",
       "managerProperties": {
@@ -129,7 +132,7 @@
       "forScanning": true
     },
     "ND-GalvoY": {
-      "analogChannel": "Dev1/ao1",
+      "analogChannel": 1,
       "digitalLine": null,
       "managerName": "NidaqPositionerManager",
       "managerProperties": {
@@ -143,7 +146,7 @@
       "forScanning": true
     },
     "ND-PiezoZ": {
-      "analogChannel": "Dev1/ao2",
+      "analogChannel": 2,
       "digitalLine": null,
       "managerName": "NidaqPositionerManager",
       "managerProperties": {
@@ -209,26 +212,6 @@
       "h": 2048
     }
   },
-  "rotators": {
-    "HWP": {
-      "managerName": "StandaRotatorManager",
-      "managerProperties": {
-        "motorListIndex": 0,
-        "ximcLibLocation": "T:\\RedSTED\\Standa\\Standa\\ximc-2.13.6\\ximc",
-        "stepsPerTurn": 200,
-        "microstepsPerStep": 255
-      }
-    },
-    "QWP": {
-      "managerName": "StandaRotatorManager",
-      "managerProperties": {
-        "motorListIndex": 1,
-        "ximcLibLocation": "T:\\RedSTED\\Standa\\Standa\\ximc-2.13.6\\ximc",
-        "stepsPerTurn": 200,
-        "microstepsPerStep": 255
-      }
-    }
-  },
   "availableWidgets": [
     "Settings",
     "View",
@@ -239,23 +222,17 @@
     "Scan",
     "FocusLock",
     "SLM",
-    "Rotation",
-    "RotationScan"
+    "FFT"
   ],
-
+  "scanDefaults": {
+    "defaultScanFile": null
+  },
   "scan": {
-    "scanWidgetType": "PointScan",
     "scanDesigner": "GalvoScanDesigner",
     "scanDesignerParams": {},
     "TTLCycleDesigner": "PointScanTTLCycleDesigner",
     "TTLCycleDesignerParams": {},
-    "sampleRate": 100000,
-    "lineClockLine": "Dev1/port0/line5",
-    "frameClockLine": "Dev1/port0/line6"
-  },
-  "nidaq": {
-    "timerCounterChannel": "Dev1/ctr2",
-    "startTrigger": true
+    "sampleRate": 100000
   },
   "slm": {
     "monitorIdx": 2,
@@ -273,8 +250,6 @@
     "frameCropx": 780,
     "frameCropy": 400,
     "frameCropw": 500,
-    "frameCroph": 100,
-    "piKp": -5.0,
-    "piKi": -0.1
+    "frameCroph": 100
   }
 }

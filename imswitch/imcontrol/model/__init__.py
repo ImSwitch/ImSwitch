@@ -6,3 +6,4 @@ from .signaldesigners import SignalDesignerFactory
 import sys
 
 sys.modules['visa'] = 'pyvisa'
+

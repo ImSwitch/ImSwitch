@@ -1,0 +1,36 @@
+{
+  "detectors": {
+    "WidefieldCamera": {
+      "analogChannel": null,
+      "digitalLine": null,
+      "managerName": "ESP32CamManager",
+      "managerProperties": {
+        "cameraListIndex": 1,
+        "cameraHost": "192.168.4.1",
+        "cameraPort": "80",
+        "esp32cam": {
+          "exposure": 0,
+          "gain": 0,
+          "blacklevel": 100,
+          "image_width": 1000,
+          "image_height": 1000
+        }
+      },
+      "forAcquisition": true
+    }
+  },
+    "rois": {
+      "Full chip": {
+        "x": 600,
+        "y": 600,
+        "w": 1200,
+        "h": 1200
+      }
+    },
+    "availableWidgets": [
+      "Settings",
+      "View",
+      "Recording",
+      "Image"
+    ]
+  }

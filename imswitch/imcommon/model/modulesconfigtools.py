@@ -6,10 +6,8 @@ from dataclasses import dataclass
 from typing import List
 
 from dataclasses_json import dataclass_json
-
-import imswitch
 from imswitch.imcommon.model import dirtools
-
+import imswitch
 
 @dataclass_json
 @dataclass(frozen=True)
@@ -75,7 +73,7 @@ _modulesFilePath = os.path.join(dirtools.UserFileDirs.Config, 'modules.json')
 
 if not os.path.isfile(_modulesFilePath):
     # Modules file doesn't exist, create it.
-    _modules = _Modules(enabled=['imcontrol', 'imscripting'])
+    _modules = _Modules(enabled=['imcontrol', 'imscripting', 'imnotebook'])
 else:
     with open(_modulesFilePath, 'r') as modulesFile:
         _modules = _Modules.from_json(modulesFile.read(), infer_missing=True)
@@ -84,7 +82,7 @@ with open(_modulesFilePath, 'w') as modulesFile:
     modulesFile.write(_modules.to_json(indent=4))
 
 
-# Copyright (C) 2020-2021 ImSwitch developers
+# Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

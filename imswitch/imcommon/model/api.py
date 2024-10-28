@@ -1,18 +1,21 @@
 import inspect
-
+import asyncio
+from imswitch import IS_HEADLESS
 from imswitch.imcommon.framework import Mutex, Signal, SignalInterface
 
 
 class APIExport:
     """ Decorator for methods that should be exported to API. """
 
-    def __init__(self, *, runOnUIThread=False):
+    def __init__(self, *, runOnUIThread=False, asyncExecution=False):
         self._APIExport = True
         self._APIRunOnUIThread = runOnUIThread
+        self._APIAsyncExecution = asyncExecution
 
     def __call__(self, func):
         func._APIExport = self._APIExport
         func._APIRunOnUIThread = self._APIRunOnUIThread
+        func._APIAsyncExecution = self._APIAsyncExecution
         return func
 
 
@@ -37,7 +40,7 @@ def generateAPI(objs, *, missingAttributeErrorMsg=None):
 
             runOnUIThread = hasattr(subObj, '_APIRunOnUIThread') and subObj._APIRunOnUIThread
 
-            if runOnUIThread:
+            if runOnUIThread and not IS_HEADLESS:
                 wrapper = _UIThreadExecWrapper(subObj)
                 exportedFuncs[subObjName] = wrapper
                 wrapper.module = subObj.__module__.split('.')[-1]
@@ -72,12 +75,18 @@ class _UIThreadExecWrapper(SignalInterface):
 
     def _apiCall(self):
         try:
-            self._apiFunc(*self._args, **self._kwargs)
+            if asyncio.iscoroutinefunction(self._apiFunc):
+                self._execAsync()
+            else:
+                self._apiFunc(*self._args, **self._kwargs)
         finally:
             self._execMutex.unlock()
 
+    async def _execAsync(self):
+        await self._apiFunc(*self._args, **self._kwargs)
+        
 
-# Copyright (C) 2020-2021 ImSwitch developers
+# Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

@@ -7,7 +7,7 @@ import socket
 
 
 class RestPiCamera():
-    def __init__(self, host, port=80):
+    def __init__(self, host, port=80, is_debug=False):
         self. base_uri = f"{host}:{port}"
         self.host = host
         self.port = port 
@@ -17,11 +17,9 @@ class RestPiCamera():
 
         self.SensorWidth, self.SensorHeight = self.get_resolution_preview()
 
-
-
     def isConnected(self):
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        if len(self.host.split("http://"))>0:
+        if len(self.host.split("http://")) > 0:
             host = self.host.split("http://")[-1]
         else:
             host = self.host
@@ -32,10 +30,9 @@ class RestPiCamera():
             s.shutdown(2)
             is_up = True
         except:
-            pass 
+            pass
         return is_up
 
-        
     def get_json(self, path, payload=None):
         """Perform an HTTP GET request and return the JSON response"""
         if self.is_connected:
@@ -69,28 +66,24 @@ class RestPiCamera():
             "iso": iso
         }
         return_message = self.post_json(path, payload)
-        print(return_message)
-
+        
     def get_iso(self):
         # do homing of the robot
         path = '/picamera/iso'
         return_message = self.get_json(path)
-        print(return_message)
-
+       
     def set_exposuretime(self, exposuretime):
         path = '/picamera/exposuretime'
         payload = {
             "exposuretime": exposuretime
         }
         return_message = self.post_json(path, payload)
-        print(return_message)
-
+        
     def get_exposuretime(self):
         # do homing of the robot
         path = '/picamera/exposuretime'
         return_message = self.get_json(path)
-        print(return_message)
-
+        
     def get_snap(self):
         path = '/picamera/singleframe'
         r = requests.get(self.base_uri + path)
@@ -129,5 +122,3 @@ if __name__ == "__main__":
     port = "5000"
 
     rc = RestPiCamera(host, port)
-    print(rc.get_iso())
-    print(rc.get_snap())

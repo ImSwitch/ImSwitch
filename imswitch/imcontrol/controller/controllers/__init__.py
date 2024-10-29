@@ -20,6 +20,7 @@ from .FocusLockController import FocusLockController
 from .FOVLockController import FOVLockController
 from .ImageController import ImageController
 from .LaserController import LaserController
+from .ShutterController import ShutterController
 from .MotCorrController import MotCorrController
 from .OptController import OptController
 from .LEDController import LEDController

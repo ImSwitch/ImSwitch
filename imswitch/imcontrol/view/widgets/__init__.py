@@ -18,7 +18,6 @@ if not IS_HEADLESS:
     from .STORMReconWidget import STORMReconWidget
     from .HoliSheetWidget import HoliSheetWidget
     from .FlowStopWidget import FlowStopWidget
-
     from .ObjectiveRevolverWidget import ObjectiveRevolverWidget
     from .TemperatureWidget import TemperatureWidget
     from .LEDMatrixWidget import LEDMatrixWidget
@@ -27,6 +26,7 @@ if not IS_HEADLESS:
     from .FOVLockWidget import FOVLockWidget
     from .ImageWidget import ImageWidget
     from .LaserWidget import LaserWidget
+    from .ShutterWidget import ShutterWidget
     from .MotCorrWidget import MotCorrWidget
     from .LEDWidget import LEDWidget
     from .PositionerWidget import PositionerWidget

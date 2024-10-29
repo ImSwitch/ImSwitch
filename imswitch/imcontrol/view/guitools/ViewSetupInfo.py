@@ -25,6 +25,11 @@ class LaserPresetInfo:
     """ Laser value. """
 
 @dataclass(frozen=True)
+class ShutterPresetInfo:
+    value: float
+    """ Shutter value. """
+
+@dataclass(frozen=True)
 class LEDPresetInfo:
     value: float
     """ LED value. """
@@ -39,13 +44,6 @@ class ViewSetupInfo(SetupInfo):
 
     rois: Dict[str, 'ROIInfo'] = field(default_factory=dict)
     """ Additional ROIs available to select in detector settings. """
-    
-    ledPresets: Dict[str, Dict[str, 'LEDPresetInfo']] = field(default_factory=dict)
-    """ LED presets available to select (map preset name -> LED name ->
-    LEDPresetInfo). """
-
-    defaultLEDPresetForScan: Optional[str] = field(default_factory=lambda: None)
-    """ Default LED preset for scanning. """
 
     laserPresets: Dict[str, Dict[str, 'LaserPresetInfo']] = field(default_factory=dict)
     """ Laser presets available to select (map preset name -> laser name ->
@@ -53,6 +51,13 @@ class ViewSetupInfo(SetupInfo):
 
     defaultLaserPresetForScan: Optional[str] = field(default_factory=lambda: None)
     """ Default laser preset for scanning. """
+
+    shutterPresets: Dict[str, Dict[str, 'ShutterPresetInfo']] = field(default_factory=dict)
+    """ Shutter presets available to select (map preset name -> shutter name ->
+    ShutterPresetInfo). """
+
+    defaultShutterPresetForScan: Optional[str] = field(default_factory=lambda: None)
+    """ Default shutter preset for scanning. """
 
     availableWidgets: Union[List[str], bool] = field(default_factory=list)
     """ Which widgets to load. The following values are possible to include
@@ -69,6 +74,7 @@ class ViewSetupInfo(SetupInfo):
     - ``SLM`` (SLM widget; requires ``slm`` field to be defined)
     - ``SIM`` (SIM widget; requires ``sim`` field to be defined)    
     - ``Laser`` (laser control widget)
+    - ``Shutter`` (shutter control widget)
     - ``LED`` (LED control widget)
     - ``Deck`` (Deck control widget)
     - ``Positioner`` (positioners widget)
@@ -137,6 +143,23 @@ class ViewSetupInfo(SetupInfo):
     def setDefaultLaserPresetForScan(self, presetNameOrNone):
         """ :meta private: """
         self.defaultLaserPresetForScan = presetNameOrNone
+
+    def setShutterPreset(self, name, shutterPresetInfos):
+        """ :meta private: """
+        self.shutterPresets[name] = shutterPresetInfos
+
+    def removeShutterPreset(self, name):
+        """ :meta private: """
+        try:
+            del self.shutterPresets[name]
+            if self.defaultShutterPresetForScan == name:
+                self.setDefaultShutterPresetForScan(None)
+        except KeyError:
+            pass
+
+    def setDefaultShutterPresetForScan(self, presetNameOrNone):
+        """ :meta private: """
+        self.defaultShutterPresetForScan = presetNameOrNone
 
     def hasWidget(self, widget):
         """ :meta private: """

@@ -4,6 +4,7 @@ from .AutofocusManager import AutofocusManager
 from .FOVLockManager import FOVLockManager
 from .DetectorsManager import DetectorsManager, NoDetectorsError
 from .LasersManager import LasersManager
+from .ShuttersManager import ShuttersManager
 from .LEDsManager import LEDsManager
 from .LEDMatrixsManager import LEDMatrixsManager
 from .MultiManager import MultiManager

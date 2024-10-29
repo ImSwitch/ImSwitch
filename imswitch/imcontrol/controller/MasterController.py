@@ -3,7 +3,7 @@ from imswitch.imcommon.model import VFileItem, initLogger
 import pkg_resources
         
 from imswitch.imcontrol.model import (
-    DetectorsManager, LasersManager, MultiManager, PositionersManager,
+    DetectorsManager, LasersManager, ShuttersManager, MultiManager, PositionersManager,
     RecordingManager, RS232sManager, SLMManager, SIMManager, DPCManager, LEDMatrixsManager, MCTManager, ROIScanManager, MockXXManager, WebRTCManager, HyphaManager,
     ISMManager, UC2ConfigManager, AutofocusManager, HistoScanManager, PixelCalibrationManager, LightsheetManager, NidaqManager, FOVLockManager,
     StandManager, RotatorsManager, JetsonNanoManager, LEDsManager, ScanManagerBase, ScanManagerPointScan, ScanManagerMoNaLISA, FlatfieldManager, 
@@ -34,6 +34,8 @@ class MasterController:
                                                  updatePeriod=100,
                                                  **lowLevelManagers)
         self.lasersManager = LasersManager(self.__setupInfo.lasers,
+                                           **lowLevelManagers)
+        self.shuttersManager = ShuttersManager(self.__setupInfo.shutters,
                                            **lowLevelManagers)
         self.positionersManager = PositionersManager(self.__setupInfo.positioners,
                                                      self.__commChannel,

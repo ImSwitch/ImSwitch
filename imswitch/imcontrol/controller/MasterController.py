@@ -1,6 +1,6 @@
 from imswitch.imcommon.model import VFileItem, initLogger
 from imswitch.imcontrol.model import (
-    DetectorsManager, LasersManager, MultiManager, NidaqManager, PositionersManager, RecordingManager, RS232sManager, 
+    DetectorsManager, LasersManager, ShuttersManager, MultiManager, NidaqManager, PositionersManager, RecordingManager, RS232sManager, 
     ScanManagerPointScan, ScanManagerBase, ScanManagerMoNaLISA, SLMManager, StandManager, RotatorsManager
 )
 
@@ -31,6 +31,8 @@ class MasterController:
         self.detectorsManager = DetectorsManager(self.__setupInfo.detectors, updatePeriod=300,
                                                  **lowLevelManagers)
         self.lasersManager = LasersManager(self.__setupInfo.lasers,
+                                           **lowLevelManagers)
+        self.shuttersManager = ShuttersManager(self.__setupInfo.shutters,
                                            **lowLevelManagers)
         self.positionersManager = PositionersManager(self.__setupInfo.positioners,
                                                      **lowLevelManagers)

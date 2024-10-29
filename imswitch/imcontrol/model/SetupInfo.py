@@ -72,6 +72,32 @@ class LaserInfo(DeviceInfo):
     """ The default step size of the value range that the laser can be set to.
     """
 
+@dataclass(frozen=True)
+class ShutterInfo(DeviceInfo):
+    valueRangeMin: Optional[Union[int, float]]
+    """ Minimum value of the shutter. ``null`` if shutter doesn't setting a value.
+    """
+
+    valueRangeMax: Optional[Union[int, float]]
+    """ maximum value of the shutter. ``null`` if shutter doesn't setting a value.
+    """
+
+    wavelength: Union[int, float]
+    """ Shutter wavelength in nanometres. """
+
+    freqRangeMin: Optional[int] = 0
+    """ Minimum value of frequency modulation. Don't fill if shutter doesn't support it. """
+
+    freqRangeMax: Optional[int] = 0
+    """ Minimum value of frequency modulation. Don't fill if shutter doesn't support it. """
+
+    freqRangeInit: Optional[int] = 0
+    """ Initial value of frequency modulation. Don't fill if shutter doesn't support it. """
+
+    valueRangeStep: float = 1.0
+    """ The default step size of the value range that the shutter can be set to.
+    """
+
 
 
 @dataclass(frozen=True)
@@ -281,6 +307,10 @@ class SetupInfo:
     """ Lasers in this setup. This is a map from unique laser names to
     LaserInfo objects. """
 
+    shutters: Dict[str, ShutterInfo] = field(default_factory=dict)
+    """ Shutters in this setup. This is a map from unique shutter names to
+    ShutterInfo objects. """
+
     positioners: Dict[str, PositionerInfo] = field(default_factory=dict)
     """ Positioners in this setup. This is a map from unique positioner names
     to DetectorInfo objects. """
@@ -339,7 +369,7 @@ class SetupInfo:
         """
         devices = {}
         i = 0
-        for deviceInfos in self.lasers, self.detectors:
+        for deviceInfos in self.lasers, self.detectors, self.shutters:
             deviceInfosCopy = deviceInfos.copy()
             for item in list(deviceInfosCopy):
                 if deviceInfosCopy[item].getDigitalLine() is None:
@@ -360,7 +390,7 @@ class SetupInfo:
     def getAllDevices(self):
         """ :meta private: """
         devices = {}
-        for deviceInfos in self.lasers, self.detectors, self.positioners:
+        for deviceInfos in self.lasers, self.detectors, self.positioners, self.shutters:
             devices.update(deviceInfos)
 
         return devices

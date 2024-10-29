@@ -265,11 +265,11 @@ class LaserController(ImConWidgetController):
         defaultPreset = self._setupInfo.laserPresets[self._setupInfo.defaultLaserPresetForScan]
         defaultPreset[laserName] = guitools.LaserPresetInfo(value=laserValue)
 
-    @APIExport(runOnUIThread=True)
+    """@APIExport(runOnUIThread=True)
     def sendTrigger(self, triggerId: int):
-        """ Sends a trigger puls through external device """
+       # Sends a trigger puls through external device
         #TODo: Very special case, try to move in seperate manager 
-        self._master.rs232sManager["ESP32"]._esp32.sendTrigger(triggerId)
+        self._master.rs232sManager["ESP32"]._esp32.sendTrigger(triggerId)"""
 
     @APIExport(runOnUIThread=True)
     def post_json(self, path: str, payload: dict) -> str:

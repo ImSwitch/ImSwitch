@@ -24,6 +24,11 @@ class LaserPresetInfo:
     value: float
     """ Laser value. """
 
+@dataclass(frozen=True)
+class ShutterPresetInfo:
+    value: float
+    """ Shutter value. """
+
 
 @dataclass
 class ViewSetupInfo(SetupInfo):
@@ -42,6 +47,13 @@ class ViewSetupInfo(SetupInfo):
     defaultLaserPresetForScan: Optional[str] = field(default_factory=lambda: None)
     """ Default laser preset for scanning. """
 
+    shutterPresets: Dict[str, Dict[str, 'ShutterPresetInfo']] = field(default_factory=dict)
+    """ Shutter presets available to select (map preset name -> shutter name ->
+    ShutterPresetInfo). """
+
+    defaultShutterPresetForScan: Optional[str] = field(default_factory=lambda: None)
+    """ Default shutter preset for scanning. """
+
     availableWidgets: Union[List[str], bool] = field(default_factory=list)
     """ Which widgets to load. The following values are possible to include
     (case sensitive):
@@ -56,6 +68,7 @@ class ViewSetupInfo(SetupInfo):
       defined)      
     - ``SLM`` (SLM widget; requires ``slm`` field to be defined)
     - ``Laser`` (laser control widget)
+    - ``Shutter`` (shutter control widget)
     - ``Positioner`` (positioners widget)
     - ``Scan`` (scan widget; requires ``scan`` field to be defined)
     - ``BeadRec`` (bead reconstruction widget)
@@ -103,6 +116,23 @@ class ViewSetupInfo(SetupInfo):
     def setDefaultLaserPresetForScan(self, presetNameOrNone):
         """ :meta private: """
         self.defaultLaserPresetForScan = presetNameOrNone
+
+    def setShutterPreset(self, name, shutterPresetInfos):
+        """ :meta private: """
+        self.shutterPresets[name] = shutterPresetInfos
+
+    def removeShutterPreset(self, name):
+        """ :meta private: """
+        try:
+            del self.shutterPresets[name]
+            if self.defaultShutterPresetForScan == name:
+                self.setDefaultShutterPresetForScan(None)
+        except KeyError:
+            pass
+
+    def setDefaultShutterPresetForScan(self, presetNameOrNone):
+        """ :meta private: """
+        self.defaultShutterPresetForScan = presetNameOrNone
 
     def hasWidget(self, widget):
         """ :meta private: """

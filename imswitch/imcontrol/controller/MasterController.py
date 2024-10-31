@@ -4,12 +4,11 @@ import pkg_resources
         
 from imswitch.imcontrol.model import (
     DetectorsManager, LasersManager, ShuttersManager, MultiManager, PositionersManager,
-    RecordingManager, RS232sManager, SLMManager, SIMManager, DPCManager, LEDMatrixsManager, MCTManager, ROIScanManager, MockXXManager, WebRTCManager, HyphaManager,
-    ISMManager, UC2ConfigManager, AutofocusManager, HistoScanManager, PixelCalibrationManager, LightsheetManager, NidaqManager, FOVLockManager,
+    RecordingManager, RS232sManager, NidaqManager, SLMManager, SIMManager, DPCManager, LEDMatrixsManager, MCTManager, ROIScanManager, MockXXManager, WebRTCManager, HyphaManager,
+    ISMManager, UC2ConfigManager, AutofocusManager, HistoScanManager, PixelCalibrationManager, LightsheetManager, FOVLockManager,
     StandManager, RotatorsManager, JetsonNanoManager, LEDsManager, ScanManagerBase, ScanManagerPointScan, ScanManagerMoNaLISA, FlatfieldManager, 
-    FlowStopManager
+    FlowStopManager, SetupInfo
 )
-
 
 class MasterController:
     """
@@ -19,14 +18,16 @@ class MasterController:
 
     def __init__(self, setupInfo, commChannel, moduleCommChannel):
         self.__logger = initLogger(self)
-        self.__setupInfo = setupInfo
+        self.__setupInfo = setupInfo #type viewSetupInfo
         self.__commChannel = commChannel
         self.__moduleCommChannel = moduleCommChannel
 
         # Init managers
         self.rs232sManager = RS232sManager(self.__setupInfo.rs232devices)
+        self.nidaqManager = NidaqManager(self.__setupInfo)
 
         lowLevelManagers = {
+            'nidaqManager': self.nidaqManager,
             'rs232sManager': self.rs232sManager
         }
 
@@ -46,14 +47,13 @@ class MasterController:
                                             **lowLevelManagers)
 
         self.LEDsManager = LEDsManager(self.__setupInfo.LEDs)
-        #self.scanManager = ScanManager(self.__setupInfo)
         self.recordingManager = RecordingManager(self.detectorsManager)
         self.slmManager = SLMManager(self.__setupInfo.slm)
         self.UC2ConfigManager = UC2ConfigManager(self.__setupInfo.uc2Config, lowLevelManagers)
         self.simManager = SIMManager(self.__setupInfo.sim)
         self.dpcManager = DPCManager(self.__setupInfo.dpc)
         self.mctManager = MCTManager(self.__setupInfo.mct)
-        self.nidaqManager = NidaqManager(self.__setupInfo.nidaq)
+        #self.nidaqManager = NidaqManager(self.__setupInfo.nidaq)
         self.roiscanManager = ROIScanManager(self.__setupInfo.roiscan)
         self.lightsheetManager = LightsheetManager(self.__setupInfo.lightsheet)
         self.webrtcManager = WebRTCManager(self.__setupInfo.webrtc)

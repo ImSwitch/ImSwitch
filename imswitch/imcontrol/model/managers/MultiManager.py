@@ -12,7 +12,7 @@ class MultiManager(ABC):
 
     @abstractmethod
     def __init__(self, managedDeviceInfos, subManagersPackage, **lowLevelManagers):
-        self.__logger = initLogger(self, instanceName='MultiManager')
+        #self.__logger = initLogger(self, instanceName='MultiManager')
         self._subManagers = {}
         currentPackage = '.'.join(__name__.split('.')[:-1])
         if managedDeviceInfos:
@@ -20,7 +20,7 @@ class MultiManager(ABC):
                 # Create sub-manager
                 #self.__logger.debug(f'{currentPackage}.{subManagersPackage}, {managedDeviceInfo.managerName}')
                 #self.__logger.debug(managedDeviceInfo)
-                try:
+                #try:
                     package = importlib.import_module(
                         pythontools.joinModulePath(f'{currentPackage}.{subManagersPackage}',
                                                 managedDeviceInfo.managerName)
@@ -29,7 +29,7 @@ class MultiManager(ABC):
                     self._subManagers[managedDeviceName] = manager(
                         managedDeviceInfo, managedDeviceName, **lowLevelManagers)
 
-                except Exception as e:
+            """except Exception as e:
                     # try to import from the implugins
                     self.__logger.error(e)
                     try:
@@ -38,7 +38,7 @@ class MultiManager(ABC):
                             self._subManagers[managedDeviceName] = manager(
                                 managedDeviceInfo, managedDeviceName, **lowLevelManagers)
                     except Exception as e:
-                        self.__logger.error(e)
+                        self.__logger.error(e)"""
                         
     def hasDevices(self):
         """ Returns whether this manager manages any devices. """

@@ -607,9 +607,6 @@ class SetupInfo:
     microscopeStand: Optional[MicroscopeStandInfo] = field(default_factory=lambda: None)
     """ Microscope stand settings. Required to be defined to use MotCorr widget. """
 
-    nidaq: NidaqInfo = field(default_factory=NidaqInfo)
-    """ NI-DAQ settings. """
-
     pulseStreamer: PulseStreamerInfo = field(default_factory=PulseStreamerInfo)
     """ Pulse Streamer settings. """
 

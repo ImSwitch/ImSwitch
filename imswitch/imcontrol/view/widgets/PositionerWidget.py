@@ -41,6 +41,10 @@ class PositionerWidget(Widget):
             parNameSuffix = self._getParNameSuffix(positionerName, axis)
             label = f'{axis}' if positionerName != axis else positionerName #f'{positionerName} -- {axis}' if positionerName != axis else positionerName
 
+            print("parnamesuffix")
+            print(parNameSuffix)
+
+
             self.pars['Label' + parNameSuffix] = QtWidgets.QLabel(f'<strong>{label}</strong>')
             self.pars['Label' + parNameSuffix].setTextFormat(QtCore.Qt.RichText)
             self.pars['Position' + parNameSuffix] = QtWidgets.QLabel(f'<strong>{0:.2f} µm</strong>')
@@ -67,7 +71,7 @@ class PositionerWidget(Widget):
             if hasSpeed:
                 self.pars['Speed' + parNameSuffix] = QtWidgets.QLabel('Speed:')
                 self.pars['Speed' + parNameSuffix].setTextFormat(QtCore.Qt.RichText)
-                self.pars['SpeedEdit' + parNameSuffix] = QtWidgets.QLineEdit('1000')
+                self.pars['SpeedEdit' + parNameSuffix] = QtWidgets.QLineEdit('100')
 
                 self.grid.addWidget(self.pars['Speed' + parNameSuffix], 2*self.numPositioners+1, 3)
                 self.grid.addWidget(self.pars['SpeedEdit' + parNameSuffix], 2*self.numPositioners+1, 4)
@@ -145,7 +149,7 @@ class PositionerWidget(Widget):
         self.pars['SpeedEdit' + parNameSuffix].setText(str(speed))
 
     def _getParNameSuffix(self, positionerName, axis):
-        return f'{positionerName[0]}--{axis}'
+        return f'{positionerName}--{axis}'
 
 # Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.

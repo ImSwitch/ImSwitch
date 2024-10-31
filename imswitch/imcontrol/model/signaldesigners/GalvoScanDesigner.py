@@ -27,7 +27,8 @@ class GalvoScanDesigner(ScanDesigner):
         """ Check analog scanning signals so that they are inside the range of
         the acceptable scanner voltages."""
         for i in range(len(scanParameters['target_device'])):
-            if scanParameters['target_device'][i] != 'None':
+            #if scanParameters['target_device'][i] != 'None' :
+            if 'Galvo' in scanParameters['target_device'][i]:
                 if np.ceil(scanParameters['axis_length'][i]/scanParameters['axis_step_size'][i]) > 1:
                     positioner = setupInfo.positioners[scanParameters['target_device'][i]]
                     minv = positioner.managerProperties['minVolt']
@@ -56,7 +57,7 @@ class GalvoScanDesigner(ScanDesigner):
         # get list of number of axis scan samples, for first two axes initially
         scan_steps = np.prod(n_steps_dx)
         scan_time = scan_steps * scanParameters['sequence_time']
-        if scan_time > 60*10:  # 10 minutes
+        if scan_time > 60*20:  # 10 minutes
             return False
         elif scan_steps > 1e7:
             return False
@@ -137,7 +138,7 @@ class GalvoScanDesigner(ScanDesigner):
         pos = []  # list with all axis positions lists
         # d1 axis signal
         axis = 0
-        pos_temp, samples_d2_period = self.__generate_smooth_scan(parameterDict, self.axis_vel_max[0], self.axis_acc_max[0], n_steps_dx[1])
+        pos_temp, samples_d2_period = self.__generate_smooth_scan(parameterDict, self.axis_vel_max[0], self.axis_acc_max[0], n_steps_dx[0])
         pos.append(pos_temp)
 
         # initiate pad length list
@@ -158,7 +159,8 @@ class GalvoScanDesigner(ScanDesigner):
                 pos, pad_max = self.__zero_padding(pos, padlen_base=0)
                 pad_maxes.append(pad_max)
                 pos = self.__repeat_dlower(pos, n_steps_dx[axis])
-                smooth = False if 'mock' in self.axis_devs_order[axis].lower() else True
+                #smooth = False if 'mock' in self.axis_devs_order[axis].lower() else True
+                smooth=False
                 pos_temp = self.__generate_step_scan(axis, n_scan_samples_dx[axis], n_steps_dx[axis], self.axis_devs_order[axis], smooth, v_max=self.axis_vel_max[axis], a_max=self.axis_acc_max[axis])
                 pos.append(pos_temp)
                 n_scan_samples_dx.append(len(pos[0]))
@@ -196,30 +198,39 @@ class GalvoScanDesigner(ScanDesigner):
 
         self.__plot_curves(plot=False, signals=axis_signals)  # for debugging
 
-        self._logger.info(f'Scanning curves generated, third dimension step time: {round(self.__timestep * 1e-6 * n_scan_samples_dx[2], ndigits=5)} s.')
+        #self._logger.info(f'Scanning curves generated, third dimension step time: {round(self.__timestep * 1e-6 * n_scan_samples_dx[2], ndigits=5)} s.')
         return sig_dict, axis_positions, scanInfoDict
 
     def __calc_settling_time(self, axis_length, axis_centerpos, vel_max, acc_max):
         """ Calculate settling time based on first two axis parameters.
         TODO: fix this to include all axes, as smooth axes can be in other positions?
         """
-        print(f"axis_length: {axis_length}")
-        print(f"axis_centerpos: {axis_centerpos}")
-        print(f"vel_max: {vel_max}")
-        print(f"acc_max: {acc_max}")
+        #print(f"axis_length: {axis_length}")
+        #print(f"axis_centerpos: {axis_centerpos}")
+        #print(f"vel_max: {vel_max}")
+        #print(f"acc_max: {acc_max}")
 
         # Check if the lists have at least two elements
-        if len(axis_length) < 2 or len(axis_centerpos) < 2 or len(vel_max) < 2:
-            raise ValueError("axis_length, axis_centerpos, and vel_max must have at least two elements")
+        #if len(axis_length) < 2 or len(axis_centerpos) < 2 or len(vel_max) < 2:"""
+        #    raise ValueError("axis_length, axis_centerpos, and vel_max must have at least two elements")
 
-        t_initpos_vc_d2 = abs(axis_centerpos[1] - axis_length[1] / 2) / vel_max[1]
-        t_initpos_vc_d1 = abs(axis_centerpos[0] - axis_length[0] / 2) / vel_max[0]
-        t_initpos_vc = max(t_initpos_vc_d1, t_initpos_vc_d2)
-        t_acc_d2 = vel_max[1] / acc_max[1]
-        t_acc_d1 = vel_max[0] / acc_max[0]
-        t_initpos_d2 = t_initpos_vc_d2 + 2 * t_acc_d2
-        t_initpos_d1 = t_initpos_vc_d1 + 2 * t_acc_d1
-        settlingtime = self.__minsettlingtime + np.max([0, t_initpos_d2 - t_initpos_d1])
+        if len(axis_length) < 1 or len(axis_centerpos) < 1 or len(vel_max) < 1:
+            raise ValueError("axis_length, axis_centerpos, and vel_max must have at least one elements")
+        elif len(axis_length)==1:
+            t_initpos_vc_d1 = abs(axis_centerpos[0] - axis_length[0] / 2) / vel_max[0]
+            t_acc_d1 = vel_max[0] / acc_max[0]
+            t_initpos_d1 = t_initpos_vc_d1 + 2 * t_acc_d1
+            settlingtime = self.__minsettlingtime + t_initpos_d1
+            # TODO check the settling time for d1
+        else:
+            t_initpos_vc_d2 = abs(axis_centerpos[1] - axis_length[1] / 2) / vel_max[1]
+            t_initpos_vc_d1 = abs(axis_centerpos[0] - axis_length[0] / 2) / vel_max[0]
+            t_initpos_vc = max(t_initpos_vc_d1, t_initpos_vc_d2)
+            t_acc_d2 = vel_max[1] / acc_max[1]
+            t_acc_d1 = vel_max[0] / acc_max[0]
+            t_initpos_d2 = t_initpos_vc_d2 + 2 * t_acc_d2
+            t_initpos_d1 = t_initpos_vc_d1 + 2 * t_acc_d1
+            settlingtime = self.__minsettlingtime + np.max([0, t_initpos_d2 - t_initpos_d1])        
         return settlingtime
 
     def __generate_smooth_scan(self, parameterDict, v_max, a_max, n_d2):

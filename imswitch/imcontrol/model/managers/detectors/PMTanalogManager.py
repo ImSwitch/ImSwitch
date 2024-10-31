@@ -49,6 +49,13 @@ class PMTanalogManager(DetectorManager):
         super().__init__(detectorInfo, name, fullShape=fullShape, supportedBinnings=[1],
                          model=model, parameters=parameters, croppable=False)
 
+    def __del__(self):
+        if self._scanThread is not None:
+            self._scanThread.quit()
+            self._scanThread.wait()
+        if hasattr(super(), '__del__'):
+            super().__del__()
+    
     def initiateScan(self, scanInfoDict, signalDict):
         if self.acquisition:
             self._scanWorker = ScanWorker(self, scanInfoDict, signalDict)
@@ -94,6 +101,9 @@ class PMTanalogManager(DetectorManager):
         except Exception:
             pass
 
+    def getExposure(self) -> int:
+        return 0
+    
     def getLatestFrame(self, is_save=True):
         return self._image
 

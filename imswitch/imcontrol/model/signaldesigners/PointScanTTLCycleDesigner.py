@@ -218,7 +218,7 @@ class PointScanTTLCycleDesigner(TTLCycleDesigner):
             signal_d2_step[:clock_len] = 1
         signal_d2_period = np.append(signal_d2_step, np.zeros(zeropad_d2flyback, dtype='bool'))
         # all d2 steps except last
-        signal_d2 = np.tile(signal_d2_period, n_steps_dx[1] - 1)
+        signal_d2 = np.tile(signal_d2_period, n_steps_dx[0] - 1)
         # add last d2 step (without flyback)
         signal_d2 = np.append(signal_d2, signal_d2_step)
         if frame:
@@ -227,7 +227,11 @@ class PointScanTTLCycleDesigner(TTLCycleDesigner):
         # pad extra bits of smooth d2 curve: first step acc, start settling, and initial positioning
         signal_d2 = np.append(np.zeros(zeropad_startacc+zeropad_settling+zeropad_initpos, dtype='bool'), signal_d2)
         # adjust to frame len 
-        zeropad_toframelen = n_scan_samples_dx[2] - len(signal_d2)
+
+        # Test d1 scan
+        #zeropad_toframelen = n_scan_samples_dx[2] - len(signal_d2)
+        zeropad_toframelen = n_scan_samples_dx[1] - len(signal_d2)
+        
         if zeropad_toframelen > 0:
             signal_d2 = np.append(signal_d2, np.zeros(zeropad_toframelen, dtype='bool'))
         elif zeropad_toframelen < 0:

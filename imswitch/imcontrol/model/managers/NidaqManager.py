@@ -10,7 +10,6 @@ import numpy as np
 from imswitch.imcommon.framework import Signal, SignalInterface, Thread
 from imswitch.imcommon.model import initLogger
 
-
 class NidaqManager(SignalInterface):
     """ For interaction with NI-DAQ hardware interfaces. """
 
@@ -25,14 +24,15 @@ class NidaqManager(SignalInterface):
         self.__logger = initLogger(self)
 
         self.__setupInfo = setupInfo
+
         self.tasks = {}
         self.doTaskWaiter = None
         self.aoTaskWaiter = None
         self.timerTaskWaiter = None
         self.busy = False
         if self.__setupInfo is not None:
-            self.__timerCounterChannel = setupInfo.getTimerCounterChannel()
-            self.__startTrigger = setupInfo.startTrigger
+            self.__timerCounterChannel = setupInfo.nidaq.getTimerCounterChannel()
+            self.__startTrigger = setupInfo.nidaq.startTrigger
 
     def __del__(self):
         for taskWaiter in [self.doTaskWaiter, self.aoTaskWaiter, self.timerTaskWaiter]:
@@ -223,7 +223,16 @@ class NidaqManager(SignalInterface):
     def setAnalog(self, target, voltage, min_val=-1, max_val=1):
         """ Function to set the analog channel to a specific target
         to a certain voltage """
-        channel = self.__setupInfo.getDevice(target).getAnalogChannel()
+        try:
+            device = self.__setupInfo.getDevice(target)
+            channel = device.getAnalogChannel()
+        except AttributeError as e:
+            print(f"Error retrieving device or channel: {e}")
+            return
+        except Exception as e:
+            print(f"An error occurred: {e}")
+            return
+        
         if channel is None:
             raise NidaqManagerError('Target has no analog output assigned to it')
         else:

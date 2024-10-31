@@ -41,7 +41,7 @@ class PositionerController(ImConWidgetController):
 
         # Connect PositionerWidget signals
         if not IS_HEADLESS:
-            self._commChannel.sigUpdateMotorPosition.connect(self.updateAllPositionGUI) # force update position in GUI
+            #self._commChannel.sigUpdateMotorPosition.connect(self.updateAllPositionGUI) # force update position in GUI
             self._widget.sigStepUpClicked.connect(self.stepUp)
             self._widget.sigStepDownClicked.connect(self.stepDown)
             self._widget.sigStepAbsoluteClicked.connect(self.moveAbsolute)
@@ -118,6 +118,7 @@ class PositionerController(ImConWidgetController):
     def updateAllPositionGUI(self):
         # update all positions for all axes in GUI
         for positionerName in self._master.positionersManager.getAllDeviceNames():
+            #print(self._master.positionersManager[positionerName].axes)
             for axis in self._master.positionersManager[positionerName].axes:
                 self.updatePosition(positionerName, axis)
                 self.updateSpeed(positionerName, axis)

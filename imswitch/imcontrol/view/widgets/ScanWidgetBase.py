@@ -14,6 +14,7 @@ class SuperScanWidget(Widget):
     sigSaveScanClicked = QtCore.Signal()
     sigLoadScanClicked = QtCore.Signal()
     sigRunScanClicked = QtCore.Signal()
+    sigStopScanClicked = QtCore.Signal()
     sigSeqTimeParChanged = QtCore.Signal()
     sigStageParChanged = QtCore.Signal()
     sigSignalParChanged = QtCore.Signal()
@@ -34,6 +35,7 @@ class SuperScanWidget(Widget):
         self.scanDims = []
 
         self.scanButton = guitools.BetterPushButton('Run Scan')
+        self.stopButton = guitools.BetterPushButton('Stop')
 
         self.repeatBox = QtWidgets.QCheckBox('Repeat')
 
@@ -58,6 +60,7 @@ class SuperScanWidget(Widget):
         self.saveScanBtn.clicked.connect(self.sigSaveScanClicked)
         self.loadScanBtn.clicked.connect(self.sigLoadScanClicked)
         self.scanButton.clicked.connect(self.sigRunScanClicked)
+        self.stopButton.clicked.connect(self.sigStopScanClicked)
 
     @abstractmethod
     def initControls(self, positionerNames, TTLDeviceNames, TTLTimeUnits):
@@ -93,6 +96,11 @@ class SuperScanWidget(Widget):
         self.scanButton.setEnabled(not checked)
         self.scanButton.setCheckable(checked)
         self.scanButton.setChecked(checked)
+
+    def StopButtonChecked(self, checked):
+        self.stopButton.setEnabled(not checked)
+        self.stopButton.setCheckable(checked)
+        self.stopButton.setChecked(checked)
 
     def setScanDim(self, index, positionerName):
         scanDimPar = self.scanPar['scanDim' + str(index)]
@@ -179,6 +187,8 @@ class ScanWidgetBase(SuperScanWidget):
         self.grid.addWidget(self.repeatBox, currentRow, 5)
         self.grid.addWidget(self.scanButton, currentRow, 6)
         currentRow += 1
+        self.grid.addWidget(self.stopButton, currentRow, 6)
+        currentRow += 1
 
         # Add space item to make the grid look nicer
         self.grid.addItem(
@@ -208,7 +218,7 @@ class ScanWidgetBase(SuperScanWidget):
 
         for index, positionerName in enumerate(positionerNames):
             # Scan params
-            sizePar = QtWidgets.QLineEdit('5')
+            sizePar = QtWidgets.QLineEdit('10')
             self.scanPar['size' + positionerName] = sizePar
             stepSizePar = QtWidgets.QLineEdit('0.1')
             self.scanPar['stepSize' + positionerName] = stepSizePar

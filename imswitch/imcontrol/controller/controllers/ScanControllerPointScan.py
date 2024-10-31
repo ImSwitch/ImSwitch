@@ -86,6 +86,14 @@ class ScanControllerPointScan(SuperScanController):
             self.isRunning = False
             self.abortScan()
 
+    def stopScan(self):
+        #Stops the current scan.
+        if self.isRunning:
+            self._logger.info("Stopping scan...")
+            self.isRunning = False
+            self._master.nidaqManager.stopTask()  # Assurez-vous que cette méthode existe dans nidaqManager
+            self.abortScan()
+
     def scanDone(self):
         self.isRunning = False
 

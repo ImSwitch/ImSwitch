@@ -9,7 +9,7 @@ class ScanWidgetPointScan(SuperScanWidget):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.seqTimePar = QtWidgets.QLineEdit('0.02')  # ms
+        self.seqTimePar = QtWidgets.QLineEdit('0.2')  # ms
         self.phaseDelayPar = QtWidgets.QLineEdit('100')  # samples
         self.d3StepDelayPar = QtWidgets.QLineEdit('0')  # samples
 
@@ -42,6 +42,8 @@ class ScanWidgetPointScan(SuperScanWidget):
         )
         self.grid.addWidget(self.repeatBox, currentRow, 5)
         self.grid.addWidget(self.scanButton, currentRow, 6)
+        currentRow += 1
+        self.grid.addWidget(self.stopButton, currentRow, 6)
         currentRow += 1
 
         # Add space item to make the grid look nicer
@@ -234,7 +236,7 @@ class ScanWidgetPointScan(SuperScanWidget):
         pass
 
 
-# Copyright (C) 2020-2021 ImSwitch developers
+# Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

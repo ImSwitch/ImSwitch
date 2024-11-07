@@ -2,12 +2,18 @@
 __pycache__/
 *.py[cod]
 venv
-
+.ipynb_checkpoints/
+tools/
 # mypy
 .mypy_cache/
 
+.arkitek/*
+
 # C extensions
 *.so
+
+# Typescript APP
+imswitch/app
 
 # Distribution / packaging
 .Python
@@ -27,6 +33,7 @@ var/
 .installed.cfg
 *.egg
 .build_temp
+
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
@@ -63,9 +70,6 @@ target/
 # PyCharm
 .idea/
 
-# Visual Studio Code
-.vscode/
-
 # Specific files
 imswitch/imcontrol/model/managers/lasers/KatanaLaserManager.py
 imswitch/imcontrol/model/managers/stands/LeicaDMIManager.py
@@ -81,3 +85,20 @@ llfocusimages.tif
 
 imswitch/ImSwitch/recordings*
 ./ImSwitch/recordings
+locai/*
+conda/*
+conda-out/*
+imswitch/ImSwitch/ImSwitch/recordings/*
+imswitch/*.tif
+pip-wheel-metadata/ImSwitch-1.2.1.dist-info/entry_points.txt
+pip-wheel-metadata/ImSwitch-1.2.1.dist-info/LICENSE
+pip-wheel-metadata/ImSwitch-1.2.1.dist-info/METADATA
+pip-wheel-metadata/ImSwitch-1.2.1.dist-info/top_level.txt
+
+/imswitch/_data/user_defaults/imnotebook/.ipynb_checkpoints
+
+stitchedImage.tif
+/ImTools
+/.vscode
+docker/HIK/cheatsheet.txt
+docker/HIK/cheatsheet.txt

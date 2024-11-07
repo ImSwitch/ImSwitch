@@ -109,6 +109,9 @@ class APDManager(DetectorManager):
         if self._debug_mode:
             plt.show()
 
+    def getExposure(self) -> int:
+        return 0
+
     def getLatestFrame(self, is_save=True):
         return self._image
 
@@ -426,7 +429,7 @@ class ScanWorker(Worker):
         return np.random.randint(100, size=datalen)
 
 
-# Copyright (C) 2020-2021 ImSwitch developers
+# Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

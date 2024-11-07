@@ -250,7 +250,7 @@ class PointScanTTLCycleDesigner(TTLCycleDesigner):
             signal_d2_step[:clock_len] = 1
         signal_d2_period = np.append(signal_d2_step, np.zeros(zeropad_d2flyback, dtype='bool'))
         # all d2 steps except last
-        signal_d2 = np.tile(signal_d2_period, n_steps_dx[1] - 1)
+        signal_d2 = np.tile(signal_d2_period, n_steps_dx[0] - 1)
         # add last d2 step (without flyback)
         signal_d2 = np.append(signal_d2, signal_d2_step)
         if frame_start:
@@ -264,11 +264,15 @@ class PointScanTTLCycleDesigner(TTLCycleDesigner):
             signal_d2 = np.append(self.__initpad, signal_d2)
             self.__init_added = True
         # adjust to frame len 
-        zeropad_to_axislen = n_scan_samples_dx[2] - len(signal_d2)
-        if zeropad_to_axislen > 0:
-            signal_d2 = np.append(signal_d2, np.zeros(zeropad_to_axislen, dtype='bool'))
-        elif zeropad_to_axislen < 0:
-            signal_d2 = signal_d2[:zeropad_to_axislen]
+
+        # Test d1 scan
+        #zeropad_toframelen = n_scan_samples_dx[2] - len(signal_d2)
+        zeropad_toframelen = n_scan_samples_dx[1] - len(signal_d2)
+        
+        if zeropad_toframelen > 0:
+            signal_d2 = np.append(signal_d2, np.zeros(zeropad_toframelen, dtype='bool'))
+        elif zeropad_toframelen < 0:
+            signal_d2 = signal_d2[-zeropad_toframelen:]  # TODO: looks strange? not right length? never enters here probably
         # repeat signal for all additional scan axes, if applicable
         signal = self.__repeat_remaining_axes_clock(signal=signal_d2, n_steps_dx=n_steps_dx, n_scan_samples_dx=n_scan_samples_dx, axis_start=2, axis_end=axis_count)
         # pad initpos for higher axes, if any

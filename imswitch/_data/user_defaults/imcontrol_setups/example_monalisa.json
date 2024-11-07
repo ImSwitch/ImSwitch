@@ -1,0 +1,209 @@
+{
+    "detectors": {
+        "Green": {
+            "analogChannel": null,
+            "digitalLine": 4,
+            "managerName": "HamamatsuManager",
+            "managerProperties": {
+                "cameraListIndex": 0,
+                "hamamatsu": {
+                    "readout_speed": 3,
+                    "trigger_global_exposure": 5,
+                    "trigger_active": 2,
+                    "trigger_polarity": 2,
+                    "exposure_time": 0.01,
+                    "trigger_source": 1,
+                    "subarray_hpos": 0,
+                    "subarray_vpos": 0,
+                    "subarray_hsize": 2048,
+                    "subarray_vsize": 2048
+                }
+            },
+            "forAcquisition": true
+        },
+        "Red": {
+            "analogChannel": null,
+            "digitalLine": 5,
+            "managerName": "HamamatsuManager",
+            "managerProperties": {
+                "cameraListIndex": 1,
+                "hamamatsu": {
+                    "readout_speed": 3,
+                    "trigger_global_exposure": 5,
+                    "trigger_active": 2,
+                    "trigger_polarity": 2,
+                    "exposure_time": 0.01,
+                    "trigger_source": 1,
+                    "subarray_hpos": 0,
+                    "subarray_vpos": 0,
+                    "subarray_hsize": 2048,
+                    "subarray_vsize": 2048
+                }
+            },
+            "forAcquisition": true
+        }
+    },
+    "lasers": {
+        "488 (OFF)": {
+            "analogChannel": null,
+            "digitalLine": 3,
+            "managerName": "CoboltLaserManager",
+            "managerProperties": {
+                "digitalDriver": "cobolt.cobolt0601.Cobolt0601_f2",
+                "digitalPorts": [
+                    "COM12"
+                ]
+            },
+            "wavelength": 488,
+            "valueRangeMin": 0,
+            "valueRangeMax": 200
+        },
+        "488 (EXC)": {
+            "analogChannel": null,
+            "digitalLine": 1,
+            "managerName": "CoboltLaserManager",
+            "managerProperties": {
+                "digitalDriver": "cobolt.cobolt0601.Cobolt0601_f2",
+                "digitalPorts": [
+                    "COM4"
+                ]
+            },
+            "wavelength": 488,
+            "valueRangeMin": 0,
+            "valueRangeMax": 200
+        },
+        "405 (ON)": {
+            "analogChannel": null,
+            "digitalLine": 2,
+            "managerName": "CoboltLaserManager",
+            "managerProperties": {
+                "digitalDriver": "cobolt.cobolt0601.Cobolt0601_f2",
+                "digitalPorts": [
+                    "COM11"
+                ]
+            },
+            "wavelength": 405,
+            "valueRangeMin": 0,
+            "valueRangeMax": 200
+        },
+        "592 (EXC)": {
+            "analogChannel": 3,
+            "digitalLine": 0,
+            "managerName": "NidaqLaserManager",
+            "managerProperties": {},
+            "wavelength": 592,
+            "valueRangeMin": 0,
+            "valueRangeMax": 1
+        },
+        "592 (OFF)": {
+            "analogChannel": null,
+            "digitalLine": 6,
+            "managerName": "NidaqLaserManager",
+            "managerProperties": {},
+            "wavelength": 592,
+            "valueRangeMin": null,
+            "valueRangeMax": null
+        }
+    },
+    "positioners": {
+        "X": {
+            "analogChannel": 0,
+            "digitalLine": null,
+            "managerName": "NidaqPositionerManager",
+            "managerProperties": {
+                "conversionFactor": 1.75,
+                "minVolt": 0,
+                "maxVolt": 10
+            },
+            "axes": ["X"],
+            "forScanning": true,
+            "forPositioning": true
+        },
+        "Y": {
+            "analogChannel": 1,
+            "digitalLine": null,
+            "managerName": "NidaqPositionerManager",
+            "managerProperties": {
+                "conversionFactor": 1.75,
+                "minVolt": 0,
+                "maxVolt": 10
+            },
+            "axes": ["Y"],
+            "forScanning": true,
+            "forPositioning": true
+        },
+        "Z": {
+            "analogChannel": 2,
+            "digitalLine": null,
+            "managerName": "NidaqPositionerManager",
+            "managerProperties": {
+                "conversionFactor": 1.75,
+                "minVolt": 0,
+                "maxVolt": 10
+            },
+            "axes": ["Z"],
+            "forScanning": true,
+            "forPositioning": true
+        }
+    },
+    "scan": {
+        "scanDesigner": "BetaScanDesigner",
+        "scanDesignerParams": {
+            "return_time": 0.01
+        },
+        "TTLCycleDesigner": "BetaTTLCycleDesigner",
+        "TTLCycleDesignerParams": {},
+        "sampleRate": 100000
+    },
+    "nidaq": {
+        "timerCounterChannel": null,
+        "startTrigger": false
+    },
+    "rois": {
+        "Imaging_green": {
+            "x": 283,
+            "y": 1011,
+            "w": 564,
+            "h": 564
+        },
+        "FastROI_green": {
+            "x": 580,
+            "y": 1163,
+            "w": 16,
+            "h": 249
+        },
+        "WideField_green": {
+            "x": 549,
+            "y": 1260,
+            "w": 90,
+            "h": 90
+        },
+        "ROI_test": {
+            "x": 706,
+            "y": 570,
+            "w": 839,
+            "h": 839
+        },
+        "test": {
+            "x": 543,
+            "y": 1086,
+            "w": 520,
+            "h": 520
+        }
+    },
+    "availableWidgets": [
+        "Settings",
+        "View",
+        "Recording",
+        "Image",
+        "Laser",
+        "Positioner",
+        "Scan",
+        "AlignXY",
+        "AlignAverage",
+        "AlignmentLine",
+        "BeadRec",
+        "FFT",
+        "ULenses"
+    ]
+}

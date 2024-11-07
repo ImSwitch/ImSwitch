@@ -1,0 +1,19 @@
+Metadata-Version: 1.1
+Name: javabridge
+Version: 1.0.19
+Summary: Python wrapper for the Java Native Interface
+Home-page: http://github.com/CellProfiler/python-javabridge/
+Author: UNKNOWN
+Author-email: UNKNOWN
+License: BSD License
+Description: The python-javabridge package makes it easy to start a Java virtual
+        machine (JVM) from Python and interact with it. Python code can
+        interact with the JVM using a low-level API or a more convenient
+        high-level API. Python-javabridge was developed for and is used by the
+        cell image analysis software CellProfiler (cellprofiler.org).
+Platform: UNKNOWN
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: License :: OSI Approved :: BSD License
+Classifier: Programming Language :: Java
+Classifier: Programming Language :: Python :: 2
+Classifier: Programming Language :: Python :: 3

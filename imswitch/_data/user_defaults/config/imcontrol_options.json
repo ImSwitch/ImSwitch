@@ -1,0 +1,7 @@
+{
+    "setupFileName": "example_virtual_microscope.json",
+    "recording": {
+        "outputFolder": "./ImSwitch/ImSwitch/recordings",
+        "includeDateInOutputFolder": true
+    }
+}

@@ -27,6 +27,12 @@ class NidaqPositionerManager(PositionerManager):
     def move(self, dist, axis):
         self.setPosition(self._position[self.axes[0]] + dist, axis)
 
+    def setSpeed(self, speed, axis=None):
+        pass
+
+    def moveForever(self, speed=(0, 0, 0, 0), is_stop=False):
+        pass
+
     def setPosition(self, position, axis):
         self._position[self.axes[0]] = position
         self._nidaqManager.setAnalog(target=self.name,

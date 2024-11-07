@@ -3,31 +3,34 @@ import os
 from abc import ABC
 from pathlib import Path
 from shutil import copy2
-
-import imswitch
+from imswitch import IS_HEADLESS, __file__, DEFAULT_CONFIG_PATH, DEFAULT_DATA_PATH
 
 
 def getSystemUserDir():
     """ Returns the user's documents folder if they are using a Windows system,
     or their home folder if they are using another operating system. """
 
-    if os.name == 'nt':  # Windows system, try to return documents directory
-        try:
-            import ctypes.wintypes
-            CSIDL_PERSONAL = 5  # Documents
-            SHGFP_TYPE_CURRENT = 0  # Current value
+    if DEFAULT_CONFIG_PATH is not None:
+        print("We use the user-provided configuration path: " + DEFAULT_CONFIG_PATH)
+        return os.path.join(DEFAULT_CONFIG_PATH)
+    else:
+        if os.name == 'nt':  # Windows system, try to return documents directory
+            try:
+                import ctypes.wintypes
+                CSIDL_PERSONAL = 5  # Documents
+                SHGFP_TYPE_CURRENT = 0  # Current value
 
-            buf = ctypes.create_unicode_buffer(ctypes.wintypes.MAX_PATH)
-            ctypes.windll.shell32.SHGetFolderPathW(0, CSIDL_PERSONAL, 0, SHGFP_TYPE_CURRENT, buf)
+                buf = ctypes.create_unicode_buffer(ctypes.wintypes.MAX_PATH)
+                ctypes.windll.shell32.SHGetFolderPathW(0, CSIDL_PERSONAL, 0, SHGFP_TYPE_CURRENT, buf)
 
-            return buf.value
-        except ImportError:
-            pass
-        #TOOD: How can we ensure that configuration files are updated automatically.. 
-    return os.path.expanduser('~')  # Non-Windows system, return home directory
+                return buf.value
+            except ImportError:
+                pass
+            #TOOD: How can we ensure that configuration files are updated automatically.. 
+        return os.path.expanduser('~')  # Non-Windows system, return home directory
 
 
-_baseDataFilesDir = os.path.join(os.path.dirname(os.path.realpath(imswitch.__file__)), '_data')
+_baseDataFilesDir = os.path.join(os.path.dirname(os.path.realpath(__file__)), '_data')
 _baseUserFilesDir = os.path.join(getSystemUserDir(), 'ImSwitchConfig')
 
 
@@ -85,9 +88,14 @@ class UserFileDirs(FileDirs):
     """ Catalog of directories that contain user configuration files. """
     Root = _baseUserFilesDir
     Config = os.path.join(_baseUserFilesDir, 'config')
+    Data = _baseUserFilesDir
+    if DEFAULT_DATA_PATH is not None:
+        Data = DEFAULT_DATA_PATH
+    
 
 
-# Copyright (C) 2020-2021 ImSwitch developers
+
+# Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

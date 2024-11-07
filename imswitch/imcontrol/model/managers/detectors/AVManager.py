@@ -1,7 +1,11 @@
-import numpy as np
-
 from imswitch.imcommon.model import initLogger
-from .DetectorManager import DetectorManager, DetectorAction, DetectorNumberParameter, DetectorListParameter
+from .DetectorManager import (
+    DetectorManager,
+    DetectorAction,
+    DetectorNumberParameter,
+    DetectorListParameter,
+    ExposureTimeToUs,
+)
 
 
 class AVManager(DetectorManager):
@@ -19,17 +23,28 @@ class AVManager(DetectorManager):
     def __init__(self, detectorInfo, name, **_lowLevelManagers):
         self.__logger = initLogger(self, instanceName=name)
 
+        try:
+            self._mocktype = detectorInfo.managerProperties['mocktype']
+        except:
+            self._mocktype = "normal"
+            
+        try:
+            self._mockstackpath = detectorInfo.managerProperties['mockstackpath']
+        except:
+            self._mockstackpath = None
+            
         self._camera = self._getAVObj(detectorInfo.managerProperties['cameraListIndex'])
 
         model = self._camera.model
         self._running = False
-        
 
         for propertyName, propertyValue in detectorInfo.managerProperties['avcam'].items():
             self._camera.setPropertyValue(propertyName, propertyValue)
 
         fullShape = (self._camera.getPropertyValue('image_width'),
                      self._camera.getPropertyValue('image_height'))
+        
+        
 
         self.crop(hpos=0, vpos=0, hsize=fullShape[0], vsize=fullShape[1])
         self.pixel_format = self._camera.getPropertyValue("pixel_format")
@@ -57,6 +72,16 @@ class AVManager(DetectorManager):
         super().__init__(detectorInfo, name, fullShape=fullShape, supportedBinnings=[1],
                          model=model, parameters=parameters, actions=actions, croppable=True)
 
+    def getExposure(self) -> int:
+        """ Get camera exposure time in microseconds. This
+        manager uses milliseconds as the unit for exposure time.
+
+        Returns:
+            int: exposure time in microseconds
+        """
+        exposure = self._camera.getPropertyValue('exposure')
+        return ExposureTimeToUs.convert(exposure, 'ms')
+
     def getLatestFrame(self, is_save=False):
         if is_save:
             return self._camera.getLast(is_resize=False)
@@ -64,7 +89,6 @@ class AVManager(DetectorManager):
             # for preview purpose (speed up GUI?)
             return self._camera.getLast(is_resize=True)
             #return self._camera.getLastChunk()
-            
 
     def setParameter(self, name, value):
         """Sets a parameter value and returns the value.
@@ -94,8 +118,8 @@ class AVManager(DetectorManager):
 
     def setBinning(self, binning):
         super().setBinning(binning) 
-        
-    def getChunk(self):        
+
+    def getChunk(self):
         return self._camera.getLastChunk()
 
     def flushBuffers(self):
@@ -174,14 +198,16 @@ class AVManager(DetectorManager):
             self.__logger.error(e)
             self.__logger.warning(f'Failed to initialize AV camera {cameraId}, loading TIS mocker')
             from imswitch.imcontrol.model.interfaces.tiscamera_mock import MockCameraTIS
-            camera = MockCameraTIS()
+            
+            camera = MockCameraTIS(mocktype=self._mocktype, mockstackpath=self._mockstackpath)
         
         self.__logger.info(f'Initialized camera, model: {camera.model}')
         return camera
 
     def flushBuffer(self):
         self.__logger.info('Flush buffer!')
-        pass 
+        self._camera.flushBuffer()
+        
     
     def closeEvent(self):
         self._camera.close()

@@ -13,9 +13,13 @@ from inspect import signature
 from wsgiref import validate
 from scipy.optimize import least_squares
 import scipy.ndimage as ndi
-import pyqtgraph as pg
+
 import numpy as np
-from tkinter.filedialog import askopenfilename
+try:
+    from tkinter.filedialog import askopenfilename
+    IS_TKINTER = True
+except:
+    IS_TKINTER = False
 
 from imswitch.imcommon.model import APIExport
 from imswitch.imcontrol.model import configfiletools
@@ -23,7 +27,10 @@ from imswitch.imcommon.model import dirtools
 from imswitch.imcontrol.view import guitools
 from ..basecontrollers import ImConWidgetController
 from imswitch.imcommon.model import initLogger
+from imswitch import IS_HEADLESS
 
+if not IS_HEADLESS:
+    import pyqtgraph as pg
 _logsDir = os.path.join(dirtools.UserFileDirs.Root, 'recordings', 'logs_etsted')
 
 
@@ -199,10 +206,7 @@ class EtSTEDController(ImConWidgetController):
     def runSlowScan(self):
         """ Run a scan of the slow method (STED). """
         self.__detLog[f"scan_start"] = datetime.now().strftime('%Ss%fus')
-        if self.scanInitiationMode == ScanInitiationMode.ScanWidget:
-            # Run scan in nidaqManager
-            self._master.nidaqManager.runScan(self.signalDic, self.scanInfoDict)
-        elif self.scanInitiationMode == ScanInitiationMode.RecordingWidget:
+        if self.scanInitiationMode == ScanInitiationMode.RecordingWidget:
             # Run recording from RecWidget
             self.triggerRecordingWidgetScan()
 
@@ -330,7 +334,8 @@ class EtSTEDController(ImConWidgetController):
         # scatter plot exinfo if there is something (cdvesprox or dynamin)
         if exinfo is not None:
             if 'cd_vesicle_prox' in self.__pipelinename or 'dynamin' in self.__pipelinename:
-                self._widget.analysisHelpWidget.scatter.setData(x=np.array(exinfo['y']), y=np.array(exinfo['x']), pen=pg.mkPen(None), brush='g', symbol='x', size=15)
+                if not IS_HEADLESS:
+                    self._widget.analysisHelpWidget.scatter.setData(x=np.array(exinfo['y']), y=np.array(exinfo['x']), pen=pg.mkPen(None), brush='g', symbol='x', size=15)
             #else:
             #    self._widget.analysisHelpWidget.scatter.setData(x=[], y=[])
 
@@ -685,7 +690,10 @@ class EtSTEDCoordTransformHelper():
 
     def openFolder(self):
         """ Opens current folder in File Explorer and returns chosen filename. """
-        filename = askopenfilename()
+        if IS_TKINTER:
+            filename = askopenfilename()
+        else: 
+            filename = "" 
         return filename
 
     def updateCalibImage(self, img_data, modality):
@@ -742,7 +750,7 @@ class ScanInitiationMode(enum.Enum):
     RecordingWidget = 2
 
 
-# Copyright (C) 2020-2021 ImSwitch developers
+# Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

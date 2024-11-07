@@ -1,0 +1,139 @@
+{
+    "positioners": {
+        "VirtualStage": {
+          "managerNameGRBL": "GRBLStageManager",
+          "managerName": "VirtualStageManager",
+          "managerProperties": {
+            "rs232device": "VirtualMicroscope",
+            "isEnable": true, 
+            "enableauto": false,
+            "isDualaxis": 0,
+            "stepsizeX": 1,
+            "stepsizeY": 1,
+            "stepsizeZ": 1,
+            "stepsizeA": 1,
+            "homeSpeedX": 15000,
+            "homeSpeedY": 15000,
+            "homeSpeedZ": 15000,
+            "homeSpeedA": 15000,
+            "homeDirectionX": 1,
+            "homeDirectionY": 1,
+            "homeDirectionZ": -1,
+            "initialSpeed": {"X": 15000, "Y":  15000,"Z": 15000, "A": 15000}
+          },
+          "axes": [
+            "X",
+            "Y",
+            "Z", 
+            "A"
+          ],
+          "forScanning": true,
+          "forPositioning": true
+        }
+      },
+    "rs232devices": {
+    "VirtualMicroscope": {
+      "managerName": "VirtualMicroscopeManager",
+      "managerProperties": {
+      }
+    }
+  },
+ "lasers": {
+    "LED": {
+      "analogChannel": null,
+      "digitalLine": null,
+      "managerName": "VirtualLaserManager",
+      "managerProperties": {
+        "rs232device": "VirtualMicroscope",
+        "channel_index": 1
+      },
+      "wavelength": 635,
+      "valueRangeMin": 0,
+      "valueRangeMax": 1023
+    }
+  },
+  "detectors": {
+    "WidefieldCamera": {
+        "analogChannel": null,
+        "digitalLine": null,
+        "managerName": "VirtualCameraManager",
+        "managerProperties": {
+            "isRGB": 0,
+            "cameraListIndex": 0,
+            "cameraEffPixelsize": 0.2257,
+            "virtcam": {
+                "exposure": 0,
+                "gain": 0,
+                "blacklevel": 100,
+                "image_width": 1000,
+                "image_height": 1000
+            }
+        },
+        "forAcquisition": true,
+        "forFocusLock": true
+    }
+    },
+  "rois": {
+    "Full chip": {
+      "x": 600,
+      "y": 600,
+      "w": 1200,
+      "h": 1200
+    }
+  },
+  "fovLock": {
+    "camera": "WidefieldCamera",
+    "positioner": "VirtualStage",
+    "updateFreq": 1, 
+    "piKp":1, 
+    "piKi":1
+    },
+    "sim": {
+      "monitorIdx": 2,
+      "width": 1080,
+      "height": 1920,
+      "wavelength": 0,
+      "pixelSize": 0,
+      "angleMount": 0,
+      "patternsDirWin": "C:\\Users\\wanghaoran\\Documents\\ImSwitchConfig\\imcontrol_slm\\488\\",
+      "patternsDir": "/users/bene/ImSwitchConfig/imcontrol_sim/488"
+    },
+    "dpc": {
+      "wavelength": 0.53,
+      "pixelsize": 0.2,
+      "NA": 0.3,
+      "NAi": 0.3,
+      "n": 1.0,
+      "rotations": [0, 180, 90, 270]
+    },
+  "PixelCalibration": {},
+  "availableWidgets": [
+    "Settings",
+    "View",
+    "Recording",
+    "Image",
+    "Laser",
+    "Positioner",
+    "Autofocus",
+    "MCT",
+    "ROIScan",
+    "HistoScan",
+    "Hypha" 
+  ],
+  "nonAvailableWidgets":[
+    "FocusLock",
+    "SIM", 
+    "DPC",
+    "FOVLock",
+    "Temperature", 
+    "HistoScan",
+    "PixelCalibration", 
+    "Lightsheet", 
+    "WebRTC", 
+    "Flatfield", 
+    "STORMRecon",
+    "DPC",    
+    "ImSwitchServer",
+    "PixelCalibration",
+    "FocusLock"]
+}

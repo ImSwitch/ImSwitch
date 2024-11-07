@@ -1,5 +1,6 @@
 import pipython  # PI Python wrapper, ensure it's installed via pip (pip install pipython)
 import time
+import logging
 
 from .PositionerManager import PositionerManager
 from pipython import GCSDevice, GCSError
@@ -17,7 +18,7 @@ class PIFOCManager(PositionerManager):
 
     """
 
-    def __init__(self, positionerInfo, name, *args, **lowLevelManagers):
+    def __init__(self, positionerInfo, name, *args, **lowLevelManagers):      
         if len(positionerInfo.axes) != 1:
             raise RuntimeError(f'{self.__class__.__name__} only supports one axis,'
                                f' {len(positionerInfo.axes)} provided.')
@@ -28,16 +29,28 @@ class PIFOCManager(PositionerManager):
 
         #Initialize communication with the PI stage
         self._serialnum = positionerInfo.managerProperties['serialnum']
+        self._device=None
         self._axis=1 # assuming axis ID is 1
         self._axis_name = list(positionerInfo.axes)[0]  # Use the name of the axis, e.g., 'Z'
         self._vel = positionerInfo.managerProperties['vel']
         self._min_pos = positionerInfo.managerProperties['min_pos']
         self._max_pos = positionerInfo.managerProperties['max_pos']
         self._tolerance = positionerInfo.managerProperties['tolerance']
+        self.logger = logging.getLogger(self.__class__.__name__)
+        self.logger.setLevel(logging.DEBUG)
 
+        # Configurer le handler pour le logger
+        handler = logging.StreamHandler()
+        handler.setLevel(logging.DEBUG)
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        handler.setFormatter(formatter)
+        self.logger.addHandler(handler)
         # Initialize position as a dictionary
         self._position = {self._axis_name: 0}
 
+        if not self._serialnum:
+            raise ValueError("Serial number not found in positionerInfo.")
+        
         try:
             self._device = GCSDevice()
             self._device.ConnectUSB(serialnum=self._serialnum)
@@ -47,21 +60,30 @@ class PIFOCManager(PositionerManager):
                 raise RuntimeError(f"No response from the USB device {self._serialnum}.")
 
             # Set the velocity based on manager property
-            self.set_velocity(self._vel)
-
+            self.setSpeed(self._vel)
             self.homing()  # Perform homing
 
         except GCSError as e:
+            print(f"GCSError occurred: {str(e)}")
             raise RuntimeError(f"Communication error with device: {str(e)}")
         except Exception as e:
+            print(f"An unexpected error occurred: {str(e)}")
             raise RuntimeError(f"An error occurred while initializing the device: {e}")
     
+    def setSpeed(self, speed, axis=None):
+        #Set the movement velocity for the axis.
+        try:
+            self._device.VEL(self._axis, speed)
+        except GCSError as e:
+            raise RuntimeError(f"Error setting velocity: {str(e)}")
+        
+    """
     def set_velocity(self, velocity):
         #Set the movement velocity for the axis.
         try:
             self._device.VEL(self._axis, velocity)
         except GCSError as e:
-            raise RuntimeError(f"Error setting velocity: {str(e)}")
+            raise RuntimeError(f"Error setting velocity: {str(e)}")"""
     
     def homing(self):
         try:
@@ -98,7 +120,7 @@ class PIFOCManager(PositionerManager):
             self._device.SVO(self._axis, state)  # Activer (1) ou désactiver (0) le servo
         except GCSError as e:
             raise RuntimeError(f"Error setting servo state: {str(e)}")
-        
+            
     def wait_until_motion_complete(self, target):
         #Wait for the motion to complete by querying the IsMoving() method.
         try:
@@ -116,7 +138,7 @@ class PIFOCManager(PositionerManager):
                 # Check for timeout
                 if time.time() - start_time > timeout:
                     print("Homing is taking too long, stopping the device...")
-                    self.stop()  # Arrêter le mouvement si ça prend trop de temps
+                    self.forceStop()  # Arrêter le mouvement si ça prend trop de temps
                     raise RuntimeError("Homing timeout exceeded")
                 
                 # Check if the position is within the tolerance
@@ -128,7 +150,7 @@ class PIFOCManager(PositionerManager):
         except GCSError as e:
             raise RuntimeError(f"Error during motion wait: {str(e)}")
 
-    def move(self, value, _):
+    def move(self, value, _, isAbsolute=None, isBlocking=False, speed=None):
         #Move the stage by a relative value.
         if value == 0:
             return
@@ -143,10 +165,13 @@ class PIFOCManager(PositionerManager):
             self._device.MOV(self._axis, new_position)
             self.wait_until_motion_complete(new_position)  # Wait for motion to complete
             self._position[self._axis] = new_position  # Update the position
-            print(f"Moved to relative position {new_position} on axis {self._axis}")
+            #print(f"Moved to relative position {new_position} on axis {self._axis}")
         except GCSError as e:
             raise RuntimeError(f"Error during move: {str(e)}")
 
+    def moveForever(self, speed=(0, 0, 0, 0), is_stop=False):
+        pass
+    
     def setPosition(self, value, _):
         #Move the stage to an absolute position.
         value_mm = value / 1000  # Convert value from µm to mm
@@ -157,16 +182,31 @@ class PIFOCManager(PositionerManager):
             self._device.MOV(self._axis, float(value_mm))
             self.wait_until_motion_complete(value_mm)  # Wait for motion to complete
             self._position[self._axis] = float(value_mm)
-            print(f"Moved to absolute position {value_mm} on axis {self._axis}")
+            #print(f"Moved to absolute position {value_mm} on axis {self._axis}")
         except GCSError as e:
             raise RuntimeError(f"Error setting position: {str(e)}")
         
-    def stop(self):
+    def doHome(self, self_axis, isBlocking=False):
+        self.setPosition(self._max_pos*1000, None)
+    
+    def forceStop(self, self_axis):
         #Stop the motion of the stage.
         try:
-            print("Stopping the device...")
-            self._device.STP()  # Stop all movements immediately
+            self.logger.debug(f"Attempting to stop the device on axis {self_axis}")
+            self._device.STP  # Stop all movements immediately
+            self.logger.debug(f"Device Stopped")
+
+            """
+            # Vérifier l'état du dispositif avant d'envoyer la commande d'arrêt
+            if self._device.IsControllerReady():
+                self._device.STP()  # Stop all movements immediately
+                self.logger.debug(f"Device stopped successfully on axis {self_axis}")
+            else:
+                self.logger.warning(f"Device is not ready on axis {self_axis}")
+                raise RuntimeError(f"Device is not ready on axis {self_axis}")"""
+
         except GCSError as e:
+            self.logger.error(f"GCSError: {str(e)}")
             raise RuntimeError(f"Error stopping the device: {str(e)}")
 
     @property
@@ -199,7 +239,7 @@ class PIFOCManager(PositionerManager):
     def handle_overflow(self):
         # Handle overflow by stopping the device, switching to open-loop, and retrying homing.
         try:
-            self.stop()  # Stop all movements immediately
+            self.forceStop()  # Stop all movements immediately
             self.set_servo_state(0)  # Disable the servo (open-loop)
             time.sleep(1)  # Wait a short time
             self.set_servo_state(1)  # Enable the servo (close-loop)

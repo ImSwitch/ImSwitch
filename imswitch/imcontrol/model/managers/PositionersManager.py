@@ -5,11 +5,12 @@ class PositionersManager(MultiManager):
     """ PositionersManager interface for dealing with PositionerManagers. It is
     a MultiManager for positioners. """
 
-    def __init__(self, positionerInfos, **lowLevelManagers):
+    def __init__(self, positionerInfos, commChannel, **lowLevelManagers):
+        lowLevelManagers['commChannel'] = commChannel
         super().__init__(positionerInfos, 'positioners', **lowLevelManagers)
 
-
-# Copyright (C) 2020-2021 ImSwitch developers
+        
+# Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

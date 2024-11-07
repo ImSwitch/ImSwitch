@@ -1,7 +1,7 @@
 from imswitch.imcommon.model import initLogger
 from .LaserManager import LaserManager
 
-class ESP32LEDLaserManager(LaserManager):
+class SQUIDLaserManager(LaserManager):
     """ LaserManager for controlling LEDs and LAsers connected to an 
     ESP32 exposing a REST API
     Each LaserManager instance controls one LED.
@@ -12,36 +12,44 @@ class ESP32LEDLaserManager(LaserManager):
       through which the communication should take place
     - ``channel_index`` -- laser channel (A to H)
     """
+    
+    ILLUMINATION_SOURCE_405NM = 11
+    ILLUMINATION_SOURCE_488NM = 12
+    ILLUMINATION_SOURCE_638NM = 13
+    ILLUMINATION_SOURCE_561NM = 14
+    ILLUMINATION_SOURCE_730NM = 15
 
     def __init__(self, laserInfo, name, **lowLevelManagers):
-        super().__init__(laserInfo, name, isBinary=False, valueUnits='mW', valueDecimals=0)
         self._rs232manager = lowLevelManagers['rs232sManager'][
             laserInfo.managerProperties['rs232device']
         ]
         self.__logger = initLogger(self, instanceName=name)
-        self.power = 0
-        self.__channel_index = laserInfo.managerProperties['channel_index']
+        self.__power = 0
+        self.__illumination_source = laserInfo.managerProperties['illumination_source']
 
-        self.enabled = False
-        
+        self.__enabled = False
+        super().__init__(laserInfo, name, isBinary=False, valueUnits='mW', valueDecimals=0)
 
     def setEnabled(self, enabled):
         """Turn on (N) or off (F) laser emission"""
-        self.enabled = enabled
-        self._rs232manager._squid.set_laser(self.__channel_index, self.power*self.enabled)
         
+        self.__enabled = enabled
+        self._rs232manager._squid.set_illumination(illumination_source=self.illumination_source,
+                                                              intensity=self.__power)
+
 
     def setValue(self, power):
         """Handles output power.
         Sends a RS232 command to the laser specifying the new intensity.
         """
-        self.power = power
-        if self.enabled:
-            self._rs232manager._squid.set_laser(self.__channel_index, self.power)
+        self.__power = power   
+        if self.__enabled:
+            self._rs232manager._squid.set_illumination(illumination_source=self.illumination_source,
+                                                              intensity=self.__power)
 
 
 
-# Copyright (C) 2020-2021 ImSwitch developers
+# Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

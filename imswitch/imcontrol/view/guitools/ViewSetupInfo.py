@@ -24,6 +24,16 @@ class LaserPresetInfo:
     value: float
     """ Laser value. """
 
+@dataclass(frozen=True)
+class ShutterPresetInfo:
+    value: float
+    """ Shutter value. """
+
+@dataclass(frozen=True)
+class LEDPresetInfo:
+    value: float
+    """ LED value. """
+
 
 @dataclass
 class ViewSetupInfo(SetupInfo):
@@ -42,6 +52,13 @@ class ViewSetupInfo(SetupInfo):
     defaultLaserPresetForScan: Optional[str] = field(default_factory=lambda: None)
     """ Default laser preset for scanning. """
 
+    shutterPresets: Dict[str, Dict[str, 'ShutterPresetInfo']] = field(default_factory=dict)
+    """ Shutter presets available to select (map preset name -> shutter name ->
+    ShutterPresetInfo). """
+
+    defaultShutterPresetForScan: Optional[str] = field(default_factory=lambda: None)
+    """ Default shutter preset for scanning. """
+
     availableWidgets: Union[List[str], bool] = field(default_factory=list)
     """ Which widgets to load. The following values are possible to include
     (case sensitive):
@@ -55,8 +72,14 @@ class ViewSetupInfo(SetupInfo):
     - ``Autofocus`` (autofocus widget; requires ``focusLock`` field to be
       defined)      
     - ``SLM`` (SLM widget; requires ``slm`` field to be defined)
+    - ``SIM`` (SIM widget; requires ``sim`` field to be defined)    
     - ``Laser`` (laser control widget)
+    - ``Shutter`` (shutter control widget)
+    - ``LED`` (LED control widget)
+    - ``Deck`` (Deck control widget)
     - ``Positioner`` (positioners widget)
+    - ``StandaPositioner`` (Standa positioners widget)
+    - ``StandaStage`` (Standa Stage widget)
     - ``Scan`` (scan widget; requires ``scan`` field to be defined)
     - ``BeadRec`` (bead reconstruction widget)
     - ``AlignAverage`` (axial alignment tool widget)
@@ -87,6 +110,23 @@ class ViewSetupInfo(SetupInfo):
         except KeyError:
             pass
 
+    def setLEDPreset(self, name, laserPresetInfos):
+        """ :meta private: """
+        self.laserPresets[name] = laserPresetInfos
+
+    def removeLEDPreset(self, name):
+        """ :meta private: """
+        try:
+            del self.laserPresets[name]
+            if self.defaultLEDPresetForScan == name:
+                self.setDefaultLEDPresetForScan(None)
+        except KeyError:
+            pass
+
+    def setDefaultLEDPresetForScan(self, presetNameOrNone):
+        """ :meta private: """
+        self.defaultLEDPresetForScan = presetNameOrNone
+
     def setLaserPreset(self, name, laserPresetInfos):
         """ :meta private: """
         self.laserPresets[name] = laserPresetInfos
@@ -104,6 +144,23 @@ class ViewSetupInfo(SetupInfo):
         """ :meta private: """
         self.defaultLaserPresetForScan = presetNameOrNone
 
+    def setShutterPreset(self, name, shutterPresetInfos):
+        """ :meta private: """
+        self.shutterPresets[name] = shutterPresetInfos
+
+    def removeShutterPreset(self, name):
+        """ :meta private: """
+        try:
+            del self.shutterPresets[name]
+            if self.defaultShutterPresetForScan == name:
+                self.setDefaultShutterPresetForScan(None)
+        except KeyError:
+            pass
+
+    def setDefaultShutterPresetForScan(self, presetNameOrNone):
+        """ :meta private: """
+        self.defaultShutterPresetForScan = presetNameOrNone
+
     def hasWidget(self, widget):
         """ :meta private: """
         return self.availableWidgets is True or (
@@ -111,7 +168,7 @@ class ViewSetupInfo(SetupInfo):
         )
 
 
-# Copyright (C) 2020-2021 ImSwitch developers
+# Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

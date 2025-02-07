@@ -69,6 +69,7 @@ class GalvoScanDesigner(ScanDesigner):
         self.__timestep = 1e6 / setupInfo.scan.sampleRate
         # arbitrary for now - should calculate this based on the abs(biggest) axis_centerpos and the
         # max speed/acc, as that is what limits time it takes for axes to get to the right position
+        self.__minsettlingtime = 1000
         self.__paddingtime_d3step = int(parameterDict['d3step_delay'])
         # arbitrary for now  µs
         self.__paddingtime_full = 100 #1000
@@ -137,6 +138,9 @@ class GalvoScanDesigner(ScanDesigner):
         for i in range(axis_count_scan):
             axis_positions.append(int(np.ceil(self.axis_length[i] / self.axis_step_size[i])))
 
+        self.__settlingtime = self.__calc_settling_time(self.axis_length, self.axis_centerpos,
+                                                        self.axis_vel_max, self.axis_acc_max)
+
         # get parameter for which axes should be smooth
         self.__smooth_axis = [False if 'mock' in axis_name.lower() else True for axis_name in self.axis_devs_order]
 
@@ -198,7 +202,8 @@ class GalvoScanDesigner(ScanDesigner):
             'scan_time_step': round(self.__timestep * 1e-6, ndigits=10),
             'dwell_time': parameterDict['sequence_time'],
             'phase_delay': parameterDict['phase_delay'],
-            'scan_samples_d2_period': samples_d2_period_read,
+            #'scan_samples_d2_period': samples_d2_period_read,
+            'scan_samples_d2_period': samples_d2_period - 1,
             'tot_scan_time_s': tot_scan_time,
             'smooth_axes': self.__smooth_axis
         }

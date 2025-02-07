@@ -233,7 +233,7 @@ class ScanWorker(Worker):
         self._samples_total = round(scanInfoDict['scan_samples_total'] * self._frac_scan_det_rate)
         # Other parameters for throwaway samples (like initial positioning)
         self._throw_startzero = round(scanInfoDict['scan_throw_startzero'] * self._frac_scan_det_rate)
-        self._throw_initpos = round(scanInfoDict['scan_throw_initpos'] * self._frac_scan_det_rate)
+        self._throw_initpos = round(scanInfoDict['scan_pads_initpos'] * self._frac_scan_det_rate)
         self._throw_settling = round(scanInfoDict['scan_throw_settling'] * self._frac_scan_det_rate)
         self._throw_startacc = round(scanInfoDict['scan_throw_startacc'] * self._frac_scan_det_rate)
         self._throw_finalpos = round(scanInfoDict['scan_throw_finalpos'] * self._frac_scan_det_rate)

@@ -30,6 +30,7 @@ class NidaqManager(SignalInterface):
         self.aoTaskWaiter = None
         self.timerTaskWaiter = None
         self.busy = False
+        self.__simulating=False
         if self.__setupInfo is not None:
             self.__timerCounterChannel = setupInfo.nidaq.getTimerCounterChannel()
             self.__startTrigger = setupInfo.nidaq.startTrigger

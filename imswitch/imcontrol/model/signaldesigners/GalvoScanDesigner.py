@@ -8,14 +8,13 @@ from imswitch.imcommon.model import initLogger
 
 class GalvoScanDesigner(ScanDesigner):
     """ Scan designer for scan systems with galvanometric mirrors.
-
+    
     Designer params: None
     """
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.__logger = initLogger(self)
-
         self._expectedParameters = ['target_device',
                                     'axis_length',
                                     'axis_step_size',

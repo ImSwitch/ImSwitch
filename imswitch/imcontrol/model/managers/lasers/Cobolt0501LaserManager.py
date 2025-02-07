@@ -1,15 +1,12 @@
-from lantz import Q_
+import pycobolt
 
+from .LaserManager import LaserManager
 from imswitch.imcommon.model import initLogger
-from .LantzLaserManager import LantzLaserManager
 
-
-class Cobolt0501LaserManager(LantzLaserManager):
-    """ LaserManager for Cobolt 06-01 lasers. Uses digital modulation mode when
-    scanning. Does currently not support DPL type lasers.
+class Cobolt0501LaserManager(LaserManager):
+    """ LaserManager for Cobolt 05-01 lasers. Uses digital modulation mode when     scanning.
 
     Manager properties:
-
     - ``digitalPorts`` -- a string array containing the COM ports to connect
       to, e.g. ``["COM4"]``
     """
@@ -17,10 +14,19 @@ class Cobolt0501LaserManager(LantzLaserManager):
     def __init__(self, laserInfo, name, **_lowLevelManagers):
         self.__logger = initLogger(self, instanceName=name)
 
-        super().__init__(laserInfo, name, isBinary=False, valueUnits='mW', valueDecimals=0,
-                         driver='cobolt.cobolt0601.Cobolt0601_f2', **_lowLevelManagers)
-
+        super().__init__(laserInfo, name, isBinary=False, valueUnits='mW', valueDecimals=0)
+        
         self._digitalMod = False
+
+        #self._comPort = laserInfo.managerProperties['digitalPorts']
+        print("test")
+        
+        #self._laser = pycobolt.CoboltLaser(port=self._comPort)
+        self._laser = pycobolt.CoboltLaser(serialnumber=29685)
+
+        print("ok")
+
+        #self._laser.connect()
 
         self._laser.digital_mod = False
         self._laser.enabled = False
@@ -36,6 +42,7 @@ class Cobolt0501LaserManager(LantzLaserManager):
         else:
             self._setBasicPower(power * Q_(1, 'mW'))
 
+    """
     def setScanModeActive(self, active):
         if active:
             powerQ = self._laser.power_sp * self._numLasers
@@ -56,6 +63,7 @@ class Cobolt0501LaserManager(LantzLaserManager):
     def _setModPower(self, power):
         self._laser.power_mod = power / self._numLasers
         self.__logger.debug(f'Set digital modulation mode power to: {power}')
+    """
 
 
 # Copyright (C) 2020-2023 ImSwitch developers

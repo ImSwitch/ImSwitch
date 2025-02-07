@@ -9,7 +9,7 @@ class ScanWidgetPointScan(SuperScanWidget):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.seqTimePar = QtWidgets.QLineEdit('0.2')  # ms
+        self.seqTimePar = QtWidgets.QLineEdit('0.02')  # ms
         self.phaseDelayPar = QtWidgets.QLineEdit('100')  # samples
         #self.extraLaserOnPar = QtWidgets.QLineEdit('10')  # samples
 
@@ -74,9 +74,9 @@ class ScanWidgetPointScan(SuperScanWidget):
 
         for index, positionerName in enumerate(positionerNames):
             # Scan params
-            sizePar = QtWidgets.QLineEdit('5')
+            sizePar = QtWidgets.QLineEdit('20')
             self.scanPar['size' + positionerName] = sizePar
-            stepSizePar = QtWidgets.QLineEdit('0.1')
+            stepSizePar = QtWidgets.QLineEdit('0.5')
             if 'mock' in positionerName.lower():
                 stepSizePar.setText('-')
                 stepSizePar.setEnabled(False)

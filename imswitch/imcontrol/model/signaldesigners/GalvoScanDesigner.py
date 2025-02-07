@@ -208,7 +208,7 @@ class GalvoScanDesigner(ScanDesigner):
         #print(f"axis_length: {axis_length}")
         #print(f"axis_centerpos: {axis_centerpos}")
         #print(f"vel_max: {vel_max}")
-        #print(f"acc_max: {acc_max}")
+        #print(f"acc_max: {acc_max}") 
 
         # Check if the lists have at least two elements
         #if len(axis_length) < 2 or len(axis_centerpos) < 2 or len(vel_max) < 2:"""

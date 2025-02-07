@@ -33,7 +33,8 @@ class RotatorController(ImConWidgetController):
         )
 
         # Update current position in GUI
-        self.updatePosition(name)
+        for name, _ in self._master.rotatorsManager:
+            self.updatePosition(name)
 
     def closeEvent(self):
         pass
@@ -133,8 +134,8 @@ class RotatorController(ImConWidgetController):
         pos = self._master.rotatorsManager[name].position()
         self._widget.updatePosition(name, pos)
 
-    def setSyncInMovement(self, name, pos):
-        self._master.rotatorsManager[name].set_sync_in_pos(pos)
+    def setSyncInMovement(self, name, pos, rel_shift, enabled):
+        self._master.rotatorsManager[name].set_sync_in_set(pos, rel_shift, enabled)
 
 
 # Copyright (C) 2020-2023 ImSwitch developers

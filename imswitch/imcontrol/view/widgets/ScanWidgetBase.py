@@ -70,6 +70,10 @@ class SuperScanWidget(Widget):
     def getTTLIncluded(self, deviceName):
         pass
 
+    @abstractmethod
+    def setScanMode(self):
+        pass
+
     def repeatEnabled(self):
         return self.repeatBox.isChecked()
 

@@ -4,6 +4,7 @@ from qtpy import QtCore, QtWidgets
 from imswitch.imcommon.view.guitools import naparitools
 from imswitch.imcontrol.view import guitools
 from .basewidgets import Widget
+import json
 
 class BeadRecWidget(Widget):
     """ Displays the FFT transform of the image. """
@@ -14,6 +15,14 @@ class BeadRecWidget(Widget):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+        self.analysisPrm = {
+            "min_area": 50,
+            "max_area": 1000,
+            "tol_peaks_pos": 10,
+            "thresh_coeff": 0.2,
+            "erosion_coeff": 0.2
+        }
 
         # Viewbox
         self.cwidget = pg.GraphicsLayoutWidget()
@@ -37,23 +46,26 @@ class BeadRecWidget(Widget):
         self.saveRecBtn = guitools.BetterPushButton('Save Rec')
         self.loadImgBtn = guitools.BetterPushButton('Load')
         self.donutsAnalysisBtn = guitools.BetterPushButton('Donuts Analysis')
+        self.prmBtn = guitools.BetterPushButton("Analysis Parameters")
         self.ROI = naparitools.VispyROIVisual(rect_color='yellow', handle_color='orange')
 
         # Add elements to GridLayout
         grid = QtWidgets.QGridLayout()
         self.setLayout(grid)
-        grid.addWidget(self.cwidget, 0, 0, 1, 6)
+        grid.addWidget(self.cwidget, 0, 0, 1, 7)
         grid.addWidget(self.roiButton, 1, 0, 1, 1)
         grid.addWidget(self.runButton, 1, 1, 1, 1)
         grid.addWidget(self.scaleButton, 1, 2, 1, 1)
         grid.addWidget(self.saveRecBtn,1,3,1,1)
         grid.addWidget(self.loadImgBtn,1,4,1,1)
         grid.addWidget(self.donutsAnalysisBtn,1,5,1,1)
+        grid.addWidget(self.prmBtn,1,6,1,1)
 
         # Connect signals
         self.roiButton.toggled.connect(self.sigROIToggled)
         self.runButton.clicked.connect(self.sigRunClicked)
         self.scaleButton.clicked.connect(self.sigScaleClicked)
+        self.prmBtn.clicked.connect(self.open_settings_dialog)
 
 
     def getROIGraphicsItem(self):
@@ -69,6 +81,41 @@ class BeadRecWidget(Widget):
 
     def updateImage(self, image):
         self.img.setImage(image, autoLevels=False)
+    
+    def open_settings_dialog(self):
+        dialog = JsonEditorDialog(self.analysisPrm, self)
+        if dialog.exec_() == QtWidgets.QDialog.Accepted:
+            updated = dialog.get_updated_params()
+            if updated is not None:
+                self.analysisPrm = updated
+                print("Updated parameters:", self.analysisPrm)
+            else:
+                print("Invalid JSON input")
+
+class JsonEditorDialog(QtWidgets.QDialog):
+    def __init__(self, params_dict, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Edit Parameters")
+
+        self.text_edit = QtWidgets.QTextEdit(self)
+        self.text_edit.setText(json.dumps(params_dict, indent=4))
+
+        self.button_box = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Save | QtWidgets.QDialogButtonBox.Cancel)
+        self.button_box.accepted.connect(self.accept)
+        self.button_box.rejected.connect(self.reject)
+
+        layout = QtWidgets.QVBoxLayout()
+        layout.addWidget(QtWidgets.QLabel("Edit parameters as JSON:"))
+        layout.addWidget(self.text_edit)
+        layout.addWidget(self.button_box)
+
+        self.setLayout(layout)
+
+    def get_updated_params(self):
+        try:
+            return json.loads(self.text_edit.toPlainText())
+        except json.JSONDecodeError:
+            return None
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

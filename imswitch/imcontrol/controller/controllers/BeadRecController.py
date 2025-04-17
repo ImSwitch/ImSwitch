@@ -1,5 +1,5 @@
 import time
-
+import os
 import numpy as np
 
 from imswitch.imcommon.framework import Thread, Worker, Signal
@@ -8,9 +8,9 @@ from skimage.transform import rescale
 from tifffile import imsave,imread
 from imswitch.imcontrol.view import guitools
 import  matplotlib.pyplot as plt 
-from skimage import io, measure, morphology
+from skimage import measure, morphology
 from scipy.signal import find_peaks
-import cv2
+import matplotlib.patches as patches
 
 class BeadRecController(ImConWidgetController):
     def __init__(self, *args, **kwargs):
@@ -23,6 +23,7 @@ class BeadRecController(ImConWidgetController):
         self.parametersChanged = False
         self.dims = None
         self.stepSizes = None
+        self.lastDir = None
 
         self.beadWorker = BeadWorker(self)
         self.beadWorker.sigNewChunk.connect(self.update)
@@ -49,14 +50,18 @@ class BeadRecController(ImConWidgetController):
             super().__del__()
 
     def donutsAnalysis(self):
-        run_donut_analysis(self.im_display)
+        if self.im_display is not None:
+            run_donut_analysis(self.im_display,self._widget.analysisPrm)
+        else:
+            print("Donuts Analysis not feasible: no image to analyze")
 
     def loadImg(self):
-        path = guitools.askForFilePath(self._widget, 'Choose a tiff image',defaultFolder='C:',isSaving=False,
-                                       nameFilter= "TIFF Files (*.tif *.tiff)")
+        path = guitools.askForFilePath(self._widget, 'Choose a tiff image',defaultFolder=self.lastDir,
+                                       isSaving=False,nameFilter= "TIFF Files (*.tif *.tiff)")
         if path is None:
             return
         
+        self.lastDir = os.path.dirname(path)
         self.im_display = imread(path)
         self._widget.updateImage(self.im_display)
 
@@ -210,9 +215,9 @@ def run_donut_analysis(im:np.ndarray,params:dict = None):
     # retrieve parameters, default values set if not found
     min_area = params.get("min_area",50)
     max_area = params.get("max_area",1000)
-    bead_margin_px = params.get("bead_margin_px",3)
     tol_peaks_pos = params.get("tol_peaks_pos",10)
     thresh_coeff = params.get("thresh_coeff",0.2)
+    erosion_coeff = params.get("erosion_coeff",0.2)
 
     # Pad image
     im_pad = np.pad(im, pad_width=3, mode='constant', constant_values=np.min(im))
@@ -238,19 +243,25 @@ def run_donut_analysis(im:np.ndarray,params:dict = None):
         # Diameter and erosion
         props2 = measure.regionprops(im_bw2.astype(int))
         blob_diameter = props2[0].equivalent_diameter
-        radius = max(round(blob_diameter * 0.3), 1)
+        radius = max(round(blob_diameter * erosion_coeff), 1)
         im_bw3 = morphology.erosion(im_bw2, morphology.disk(radius))
 
         # Background estimation
         im_bw_bg = morphology.dilation(im_bw1[3:-3, 3:-3], morphology.disk(3))
+        im_bw_bg[:2, :] = 1
+        im_bw_bg[-2:, :] = 1
+        im_bw_bg[:, :2] = 1
+        im_bw_bg[:, -2:] = 1
+
         im_bg = im[~im_bw_bg]
         bg = np.mean(im_bg[im_bg != 0])
+        std_bg = np.std(im_bg[im_bg != 0])
 
         # Find local minimum
         im2 = im.copy()
         im3_crop = im_bw3[3:-3, 3:-3]
         im2[~im3_crop] = 1e3
-        im2[im2 < bg + 0.1 * range_val] = 1e3
+        # im2[im2 < bg + 0.03 * range_val] = 1e3
         min_val = np.min(im2)
         miny, minx = np.unravel_index(np.argmin(im2), im2.shape)
         
@@ -274,6 +285,13 @@ def run_donut_analysis(im:np.ndarray,params:dict = None):
             maxX = 0.5 * (maxX1 + maxX2)
             fillX = (min_val - bg) / (maxX - bg)
 
+            # Error propagation
+            std_maxX = abs(maxX1 - maxX2) / (2**0.5)
+            denom_squared = (maxX - bg)**2
+            df_dbg = -(maxX - min_val) / denom_squared
+            df_dmaxX = (min_val - bg) / denom_squared
+            std_fillX = (df_dbg**2 * std_bg**2 + df_dmaxX**2 * std_maxX**2)**0.5
+
             # Line profile Y
             ylocs, ypks_props = find_peaks(liney)
             ypks = liney[ylocs]
@@ -290,10 +308,15 @@ def run_donut_analysis(im:np.ndarray,params:dict = None):
             y2 = filtered_peaks_y[order_y[1]]
             maxY = 0.5 * (maxY1 + maxY2)
             fillY = (min_val - bg) / (maxY - bg)
+            
+            # Error propagation
+            std_maxY = abs(maxY1 - maxY2) / (2**0.5)
+            denom_squared = (maxY - bg)**2
+            df_dbg = -(maxY - min_val) / denom_squared
+            df_dmaxY = (min_val - bg) / denom_squared
+            std_fillY = (df_dbg**2 * std_bg**2 + df_dmaxY**2 * std_maxY**2)**0.5
 
         except Exception as e:
-            fillX = 0
-            fillY = 0
             rejected_peaks = True
 
     else:
@@ -336,39 +359,47 @@ def run_donut_analysis(im:np.ndarray,params:dict = None):
         axes[0][1].imshow(im_bw1, cmap='gray')
         axes[0][1].set_title("Binarized")
         axes[0][2].imshow(im_bw2, cmap='gray')
-        axes[0][2].set_title("After closing")
+        axes[0][2].set_title("After closing and CC selection")
         axes[0][3].imshow(im_bw3, cmap='gray')
         axes[0][3].set_title("After erosion (zero search area)")
+
+        for ax in axes[0]:
+            ax.axis('off')
 
         # Subplot 1: original image with cross lines
         axes[1][0].imshow(im, cmap='gray')
         axes[1][0].axis('image')
         axes[1][0].axvline(x=minx, color='red')   # vertical line
         axes[1][0].axhline(y=miny, color='green') # horizontal line
-        axes[1][0].set_title("Zero location")
+        axes[1][0].set_title(f"Minima = {min_val:.0f}")
+        axes[1][0].axis('off')
 
         # Subplot 2: background mask
-        axes[1][1].imshow(im_bw_bg, cmap='gray')
+        axes[1][1].imshow(im_bw_bg, cmap='gray',extent=[0, im_bw_bg.shape[1], 0, im_bw_bg.shape[0]])
         axes[1][1].axis('image')
-        axes[1][1].set_title("Bkg estim")
+        axes[1][1].set_title(f"Avg Bkg = {bg:.2f} ± {std_bg:.2f}")
+        rect = patches.Rectangle(
+            (0, 0), im_bw_bg.shape[1], im_bw_bg.shape[0],
+            linewidth=1.5, edgecolor='black', facecolor='none'
+        )
+        axes[1][1].add_patch(rect)
+        axes[1][1].axis('off')
+
+        ymax = round(np.max([maxX1,maxX2,maxY1,maxY2])*1.1)
+        ymin = np.min(im) * 0.95
 
         # Subplot 3: X profile
         axes[1][2].plot(linex, 'g')
         axes[1][2].plot([x1, x2], [maxX1, maxX2], 'xk')
-        axes[1][2].text(minx - 3, min_val - 1, f"{fillX:.2f}")
-        axes[1][2].set_title("fillX")
+        axes[1][2].set_title(f"fillX={fillX:.2f} ± {std_fillX:0.2f}")
+        axes[1][2].set_ylim([ymin,ymax])
 
         # Subplot 4: Y profile
         axes[1][3].plot(liney, 'r')
         axes[1][3].plot([y1, y2], [maxY1, maxY2], 'xk')
-        axes[1][3].text(miny - 5, min_val - 3, f"{fillY:.2f}")
-        axes[1][3].set_title("fillY")
+        axes[1][3].set_title(f"fillY={fillY:.2f} ± {std_fillY:0.2f}")
+        axes[1][3].set_ylim([ymin,ymax])
 
-
-        for idx in range(2):
-            for ax in axes[idx]:
-                ax.axis('off')
-        # plt.tight_layout()
         plt.show()
 
 

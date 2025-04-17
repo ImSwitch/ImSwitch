@@ -2,7 +2,7 @@ import traceback
 import configparser
 from math import ceil
 import numpy as np
-
+from imswitch.imcommon.model import APIExport
 from ast import literal_eval
 
 from ..basecontrollers import SuperScanController
@@ -231,6 +231,7 @@ class ScanControllerMoNaLISA(SuperScanController):
         with open(filePath, 'w') as configfile:
             config.write(configfile)
 
+    @APIExport(runOnUIThread=True)
     def loadScanParamsFromFile(self, filePath: str) -> None:
         """ Loads scanning parameters from the specified file. """
         config = configparser.ConfigParser()

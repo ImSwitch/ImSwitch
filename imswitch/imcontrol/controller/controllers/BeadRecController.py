@@ -6,10 +6,12 @@ from imswitch.imcommon.framework import Thread, Worker, Signal
 from ..basecontrollers import ImConWidgetController
 from skimage.transform import rescale
 from tifffile import imsave
+from imswitch.imcontrol.view import guitools
 
 class BeadRecController(ImConWidgetController):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.recIm = None
         self.running = False
         self.roiAdded = False
         self.newScan = False
@@ -27,6 +29,7 @@ class BeadRecController(ImConWidgetController):
         self._widget.sigROIToggled.connect(self.roiToggled)
         self._widget.sigRunClicked.connect(self.run)
         self._widget.sigScaleClicked.connect(self.updateScaling)
+        self._widget.saveRecBtn.clicked.connect(self.saveRec)
 
         # Connect comm channel signals
         self._commChannel.sigScanStarted.connect(self.updateParameters)
@@ -37,6 +40,20 @@ class BeadRecController(ImConWidgetController):
         self.thread.wait()
         if hasattr(super(), '__del__'):
             super().__del__()
+    
+    def saveRec(self):
+        if self.recIm is None:
+            return
+        path = guitools.askForFilePath(self._widget, '',defaultFolder='D:',isSaving=True)
+        im_display = np.resize(self.recIm, (self.dims[1] + 1,self.dims[0] + 1))
+        if self._widget.scaleButton.isChecked():
+            im_display = self.rescale(im_display)
+        
+        if path.split('.')[-1] not in ['tif', 'tiff']:
+            path = path + ".tiff"
+        
+        imsave(path,im_display)
+        
 
     def roiToggled(self, enabled):
         """ Show or hide ROI."""

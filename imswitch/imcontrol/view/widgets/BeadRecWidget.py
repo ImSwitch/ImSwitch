@@ -5,7 +5,6 @@ from imswitch.imcommon.view.guitools import naparitools
 from imswitch.imcontrol.view import guitools
 from .basewidgets import Widget
 
-
 class BeadRecWidget(Widget):
     """ Displays the FFT transform of the image. """
 
@@ -35,6 +34,7 @@ class BeadRecWidget(Widget):
         self.roiButton.setCheckable(True)
         self.runButton = QtWidgets.QCheckBox('Run')
         self.scaleButton = QtWidgets.QCheckBox('Scale')
+        self.saveRecBtn = guitools.BetterPushButton('Save Rec')
         self.ROI = naparitools.VispyROIVisual(rect_color='yellow', handle_color='orange')
 
         # Add elements to GridLayout
@@ -44,11 +44,13 @@ class BeadRecWidget(Widget):
         grid.addWidget(self.roiButton, 1, 0, 1, 1)
         grid.addWidget(self.runButton, 1, 1, 1, 1)
         grid.addWidget(self.scaleButton, 1, 2, 1, 1)
+        grid.addWidget(self.saveRecBtn,1,3,1,1)
 
         # Connect signals
         self.roiButton.toggled.connect(self.sigROIToggled)
         self.runButton.clicked.connect(self.sigRunClicked)
         self.scaleButton.clicked.connect(self.sigScaleClicked)
+
 
     def getROIGraphicsItem(self):
         return self.ROI

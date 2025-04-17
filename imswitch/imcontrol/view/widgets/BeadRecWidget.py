@@ -35,6 +35,8 @@ class BeadRecWidget(Widget):
         self.runButton = QtWidgets.QCheckBox('Run')
         self.scaleButton = QtWidgets.QCheckBox('Scale')
         self.saveRecBtn = guitools.BetterPushButton('Save Rec')
+        self.loadImgBtn = guitools.BetterPushButton('Load')
+        self.donutsAnalysisBtn = guitools.BetterPushButton('Donuts Analysis')
         self.ROI = naparitools.VispyROIVisual(rect_color='yellow', handle_color='orange')
 
         # Add elements to GridLayout
@@ -45,6 +47,8 @@ class BeadRecWidget(Widget):
         grid.addWidget(self.runButton, 1, 1, 1, 1)
         grid.addWidget(self.scaleButton, 1, 2, 1, 1)
         grid.addWidget(self.saveRecBtn,1,3,1,1)
+        grid.addWidget(self.loadImgBtn,1,4,1,1)
+        grid.addWidget(self.donutsAnalysisBtn,1,5,1,1)
 
         # Connect signals
         self.roiButton.toggled.connect(self.sigROIToggled)

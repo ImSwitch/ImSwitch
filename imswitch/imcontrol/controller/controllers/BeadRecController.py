@@ -24,6 +24,7 @@ class BeadRecController(ImConWidgetController):
         self.dims = None
         self.stepSizes = None
         self.lastDir = None
+        self.listRecs = []
 
         self.beadWorker = BeadWorker(self)
         self.beadWorker.sigNewChunk.connect(self.update)
@@ -38,6 +39,12 @@ class BeadRecController(ImConWidgetController):
         self._widget.saveRecBtn.clicked.connect(self.saveRec)
         self._widget.loadImgBtn.clicked.connect(self.loadImg)
         self._widget.donutsAnalysisBtn.clicked.connect(self.donutsAnalysis)
+        self._widget.sigAddCurrentToList.connect(self.addCurrentToList)
+        self._widget.sigSelectionChanged.connect(self.selectionChanged)
+        self._widget.sigRemoveRecFromList.connect(self.removeRecFromList)
+        self._widget.sigClearList.connect(self.clearList)
+        self._widget.sigSaveAll.connect(self.saveAll)
+        self._widget.sigQueryMousePixelValue.connect(self.updateOnMousePixelValue)
 
         # Connect comm channel signals
         self._commChannel.sigScanStarted.connect(self.updateParameters)
@@ -49,6 +56,30 @@ class BeadRecController(ImConWidgetController):
         if hasattr(super(), '__del__'):
             super().__del__()
 
+    def clearList(self):
+        self.listRecs = []
+
+    def selectionChanged(self,idx:int=None,currentRun=False):
+        if currentRun:
+            self.update()
+        elif idx is not None and idx<len(self.listRecs):
+            self.im_display=self.listRecs[idx]
+            self._widget.updateImage(self.im_display)
+        
+    def removeRecFromList(self,idx:int=None):
+        if idx is not None and idx<len(self.listRecs):
+            self.listRecs.pop(idx)
+
+    def addCurrentToList(self,name=None):
+        """ Adds current rec to list of saved images.
+        NOTE: insert to first position to keep same order as widget items."""
+        
+        if self.im_display is not None:
+            self.listRecs.insert(0, self.im_display)
+            self._widget.addCurrentToList(name)
+        else:
+            print("No rec to add !")
+
     def donutsAnalysis(self):
         if self.im_display is not None:
             run_donut_analysis(self.im_display,self._widget.analysisPrm)
@@ -56,28 +87,55 @@ class BeadRecController(ImConWidgetController):
             print("Donuts Analysis not feasible: no image to analyze")
 
     def loadImg(self):
-        path = guitools.askForFilePath(self._widget, 'Choose a tiff image',defaultFolder=self.lastDir,
-                                       isSaving=False,nameFilter= "TIFF Files (*.tif *.tiff)")
-        if path is None:
-            return
+        """Asks users to load one or several images. Automatically added to the list image."""
         
-        self.lastDir = os.path.dirname(path)
-        self.im_display = imread(path)
-        self._widget.updateImage(self.im_display)
+        paths = guitools.askForFilePath(self._widget, 'Choose one or several tiff image(s)',defaultFolder=self.lastDir,
+                                       isSaving=False,nameFilter= "TIFF Files (*.tif *.tiff)",multiFiles=True)
+        if paths is None:
+            return
+        if isinstance(paths,list):
+            self.lastDir = os.path.dirname(paths[0])
+        else:
+            paths = [paths]
+        
+        for path in paths:
+            im = imread(path)
+            if len(im.shape)!=2:
+                print("Loaded images should be 2d")
+                return
+            self.im_display = im
+            self._widget.updateImage(self.im_display)
+            filename = os.path.splitext(os.path.basename(path))[0]
+            self.addCurrentToList(filename)
 
     def saveRec(self):
-        if self.recIm is None:
+        """ Saves current rec, i.e. self.im_display"""
+        if self.im_display is None:
             return
-        path = guitools.askForFilePath(self._widget, '',defaultFolder='D:',isSaving=True)
-        im_display = np.resize(self.recIm, (self.dims[1] + 1,self.dims[0] + 1))
-        if self._widget.scaleButton.isChecked():
-            im_display = self.rescale(im_display)
-        
+        path = guitools.askForFilePath(self._widget, 'Enter file name',defaultFolder=self.lastDir,isSaving=True)
+        if not path:
+            return
+
+        self.lastDir = os.path.dirname(path)
         if path.split('.')[-1] not in ['tif', 'tiff']:
             path = path + ".tiff"
+        imsave(path,self.im_display)
+    
+    def saveAll(self):
+        """ Saves all images that are in self.listRecs"""
+        if not self.listRecs:
+            return
+        caption = "Choose folder to save all images"
+        folder = guitools.askForFolderPath(self._widget, caption=caption, defaultFolder=self.lastDir)
+        if not folder:
+            return
         
-        imsave(path,im_display)
-        
+        self.lastDir = os.path.dirname(folder)
+        for idx,rec in enumerate(self.listRecs):
+            item = self._widget.imageListWidget.item(idx)
+            name = item.text() + ".tif"
+            path = os.path.join(folder, name)
+            imsave(path, rec)
 
     def roiToggled(self, enabled):
         """ Show or hide ROI."""
@@ -106,6 +164,7 @@ class BeadRecController(ImConWidgetController):
             self.running = True
             self._master.detectorsManager.execOnAll(lambda c: c.flushBuffers())
             self.thread.start()
+            self._widget.addCurrentRunToList()
         else:
             self.running = False
             self.thread.quit()
@@ -129,7 +188,15 @@ class BeadRecController(ImConWidgetController):
                 len(prior_stepSizes) != len(self.stepSizes) or (prior_stepSizes != self.stepSizes).any():
                 
                 self.parametersChanged = True
-
+    
+    def updateOnMousePixelValue(self,x,y):
+        """ Updates the pixel value displayed in the widget """
+        if self.im_display is not None:
+            if 0 <= x < self.im_display.shape[1] and 0 <= y < self.im_display.shape[0]:
+                val = self.im_display[round(y), round(x)]
+                self._widget.updatePixelValue(x,y,val)
+            else:
+                self._widget.erasePixelValue()
 
     def updateScaling(self):
         if not self._commChannel.isScanRunning():
@@ -150,6 +217,7 @@ class BeadRecController(ImConWidgetController):
         return rescaled_im
     
     def update(self):
+        """"Updates image display with current recorded image self.recIm"""
         self.im_display = np.resize(self.recIm, (self.dims[1] + 1,self.dims[0] + 1))
         if self._widget.scaleButton.isChecked():
             self.im_display = self.rescale(self.im_display)

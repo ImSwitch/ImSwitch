@@ -25,6 +25,7 @@ class BeadRecController(ImConWidgetController):
         self.stepSizes = None
         self.lastDir = None
         self.listRecs = []
+        self.scanOngoing = False
 
         self.beadWorker = BeadWorker(self)
         self.beadWorker.sigNewChunk.connect(self.update)
@@ -39,7 +40,7 @@ class BeadRecController(ImConWidgetController):
         self._widget.saveRecBtn.clicked.connect(self.saveRec)
         self._widget.loadImgBtn.clicked.connect(self.loadImg)
         self._widget.donutsAnalysisBtn.clicked.connect(self.donutsAnalysis)
-        self._widget.sigAddCurrentToList.connect(self.addCurrentToList)
+        self._widget.sigSaveCurrentRun.connect(self.saveCurrentRun)
         self._widget.sigSelectionChanged.connect(self.selectionChanged)
         self._widget.sigRemoveRecFromList.connect(self.removeRecFromList)
         self._widget.sigClearList.connect(self.clearList)
@@ -49,6 +50,8 @@ class BeadRecController(ImConWidgetController):
         # Connect comm channel signals
         self._commChannel.sigScanStarted.connect(self.updateParameters)
         self._commChannel.sigScanStarted.connect(self.setNewScanStatus)
+        self._commChannel.sigScanStarted.connect(self.OngoingScanStatus)
+        self._commChannel.sigScanEnded.connect(self.EndedScanStatus)
 
     def __del__(self):
         self.thread.quit()
@@ -70,15 +73,19 @@ class BeadRecController(ImConWidgetController):
         if idx is not None and idx<len(self.listRecs):
             self.listRecs.pop(idx)
 
-    def addCurrentToList(self,name=None):
-        """ Adds current rec to list of saved images.
+    def saveCurrentRun(self,name=None):
+        """ Save current run to list of saved images, calls widget to add it
+        to list of items and to delete the "current run" item, if a scan is not running. 
         NOTE: insert to first position to keep same order as widget items."""
         
-        if self.im_display is not None:
+        if self.recIm is not None:
+            self.update()
             self.listRecs.insert(0, self.im_display)
-            self._widget.addCurrentToList(name)
+            self._widget.addToList(name)
+            if not self.ongoingScan:
+                self._widget.clearCurrentRunItem()
         else:
-            print("No rec to add !")
+            print("No current recon to add !")
 
     def donutsAnalysis(self):
         if self.im_display is not None:
@@ -87,7 +94,8 @@ class BeadRecController(ImConWidgetController):
             print("Donuts Analysis not feasible: no image to analyze")
 
     def loadImg(self):
-        """Asks users to load one or several images. Automatically added to the list image."""
+        """Asks users to load one or several images, loads them to the list of saved images and
+        calls widget function to add names of files to the list panel"""
         
         paths = guitools.askForFilePath(self._widget, 'Choose one or several tiff image(s)',defaultFolder=self.lastDir,
                                        isSaving=False,nameFilter= "TIFF Files (*.tif *.tiff)",multiFiles=True)
@@ -103,16 +111,34 @@ class BeadRecController(ImConWidgetController):
             if len(im.shape)!=2:
                 print("Loaded images should be 2d")
                 return
-            self.im_display = im
-            self._widget.updateImage(self.im_display)
+            self.listRecs.insert(0, im) # adds to list of saved images
             filename = os.path.splitext(os.path.basename(path))[0]
-            self.addCurrentToList(filename)
+            self._widget.addToList(filename) # adds to list of items in widget
+        # display last image loaded
+        self.im_display = im
+        self._widget.updateImage(self.im_display)
 
     def saveRec(self):
-        """ Saves current rec, i.e. self.im_display"""
+        """ Saves currenlty display rec, so self.im_display. Suggests the filename if
+        it can find name of selected row in the widget list panel"""
         if self.im_display is None:
             return
-        path = guitools.askForFilePath(self._widget, 'Enter file name',defaultFolder=self.lastDir,isSaving=True)
+
+        #for filename suggestion
+        if self._widget.imageListWidget.currentRow() == 0 and self._widget.isFirstItemCurrentRun():
+            suggested = self.lastDir
+        else:
+            idx = self._widget.imageListWidget.currentRow()
+            if idx != -1:
+                itemName = self._widget.imageListWidget.item(self._widget.imageListWidget.currentRow()).text()
+                if self.lastDir is None:
+                    suggested = itemName
+                else:
+                    suggested = os.path.join(self.lastDir,itemName)
+            else:
+                suggested = self.lastDir
+
+        path = guitools.askForFilePath(self._widget, 'Save file as',defaultFolder=suggested,isSaving=True)
         if not path:
             return
 
@@ -122,17 +148,22 @@ class BeadRecController(ImConWidgetController):
         imsave(path,self.im_display)
     
     def saveAll(self):
-        """ Saves all images that are in self.listRecs"""
+        """ Saves all images that are in self.listRecs, with file names from the list panel."""
         if not self.listRecs:
             return
         caption = "Choose folder to save all images"
         folder = guitools.askForFolderPath(self._widget, caption=caption, defaultFolder=self.lastDir)
         if not folder:
             return
-        
         self.lastDir = os.path.dirname(folder)
+
+        if self._widget.isFirstItemCurrentRun():
+            name_offset = 1
+        else:
+            name_offset = 0
+            
         for idx,rec in enumerate(self.listRecs):
-            item = self._widget.imageListWidget.item(idx)
+            item = self._widget.imageListWidget.item(idx + name_offset)
             name = item.text() + ".tif"
             path = os.path.join(folder, name)
             imsave(path, rec)
@@ -172,6 +203,15 @@ class BeadRecController(ImConWidgetController):
 
     def setNewScanStatus(self):
         self.newScan = True
+        if self.running:
+            self._widget.addCurrentRunToList() # in case "clear all" made it disappear
+            self._widget.imageListWidget.setCurrentRow(0)
+    
+    def OngoingScanStatus(self):
+        self.ongoingScan = True
+
+    def EndedScanStatus(self):
+        self.ongoingScan=False
 
     def updateParameters(self):
         prior_dims = self.dims

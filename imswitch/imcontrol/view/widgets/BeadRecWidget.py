@@ -12,7 +12,7 @@ class BeadRecWidget(Widget):
     sigROIToggled = QtCore.Signal(bool)  # (enabled)
     sigRunClicked = QtCore.Signal()
     sigScaleClicked = QtCore.Signal()
-    sigAddCurrentToList = QtCore.Signal()
+    sigSaveCurrentRun = QtCore.Signal()
     sigSelectionChanged = QtCore.Signal(int,bool)
     sigRemoveRecFromList = QtCore.Signal(int)
     sigClearList = QtCore.Signal()
@@ -106,13 +106,13 @@ class BeadRecWidget(Widget):
         self.removeImageBtn = guitools.BetterPushButton("Remove")
         self.clearListBtn = guitools.BetterPushButton("Clear All")
         self.saveAllBtn = guitools.BetterPushButton("Save All")
-        self.dummyCurrentBtn = guitools.BetterPushButton("dummyCurrent")
+        # self.dummyCurrentBtn = guitools.BetterPushButton("dummyCurrent")
 
         self.buttonLayout.addWidget(self.addImageBtn)
         self.buttonLayout.addWidget(self.removeImageBtn)
         self.buttonLayout.addWidget(self.clearListBtn)
         self.buttonLayout.addWidget(self.saveAllBtn)
-        self.buttonLayout.addWidget(self.dummyCurrentBtn)
+        # self.buttonLayout.addWidget(self.dummyCurrentBtn)
         listLayout.addLayout(self.buttonLayout)
 
         # final panel: combine Main and List
@@ -129,12 +129,12 @@ class BeadRecWidget(Widget):
         self.prmBtn.clicked.connect(self.open_settings_dialog)
 
         self.imageListWidget.itemSelectionChanged.connect(self.selectionChanged)
-        self.addImageBtn.clicked.connect(self.sigAddCurrentToList)
+        self.addImageBtn.clicked.connect(self.sigSaveCurrentRun)
         self.removeImageBtn.clicked.connect(self.removeRecFromList)
         self.clearListBtn.clicked.connect(self.clearList)
         self.clearListBtn.clicked.connect(self.sigClearList)
         self.saveAllBtn.clicked.connect(self.sigSaveAll)
-        self.dummyCurrentBtn.clicked.connect(self.addCurrentRunToList)
+        # self.dummyCurrentBtn.clicked.connect(self.addCurrentRunToList)
 
         self.vb.scene().sigMouseMoved.connect(self.mouseMoved)
 
@@ -162,10 +162,10 @@ class BeadRecWidget(Widget):
             else:
                 print("Invalid JSON input")
     
-    def addCurrentToList(self,name=None):
-        """ Adds current reconstruction to the list. Adds it first, or second if first is current run """
+    def addToList(self,name=None):
+        """ Adds a new item to the list, in first, or second if first is flagged as current run """
         if name is None:
-            name = datetime.now().strftime("%H_%M_%S")
+            name = datetime.now().strftime("%Hh%Mm%s")
         item = QtWidgets.QListWidgetItem(name)
         item.setFlags(item.flags() | QtCore.Qt.ItemIsEditable)
         item.setData(QtCore.Qt.UserRole, False) # not a current scan
@@ -198,6 +198,10 @@ class BeadRecWidget(Widget):
     
     def clearList(self):
         self.imageListWidget.clear()
+    
+    def clearCurrentRunItem(self):
+        if self.isFirstItemCurrentRun():
+             self.imageListWidget.takeItem(0)
     
     def selectionChanged(self):
         """ Emits signals to trigger change of image display"""

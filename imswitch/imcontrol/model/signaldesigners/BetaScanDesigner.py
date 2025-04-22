@@ -17,6 +17,7 @@ class BetaScanDesigner(ScanDesigner):
                                     'axis_length',
                                     'axis_step_size',
                                     'axis_startpos',
+                                    'axis_centerpos',
                                     'return_time']
 
     def checkSignalComp(self, scanParameters, setupInfo, scanInfo):
@@ -55,10 +56,15 @@ class BetaScanDesigner(ScanDesigner):
         # Retrieve starting position
         [fast_axis_start, middle_axis_start, slow_axis_start] = \
             [(parameterDict['axis_startpos'][i][0] / convFactors[i]) for i in range(3)]
+        
+        # Retrieve center positions and deduce new starting positions
+        [fast_axis_center, middle_axis_center, slow_axis_center] = \
+            [(parameterDict['axis_centerpos'][i] / convFactors[i]) for i in range(3)]
+        
+        fast_axis_start = fast_axis_start - fast_axis_center
+        middle_axis_start = middle_axis_start - middle_axis_center
+        slow_axis_start = slow_axis_start - slow_axis_center
 
-        # fast_axis_positions = 1 + int(np.ceil(fast_axis_size / fast_axis_step_size))
-        # middle_axis_positions = 1 + int(np.ceil(middle_axis_size / middle_axis_step_size))
-        # slow_axis_positions = 1 + int(np.ceil(slow_axis_size / slow_axis_step_size))
         fast_axis_positions = 1 if fast_axis_size == 0 or fast_axis_step_size == 0 else \
             1 + int(np.ceil(fast_axis_size / fast_axis_step_size))
         middle_axis_positions = 1 if middle_axis_size == 0 or middle_axis_step_size == 0 else \

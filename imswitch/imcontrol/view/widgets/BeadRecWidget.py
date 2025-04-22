@@ -165,7 +165,7 @@ class BeadRecWidget(Widget):
     def addToList(self,name=None):
         """ Adds a new item to the list, in first, or second if first is flagged as current run """
         if name is None:
-            name = datetime.now().strftime("%Hh%Mm%s")
+            name = datetime.now().strftime("%Hh%Mm%Ss")
         item = QtWidgets.QListWidgetItem(name)
         item.setFlags(item.flags() | QtCore.Qt.ItemIsEditable)
         item.setData(QtCore.Qt.UserRole, False) # not a current scan

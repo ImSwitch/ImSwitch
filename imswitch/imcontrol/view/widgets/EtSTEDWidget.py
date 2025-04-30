@@ -136,6 +136,9 @@ class EtSTEDWidget(Widget):
         self.slow_timelapse_label = QtGui.QLabel('Time between slow frames (s)')
         self.slow_timelapse_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignBottom)
         self.slow_timelapse_edit = QtGui.QLineEdit(str(30))
+        self.laser_delay_label = QtGui.QLabel('Laser delay coeff') 
+        self.laser_delay_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignBottom)
+        self.laser_delay_edit = QtGui.QLineEdit(str(0.0))
 
         # help widget for coordinate transform
         self.coordTransformWidget = CoordTransformWidget(*args, **kwargs)
@@ -184,6 +187,11 @@ class EtSTEDWidget(Widget):
         self.grid.addWidget(self.update_period_label, currentRow, 2)
         self.grid.addWidget(self.update_period_edit, currentRow, 3)
         self.grid.addWidget(self.setUpdatePeriodButton, currentRow, 4)
+
+        currentRow += 1
+        
+        self.grid.addWidget(self.laser_delay_label, currentRow, 2)
+        self.grid.addWidget(self.laser_delay_edit, currentRow, 3)
 
         currentRow += 1
 

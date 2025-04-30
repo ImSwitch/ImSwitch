@@ -16,7 +16,7 @@ class BeadRecController(ImConWidgetController):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.recIm = None
-        self.im_display = None
+        self.imDisplay = None
         self.running = False
         self.roiAdded = False
         self.newScan = False
@@ -26,12 +26,17 @@ class BeadRecController(ImConWidgetController):
         self.lastDir = None
         self.listRecs = []
         self.scanOngoing = False
+        self.currentRunImgs = {}
 
         self.beadWorker = BeadWorker(self)
         self.beadWorker.sigNewChunk.connect(self.update)
         self.thread = Thread()
         self.beadWorker.moveToThread(self.thread)
         self.thread.started.connect(self.beadWorker.run)
+
+        self.yCenter = None
+        self.xCenter = None
+        self.showCenterState = False
 
         # Connect BeadRecWidget signals
         self._widget.sigROIToggled.connect(self.roiToggled)
@@ -40,18 +45,24 @@ class BeadRecController(ImConWidgetController):
         self._widget.saveRecBtn.clicked.connect(self.saveRec)
         self._widget.loadImgBtn.clicked.connect(self.loadImg)
         self._widget.donutsAnalysisBtn.clicked.connect(self.donutsAnalysis)
-        self._widget.sigSaveCurrentRun.connect(self.saveCurrentRun)
+        self._widget.sigAddCurrentRun.connect(self.addCurrentRun)
         self._widget.sigSelectionChanged.connect(self.selectionChanged)
         self._widget.sigRemoveRecFromList.connect(self.removeRecFromList)
         self._widget.sigClearList.connect(self.clearList)
         self._widget.sigSaveAll.connect(self.saveAll)
         self._widget.sigQueryMousePixelValue.connect(self.updateOnMousePixelValue)
 
+
         # Connect comm channel signals
         self._commChannel.sigScanStarted.connect(self.updateParameters)
-        self._commChannel.sigScanStarted.connect(self.setNewScanStatus)
+        self._commChannel.sigScanStarted.connect(self.onNewScan)
         self._commChannel.sigScanStarted.connect(self.OngoingScanStatus)
-        self._commChannel.sigScanEnded.connect(self.EndedScanStatus)
+        self._commChannel.sigScanEnded.connect(self.onEndedScan)
+        self._commChannel.sigQueryCenterCoord.connect(self.centerCoordQuery)
+        self._commChannel.sigUpdateBeadRecCenter.connect(self.updateCenterCross)
+        self._commChannel.sigShowBeadRecCenterCross.connect(self.showStateChanged)
+        self._commChannel.sigAutoAxialToggled.connect(self.setAxialScanStatus)
+        
 
     def __del__(self):
         self.thread.quit()
@@ -62,36 +73,41 @@ class BeadRecController(ImConWidgetController):
     def clearList(self):
         self.listRecs = []
 
-    def selectionChanged(self,idx:int=None,currentRun=False):
+    def selectionChanged(self,imgListIdx:int=None,currentRun=False,axialName=None):
+
         if currentRun:
-            self.update()
-        elif idx is not None and idx<len(self.listRecs):
-            self.im_display=self.listRecs[idx]
-            self._widget.updateImage(self.im_display)
+            if axialName is None:
+                axialName="XY"
+            self.imDisplay=self.currentRunImgs.get(axialName)
+        elif imgListIdx is not None and imgListIdx<len(self.listRecs):
+            self.imDisplay=self.listRecs[imgListIdx]
+        else:
+            return
+        
+        if self.imDisplay is not None:
+            self._widget.updateImage(self.imDisplay)
         
     def removeRecFromList(self,idx:int=None):
         if idx is not None and idx<len(self.listRecs):
             self.listRecs.pop(idx)
 
-    def saveCurrentRun(self,name=None):
-        """ Save current run to list of saved images, calls widget to add it
-        to list of items and to delete the "current run" item, if a scan is not running. 
-        NOTE: insert to first position to keep same order as widget items."""
-        
-        if self.recIm is not None:
-            self.update()
-            self.listRecs.insert(0, self.im_display)
-            self._widget.addToList(name)
-            if not self.ongoingScan:
-                self._widget.clearCurrentRunItem()
-        else:
-            print("No current recon to add !")
+    def addCurrentToWidgetList(self):
+        axial=False
+        axialName = None
+        if self.autoAxial:
+            if self._commChannel.getNextAxial() is not None:
+                axialName = self._commChannel.getNextAxial()
+                axial=True
+        self._widget.addCurrentRunToList(axial,axialName)
+        self._widget.imageListWidget.setCurrentRow(0)
+
 
     def donutsAnalysis(self):
-        if self.im_display is not None:
-            run_donut_analysis(self.im_display,self._widget.analysisPrm)
+        if self.imDisplay is not None:
+            run_donut_analysis(self.imDisplay,self._widget.analysisPrm)
         else:
             print("Donuts Analysis not feasible: no image to analyze")
+
 
     def loadImg(self):
         """Asks users to load one or several images, loads them to the list of saved images and
@@ -116,17 +132,42 @@ class BeadRecController(ImConWidgetController):
             filename = os.path.splitext(os.path.basename(path))[0]
             self._widget.addToList(filename) # adds to list of items in widget
         # display last image loaded
-        self.im_display = im
-        self._widget.updateImage(self.im_display)
+        self.imDisplay = im
+        self._widget.updateImage(self.imDisplay)
+        self._widget.imageListWidget.setCurrentRow(self._widget.getInsertIndexAfterCurrent())
+
+    def addCurrentRun(self,name=None):
+        """ Save current run to list of saved images, calls widget to add it
+        to list of items and to delete the "current run" item, if a scan is not running. 
+        NOTE: insert to first position to keep same order as widget items."""
+        
+        for key, img in self.currentRunImgs.items():
+            axialName = key if self.autoAxial else None
+            self._widget.addToList(name,axialName)
+            self._widget.addToList(name)
+            self.listRecs.insert(0, img)
+            if not self.ongoingScan:
+                self._widget.removeCurrentRunItems()
+                            
+
+        # if not self.autoAxial and self.recIm is not None:
+        #     self.update()
+        #     self.listRecs.insert(0, self.imDisplay)
+        #     self._widget.addToList(name)
+        #     if not self.ongoingScan:
+        #         self._widget.clearCurrentRunItem()
+        # else:
+        #     print("No current recon to add !")
+
 
     def saveRec(self):
-        """ Saves currenlty display rec, so self.im_display. Suggests the filename if
+        """ Saves currenlty display rec, so self.imDisplay. Suggests the filename if
         it can find name of selected row in the widget list panel"""
-        if self.im_display is None:
+        if self.imDisplay is None:
             return
 
         #for filename suggestion
-        if self._widget.imageListWidget.currentRow() == 0 and self._widget.isFirstItemCurrentRun():
+        if self._widget.isSelectedCurrent():
             suggested = self.lastDir
         else:
             idx = self._widget.imageListWidget.currentRow()
@@ -146,7 +187,7 @@ class BeadRecController(ImConWidgetController):
         self.lastDir = os.path.dirname(path)
         if path.split('.')[-1] not in ['tif', 'tiff']:
             path = path + ".tiff"
-        imsave(path,self.im_display)
+        imsave(path,self.imDisplay)
     
     def saveAll(self):
         """ Saves all images that are in self.listRecs, with file names from the list panel."""
@@ -158,10 +199,7 @@ class BeadRecController(ImConWidgetController):
             return
         self.lastDir = os.path.dirname(folder)
 
-        if self._widget.isFirstItemCurrentRun():
-            name_offset = 1
-        else:
-            name_offset = 0
+        name_offset = self._widget.getInsertIndexAfterCurrent()
             
         for idx,rec in enumerate(self.listRecs):
             item = self._widget.imageListWidget.item(idx + name_offset)
@@ -197,24 +235,35 @@ class BeadRecController(ImConWidgetController):
             self.running = True
             self._master.detectorsManager.execOnAll(lambda c: c.flushBuffers())
             self.thread.start()
-            self._widget.addCurrentRunToList()
+            self.addCurrentToWidgetList()
         else:
             self.running = False
             self.thread.quit()
             self.thread.wait()
 
-    def setNewScanStatus(self):
+    def onNewScan(self):
         self.newScan = True
         # if self.running:
         if self._widget.runButton.isChecked():
-            self._widget.addCurrentRunToList() # in case "clear all" made it disappear
-            self._widget.imageListWidget.setCurrentRow(0)
+            self.addCurrentToWidgetList() # in case "clear all" made it disappear
     
     def OngoingScanStatus(self):
         self.ongoingScan = True
 
-    def EndedScanStatus(self):
+    def onEndedScan(self):
         self.ongoingScan=False
+        if self.autoAxial:
+            axialName = self._commChannel.getNextAxial()
+        else:
+            axialName = "XY"
+
+        self.currentRunImgs[axialName] = self.imDisplay
+    
+    def setAxialScanStatus(self,state:bool = False):
+        if state:
+            self.autoAxial=True
+        else:
+            self.autoAxial=False
 
     def updateParameters(self):
         prior_dims = self.dims
@@ -234,9 +283,9 @@ class BeadRecController(ImConWidgetController):
     
     def updateOnMousePixelValue(self,x,y):
         """ Updates the pixel value displayed in the widget """
-        if self.im_display is not None:
-            if 0 <= x < self.im_display.shape[1] and 0 <= y < self.im_display.shape[0]:
-                val = self.im_display[round(y), round(x)]
+        if self.imDisplay is not None:
+            if 0 <= x < self.imDisplay.shape[1] and 0 <= y < self.imDisplay.shape[0]:
+                val = self.imDisplay[round(y), round(x)]
                 self._widget.updatePixelValue(x,y,val)
             else:
                 self._widget.erasePixelValue()
@@ -261,11 +310,41 @@ class BeadRecController(ImConWidgetController):
     
     def update(self):
         """"Updates image display with current recorded image self.recIm"""
-        self.im_display = np.resize(self.recIm, (self.dims[1] + 1,self.dims[0] + 1))
+        self.imDisplay = np.resize(self.recIm, (self.dims[1] + 1,self.dims[0] + 1))
         if self._widget.scaleButton.isChecked():
-            self.im_display = self.rescale(self.im_display)
-        self._widget.updateImage(self.im_display)
+            self.imDisplay = self.rescale(self.imDisplay)
+        self._widget.updateImage(self.imDisplay)
 
+
+    def centerCoordQuery(self,mode):
+        if self.imDisplay is not None:
+            if mode == "Maxima":
+                coord = findCenterFoci(self.imDisplay,self._widget.analysisPrm)
+            elif mode == "Minima":
+                coord = findCenterDonut(self.imDisplay,self._widget.analysisPrm)
+            else:
+                raise ValueError("Center search mode unknown, should be 'Maxima', or 'Minima'")
+            self._widget.displayCenterCoord(coord[0],coord[1])
+        else:
+            coord = None
+        self._commChannel.sigCenterCoordPipelineFinished.emit(coord)
+
+    def updateCenterCross(self,y,x):
+        self.yCenter = y
+        self.xCenter = x
+        self.updateCenterCrossVisibility()
+    
+    def showStateChanged(self,state:bool):
+        self.showCenterState = state
+        self.updateCenterCrossVisibility()
+
+    def updateCenterCrossVisibility(self):
+        if self.showCenterState and self.imDisplay is not None and self.yCenter is not None and self.xCenter is not None:
+            self._widget.displayCenterCoord(self.yCenter,self.xCenter)
+        else:
+            self._widget.removeCenterCoord()
+
+            
 
 class BeadWorker(Worker):
     sigNewChunk = Signal()
@@ -314,6 +393,95 @@ class BeadWorker(Worker):
                     self.sigNewChunk.emit()
 
             time.sleep(0.0001)  # Prevents freezing
+
+
+
+
+
+
+def findCenterFoci(im: np.ndarray,params:dict=None):
+    """ Find center of foci and return center coordinates"""
+    if params is None:
+        params = {}
+    else:
+        assert isinstance(params,dict), "params should be a dictionnary"
+    # retrieve parameters, default values set if not found
+    min_area = params.get("min_area",50)
+    max_area = params.get("max_area",1000)
+    thresh_coeff = params.get("thresh_coeff",0.2)
+
+    im_pad = np.pad(im, pad_width=3, mode='constant', constant_values=np.min(im))
+    # Thresholding
+    range_val = np.max(im) - np.min(im)
+    thresh = thresh_coeff * range_val + np.min(im)
+    im_bw1 = im_pad > thresh
+
+    # Connected components
+    labels = measure.label(im_bw1)
+    props = measure.regionprops_table(labels, properties=('centroid', 'area'))
+    areas = np.array(props['area'])
+    sorted_idx = np.argsort(areas)[::-1]  # descending
+
+    # Blob detection
+    if len(areas) > 0 and min_area < areas[sorted_idx[0]] < max_area:
+        mask = labels == (sorted_idx[0] + 1)
+        mask = mask [3:-3, 3:-3]
+        im2 = im.copy()
+        im2[~mask]=0
+        maxy, maxx = np.unravel_index(np.argmax(im2), im2.shape)
+        return (maxy,maxx)
+    else:
+        print("findCenterFoci pipeline failed...")
+        return None
+
+
+
+def findCenterDonut(im: np.ndarray, params:dict = None):
+    """ Find center of donuts and return center coordinates"""
+    if params is None:
+        params = {}
+    else:
+        assert isinstance(params,dict), "params should be a dictionnary"
+    
+    # retrieve parameters, default values set if not found
+    min_area = params.get("min_area",50)
+    max_area = params.get("max_area",1000)
+    thresh_coeff = params.get("thresh_coeff",0.2)
+    erosion_coeff = params.get("erosion_coeff",0.2)
+
+    # Pad image
+    im_pad = np.pad(im, pad_width=3, mode='constant', constant_values=np.min(im))
+
+    # Thresholding
+    range_val = np.max(im) - np.min(im)
+    thresh = thresh_coeff * range_val + np.min(im)
+    im_bw1 = im_pad > thresh
+
+    # Connected components
+    labels = measure.label(im_bw1)
+    props = measure.regionprops_table(labels, properties=('centroid', 'area'))
+    areas = np.array(props['area'])
+    sorted_idx = np.argsort(areas)[::-1]  # descending
+
+    # Blob detection
+    if len(areas) > 0 and min_area < areas[sorted_idx[0]] < max_area:
+        mask = labels == (sorted_idx[0] + 1)
+        im_bw2 = morphology.binary_closing(mask, morphology.disk(5))
+
+        # Diameter and erosion
+        props2 = measure.regionprops(im_bw2.astype(int))
+        blob_diameter = props2[0].equivalent_diameter
+        radius = max(round(blob_diameter * erosion_coeff), 1)
+        im_bw3 = morphology.erosion(im_bw2, morphology.disk(radius))
+        
+        # Find local minimum
+        im2 = im.copy()
+        im3_crop = im_bw3[3:-3, 3:-3]
+        im2[~im3_crop] = 1e3
+        miny, minx = np.unravel_index(np.argmin(im2), im2.shape)
+        return(miny,minx)
+    else:
+        return None
 
 def run_donut_analysis(im:np.ndarray,params:dict = None):
 

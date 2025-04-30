@@ -163,6 +163,9 @@ class SuperScanController(ImConWidgetController):
         """ Loads scanning parameters from the specified file. """
         pass
 
+    def getNextAxial(self):
+        return None
+
     def getNumCamTTL(self):
         camTTL = self._master.scanManager.getTTLCycleSignalsDict(self._digitalParameterDict)['CAM'].tolist()
         numCamTTL = len ([i for i in range(len(camTTL)-1) if camTTL[i+1]-camTTL[i] == 1]) #counting for first True in list

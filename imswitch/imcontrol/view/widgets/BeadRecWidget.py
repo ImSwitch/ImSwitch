@@ -12,8 +12,8 @@ class BeadRecWidget(Widget):
     sigROIToggled = QtCore.Signal(bool)  # (enabled)
     sigRunClicked = QtCore.Signal()
     sigScaleClicked = QtCore.Signal()
-    sigSaveCurrentRun = QtCore.Signal()
-    sigSelectionChanged = QtCore.Signal(int,bool)
+    sigAddCurrentRun = QtCore.Signal()
+    sigSelectionChanged = QtCore.Signal(object,bool,object) #idx, axial boolean, axialName or not
     sigRemoveRecFromList = QtCore.Signal(int)
     sigClearList = QtCore.Signal()
     sigSaveAll = QtCore.Signal()
@@ -30,7 +30,7 @@ class BeadRecWidget(Widget):
             "erosion_coeff": 0.2
         }
 
-        #MNain panel: Viewbox + buttons
+        #Main panel: Viewbox + buttons
         self.cwidget = pg.GraphicsLayoutWidget()
         self.vb = self.cwidget.addViewBox(row=1, col=1)
         self.vb.setMouseMode(pg.ViewBox.RectMode)
@@ -106,13 +106,11 @@ class BeadRecWidget(Widget):
         self.removeImageBtn = guitools.BetterPushButton("Remove")
         self.clearListBtn = guitools.BetterPushButton("Clear All")
         self.saveAllBtn = guitools.BetterPushButton("Save All")
-        # self.dummyCurrentBtn = guitools.BetterPushButton("dummyCurrent")
 
         self.buttonLayout.addWidget(self.addImageBtn)
         self.buttonLayout.addWidget(self.removeImageBtn)
         self.buttonLayout.addWidget(self.clearListBtn)
         self.buttonLayout.addWidget(self.saveAllBtn)
-        # self.buttonLayout.addWidget(self.dummyCurrentBtn)
         listLayout.addLayout(self.buttonLayout)
 
         # final panel: combine Main and List
@@ -129,12 +127,11 @@ class BeadRecWidget(Widget):
         self.prmBtn.clicked.connect(self.open_settings_dialog)
 
         self.imageListWidget.itemSelectionChanged.connect(self.selectionChanged)
-        self.addImageBtn.clicked.connect(self.sigSaveCurrentRun)
+        self.addImageBtn.clicked.connect(self.sigAddCurrentRun)
         self.removeImageBtn.clicked.connect(self.removeRecFromList)
         self.clearListBtn.clicked.connect(self.clearList)
         self.clearListBtn.clicked.connect(self.sigClearList)
         self.saveAllBtn.clicked.connect(self.sigSaveAll)
-        # self.dummyCurrentBtn.clicked.connect(self.addCurrentRunToList)
 
         self.vb.scene().sigMouseMoved.connect(self.mouseMoved)
 
@@ -151,6 +148,7 @@ class BeadRecWidget(Widget):
 
     def updateImage(self, image):
         self.img.setImage(image, autoLevels=False)
+        # self.removeCenterCoord()
     
     def open_settings_dialog(self):
         dialog = JsonEditorDialog(self.analysisPrm, self)
@@ -162,58 +160,104 @@ class BeadRecWidget(Widget):
             else:
                 print("Invalid JSON input")
     
-    def addToList(self,name=None):
-        """ Adds a new item to the list, in first, or second if first is flagged as current run """
+    def addToList(self,name=None,axialName=None):
+        """ Adds a new item to the list, after any current run items. """
         if name is None:
             name = datetime.now().strftime("%Hh%Mm%Ss")
+        if axialName is not None:
+            name = f"{name}_{axialName}"
         item = QtWidgets.QListWidgetItem(name)
         item.setFlags(item.flags() | QtCore.Qt.ItemIsEditable)
-        item.setData(QtCore.Qt.UserRole, False) # not a current scan
-
-        if not self.isFirstItemCurrentRun():
-            insertIdx = 0
-        else:
-            insertIdx = 1
-        
+        item.setData(QtCore.Qt.UserRole, {'isCurrent': False, 'axialName': axialName}) # not a current scan
+        insertIdx = self.getInsertIndexAfterCurrent()
         self.imageListWidget.insertItem(insertIdx,item)
+    
+    
+    def addCurrentRunToList(self,axial:bool=False,axialName:str=None):
+        """Adds current run items"""
+        self.removeCurrentRunItems()
+        if axial and axialName is not None:
+            item = QtWidgets.QListWidgetItem(f"Current - {axialName}")
+            item.setData(QtCore.Qt.UserRole, {"isCurrent": True, "axial_name": axialName})
+            item.setForeground(QtGui.QBrush(QtGui.QColor('gray')))
+            self.imageListWidget.insertItem(0, item)
+        else:
+            item = QtWidgets.QListWidgetItem("Current Run")
+            item.setData(QtCore.Qt.UserRole, {"isCurrent": True, "axial_name": None})
+            item.setForeground(QtGui.QBrush(QtGui.QColor('gray')))
+            self.imageListWidget.insertItem(0, item)
 
-        # if not self.isLastItemCurrentRun():
-        #     self.imageListWidget.addItem(item)
-        # else:
-        #     count = self.imageListWidget.count()
-        #     self.imageListWidget.insertItem(count - 1, item)
+    def removeCurrentRunItems(self):
+        """Removes all items marked as current run."""
+        for i in reversed(range(self.imageListWidget.count())):
+            item = self.imageListWidget.item(i)
+            data = item.data(QtCore.Qt.UserRole)
+            if isinstance(data, dict) and data.get("isCurrent"):
+                self.imageListWidget.takeItem(i)
+            
+    # def isFirstItemCurrentRun(self):
+    #     """ Returns a boolean corresponding to if the last item on the list
+    #     has been flagged as a current run (QtCore.Qt.UserRole=True or False)"""
+
+    #     if self.imageListWidget.count()>0:
+    #         item = self.imageListWidget.item(0)
+    #         return item.data(QtCore.Qt.UserRole).get("isCurrent")
+    #     else:
+    #         return False
+    
+    def isSelectedCurrent(self):
+        """ Returns a boolean corresponding to if the current selected item
+        has been flagged as a current run"""
+        idx = self.imageListWidget.currentRow()        
+        if idx ==-1:
+            return
+        item = self.imageListWidget.item(idx)
+        return item.data(QtCore.Qt.UserRole).get("isCurrent")
+        
+
+    
+    def getInsertIndexAfterCurrent(self):
+        """Returns the index after the last current run item."""
+        idx = 0
+        for i in range(self.imageListWidget.count()):
+            data = self.imageListWidget.item(i).data(QtCore.Qt.UserRole)
+            if isinstance(data, dict) and data.get("isCurrent"):
+                idx += 1
+            else:
+                break
+        return idx
+
 
     def removeRecFromList(self):
         idx = self.imageListWidget.currentRow()
-        if idx != -1:
-            item = self.imageListWidget.item(idx)
-            if item.data(QtCore.Qt.UserRole):
-                print("Current run not removable")
-                # self.imageListWidget.takeItem(idx)
-            else:
-                self.imageListWidget.takeItem(idx)
-                if self.isFirstItemCurrentRun():
-                    idx = idx-1
-                self.sigRemoveRecFromList.emit(idx)
+        if idx==-1:
+            return
+        if self.isSelectedCurrent():
+            print("Current run not removable")
+            return        
+        self.imageListWidget.takeItem(idx)
+        self.sigRemoveRecFromList.emit(idx-self.getInsertIndexAfterCurrent())
+
     
     def clearList(self):
         self.imageListWidget.clear()
     
-    def clearCurrentRunItem(self):
-        if self.isFirstItemCurrentRun():
-             self.imageListWidget.takeItem(0)
+    # def clearCurrentRunItem(self):
+    #     if self.isFirstItemCurrentRun():
+    #          self.imageListWidget.takeItem(0)
     
     def selectionChanged(self):
         """ Emits signals to trigger change of image display"""
         idx = self.imageListWidget.currentRow()
-        if idx !=-1:
-            item = self.imageListWidget.item(idx)
-            if item.data(QtCore.Qt.UserRole): #current run was selected
-                self.sigSelectionChanged.emit(None,True)
-            else:
-                if self.isFirstItemCurrentRun():
-                    idx = idx-1
-                self.sigSelectionChanged.emit(idx,False)
+        if idx ==-1:
+            return
+        item = self.imageListWidget.item(idx)
+        if item.data(QtCore.Qt.UserRole).get("isCurrent"): #current run was selected
+            axialName = item.data(QtCore.Qt.UserRole).get("axialName")
+            self.sigSelectionChanged.emit(None,True,axialName)
+        else:
+            idx = idx-self.getInsertIndexAfterCurrent()
+            self.sigSelectionChanged.emit(idx,False,None)
     
     def mouseMoved(self, pos):
         mouse_point = self.vb.mapSceneToView(pos)
@@ -226,26 +270,21 @@ class BeadRecWidget(Widget):
 
     def erasePixelValue(self):
         self.pixelLabel.setPlainText("")
+    
+    def displayCenterCoord(self,y,x):
+        self.removeCenterCoord()
+        self.vline = pg.InfiniteLine(pos=x, angle=90, pen=pg.mkPen('r'))
+        self.hline = pg.InfiniteLine(pos=y, angle=0, pen=pg.mkPen('r'))
+        self.vb.addItem(self.vline)
+        self.vb.addItem(self.hline)
 
-    def addCurrentRunToList(self):
-        """ Adds an item to the list flagged as current run if first item not already current run"""
-        if not self.isFirstItemCurrentRun():
-            item = QtWidgets.QListWidgetItem("Current Run")
-            item.setData(QtCore.Qt.UserRole, True)
-            item.setForeground(QtGui.QBrush(QtGui.QColor('gray')))
-            self.imageListWidget.insertItem(0,item)
-            
-
-    def isFirstItemCurrentRun(self):
-        """ Returns a boolean corresponding to if the last item on the list
-        has been flagged as a current run (QtCore.Qt.UserRole=True or False)"""
-
-        if self.imageListWidget.count()>0:
-            item = self.imageListWidget.item(0)
-            return item.data(QtCore.Qt.UserRole)
-        else:
-            return False
-                
+    def removeCenterCoord(self):
+        if hasattr(self, 'vline') and self.vline in self.vb.addedItems:
+            self.vb.removeItem(self.vline)
+            del self.vline 
+        if hasattr(self, 'hline') and self.hline in self.vb.addedItems:
+            self.vb.removeItem(self.hline)
+            del self.hline
 
 
 class JsonEditorDialog(QtWidgets.QDialog):

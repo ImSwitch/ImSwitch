@@ -7,7 +7,8 @@ from ast import literal_eval
 
 from ..basecontrollers import SuperScanController
 from imswitch.imcommon.view.guitools import colorutils
-
+from PyQt5.QtCore import QTimer
+import copy
 
 class ScanControllerMoNaLISA(SuperScanController):
     def __init__(self, *args, **kwargs):
@@ -24,11 +25,37 @@ class ScanControllerMoNaLISA(SuperScanController):
         self.updateScanStageAttrs()
         self.updateScanTTLAttrs()
 
+        self.awaitingPipeline = False
+        self.autoAxial = False 
+        self.pipeline_timeout_ms = 3000
+
+        self._analogParameterDictXY = None
+        
+        self._widget.sigFakeAxial.connect(self.fakeAxial)
+
+        # QTimer to handle timeouts
+        self.pipelineTimeoutTimer = QTimer()
+        self.pipelineTimeoutTimer.setSingleShot(True)
+        self.pipelineTimeoutTimer.timeout.connect(self.onPipelineTimeout)
+
         # Connect ScanWidget signals
         self._widget.sigContLaserPulsesToggled.connect(self.setContLaserPulses)
         self._widget.sigSeqTimeParChanged.connect(self.plotSignalGraph)
         self._widget.sigSignalParChanged.connect(self.plotSignalGraph)
 
+        # widget signal sent to commChannel
+        self._widget.sigUpdateBeadRecCenter.connect(self._commChannel.sigUpdateBeadRecCenter.emit)
+        self._widget.sigShowBeadRecCenterCross.connect(self._commChannel.sigShowBeadRecCenterCross.emit)
+        self._widget.sigAutoAxialToggled.connect(self._commChannel.sigAutoAxialToggled)
+
+        self._commChannel.sigCenterCoordPipelineFinished.connect(self.centerCoordPipelineFinished)
+
+    def fakeAxial(self):
+        self.checkAxialAutoScan()
+        if self.autoAxial:
+            self.setupAxial()
+        self.scanDone()
+        self.scanDone()
 
     def getDimsScan(self):
         # TODO: Make sure this works as intended
@@ -37,9 +64,9 @@ class ScanControllerMoNaLISA(SuperScanController):
         lengths = self._analogParameterDict['axis_length']
         stepSizes = self._analogParameterDict['axis_step_size']
 
-        x = ceil(lengths[0] / stepSizes[0])
-        y = ceil(lengths[1] / stepSizes[1])
-        z = ceil(lengths[2] / stepSizes[2])
+        x = ceil(lengths[0] / stepSizes[0]) if stepSizes[0]!=0 else 0
+        y = ceil(lengths[1] / stepSizes[1]) if stepSizes[1]!=0 else 0
+        z = ceil(lengths[2] / stepSizes[2]) if stepSizes[2]!=0 else 0
 
         return x, y, z
     
@@ -76,8 +103,13 @@ class ScanControllerMoNaLISA(SuperScanController):
             self.plotSignalGraph()
 
     def runScanAdvanced(self, *, recalculateSignals=True, isNonFinalPartOfSequence=False,
-                        sigScanStartingEmitted):
+                        sigScanStartingEmitted,axialFollowUp=False):
         """ Runs a scan with the set scanning parameters. """
+
+        if not axialFollowUp:
+            self.checkAxialAutoScan()
+            if self.autoAxial:
+                self.setupAxial()
         try:
             self._widget.setScanButtonChecked(True)
             self.isRunning = True
@@ -105,7 +137,7 @@ class ScanControllerMoNaLISA(SuperScanController):
                     self._master.positionersManager[positionerName].setPosition(position, 0)
                     self._logger.debug(f'set {positionerName} center to {position} before scan')
             # run scan
-            self._master.nidaqManager.runScan(self.signalDict, self.scanInfoDict)
+            # self._master.nidaqManager.runScan(self.signalDict, self.scanInfoDict)
         except Exception:
             self._logger.error(traceback.format_exc())
             self.isRunning = False
@@ -113,13 +145,146 @@ class ScanControllerMoNaLISA(SuperScanController):
     def scanDone(self):
         self.isRunning = False
 
-        if not self._widget.isContLaserMode() and not self._widget.repeatEnabled():
-            self.emitScanSignal(self._commChannel.sigScanDone)
-            if not self.doingNonFinalPartOfSequence:
-                self._widget.setScanButtonChecked(False)
-                self.emitScanSignal(self._commChannel.sigScanEnded)
+        if self.autoAxial and len(self.axialListBuffer)!=0:
+            self.nextAxial = self.axialListBuffer.pop(0)
+            if self.centerCoord is None:
+                self.getCenterCoord()
+            else:
+                self.runNextAxialScan()
+
         else:
-            self.runScanAdvanced(sigScanStartingEmitted=True)
+            if self.autoAxial: 
+                self.resetAfterAutoAxialFinished()
+
+            if not self._widget.isContLaserMode() and not self._widget.repeatEnabled():
+                self.emitScanSignal(self._commChannel.sigScanDone)
+                if not self.doingNonFinalPartOfSequence:
+                    self._widget.setScanButtonChecked(False)
+                    self.emitScanSignal(self._commChannel.sigScanEnded)
+            else:
+                self.runScanAdvanced(sigScanStartingEmitted=True)
+    
+    def getCenterCoord(self):
+        if self.centerSearchMode == "Manual":
+            x = int(self._widget.xCenterEdit.text())
+            y = int(self._widget.yCenterEdit.text())
+            self.centerCoord = self.convertToUm((y,x))
+            self.runNextAxialScan()
+        else:
+            self.awaitingPipeline = True
+            self._commChannel.sigQueryCenterCoord.emit(self.centerSearchMode)        
+            self.pipelineTimeoutTimer.start(self.pipeline_timeout_ms)# Start timeout
+
+    def centerCoordPipelineFinished(self,coord):
+        if not self.awaitingPipeline:
+            return
+        self.pipelineTimeoutTimer.stop()
+        self.awaitingPipeline = False
+        if coord is None:
+            self.axialListBuffer = []
+            self.scanDone()
+        else:
+            self._widget.yCenterEdit.setText(str(int(coord[0])))
+            self._widget.xCenterEdit.setText(str(int(coord[1])))
+            self.centerCoord = self.convertToUm(coord)
+            self.runNextAxialScan()
+        
+    def onPipelineTimeout(self):
+        if self.awaitingPipeline:
+            print("Pipeline analysis timed out! Proceeding without axial scan.")
+            self.awaitingPipeline = False
+            self.axialListBuffer = []
+            self.scanDone()
+        else:
+            return
+
+    def runNextAxialScan(self):
+        self.updateScanParamForAxial()
+        self._commChannel
+        self.runScanAdvanced(sigScanStartingEmitted=True,axialFollowUp=True)
+
+    def checkAxialAutoScan(self):
+        try:
+            if self._widget.AutoXZScanBox.isChecked() or self._widget.AutoYZScanBox.isChecked():
+                x,y,z = self.getDimsScan()
+                if (x>1 and y>1 and z < 2):
+                    self.autoAxial = True
+                else:
+                    print("Auto axial scan only available for a 2d XY scan")
+                    self.autoAxial = False
+        except Exception as e:
+            self.autoAxial = False
+
+    def setupAxial(self):
+        self.axialListBuffer=[]
+        if self._widget.AutoXZScanBox.isChecked():
+            self.axialListBuffer.append("XZ")
+        if self._widget.AutoYZScanBox.isChecked():
+            self.axialListBuffer.append("YZ")
+
+        self.centerSearchMode = self._widget.axialMenu.currentText()
+        self.centerCoord = None
+
+    def resetAfterAutoAxialFinished(self):
+        if self._analogParameterDictXY is not None:
+            self._analogParameterDict = copy.deepcopy(self._analogParameterDictXY)
+            self._analogParameterDictXY = None
+            self.setParameters()
+        self.centerCoord = None
+
+    def updateScanParamForAxial(self):
+        if self.centerCoord is None: #should never happen though
+            print("Could not update scan parameter for axial because self.centercoord = None")
+            return 
+
+        # first we save XY scan parameters
+        if self._analogParameterDictXY is None:
+            self._analogParameterDictXY = copy.deepcopy(self._analogParameterDict)
+
+        # keep only X or Y scan, put the other one at center position
+        if self.nextAxial == "XZ":
+            static = self._analogParameterDict['target_device'].index('Y')
+            centerValue = -1*self.centerCoord[0] + self._analogParameterDict['axis_centerpos'][static]
+        elif self.nextAxial == "YZ":
+            static = self._analogParameterDict['target_device'].index('X')
+            centerValue = -1*self.centerCoord[1] + self._analogParameterDict['axis_centerpos'][static]
+
+        for key, value_list in self._analogParameterDict.items():
+            if key not in ['target_device','axis_centerpos'] and isinstance(value_list, list):
+                self._analogParameterDict[key][static] = 0.0
+        self._analogParameterDict['axis_centerpos'][static] = centerValue
+
+        # transfer axial parameters into the Z axis
+        zIdx = self._analogParameterDict['target_device'].index('Z')
+        size = self._widget.getScanSize('Axial')
+        stepSize = self._widget.getScanStepSize('Axial')
+        center = self._widget.getScanCenterPos('Axial') + size/2 # by default at middle position
+        start = list(self._master.positionersManager['Z'].position.values())
+        self._analogParameterDict['axis_length'][zIdx] = size
+        self._analogParameterDict['axis_step_size'][zIdx] = stepSize
+        self._analogParameterDict['axis_centerpos'][zIdx] = center
+        self._analogParameterDict['axis_startpos'][zIdx] = start
+        
+        self.setParameters()
+    
+    def convertToUm(self,coord):
+        yIndex = self._analogParameterDict['target_device'].index('Y')
+        xIndex = self._analogParameterDict['target_device'].index('X')
+        yCoord = coord[0]*self._analogParameterDict['axis_step_size'][yIndex]
+        xCoord = coord[1]*self._analogParameterDict['axis_step_size'][xIndex]
+        return (yCoord,xCoord)
+
+    # def updateBeadRecCenter(self,y,x):
+    #     self._commChannel.sigUpdateBeadRecCenter.emit(y,x)
+
+    # def showBeadRecCenterCross(self,state):
+    #     self._commChannel.sigShowBeadRecCenterCross.emit(state)
+
+    def getNextAxial(self):
+        if self.autoAxial:
+            return self.nextAxial
+        else:
+            return None
 
     def getParameters(self):
         if self.settingParameters:
@@ -184,6 +349,18 @@ class ScanControllerMoNaLISA(SuperScanController):
                 pixels = round(float(self._analogParameterDict['axis_length'][index]) /
                                float(self._analogParameterDict['axis_step_size'][index]))
                 self._widget.setScanPixels(positionerName, pixels)
+
+        # update the optional axial Z
+        try:
+            stepSize = float(self._widget.scanPar['stepSizeAxial'].text())
+            if stepSize !=0:
+                length = float(self._widget.scanPar['sizeAxial'].text())
+                pixels = round(float(length)/float(stepSize))
+                self._widget.scanPar['pixelsAxial'].setText(str(pixels))
+        except:
+            pass
+
+
 
     def plotSignalGraph(self):
         if self.settingParameters:

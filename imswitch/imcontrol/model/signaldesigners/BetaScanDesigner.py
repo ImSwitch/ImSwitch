@@ -154,7 +154,7 @@ class BetaScanDesigner(ScanDesigner):
             'return_time': parameterDict['return_time']
         }
 
-        self.__plot_curves(plot=False, signals=[fastAxisSignal, middleAxisSignal, slowAxisSignal])
+        self.__plot_curves(plot=True, signals=[fastAxisSignal, middleAxisSignal, slowAxisSignal])
 
         return sig_dict, scanInfoDict['positions'], scanInfoDict
 

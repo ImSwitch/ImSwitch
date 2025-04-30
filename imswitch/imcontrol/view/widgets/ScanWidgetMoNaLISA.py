@@ -8,6 +8,10 @@ from .ScanWidgetBase import SuperScanWidget
 class ScanWidgetMoNaLISA(SuperScanWidget):
 
     sigContLaserPulsesToggled = QtCore.Signal(bool)  # (enabled)
+    sigFakeAxial = QtCore.Signal()
+    sigUpdateBeadRecCenter = QtCore.Signal(int,int) # (y,x)
+    sigShowBeadRecCenterCross = QtCore.Signal(bool)
+    sigAutoAxialToggled = QtCore.Signal(bool)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -90,7 +94,7 @@ class ScanWidgetMoNaLISA(SuperScanWidget):
             self.scanPar['size' + positionerName] = sizePar
             stepSizePar = QtWidgets.QLineEdit('0.0')
             self.scanPar['stepSize' + positionerName] = stepSizePar
-            numPixelsPar = QtWidgets.QLineEdit('50')
+            numPixelsPar = QtWidgets.QLineEdit('5')
             numPixelsPar.setEnabled(False)
             self.scanPar['pixels' + positionerName] = numPixelsPar
             centerPar = QtWidgets.QLineEdit('0')
@@ -127,15 +131,92 @@ class ScanWidgetMoNaLISA(SuperScanWidget):
         currentRow += 1
 
         # Add dwell time parameter
-        self.grid.addWidget(QtWidgets.QLabel('Dwell (ms):'), currentRow, 5)
+        dwellLabel = QtWidgets.QLabel('Dwell (ms):')
+        dwellLabel.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+        self.grid.addWidget(dwellLabel, currentRow, 5)
         self.grid.addWidget(self.seqTimePar, currentRow, 6)
+        currentRow+=1
 
-        currentRow += 1
+        # Automatic XZ/YZ scan
+        AxialLabel = QtWidgets.QLabel('Axial Scan')
+        self.AutoXZScanBox = QtWidgets.QCheckBox('XZ')
+        self.AutoYZScanBox = QtWidgets.QCheckBox('YZ')
+        self.AutoXZScanBox.stateChanged.connect(self.toggleAxial)
+        self.AutoYZScanBox.stateChanged.connect(self.toggleAxial)
+        self.fakeAxial = guitools.BetterPushButton("Fake Axial")
+        self.fakeAxial.clicked.connect(self.sigFakeAxial)
+
+        self.axialZlabel = QtWidgets.QLabel('Z')
+        self.axialSizePar = QtWidgets.QLineEdit('0.0')
+        self.scanPar['sizeAxial'] = self.axialSizePar
+        self.axialStepSizePar = QtWidgets.QLineEdit('0.0')
+        self.scanPar['stepSizeAxial'] = self.axialStepSizePar
+        self.axialNumPixelsPar = QtWidgets.QLineEdit('5')
+        self.axialNumPixelsPar.setEnabled(False)
+        self.scanPar['pixelsAxial'] = self.axialNumPixelsPar
+        self.axialCenterPar = QtWidgets.QLineEdit('0')
+        self.scanPar['centerAxial'] = self.axialCenterPar
+        
+        for key in ['size','stepSize','pixels','center']:
+            self.scanPar[key + 'Axial'].textChanged.connect(self.sigStageParChanged)
+
+        self.axialMenuLabel = QtWidgets.QLabel('Center localization: ')
+        self.axialMenu = QtWidgets.QComboBox()
+        self.axialMenu.addItem("Manual")
+        self.axialMenu.addItem("Maxima")
+        self.axialMenu.addItem("Minima")
+        self.centerLabel = QtWidgets.QLabel('Center Coordinates') 
+        self.showCenterBox = QtWidgets.QCheckBox('Show')
+        self.xCenterLabel = QtWidgets.QLabel('X') 
+        self.yCenterLabel = QtWidgets.QLabel('Y')
+        self.xCenterEdit = QtWidgets.QLineEdit('0')       
+        self.yCenterEdit = QtWidgets.QLineEdit('0')
+        
+        self.axialMenu.currentIndexChanged.connect(self.axialMenuChanged)
+        self.xCenterEdit.textChanged.connect(self.centerCoordChanged)
+        self.yCenterEdit.textChanged.connect(self.centerCoordChanged)
+        self.showCenterBox.stateChanged.connect(
+            lambda state: self.sigShowBeadRecCenterCross.emit(bool(state))
+        )
+        
+        currentRow+=1
+        self.grid.addWidget(self.fakeAxial,currentRow,6)
+        currentRow+=1
+
+        # layout
+        self.grid.addWidget(AxialLabel,currentRow,0)
+        self.grid.addWidget(self.AutoXZScanBox,currentRow,1)
+        self.grid.addWidget(self.AutoYZScanBox,currentRow,2)
+        self.grid.addWidget(self.axialMenuLabel,currentRow,3,QtCore.Qt.AlignRight)
+        self.grid.addWidget(self.axialMenu,currentRow,4)
+        currentRow+=1
+        self.grid.addWidget(self.axialZlabel,currentRow,0)
+        self.grid.addWidget(self.axialSizePar,currentRow,1)
+        self.grid.addWidget(self.axialStepSizePar,currentRow,2)
+        self.grid.addWidget(self.axialNumPixelsPar,currentRow,3)
+        self.grid.addWidget(self.axialCenterPar,currentRow,4)
+
+        # xycoord center grid layout
+        centergrid = QtWidgets.QGridLayout()
+        centergrid.addWidget(self.centerLabel,0,0,1,3,QtCore.Qt.AlignHCenter | QtCore.Qt.AlignVCenter)
+        centergrid.addWidget(self.showCenterBox,0,3,1,1,QtCore.Qt.AlignHCenter | QtCore.Qt.AlignVCenter)
+        centergrid.addWidget(self.xCenterLabel,1,0)
+        centergrid.addWidget(self.xCenterEdit,1,1)
+        centergrid.addWidget(self.yCenterLabel,1,2)
+        centergrid.addWidget(self.yCenterEdit,1,3)
+        self.xycoord = QtWidgets.QWidget()
+        self.xycoord.setLayout(centergrid)  # Set the QGridLayout on it
+
+        self.grid.addWidget(self.xycoord,currentRow-1,5,2,2,QtCore.Qt.AlignHCenter | QtCore.Qt.AlignVCenter)
+        
+        self.setAxialGroupVisibility(state=False)   
+
+
 
         # Add space item to make the grid look nicer
         self.grid.addItem(
-            QtWidgets.QSpacerItem(20, 40,
-                                  QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding),
+            QtWidgets.QSpacerItem(40, 40,
+                                  QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Fixed),
             currentRow, 0, 1, -1
         )
         currentRow += 1
@@ -221,6 +302,37 @@ class ScanWidgetMoNaLISA(SuperScanWidget):
         self.graph.plot.setYRange(-0.1, 1.1)
         self.graph.plot.getAxis('bottom').setScale(1000 / sampleRate)
 
+        
+    def setAxialGroupVisibility(self,state:bool):
+        list = [self.axialMenuLabel,self.axialSizePar,self.axialNumPixelsPar,self.xycoord,
+                self.axialStepSizePar,self.axialCenterPar,self.axialMenu,self.axialZlabel]
+        if state:
+            for elem in list:
+                elem.show()
+        else:
+            for elem in list:
+                elem.hide()
+
+    def toggleAxial(self):
+        state1 = self.AutoXZScanBox.isChecked()
+        state2 = self.AutoYZScanBox.isChecked()
+        self.setAxialGroupVisibility(state=(state1 or state2))
+        self.sigAutoAxialToggled.emit(state1 or state2)
+    
+    def axialMenuChanged(self):
+        if self.axialMenu.currentText() in ["Minima","Maxima"]:
+            self.xCenterEdit.setEnabled(False)
+            self.yCenterEdit.setEnabled(False)
+        elif self.axialMenu.currentText() in ["Manual"]:
+            self.xCenterEdit.setEnabled(True)
+            self.yCenterEdit.setEnabled(True)
+            self.centerCoordChanged()
+    
+    def centerCoordChanged(self):
+        y = self.yCenterEdit.text()
+        x = self.xCenterEdit.text()
+        if y != "" and x != "":
+            self.sigUpdateBeadRecCenter.emit(int(y),int(x))
 
 class GraphFrame(pg.GraphicsLayoutWidget):
     """Creates the plot that plots the preview of the pulses."""

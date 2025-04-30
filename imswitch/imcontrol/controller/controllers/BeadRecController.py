@@ -107,7 +107,8 @@ class BeadRecController(ImConWidgetController):
             paths = [paths]
         
         for path in paths:
-            im = imread(path)
+            im = imread(path).astype(np.float64)
+            #print(im.dtype)
             if len(im.shape)!=2:
                 print("Loaded images should be 2d")
                 return
@@ -190,7 +191,8 @@ class BeadRecController(ImConWidgetController):
             self.roiAdded = True
 
     def run(self):
-        if not self.running:
+        # if not self.running:
+        if self._widget.runButton.isChecked():
             self.updateParameters()
             self.running = True
             self._master.detectorsManager.execOnAll(lambda c: c.flushBuffers())
@@ -203,7 +205,8 @@ class BeadRecController(ImConWidgetController):
 
     def setNewScanStatus(self):
         self.newScan = True
-        if self.running:
+        # if self.running:
+        if self._widget.runButton.isChecked():
             self._widget.addCurrentRunToList() # in case "clear all" made it disappear
             self._widget.imageListWidget.setCurrentRow(0)
     
@@ -368,7 +371,7 @@ def run_donut_analysis(im:np.ndarray,params:dict = None):
         # Find local minimum
         im2 = im.copy()
         im3_crop = im_bw3[3:-3, 3:-3]
-        im2[~im3_crop] = 1e3
+        im2[~im3_crop] = 65535
         # im2[im2 < bg + 0.03 * range_val] = 1e3
         min_val = np.min(im2)
         miny, minx = np.unravel_index(np.argmin(im2), im2.shape)

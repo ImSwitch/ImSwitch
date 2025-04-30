@@ -47,7 +47,7 @@ class CommunicationChannel(SignalInterface):
     )  # (name, image, filePath, savedToDisk)
 
     sigRunScan = Signal(bool, bool)  # (recalculateSignals, isNonFinalPartOfSequence)
-
+    
     sigAbortScan = Signal()
 
     sigScanStarting = Signal()
@@ -95,6 +95,16 @@ class CommunicationChannel(SignalInterface):
     sigNewFrame = Signal()
 
     sigInitiateEtMonalisa = Signal(bool)
+
+    sigQueryCenterCoord = Signal(str) # (search mode)
+    
+    sigCenterCoordPipelineFinished = Signal(object) #(center coordinates or None)
+
+    sigUpdateBeadRecCenter = Signal(int,int) # y,x coordinates
+
+    sigShowBeadRecCenterCross = Signal(bool) # state
+
+    sigAutoAxialToggled = Signal(bool) #state
 
     # useq-schema related signals
     sigSetXYPosition = Signal(float, float)
@@ -157,6 +167,12 @@ class CommunicationChannel(SignalInterface):
     def getNumCamTTL(self):
         if 'Scan' in self.__main.controllers:
             return self.__main.controllers['Scan'].getNumCamTTL()
+        else:
+            raise RuntimeError('Required scan widget not available')
+    
+    def getNextAxial(self):
+        if 'Scan' in self.__main.controllers:
+            return self.__main.controllers['Scan'].getNextAxial()
         else:
             raise RuntimeError('Required scan widget not available')
 

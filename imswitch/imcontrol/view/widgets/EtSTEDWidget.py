@@ -139,6 +139,7 @@ class EtSTEDWidget(Widget):
         self.laser_delay_label = QtGui.QLabel('Laser delay coeff') 
         self.laser_delay_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignBottom)
         self.laser_delay_edit = QtGui.QLineEdit(str(0.0))
+        self.laser_delay_checkbox = QtGui.QCheckBox('Experimental: Use laser delay feature')
 
         # help widget for coordinate transform
         self.coordTransformWidget = CoordTransformWidget(*args, **kwargs)
@@ -192,6 +193,7 @@ class EtSTEDWidget(Widget):
         
         self.grid.addWidget(self.laser_delay_label, currentRow, 2)
         self.grid.addWidget(self.laser_delay_edit, currentRow, 3)
+        self.grid.addWidget(self.laser_delay_checkbox, currentRow, 4)
 
         currentRow += 1
 

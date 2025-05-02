@@ -109,6 +109,7 @@ class EtSTEDController(ImConWidgetController):
         # timer for turning laser ON
         self.timerLaser = Timer(singleShot = True)
         self.timerLaser.timeout.connect(lambda: self._master.lasersManager.execOn(self.laserFast, lambda l: l.setEnabled(True)))
+        self.setUpdatePeriod()
 
     def initiate(self):
         """ Initiate or stop an etSTED experiment. """
@@ -153,8 +154,12 @@ class EtSTEDController(ImConWidgetController):
                 self._commChannel.sigScanEnded.connect(self.scanEnded)
             elif self.scanInitiationMode == ScanInitiationMode.RecordingWidget:
                 self._commChannel.sigRecordingEnded.connect(self.scanEnded)
-            # self._master.lasersManager.execOn(self.laserFast, lambda l: l.setEnabled(True))
-            self.startTimerLaserOn()
+            
+            if self._widget.laser_delay_checkbox.isChecked():
+                self.startTimerLaserOn()
+            else:
+                self._master.lasersManager.execOn(self.laserFast, lambda l: l.setEnabled(True))
+            
 
             self._widget.initiateButton.setText('Stop')
             self.__running = True
@@ -170,7 +175,8 @@ class EtSTEDController(ImConWidgetController):
             elif self.scanInitiationMode == ScanInitiationMode.RecordingWidget:
                 self._commChannel.sigRecordingEnded.disconnect(self.scanEnded)
             self._master.lasersManager.execOn(self.laserFast, lambda l: l.setEnabled(False))
-            self.timerLaser.stop()
+            if self._widget.laser_delay_checkbox.isChecked():
+                self.timerLaser.stop()
             
             self._widget.initiateButton.setText('Initiate')
             self.resetParamVals()
@@ -297,8 +303,11 @@ class EtSTEDController(ImConWidgetController):
         if self._widget.endlessScanCheck.isChecked() and not self.__running:
             # connect communication channel signals
             self._commChannel.sigUpdateImage.connect(self.runPipeline)
-            # self._master.lasersManager.execOn(self.laserFast, lambda l: l.setEnabled(True))  
-            self.startTimerLaserOn()         
+
+            if self._widget.laser_delay_checkbox.isChecked():
+                self.startTimerLaserOn()
+            else:
+                self._master.lasersManager.execOn(self.laserFast, lambda l: l.setEnabled(True))    
             self._widget.initiateButton.setText('Stop')
             self.__running = True
         elif not self._widget.endlessScanCheck.isChecked():
@@ -349,7 +358,8 @@ class EtSTEDController(ImConWidgetController):
             elif len(self.__binary_stack) == self.__binary_frames:
                 self._commChannel.sigUpdateImage.disconnect(self.addImgBinStack)
                 self._master.lasersManager.execOn(self.laserFast, lambda l: l.setEnabled(False))
-                self.timerLaser.stop()
+                if self._widget.laser_delay_checkbox.isChecked():
+                    self.timerLaser.stop()
                 self.calculateBinaryMask(self.__binary_stack)
             else:
                 if np.ndim(self.__binary_stack) == 2:
@@ -444,7 +454,8 @@ class EtSTEDController(ImConWidgetController):
         """ If detector is detectorFast: run the analyis pipeline, called after every fast method frame. """
         del init, scale, isCurrentDetector
         if detectorName == self.detectorFast:
-            self._master.lasersManager.execOn(self.laserFast, lambda l: l.setEnabled(False))
+            if self._widget.laser_delay_checkbox.isChecked():
+                self._master.lasersManager.execOn(self.laserFast, lambda l: l.setEnabled(False))
             if not self.__busy:
                 t_sincelastcall = millis() - self.__t_call
                 self.__t_call = millis()
@@ -546,8 +557,11 @@ class EtSTEDController(ImConWidgetController):
                     self.__prevAnaFrames.append(img_ana)
                 self.__frame += 1
                 self.setBusyFalse()
-            if coords_detected.size == 0:
-                self.startTimerLaserOn()
+            if self._widget.laser_delay_checkbox.isChecked():
+                if coords_detected.size == 0:
+                    self.startTimerLaserOn()
+                    
+            
 
     def startTimerLaserOn(self):
         delay_coeff = float(self._widget.laser_delay_edit.text())
@@ -672,7 +686,8 @@ class EtSTEDController(ImConWidgetController):
         if self.__running:
             self._commChannel.sigUpdateImage.disconnect(self.runPipeline)
             self._master.lasersManager.execOn(self.laserFast, lambda l: l.setEnabled(False))
-            self.timerLaser.stop()
+            if self._widget.laser_delay_checkbox.isChecked():
+                self.timerLaser.stop()
             self.__running = False
             self.__timelapseRunning = True
 

@@ -106,6 +106,8 @@ class CommunicationChannel(SignalInterface):
 
     sigAutoAxialToggled = Signal(bool) #state
 
+    sigNewAxialListBuffer = Signal(list) # list of auto axial scans to do e.g. ["XZ","YZ"]
+
     # useq-schema related signals
     sigSetXYPosition = Signal(float, float)
     sigSetZPosition = Signal(float)
@@ -175,6 +177,7 @@ class CommunicationChannel(SignalInterface):
             return self.__main.controllers['Scan'].getNextAxial()
         else:
             raise RuntimeError('Required scan widget not available')
+
 
     def get_image(self, detectorName=None):
         return self.__main.controllers['View'].get_image(detectorName)

@@ -33,6 +33,9 @@ class NidaqPositionerManager(PositionerManager):
                                      voltage=position / self._conversionFactor,
                                      min_val=self._minVolt,
                                      max_val=self._maxVolt)
+    
+    def resetToCurrent(self,):
+        self.setPosition(self._position[self.axes[0]],0)
 
     def get_abs(self, axis):
         return self._position[axis]

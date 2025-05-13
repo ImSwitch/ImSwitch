@@ -8,7 +8,6 @@ from .ScanWidgetBase import SuperScanWidget
 class ScanWidgetMoNaLISA(SuperScanWidget):
 
     sigContLaserPulsesToggled = QtCore.Signal(bool)  # (enabled)
-    sigFakeAxial = QtCore.Signal()
     sigUpdateBeadRecCenter = QtCore.Signal(int,int) # (y,x)
     sigShowBeadRecCenterCross = QtCore.Signal(bool)
     sigAutoAxialToggled = QtCore.Signal(bool)
@@ -143,9 +142,7 @@ class ScanWidgetMoNaLISA(SuperScanWidget):
         self.AutoYZScanBox = QtWidgets.QCheckBox('YZ')
         self.AutoXZScanBox.stateChanged.connect(self.toggleAxial)
         self.AutoYZScanBox.stateChanged.connect(self.toggleAxial)
-        self.fakeAxial = guitools.BetterPushButton("Fake Axial")
-        self.fakeAxial.clicked.connect(self.sigFakeAxial)
-
+        
         self.axialZlabel = QtWidgets.QLabel('Z')
         self.axialSizePar = QtWidgets.QLineEdit('0.0')
         self.scanPar['sizeAxial'] = self.axialSizePar
@@ -179,8 +176,6 @@ class ScanWidgetMoNaLISA(SuperScanWidget):
             lambda state: self.sigShowBeadRecCenterCross.emit(bool(state))
         )
         
-        currentRow+=1
-        self.grid.addWidget(self.fakeAxial,currentRow,6)
         currentRow+=1
 
         # layout
@@ -318,6 +313,7 @@ class ScanWidgetMoNaLISA(SuperScanWidget):
         state2 = self.AutoYZScanBox.isChecked()
         self.setAxialGroupVisibility(state=(state1 or state2))
         self.sigAutoAxialToggled.emit(state1 or state2)
+        self.sigShowBeadRecCenterCross.emit((state1 or state2) and self.showCenterBox.isChecked())
     
     def axialMenuChanged(self):
         if self.axialMenu.currentText() in ["Minima","Maxima"]:

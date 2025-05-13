@@ -125,6 +125,7 @@ class BetaScanDesigner(ScanDesigner):
         # Make slow axis signal
         sliceSamples = slow_axis_positions * colSamples
         sliceValues = self.__makeRamp(slow_axis_start, slow_axis_size, slow_axis_positions)
+        print(sliceValues)
         fullCubeSignal = np.zeros(sliceSamples)
         for s in range(slow_axis_positions):
             fullCubeSignal[s * colSamples:(s + 1) * colSamples - returnSamples] = sliceValues[s]
@@ -154,7 +155,7 @@ class BetaScanDesigner(ScanDesigner):
             'return_time': parameterDict['return_time']
         }
 
-        self.__plot_curves(plot=True, signals=[fastAxisSignal, middleAxisSignal, slowAxisSignal])
+        self.__plot_curves(plot=False, signals=[fastAxisSignal, middleAxisSignal, slowAxisSignal])
 
         return sig_dict, scanInfoDict['positions'], scanInfoDict
 

@@ -30,8 +30,6 @@ class ScanControllerMoNaLISA(SuperScanController):
         self.pipeline_timeout_ms = 3000
 
         self._analogParameterDictXY = None
-        
-        self._widget.sigFakeAxial.connect(self.fakeAxial)
 
         # QTimer to handle timeouts
         self.pipelineTimeoutTimer = QTimer()
@@ -49,13 +47,6 @@ class ScanControllerMoNaLISA(SuperScanController):
         self._widget.sigAutoAxialToggled.connect(self._commChannel.sigAutoAxialToggled)
 
         self._commChannel.sigCenterCoordPipelineFinished.connect(self.centerCoordPipelineFinished)
-
-    def fakeAxial(self):
-        self.checkAxialAutoScan()
-        if self.autoAxial:
-            self.setupAxial()
-        self.scanDone()
-        self.scanDone()
 
     def getDimsScan(self):
         # TODO: Make sure this works as intended
@@ -136,17 +127,27 @@ class ScanControllerMoNaLISA(SuperScanController):
                     position = self._analogParameterDict['axis_centerpos'][index]
                     self._master.positionersManager[positionerName].setPosition(position, 0)
                     self._logger.debug(f'set {positionerName} center to {position} before scan')
-            # run scan
-            # self._master.nidaqManager.runScan(self.signalDict, self.scanInfoDict)
+            #run scan
+            self._master.nidaqManager.runScan(self.signalDict, self.scanInfoDict)
         except Exception:
             self._logger.error(traceback.format_exc())
             self.isRunning = False
 
+    def resetPositioners(self):
+        """ For when 'center' is not 0: put back positioner in position before the scan.
+        Without this, positioner will be left at 'center' position at end of scan."""
+        for index, positionerName in enumerate(self._analogParameterDict['target_device']):
+            if positionerName in self._positionersScan:
+                center = self._analogParameterDict['axis_centerpos'][index]
+                if center!=0:
+                    self._master.positionersManager[positionerName].resetToCurrent()
+
     def scanDone(self):
         self.isRunning = False
-
+        self.resetPositioners()
         if self.autoAxial and len(self.axialListBuffer)!=0:
             self.nextAxial = self.axialListBuffer.pop(0)
+            self.emitScanSignal(self._commChannel.sigScanEnded)
             if self.centerCoord is None:
                 self.getCenterCoord()
             else:
@@ -200,8 +201,7 @@ class ScanControllerMoNaLISA(SuperScanController):
 
     def runNextAxialScan(self):
         self.updateScanParamForAxial()
-        self._commChannel
-        self.runScanAdvanced(sigScanStartingEmitted=True,axialFollowUp=True)
+        self.runScanAdvanced(sigScanStartingEmitted=False,axialFollowUp=True)
 
     def checkAxialAutoScan(self):
         try:
@@ -221,9 +221,10 @@ class ScanControllerMoNaLISA(SuperScanController):
             self.axialListBuffer.append("XZ")
         if self._widget.AutoYZScanBox.isChecked():
             self.axialListBuffer.append("YZ")
-
+        self.nextAxial = "XY"
         self.centerSearchMode = self._widget.axialMenu.currentText()
         self.centerCoord = None
+        self._commChannel.sigNewAxialListBuffer.emit(self.axialListBuffer)
 
     def resetAfterAutoAxialFinished(self):
         if self._analogParameterDictXY is not None:
@@ -240,14 +241,16 @@ class ScanControllerMoNaLISA(SuperScanController):
         # first we save XY scan parameters
         if self._analogParameterDictXY is None:
             self._analogParameterDictXY = copy.deepcopy(self._analogParameterDict)
+        else:
+            self._analogParameterDict = copy.deepcopy(self._analogParameterDictXY)
 
         # keep only X or Y scan, put the other one at center position
         if self.nextAxial == "XZ":
-            static = self._analogParameterDict['target_device'].index('Y')
-            centerValue = -1*self.centerCoord[0] + self._analogParameterDict['axis_centerpos'][static]
+            static = self._analogParameterDictXY['target_device'].index('Y')
+            centerValue = -1*self.centerCoord[0] + self._analogParameterDictXY['axis_centerpos'][static]
         elif self.nextAxial == "YZ":
-            static = self._analogParameterDict['target_device'].index('X')
-            centerValue = -1*self.centerCoord[1] + self._analogParameterDict['axis_centerpos'][static]
+            static = self._analogParameterDictXY['target_device'].index('X')
+            centerValue = -1*self.centerCoord[1] + self._analogParameterDictXY['axis_centerpos'][static]
 
         for key, value_list in self._analogParameterDict.items():
             if key not in ['target_device','axis_centerpos'] and isinstance(value_list, list):
@@ -264,7 +267,7 @@ class ScanControllerMoNaLISA(SuperScanController):
         self._analogParameterDict['axis_step_size'][zIdx] = stepSize
         self._analogParameterDict['axis_centerpos'][zIdx] = center
         self._analogParameterDict['axis_startpos'][zIdx] = start
-        
+
         self.setParameters()
     
     def convertToUm(self,coord):
@@ -273,12 +276,6 @@ class ScanControllerMoNaLISA(SuperScanController):
         yCoord = coord[0]*self._analogParameterDict['axis_step_size'][yIndex]
         xCoord = coord[1]*self._analogParameterDict['axis_step_size'][xIndex]
         return (yCoord,xCoord)
-
-    # def updateBeadRecCenter(self,y,x):
-    #     self._commChannel.sigUpdateBeadRecCenter.emit(y,x)
-
-    # def showBeadRecCenterCross(self,state):
-    #     self._commChannel.sigShowBeadRecCenterCross.emit(state)
 
     def getNextAxial(self):
         if self.autoAxial:

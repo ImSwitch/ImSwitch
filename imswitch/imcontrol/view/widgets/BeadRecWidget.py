@@ -175,25 +175,29 @@ class BeadRecWidget(Widget):
     
     def addCurrentRunToList(self,axial:bool=False,axialName:str=None):
         """Adds current run items"""
-        self.removeCurrentRunItems()
+        self.removeCurrentRunItems(axialName)
         if axial and axialName is not None:
             item = QtWidgets.QListWidgetItem(f"Current - {axialName}")
-            item.setData(QtCore.Qt.UserRole, {"isCurrent": True, "axial_name": axialName})
+            item.setData(QtCore.Qt.UserRole, {"isCurrent": True, "axialName": axialName})
             item.setForeground(QtGui.QBrush(QtGui.QColor('gray')))
             self.imageListWidget.insertItem(0, item)
         else:
             item = QtWidgets.QListWidgetItem("Current Run")
-            item.setData(QtCore.Qt.UserRole, {"isCurrent": True, "axial_name": None})
+            item.setData(QtCore.Qt.UserRole, {"isCurrent": True, "axialName": None})
             item.setForeground(QtGui.QBrush(QtGui.QColor('gray')))
             self.imageListWidget.insertItem(0, item)
+        self.selectionChanged()
 
-    def removeCurrentRunItems(self):
-        """Removes all items marked as current run."""
+    def removeCurrentRunItems(self,axialName=None):
+        """Removes all items marked as current run, or only the current run 
+        marked as arg:`axialName` if not None."""
         for i in reversed(range(self.imageListWidget.count())):
             item = self.imageListWidget.item(i)
             data = item.data(QtCore.Qt.UserRole)
             if isinstance(data, dict) and data.get("isCurrent"):
-                self.imageListWidget.takeItem(i)
+                if axialName is None or data.get("axialName") == axialName:
+                    self.imageListWidget.takeItem(i)
+
             
     # def isFirstItemCurrentRun(self):
     #     """ Returns a boolean corresponding to if the last item on the list
@@ -252,6 +256,8 @@ class BeadRecWidget(Widget):
         if idx ==-1:
             return
         item = self.imageListWidget.item(idx)
+        currentRun =  item.data(QtCore.Qt.UserRole).get("isCurrent")
+        axialName =  item.data(QtCore.Qt.UserRole).get("axialName")
         if item.data(QtCore.Qt.UserRole).get("isCurrent"): #current run was selected
             axialName = item.data(QtCore.Qt.UserRole).get("axialName")
             self.sigSelectionChanged.emit(None,True,axialName)

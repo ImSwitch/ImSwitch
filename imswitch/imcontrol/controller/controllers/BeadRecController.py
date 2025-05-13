@@ -25,7 +25,7 @@ class BeadRecController(ImConWidgetController):
         self.stepSizes = None
         self.lastDir = None
         self.listRecs = []
-        self.scanOngoing = False
+        self.ongoingScan = False
         self.currentRunImgs = {}
 
         self.beadWorker = BeadWorker(self)
@@ -37,6 +37,7 @@ class BeadRecController(ImConWidgetController):
         self.yCenter = None
         self.xCenter = None
         self.showCenterState = False
+        self.autoAxial=False
 
         # Connect BeadRecWidget signals
         self._widget.sigROIToggled.connect(self.roiToggled)
@@ -61,7 +62,8 @@ class BeadRecController(ImConWidgetController):
         self._commChannel.sigQueryCenterCoord.connect(self.centerCoordQuery)
         self._commChannel.sigUpdateBeadRecCenter.connect(self.updateCenterCross)
         self._commChannel.sigShowBeadRecCenterCross.connect(self.showStateChanged)
-        self._commChannel.sigAutoAxialToggled.connect(self.setAxialScanStatus)
+        self._commChannel.sigAutoAxialToggled.connect(self.onAutoAxialToggled)
+        self._commChannel.sigNewAxialListBuffer.connect(self.onNewAxialListBuffer)
         
 
     def __del__(self):
@@ -74,18 +76,22 @@ class BeadRecController(ImConWidgetController):
         self.listRecs = []
 
     def selectionChanged(self,imgListIdx:int=None,currentRun=False,axialName=None):
-
         if currentRun:
             if axialName is None:
                 axialName="XY"
+            self.axialName = axialName
             self.imDisplay=self.currentRunImgs.get(axialName)
-        elif imgListIdx is not None and imgListIdx<len(self.listRecs):
-            self.imDisplay=self.listRecs[imgListIdx]
         else:
-            return
+            self.axialName = None
+            if imgListIdx is not None and imgListIdx<len(self.listRecs):
+                self.imDisplay=self.listRecs[imgListIdx]
+            else:
+                return
         
         if self.imDisplay is not None:
-            self._widget.updateImage(self.imDisplay)
+            self.updateScaling() # will update scaling and send final image to be displayed to widget
+        else: 
+            print("Selection changed, but self.imDisplay = none. current run: ",currentRun,"axialName:",axialName)
         
     def removeRecFromList(self,idx:int=None):
         if idx is not None and idx<len(self.listRecs):
@@ -98,6 +104,9 @@ class BeadRecController(ImConWidgetController):
             if self._commChannel.getNextAxial() is not None:
                 axialName = self._commChannel.getNextAxial()
                 axial=True
+        if not axial: # clean up currentRunImgs
+            self.currentRunImgs={}
+
         self._widget.addCurrentRunToList(axial,axialName)
         self._widget.imageListWidget.setCurrentRow(0)
 
@@ -124,7 +133,6 @@ class BeadRecController(ImConWidgetController):
         
         for path in paths:
             im = imread(path).astype(np.float64)
-            #print(im.dtype)
             if len(im.shape)!=2:
                 print("Loaded images should be 2d")
                 return
@@ -138,13 +146,14 @@ class BeadRecController(ImConWidgetController):
 
     def addCurrentRun(self,name=None):
         """ Save current run to list of saved images, calls widget to add it
-        to list of items and to delete the "current run" item, if a scan is not running. 
+        to list of items and to delete the "current run" item(s), if a scan is not running. 
         NOTE: insert to first position to keep same order as widget items."""
         
         for key, img in self.currentRunImgs.items():
+            if self._widget.scaleButton.isChecked():
+                img = self.rescale(img)
             axialName = key if self.autoAxial else None
             self._widget.addToList(name,axialName)
-            self._widget.addToList(name)
             self.listRecs.insert(0, img)
             if not self.ongoingScan:
                 self._widget.removeCurrentRunItems()
@@ -235,7 +244,8 @@ class BeadRecController(ImConWidgetController):
             self.running = True
             self._master.detectorsManager.execOnAll(lambda c: c.flushBuffers())
             self.thread.start()
-            self.addCurrentToWidgetList()
+            if self.ongoingScan:
+                self.addCurrentToWidgetList()
         else:
             self.running = False
             self.thread.quit()
@@ -243,27 +253,32 @@ class BeadRecController(ImConWidgetController):
 
     def onNewScan(self):
         self.newScan = True
-        # if self.running:
+        if self.autoAxial:
+            self.axialName = self._commChannel.getNextAxial()
+        else:
+            self.axialName = "XY"
+
         if self._widget.runButton.isChecked():
             self.addCurrentToWidgetList() # in case "clear all" made it disappear
+
     
     def OngoingScanStatus(self):
         self.ongoingScan = True
 
     def onEndedScan(self):
         self.ongoingScan=False
-        if self.autoAxial:
-            axialName = self._commChannel.getNextAxial()
-        else:
-            axialName = "XY"
-
-        self.currentRunImgs[axialName] = self.imDisplay
+        self.currentRunImgs[self.axialName] = np.resize(self.recIm, (self.dims[1] + 1,self.dims[0] + 1)) # we always store unscaled img
     
-    def setAxialScanStatus(self,state:bool = False):
+    def onAutoAxialToggled(self,state:bool = False):
         if state:
             self.autoAxial=True
         else:
             self.autoAxial=False
+    
+    def onNewAxialListBuffer(self,axialList:list):
+        """ clean up self.currentRunImgs to not keep previous XZ/YZ and widget list """
+        self.currentRunImgs={}
+        self._widget.removeCurrentRunItems()
 
     def updateParameters(self):
         prior_dims = self.dims
@@ -291,22 +306,39 @@ class BeadRecController(ImConWidgetController):
                 self._widget.erasePixelValue()
 
     def updateScaling(self):
-        if not self._commChannel.isScanRunning():
-            self.update()
+        """ Updates scaling factor of displayed image, only if current run
+        Note that this will overwrite imDisplay with scaled version, but unscaled still accessble with currentRunImgs[self.axialName]"""
+        if not self._commChannel.isScanRunning() and self._widget.isSelectedCurrent():
+            if self._widget.scaleButton.isChecked():
+                self.imDisplay = self.rescale(self.imDisplay)
+            else:
+                self.imDisplay = self.currentRunImgs.get(self.axialName)
+        self._widget.updateImage(self.imDisplay)
 
     def rescale(self,im):
         """
-        Rescale imRec if not isotropic scan. Uses scikit rescale function, without interpolation.
+        Rescale im if not isotropic scan. Uses scikit rescale function, without interpolation.
         """
-        px_y = self.stepSizes[1] # (y,x) in recIm, so inversed to the scan XY.
-        px_x = self.stepSizes[0]
-        if px_y - px_x == 0:
+        if im.shape[0]!=im.shape[1]:
+            if im.shape[0]>im.shape[1]:
+                scale_y=1
+                scale_x=(im.shape[0]/im.shape[1])
+            else:
+                scale_x=1
+                scale_y=(im.shape[1]/im.shape[0])
+
+            rescaled_im = rescale(im, (scale_y, scale_x), anti_aliasing=False, mode='reflect', preserve_range=True)  
+            # px_y = self.stepSizes[1] # (y,x) in recIm, so inversed to the scan XY.
+            # px_x = self.stepSizes[0]
+            # if px_y - px_x == 0:
+            #     return im
+            # self.scale_x = px_x / min(px_x, px_y)
+            # self.scale_y = px_y / min(px_x, px_y)
+            # rescaled_im = rescale(im, (self.scale_y, self.scale_x), anti_aliasing=False, mode='reflect', preserve_range=True)  
+            # imsave(r"C:\Users\MonaLisa\Documents\rescaled.tiff",rescaled_im) #to debug scaling
+            return rescaled_im
+        else:
             return im
-        scale_x = px_x / min(px_x, px_y)
-        scale_y = px_y / min(px_x, px_y)
-        rescaled_im = rescale(im, (scale_y, scale_x), anti_aliasing=False, mode='reflect', preserve_range=True)  
-        # imsave(r"C:\Users\MonaLisa\Documents\rescaled.tiff",rescaled_im) #to debug scaling
-        return rescaled_im
     
     def update(self):
         """"Updates image display with current recorded image self.recIm"""
@@ -324,25 +356,30 @@ class BeadRecController(ImConWidgetController):
                 coord = findCenterDonut(self.imDisplay,self._widget.analysisPrm)
             else:
                 raise ValueError("Center search mode unknown, should be 'Maxima', or 'Minima'")
-            self._widget.displayCenterCoord(coord[0],coord[1])
         else:
             coord = None
+        
         self._commChannel.sigCenterCoordPipelineFinished.emit(coord)
+        if coord is not None and self.showCenterState:
+            self._widget.displayCenterCoord(coord[0],coord[1])
+        else:
+            print(f"Center search with '{mode}' method failed. Try manual coordinate")
 
-    def updateCenterCross(self,y,x):
+    def updateCenterCross(self,y,x):    
         self.yCenter = y
         self.xCenter = x
-        self.updateCenterCrossVisibility()
+        self.updateCenterCrossWidget()
     
     def showStateChanged(self,state:bool):
         self.showCenterState = state
-        self.updateCenterCrossVisibility()
+        self.updateCenterCrossWidget()
 
-    def updateCenterCrossVisibility(self):
-        if self.showCenterState and self.imDisplay is not None and self.yCenter is not None and self.xCenter is not None:
+    def updateCenterCrossWidget(self):
+        if self.showCenterState and self.imDisplay is not None and self.yCenter is not None and self.xCenter is not None:   
             self._widget.displayCenterCoord(self.yCenter,self.xCenter)
         else:
             self._widget.removeCenterCoord()
+        
 
             
 
@@ -432,6 +469,13 @@ def findCenterFoci(im: np.ndarray,params:dict=None):
         return (maxy,maxx)
     else:
         print("findCenterFoci pipeline failed...")
+        fig, axes = plt.subplots(1, 2, figsize=(8, 4))
+        fig.suptitle('findCenterFoci failed', fontsize=16)
+        axes[0].imshow(im, cmap='gray')
+        axes[0].set_title("Foci")
+        axes[1].imshow(im_bw1, cmap='gray')
+        axes[1].set_title(f"Area size: {areas[sorted_idx[0]]} ")
+        plt.show()
         return None
 
 
@@ -605,27 +649,29 @@ def run_donut_analysis(im:np.ndarray,params:dict = None):
     if rejected_binarization:
         fig, axes = plt.subplots(1, 2, figsize=(8, 4))
         fig.suptitle('Rejected after binarization. Check parameters.', fontsize=16)
-        axes[0][0].imshow(im, cmap='gray')
-        axes[0][0].set_title("Donut")
-        axes[0][1].imshow(im_bw1, cmap='gray')
-        axes[0][1].set_title("Binarized")
+        axes[0].imshow(im, cmap='gray')
+        axes[0].set_title("Donut")
+        axes[1].imshow(im_bw1, cmap='gray')
+        axes[1].set_title("Binarized")
+        plt.show()
 
     elif rejected_peaks:
         fig, axes = plt.subplots(1, 4, figsize=(16, 4))
         fig.suptitle('Rejected because peaks localization failed.', fontsize=16)
-        axes[0][0].imshow(im, cmap='gray')
-        axes[0][0].set_title("Donut + zero localization")
-        axes[0][0].axvline(x=minx, color='red')   # vertical line
-        axes[0][0].axhline(y=miny, color='green') # horizontal line
+        axes[0].imshow(im, cmap='gray')
+        axes[0].set_title("Donut + zero localization")
+        axes[0].axvline(x=minx, color='red')   # vertical line
+        axes[0].axhline(y=miny, color='green') # horizontal line
 
-        axes[0][1].imshow(im_bw1, cmap='gray')
-        axes[0][1].set_title("Binarized")
+        axes[1].imshow(im_bw1, cmap='gray')
+        axes[1].set_title("Binarized")
 
-        axes[1][2].plot(linex, 'g')
-        axes[1][2].set_title("X profile")
+        axes[2].plot(linex, 'g')
+        axes[2].set_title("X profile")
 
-        axes[1][3].plot(liney, 'r')
-        axes[1][3].set_title("fillY")
+        axes[3].plot(liney, 'r')
+        axes[3].set_title("fillY")
+        plt.show()
 
 
     else:

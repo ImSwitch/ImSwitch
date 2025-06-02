@@ -26,8 +26,9 @@ class SLMmlController(ImConWidgetController):
         self.__pixelsize = self.__slmInfo.pixelSize
         self.__slmSize = (self.__slmInfo.width, self.__slmInfo.height)"""
 
-        self.slmDir = os.path.join(dirtools.UserFileDirs.Root, 'imcontrol_slm')
-        
+        self.slmDir = os.path.join(dirtools.UserFileDirs.Root, r'imcontrol_slm/MFA')
+        parameters.file_path = self.slmDir
+
         if not os.path.exists(self.slmDir):
             os.makedirs(self.slmDir)
 
@@ -105,7 +106,7 @@ class SLMmlController(ImConWidgetController):
         
         print("parameters.n =", state["n"], "   ;parameters.N =", state["N"],"    ;parameters.period_grid =", state["period_grid"])
         
-        path = os.path.join(parameters.file_path, parameters.file_name)
+        path = os.path.join(parameters.file_path, parameters.file_name+'.bmp')
         #path = guitools.askForFilePath(self._widget, 'Choose MFA hologram BMP image',defaultFolder=self.slmDir)
         self._widget.updateMLAlabel(Path(path).name)
         self._master.slmManager.updateMFApath(path)

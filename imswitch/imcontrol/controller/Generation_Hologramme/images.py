@@ -42,9 +42,9 @@ def savephase(phase, file_name, module='imageio'):
 def savephaseimage(phase_image, file_name, module='imageio'):
     res = phase_image.astype(np.uint8) # unnecessary but just to be sure
     if module == 'opencv':
-        opencv.imwrite(f'{param.file_path}/Phase Images/{file_name}.bmp', res)
+        opencv.imwrite(f'{param.file_path}/{file_name}.bmp', res)
     elif module == 'imageio':
-        imageio.imwrite(f'{param.file_path}/Phase Images/{file_name}.bmp', res)
+        imageio.imwrite(f'{param.file_path}/{file_name}.bmp', res)
         
 def readbmp(file_path):
     return opencv.imread(file_path, opencv.IMREAD_UNCHANGED)

@@ -104,7 +104,7 @@ class SLMmlWidget(Widget):
               'step': 1},
             {'name': 'period in pixels', 'type': 'int', 'value': 7, 'limits': (0, mfalim),
               'step': 1},
-            {'name': 'file name of the generated hologram', 'type': 'str', 'value': 'holoBMP_10x10_p21'}
+            {'name': 'file name of the generated hologram', 'type': 'str', 'value': 'holoBMP_13x13_p7'}
             
         ]}]
         self.mfaParameterTree.setStyleSheet("""

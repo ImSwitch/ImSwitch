@@ -22,5 +22,5 @@ n = 13 # (int) size of the grid (number of points n*n)
 N = 512 # (int) size of the target images (number of pixels N*N) recommended to be 512 or less
 
 
-file_path = 'C:/Users/oriane.koellsch/Documents/SLM-Imswitch/Patterns_MFA'
+file_path = r'C:\Users\MonaLisa\Desktop\SLM_CGH_Guillaume'
 file_name = 'holoBMP_10x10_p21'

@@ -93,6 +93,36 @@ class SLMmlWidget(Widget):
                                                                      children=self.aberparams)
         self.aberParameterTree.setParameters(self.aberParameterTree.p, showTop=False)
         self.aberParameterTree._writable = True
+        
+        #DEBUT parametres MFA
+        self.mfaParameterTree = pg.parametertree.ParameterTree()
+        mfalim = 1000
+        self.mfaparams = [{'name': 'MFA', 'type': 'group', 'children': [
+            {'name': 'n number of focal point (n*n)', 'type': 'int', 'value': 13, 'limits': (0, mfalim),
+              'step': 1},
+            {'name': 'N size of the target images (number of pixels N*N)', 'type': 'int', 'value': 512, 'limits': (-0, mfalim),
+              'step': 1},
+            {'name': 'period in pixels', 'type': 'int', 'value': 7, 'limits': (0, mfalim),
+              'step': 1},
+            {'name': 'file name of the generated hologram', 'type': 'str', 'value': 'holoBMP_10x10_p21'}
+            
+        ]}]
+        self.mfaParameterTree.setStyleSheet("""
+        QTreeView::item, QAbstractSpinBox, QComboBox {
+            padding-top: 0;
+            padding-bottom: 0;
+            border: none;
+        }
+
+        QComboBox QAbstractItemView {
+            min-width: 128px;
+        }
+        """)
+        self.mfaParameterTree.p = pg.parametertree.Parameter.create(name='params', type='group',
+                                                                      children=self.mfaparams)
+        self.mfaParameterTree.setParameters(self.mfaParameterTree.p, showTop=False)
+        self.mfaParameterTree._writable = True
+        #FIN 
 
         self.paramtreeDockArea = pg.dockarea.DockArea()
         pmtreeDock = pg.dockarea.Dock('Phase mask parameters', size=(1, 1))
@@ -101,6 +131,16 @@ class SLMmlWidget(Widget):
         abertreeDock = pg.dockarea.Dock('Aberration correction parameters', size=(1, 1))
         abertreeDock.addWidget(self.aberParameterTree)
         self.paramtreeDockArea.addDock(abertreeDock, 'above', pmtreeDock)
+        #DEBUT
+        
+        self.paramtreeDockArea.addDock(pmtreeDock)
+        mfatreeDock = pg.dockarea.Dock('MFA Hologram parameters', size=(1, 1))
+        mfatreeDock.addWidget(self.mfaParameterTree)
+        self.paramtreeDockArea.addDock(mfatreeDock, 'below', pmtreeDock)
+        
+        #FIN
+        
+    
 
         # Button for showing SLM display and spinbox for monitor selection
         self.slmDisplayLayout = QtWidgets.QHBoxLayout()
@@ -123,6 +163,8 @@ class SLMmlWidget(Widget):
 
         # MFA array specific
         self.loadMFABtn = guitools.BetterPushButton('Load MFA')
+        self.create_and_loadMFABtn = guitools.BetterPushButton('Create and Load MFA')
+        
 
         self.loadedMFALayout= QtWidgets.QHBoxLayout()
         self.loadedMFAlabel = QtWidgets.QLabel("Currently loaded:")
@@ -230,8 +272,13 @@ class SLMmlWidget(Widget):
         self.grid.addWidget(self.controlPanel, 1, 1, 2, 1)
         
         # Add MFA-related buttons
-        self.grid.addWidget(self.loadMFABtn,3,0,1,1)
-        self.grid.addLayout(self.loadedMFALayout,3,1,1,1)
+        self.grid.addWidget(self.create_and_loadMFABtn, 2, 0, 1, 1)
+        #self.grid.addLayout(self.create_and_loadMFALayout, 2, 1, 1, 1)
+        
+        self.grid.addWidget(self.loadMFABtn, 3, 0, 1, 1)
+        self.grid.addLayout(self.loadedMFALayout, 3, 1, 1, 1)
+        
+        
 
     def initSLMDisplay(self, monitor):
         from imswitch.imcontrol.view import SLMDisplay

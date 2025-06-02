@@ -17,6 +17,9 @@ import matplotlib.pyplot as plt
 from imswitch.imcommon.framework import Signal, SignalInterface
 from imswitch.imcommon.model import initLogger
 
+import imswitch.imcontrol.controller.Generation_Hologramme.parameters as parameters
+
+
 class SLMmlManager(SignalInterface):
     sigSLMMaskUpdated = Signal(object)  # (maskCombined)
     
@@ -35,6 +38,15 @@ class SLMmlManager(SignalInterface):
         self.__correctionPatternsDir = self.__slmInfo.correctionPatternsDir
         self.__mask = Mask(self.__slmSize[1], self.__slmSize[0], self.__wavelength)
         self.applyMFA = False
+        
+        
+        #MODIFIE
+        parameters.width_slm=self.__slmInfo.width
+        parameters.height_slm=self.__slmInfo.height
+        parameters.size_slm=self.__slmSize 
+        parameters.pixel_size=self.__pixelsize
+        parameters.wavelength=self.__wavelength
+        
 
         self.initFresnelLensMask()
         self.initCorrectionMask()

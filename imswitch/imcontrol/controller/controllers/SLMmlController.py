@@ -26,8 +26,8 @@ class SLMmlController(ImConWidgetController):
         self.__pixelsize = self.__slmInfo.pixelSize
         self.__slmSize = (self.__slmInfo.width, self.__slmInfo.height)"""
 
-        self.slmDir = os.path.join(dirtools.UserFileDirs.Root, r'imcontrol_slm/MFA')
-        parameters.file_path = self.slmDir
+        self.slmDir = os.path.join(dirtools.UserFileDirs.Root, r'imcontrol_slm')
+        parameters.file_path = os.path.join(self.slmDir,"MFA")
 
         if not os.path.exists(self.slmDir):
             os.makedirs(self.slmDir)
@@ -236,7 +236,7 @@ class SLMmlController(ImConWidgetController):
             state_pos = slm_info_dict["position"]
             state_aber = slm_info_dict["aber"]
 
-        self.setParamTree(state_general=state_general, state_aber=state_aber)
+        self.setParamTree(state_general=state_general, state_aber=state_aber, state_mfa=None)
         self._master.slmManager.setGeneral(state_general)
         self._master.slmManager.setCenter(state_pos)
         self._master.slmManager.setAberrationFactors(state_aber)
@@ -254,12 +254,13 @@ class SLMmlController(ImConWidgetController):
             generalParams.param("general").param(generalparamname).setValue(
                 float(state_general[generalparamname])
             )
-            
-        mfaparamnames = ["n number of focal point (n*n)", "N size of the target images (number of pixels N*N)", "period in pixels","file name of the generated hologram"]
-        for mfaparamname in mfaparamnames:
-            mfaParams.param("MFA").param(mfaparamname).setValue(
-                float(state_general[mfaparamname])
-            )
+        
+        if state_mfa is not None:
+            mfaparamnames = ["n number of focal point (n*n)", "N size of the target images (number of pixels N*N)", "period in pixels","file name of the generated hologram"]
+            for mfaparamname in mfaparamnames:
+                mfaParams.param("MFA").param(mfaparamname).setValue(
+                    float(state_mfa[mfaparamname])
+                )
             
         maskname = "mask"
         aberparamnames = ["tilt", "tip", "defocus", "spherical", "verticalComa", "horizontalComa",

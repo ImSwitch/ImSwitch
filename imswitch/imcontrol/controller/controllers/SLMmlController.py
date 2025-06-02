@@ -8,6 +8,8 @@ from imswitch.imcontrol.model.managers.SLMmlManager import MaskMode, Direction
 from ..basecontrollers import ImConWidgetController
 from imswitch.imcontrol.view import guitools
 from imswitch.imcommon.model import APIExport
+import imswitch.imcontrol.controller.Generation_Hologramme.parameters as parameters
+import imswitch.imcontrol.controller.Generation_Hologramme.main as main_holo
 
 class SLMmlController(ImConWidgetController):
     """Linked to SLMWidget."""
@@ -72,6 +74,7 @@ class SLMmlController(ImConWidgetController):
         
         #MFA specific
         self._widget.loadMFABtn.clicked.connect(self.loadMFA)
+        self._widget.create_and_loadMFABtn.clicked.connect(self.create_and_loadMFA)
         self._widget.sigSLMApplyMFA.connect(self.updateApplyMFA)
 
         # Initial SLM display
@@ -82,8 +85,28 @@ class SLMmlController(ImConWidgetController):
     def updateApplyMFA(self,state:bool):
         self._master.slmManager.applyMFA = state
 
+
     def loadMFA(self):
         path = guitools.askForFilePath(self._widget, 'Choose MFA hologram BMP image',defaultFolder=self.slmDir)
+        self._widget.updateMLAlabel(Path(path).name)
+        self._master.slmManager.updateMFApath(path)
+        
+        
+    def create_and_loadMFA(self):
+        
+        #MODIFIE
+        state = self.getInfoDict(mfaParams=self._widget.mfaParameterTree.p)["mfa"]
+        parameters.n = int(state["n"])
+        parameters.N = int(state["N"])
+        parameters.period_grid = int(state["period_grid"])
+        parameters.file_name = state["file_name"]
+        
+        main_holo.hologramCreationMFA()
+        
+        print("parameters.n =", state["n"], "   ;parameters.N =", state["N"],"    ;parameters.period_grid =", state["period_grid"])
+        
+        path = os.path.join(parameters.file_path, parameters.file_name)
+        #path = guitools.askForFilePath(self._widget, 'Choose MFA hologram BMP image',defaultFolder=self.slmDir)
         self._widget.updateMLAlabel(Path(path).name)
         self._master.slmManager.updateMFApath(path)
 
@@ -139,16 +162,18 @@ class SLMmlController(ImConWidgetController):
 
         slm_info_dict = self.getInfoDict(self._widget.slmParameterTree.p,
                                          self._widget.aberParameterTree.p,
+                                         self._widget.mfaParameterTree.p,      #MODIFIE
                                          self._master.slmManager.getCenter())
         print(os.path.join(self.slmDir, filename))
         with open(os.path.join(self.slmDir, filename), 'w') as f:
             json.dump(slm_info_dict, f, indent=4)
         self.__logger.info(f'Saved SLM parameters for {obj} objective.')
 
-    def getInfoDict(self, generalParams=None, aberParams=None, center=None):
+    def getInfoDict(self, generalParams=None, aberParams=None, mfaParams=None, center=None):        #MODIFIE
         state_general = None
         state_pos = None
         state_aber = None
+        state_mfa = None
 
         if generalParams is not None:
             # create dict for general params
@@ -166,6 +191,14 @@ class SLMmlController(ImConWidgetController):
             state_aber[maskname] = {
                 aberparamname: float(aberParams.param(maskname).param(aberparamname).value())
                 for aberparamname in aberparamnames}
+            
+        if mfaParams is not None:                   #MODIFIE
+            # create dict for general params
+            mfavarnames ={"n number of focal point (n*n)":"n","N size of the target images (number of pixels N*N)":"N","period in pixels":"period_grid","file name of the generated hologram":"file_name"}
+            mfaparamnames = ["n number of focal point (n*n)", "N size of the target images (number of pixels N*N)", "period in pixels","file name of the generated hologram"]
+            state_mfa = {mfavarnames[mfaparamname]: 
+                mfaParams.param("MFA").param(mfaparamname).value() for mfaparamname
+                             in mfaparamnames}
 
         if center is not None:
             # create dict for position params
@@ -178,7 +211,8 @@ class SLMmlController(ImConWidgetController):
         info_dict = {
             "general": state_general,
             "position": state_pos,
-            "aber": state_aber
+            "aber": state_aber,
+            "mfa" : state_mfa                                    #MODIFIE
         }
         return info_dict
 
@@ -209,14 +243,21 @@ class SLMmlController(ImConWidgetController):
         image = self._master.slmManager.update(maskChange=True, tiltChange=True, aberChange=True, focalChange=True)
         self.updateDisplayImage(image)
 
-    def setParamTree(self, state_general, state_aber):
+    def setParamTree(self, state_general, state_aber, state_mfa):
         generalParams = self._widget.slmParameterTree.p
         aberParams = self._widget.aberParameterTree.p
+        mfaParams = self._widget.mfaParameterTree.p
 
         generalparamnames = ["radius", "focal", "sigma", "rotationAngle", "tiltAngle"]
         for generalparamname in generalparamnames:
             generalParams.param("general").param(generalparamname).setValue(
                 float(state_general[generalparamname])
+            )
+            
+        mfaparamnames = ["n number of focal point (n*n)", "N size of the target images (number of pixels N*N)", "period in pixels","file name of the generated hologram"]
+        for mfaparamname in mfaparamnames:
+            mfaParams.param("MFA").param(mfaparamname).setValue(
+                float(state_general[mfaparamname])
             )
             
         maskname = "mask"

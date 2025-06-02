@@ -122,23 +122,41 @@ class SLMmlWidget(Widget):
                                                                       children=self.mfaparams)
         self.mfaParameterTree.setParameters(self.mfaParameterTree.p, showTop=False)
         self.mfaParameterTree._writable = True
-        #FIN 
+        #START : Tabbed parameters tree
+        
+        from PyQt5.QtWidgets import QTabWidget, QWidget, QVBoxLayout
 
+        # Crée un QTabWidget
+        self.paramTabWidget = QTabWidget()
+        
+        # Create widget for each tree with their own layout
+        slmWidget = QWidget()
+        slmLayout = QVBoxLayout()
+        slmLayout.addWidget(self.slmParameterTree)
+        slmWidget.setLayout(slmLayout)
+        self.paramTabWidget.addTab(slmWidget, "Phase mask parameters")
+        
+        aberWidget = QWidget()
+        aberLayout = QVBoxLayout()
+        aberLayout.addWidget(self.aberParameterTree)
+        aberWidget.setLayout(aberLayout)
+        self.paramTabWidget.addTab(aberWidget, "Aberration correction")
+        
+        mfaWidget = QWidget()
+        mfaLayout = QVBoxLayout()
+        mfaLayout.addWidget(self.mfaParameterTree)
+        mfaWidget.setLayout(mfaLayout)
+        self.paramTabWidget.addTab(mfaWidget, "MFA hologram")
+        
+        # Create a unuique dock for the QTabWidget
         self.paramtreeDockArea = pg.dockarea.DockArea()
-        pmtreeDock = pg.dockarea.Dock('Phase mask parameters', size=(1, 1))
-        pmtreeDock.addWidget(self.slmParameterTree)
-        self.paramtreeDockArea.addDock(pmtreeDock)
-        abertreeDock = pg.dockarea.Dock('Aberration correction parameters', size=(1, 1))
-        abertreeDock.addWidget(self.aberParameterTree)
-        self.paramtreeDockArea.addDock(abertreeDock, 'above', pmtreeDock)
-        #DEBUT
+        tabbedDock = pg.dockarea.Dock("Parameters", size=(1, 1))
+        tabbedDock.addWidget(self.paramTabWidget)
         
-        self.paramtreeDockArea.addDock(pmtreeDock)
-        mfatreeDock = pg.dockarea.Dock('MFA Hologram parameters', size=(1, 1))
-        mfatreeDock.addWidget(self.mfaParameterTree)
-        self.paramtreeDockArea.addDock(mfatreeDock, 'below', pmtreeDock)
-        
-        #FIN
+        # Add the dock
+        self.paramtreeDockArea.addDock(tabbedDock)
+
+        #END
         
     
 

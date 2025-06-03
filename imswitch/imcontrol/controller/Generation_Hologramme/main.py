@@ -13,11 +13,9 @@ import imswitch.imcontrol.controller.Generation_Hologramme.parameters as param
 
 
 def hologramCreationMFA():
-    grid = multifoci.focalArray(param.n, param.period_grid, param.N) # Create the target
-    images.saveasbmp(grid, param.file_name)
-    target = images.readbmp(f'{param.file_path}/Targets/{param.file_name}.bmp')
+    target = multifoci.focalArray(param.n, param.period_grid, param.N) # Create the target
     phase_slm = (np.random.rand(target.shape[0], target.shape[1])*2 - 1)*np.pi # initialisation for the GSW Algorithm
-    hologram = cgh.GSW(phase_slm, target, niter=50, F=30, perfsaveas=param.file_name) # Calculate cgh
+    hologram = cgh.GSW(phase_slm, target, niter=50, F=30, perfsaveas=None) # Calculate cgh
     hologram = phaseimages.padCGH(hologram, param.size_slm) # pad and correct
     images.savephaseimage(hologram, f'{param.file_name}') # save the phase image to display
 

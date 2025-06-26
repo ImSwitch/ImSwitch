@@ -2,6 +2,7 @@ from imswitch.imcommon.model import initLogger
 from .DetectorManager import (
     DetectorManager, DetectorNumberParameter, DetectorListParameter
 )
+import copy
 
 
 class HamamatsuManager(DetectorManager):
@@ -61,6 +62,29 @@ class HamamatsuManager(DetectorManager):
     def pixelSizeUm(self):
         umxpx = self.parameters['Camera pixel size'].value
         return [1, umxpx, umxpx]
+    
+    
+    def wait_and_get_NewFrame(self, properFrame=False):
+        self.__logger.info("start wait_and_get_NewFrame")
+
+        # Obtenir le compteur de frames actuel
+        last_frame_count = self._camera.getAq_Info()[1]
+
+        # Attendre la frame suivante (i.e., un nouveau f_count)
+        self._camera.wait_next_frame(last_frame_count)
+
+        if properFrame:
+            # Forcer l'attente d'une frame de plus (ex. pour éviter une frame trop rapide juste après démarrage)
+            new_last_frame_count = self._camera.getAq_Info()[1]
+            self._camera.wait_next_frame(new_last_frame_count)
+
+        img = self.getLatestFrame()
+        new_frame = copy.deepcopy(img)
+
+        self.__logger.info("end wait_and_get_NewFrame")
+        return new_frame
+
+
 
     def getLatestFrame(self, is_save=True):
         #CHECK: is_save=False was default in old etsted-improvements, was there a reason?

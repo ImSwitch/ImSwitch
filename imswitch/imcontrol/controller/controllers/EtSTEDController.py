@@ -93,6 +93,7 @@ class EtSTEDController(ImConWidgetController):
         self.__running = False
         self.__validating = False
         self.__busy = False
+        self.__clock_busy = False
         self.__prevFrames = deque(maxlen=10)
         self.__prevAnaFrames = deque(maxlen=10)
         self.__binary_mask = None
@@ -418,6 +419,7 @@ class EtSTEDController(ImConWidgetController):
 
     def setBusyFalse(self):
         self.__busy = False
+        self.__clock_busy = False
 
     def assignScanParameters(self, analogParams, digitalParams, positionersScan):
         """ Assign scan parameters from the scanning widget. """
@@ -560,6 +562,7 @@ class EtSTEDController(ImConWidgetController):
                         self.saveValidationImages(prev=True, prev_ana=False)
                         self.__exinfo = None
                         self.__busy = False
+                        self.__clock_busy = False
                         return
                 #self.__bkg = img
                 self.__prevFrames.append(img)
@@ -576,20 +579,23 @@ class EtSTEDController(ImConWidgetController):
 
 
     def clock_fct(self):
-        self._master.lasersManager.execOn(self.laserFast, lambda l: l.setEnabled(True))
-        img=self._master.detectorsManager._subManagers[self.detectorFast].wait_and_get_NewFrame(True)
-        self._master.lasersManager.execOn(self.laserFast, lambda l: l.setEnabled(False))
 
-        self.runPipeline(self.detectorFast, img, None, None, None)
+        if not self.__clock_busy :
+            self.__clock_busy = True
+            self._master.lasersManager.execOn(self.laserFast, lambda l: l.setEnabled(True))
+            img=self._master.detectorsManager._subManagers[self.detectorFast].wait_and_get_NewFrame(True)
+            self._master.lasersManager.execOn(self.laserFast, lambda l: l.setEnabled(False))
+
+            self.runPipeline(self.detectorFast, img, None, None, None)
+        else :
+            self.__logger.info("clock fct called when busy - update period probably too short")
 
 
-
-            
 
     def startTimerLaserOn(self):
-        delay_coeff = float(self._widget.laser_delay_edit.text())
-        delay_ms = int(self.__updatePeriod * delay_coeff)
+        delay_ms = float(self._widget.laser_delay_edit.text())
         self.timerLaser.start(delay_ms)
+
 
     def adjustDetectedCoords(self, coords, img_shape):
         if self._setupInfo.etSTED.invertX:

@@ -81,10 +81,15 @@ class SLMmlController(ImConWidgetController):
         # Initial SLM display
         self.displayMask(self._master.slmManager.maskCombined)
 
+        #move lens
+        self._widget.sigMoveLensState.connect(self.updateMoveLens)
 
 
     def updateApplyMFA(self,state:bool):
         self._master.slmManager.applyMFA = state
+
+    def updateMoveLens(self,state:bool):
+        self._master.slmManager.moveLens = state  
 
 
     def loadMFA(self):

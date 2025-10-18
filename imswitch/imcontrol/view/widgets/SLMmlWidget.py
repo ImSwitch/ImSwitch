@@ -13,6 +13,7 @@ class SLMmlWidget(Widget):
     sigSLMDisplayToggled = QtCore.Signal(bool)  # (enabled)
     sigSLMMonitorChanged = QtCore.Signal(int)  # (monitor)
     sigSLMApplyMFA = QtCore.Signal(bool) # (enabled)
+    sigMoveLensState = QtCore.Signal(bool) # (enabled)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -31,7 +32,7 @@ class SLMmlWidget(Widget):
         self.generalparams = [{'name': 'general', 'type': 'group', 'children': [
             {'name': 'radius', 'type': 'float', 'value': 500, 'limits': (0, 600), 'step': 1,
              'suffix': 'px'},
-            {'name': 'focal', 'type': 'float', 'value': 350, 'limits': (100, 600), 'step': 1, 'suffix': 'mm'},
+            {'name': 'focal', 'type': 'float', 'value': 350, 'limits': (0, 1000), 'step': 1, 'suffix': 'mm'},
             {'name': 'sigma', 'type': 'float', 'value': 200, 'limits': (1, 599), 'step': 0.1,
              'suffix': 'px'},
             {'name': 'rotationAngle', 'type': 'float', 'value': 0, 'limits': (-6.2832, 6.2832),
@@ -203,6 +204,8 @@ class SLMmlWidget(Widget):
         self.controlPanel.objlensComboBox.addItem("No objective")
         self.controlPanel.objlensComboBox.addItem("Oil")
         self.controlPanel.objlensComboBox.addItem("Glycerol")
+        self.controlPanel.objlensComboBox.addItem("Oil_OffAxis")
+
         self.controlPanel.choiceInterfaceLayout.addWidget(QtWidgets.QLabel('Select objective:'),
                                                           1, 0)
         self.controlPanel.choiceInterfaceLayout.addWidget(self.controlPanel.objlensComboBox, 1, 1)
@@ -250,6 +253,10 @@ class SLMmlWidget(Widget):
         self.controlPanel.hexButton = guitools.BetterPushButton("Hex pattern")
         self.controlPanel.splitbullButton = guitools.BetterPushButton("Split pattern")
 
+        # TEMP: move frensel lens button
+        self.moveLensBtn = QtWidgets.QCheckBox('Move Lens')
+        self.moveLensBtn.clicked.connect(lambda state: self.sigMoveLensState.emit(state))
+
         # Defining layout
         self.controlPanel.arrowsFrame = QtWidgets.QFrame()
         self.controlPanel.arrowsLayout = QtWidgets.QGridLayout()
@@ -263,6 +270,7 @@ class SLMmlWidget(Widget):
 
         self.controlPanel.arrowsLayout.addWidget(self.controlPanel.loadButton, 0, 3)
         self.controlPanel.arrowsLayout.addWidget(self.controlPanel.saveButton, 1, 3)
+        self.controlPanel.arrowsLayout.addWidget(self.moveLensBtn,2, 3)
 
         self.controlPanel.arrowsLayout.addWidget(self.controlPanel.donutButton, 3, 1)
         self.controlPanel.arrowsLayout.addWidget(self.controlPanel.tophatButton, 3, 2)
@@ -295,6 +303,10 @@ class SLMmlWidget(Widget):
         
         self.grid.addWidget(self.loadMFABtn, 3, 0, 1, 1)
         self.grid.addLayout(self.loadedMFALayout, 3, 1, 1, 1)
+
+        
+
+
         
         
 

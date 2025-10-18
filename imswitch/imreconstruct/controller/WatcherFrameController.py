@@ -10,7 +10,7 @@ from ome_zarr.writer import write_image
 from time import perf_counter
 import tifffile as tiff
 import h5py
-
+import time
 
 class WatcherFrameController(ImRecWidgetController):
     """ Linked to WatcherFrame. """
@@ -59,6 +59,9 @@ class WatcherFrameController(ImRecWidgetController):
         self.toExecute.extend(files)
         try:
             self.runNextFile()
+        # except AssertionError:
+        #     self.__logger.error("Waiting 1sec after scan finised.")
+        #     self.watcher.removeFromList(files)
         except OSError:
             self.__logger.error("Writing in progress.")
             self.watcher.removeFromList(files)
@@ -67,6 +70,7 @@ class WatcherFrameController(ImRecWidgetController):
         if len(self.toExecute) and not self.execution:
             newFile = self.toExecute.pop()
             self.current = self._widget.path + '/' + newFile
+            # if os.path.getmtime(self.current) + 1 < time.time():
             self.recPath = self._widget.path + '/' + 'rec' + '/' + 'rec_' + newFile
             datasets = DataObj.getDatasetNames(self.current)
             dataObjs = []
@@ -74,11 +78,14 @@ class WatcherFrameController(ImRecWidgetController):
                 file, _ = DataObj._open(self.current, d)
                 dataObj = DataObj(os.path.basename(self.current), d, path=self.current, file=file)
                 dataObj.checkLock()
+                # dataObj.checkModifTime(minDiffTime=3)
                 dataObjs.append(dataObj)
                 self.attrs = dataObj.attrs
             self.execution = True
             self.t0 = perf_counter()
             self._commChannel.sigReconstruct.emit(dataObjs, True)
+            # else:
+            #     raise AssertionError()
 
     def executionFinished(self, image):
         if self.execution:

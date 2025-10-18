@@ -38,6 +38,7 @@ class SLMmlManager(SignalInterface):
         self.__correctionPatternsDir = self.__slmInfo.correctionPatternsDir
         self.__mask = Mask(self.__slmSize[1], self.__slmSize[0], self.__wavelength)
         self.applyMFA = False
+        self.moveLens = False
         
         
         #MODIFIE
@@ -139,6 +140,9 @@ class SLMmlManager(SignalInterface):
         self.__mask.moveCenter(move_v)
         self.__maskTilt.moveCenter(move_v)
         self.__maskAber.moveCenter(move_v)
+        if self.moveLens:
+            print("moving lens")
+            self.__maskLens.moveCenter(move_v)
         
     def getCenter(self):
         centerCoords = {"mask": self.__mask.getCenter()}
@@ -393,23 +397,26 @@ class Mask:
         if pixelsize:
             self.pixelSize = pixelsize
         focal = self.focal/10**3
-        pp = self.pixelSize/10**3
-        wavelength = self.wavelength/10**9
-        R = self.radius
+        if focal == 0:
+            self.setBlack()
+        else:
+            pp = self.pixelSize/10**3
+            wavelength = self.wavelength/10**9
+            R = self.radius
+            
+            PI = math.pi
         
-        PI = math.pi
-    
-        d = np.zeros((self.height, self.width), dtype=float)
-        x = np.linspace((-self.centery + 1/2)*pp, (self.width - self.centery + 1/2)*pp, self.width, endpoint=False, dtype=float)
-        y = np.linspace((-self.centerx + 1/2)*pp, (self.height - self.centerx + 1/2)*pp, self.height, endpoint=False)
-    
-        X, Y = np.meshgrid(x, y)
-    
-        wavefront = np.sqrt(focal**2 - (X**2 + Y**2)) - focal # surface equation
-        d[X**2 + Y**2 < R**2] = np.abs(wavefront[X**2 + Y**2 < R**2]) + wavelength*1e-9 # distance to the slm plane z=0
-        phase = -d*2*PI/wavelength
-        self.img = phase%(2*PI) # 2*PI modulation at maximum wrap the phase image
-        self.pi2uint8()
+            d = np.zeros((self.height, self.width), dtype=float)
+            x = np.linspace((-self.centery + 1/2)*pp, (self.width - self.centery + 1/2)*pp, self.width, endpoint=False, dtype=float)
+            y = np.linspace((-self.centerx + 1/2)*pp, (self.height - self.centerx + 1/2)*pp, self.height, endpoint=False)
+        
+            X, Y = np.meshgrid(x, y)
+        
+            wavefront = np.sqrt(focal**2 - (X**2 + Y**2)) - focal # surface equation
+            d[X**2 + Y**2 < R**2] = np.abs(wavefront[X**2 + Y**2 < R**2]) + wavelength*1e-9 # distance to the slm plane z=0
+            phase = -d*2*PI/wavelength
+            self.img = phase%(2*PI) # 2*PI modulation at maximum wrap the phase image
+            self.pi2uint8()
         self.mask_type = MaskMode.Lens
 
     def setBlack(self):

@@ -55,9 +55,9 @@ class Denoiser:
         """
         Load state_dict of 'model_best_state_dict.py'.
         """
-        sate_dict_path = os.path.join(self.models_dir,model_name, "model_best_state_dict.pt")
+        state_dict_path = os.path.join(self.models_dir,model_name, "model_best_state_dict.pt")
         try:
-            state_dict = torch.load(sate_dict_path)
+            state_dict = torch.load(state_dict_path)
         except Exception as e:
             self.__logger.critical(f"Cannot import noise model, got error: {e}")
             return

@@ -42,9 +42,9 @@ class PositionerController(ImConWidgetController):
                 # Connect channels
                 self._widget.sigJoystick.connect(self.setJoystickStatus)
                 self._widget.sigSetJoystickCheck.connect(self.setJoystickCheckStatus)
-                self._commChannel.sigRecordingStarted.connect(lambda: self.setJoystickStatus(False, pName))
-                self._commChannel.sigRecordingEnded.connect(lambda: self.setJoystickStatusAfterRec())
-                self._commChannel.sigInitiateEtMonalisa.connect(lambda state: self.setJoystickStatus(not state, pName))
+                # self._commChannel.sigRecordingStarted.connect(lambda: self.setJoystickStatus(False, pName))
+                # self._commChannel.sigRecordingEnded.connect(lambda: self.setJoystickStatusAfterRec())
+                # self._commChannel.sigInitiateEtMonalisa.connect(lambda state: self.setJoystickStatus(not state, pName))
 
             if pName=='Stage':
                 if pManager.liveUpdate:

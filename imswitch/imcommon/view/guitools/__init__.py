@@ -7,3 +7,4 @@ from .imagetools import bestLevels, minmaxLevels
 from .stylesheet import getBaseStyleSheet
 from .texttools import ordinalSuffix
 from .FileWatcher import FileWatcher
+from .CollapsibleSection import CollapsibleSection

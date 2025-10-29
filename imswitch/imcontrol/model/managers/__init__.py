@@ -7,6 +7,7 @@ from .RS232sManager import RS232sManager
 from .RecordingManager import RecordingManager, RecMode, SaveMode, SaveFormat
 from .SLMManager import SLMManager
 from .SLMmlManager import SLMmlManager
+from .SLMsManager import SLMsManager
 from .ScanManagerPointScan import ScanManagerPointScan
 from .ScanManagerBase import ScanManagerBase
 from .ScanManagerMoNaLISA import ScanManagerMoNaLISA

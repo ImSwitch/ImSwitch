@@ -136,6 +136,49 @@ class SLMInfo:
     wavelength. """
 
 
+
+
+@dataclass(frozen=True)
+class SLMsInfo(DeviceInfo):
+    monitorIdx: int
+    """ Index of the monitor in the system list of monitors (indexing starts at
+    0). """
+
+    width: int
+    """ Width of SLM, in pixels. """
+
+    height: int
+    """ Height of SLM, in pixels. """
+
+    wavelength: int
+    """ Wavelength of the laser line used with the SLM. """
+    
+    serial_number: str
+    """ Unique n° of the SLM head you use. """
+
+    pixelSize: float
+    """ Pixel size or pixel pitch of the SLM, in millimetres. """
+
+    nSections: Optional[int]
+    """ Numbers of sections the SLM is divided into (e.g. 2 for double-pass).
+    If none, considered as single section. """
+
+    sectionsNames: Optional[List]
+    """ Names to be displayed on the section tabs (only if nSections>1)"""
+
+    widgetOptions: Optional[Dict[str,Any]]
+    """ Widget options just as which patterns to display """
+
+    correctionPatternsDir: str
+    """ Directory of .bmp images provided by Hamamatsu for flatness correction
+    at various wavelengths. A combination will be chosen based on the
+    wavelength. """
+
+    wavelengthTableFile: str
+    """ Name of JSON file with table of wavelength correction values to transform 
+    2pi modulation into gray values (given my manufacturer.) File is expected to be
+    in the same direction than `correctionPatternsDir """
+
 @dataclass(frozen=True)
 class FocusLockInfo:
     camera: str
@@ -288,6 +331,9 @@ class SetupInfo:
     """
 
     slm: Optional[SLMInfo] = field(default_factory=lambda: None)
+    """ SLM settings. Required to be defined to use SLM functionality. """
+
+    slms: Dict[str, SLMsInfo] = field(default_factory=dict)
     """ SLM settings. Required to be defined to use SLM functionality. """
 
     focusLock: Optional[FocusLockInfo] = field(default_factory=lambda: None)

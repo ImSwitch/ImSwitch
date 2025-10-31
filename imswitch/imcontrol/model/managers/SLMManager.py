@@ -386,7 +386,7 @@ class Mask:
                         -self.centery: self.width - self.centery]
         theta = np.arctan2(x, y)
 
-        mask = theta % (2 * np.pi)
+        mask = theta % (2 * np.pi) #AV add a minus sign to flip the chirality of the spiral mask
         if rotation:
             mask = np.ones((self.height, self.width), dtype="float") * (2 * np.pi) - mask
 
@@ -421,7 +421,7 @@ class Mask:
         theta = np.arctan2(x, y) + self.angle_rotation
 
         half_bool = (abs(theta) < np.pi / 2)
-        mask[half_bool] = np.pi
+        mask[half_bool] = np.pi #AV half pattern multiplier
 
         self.img = mask
         self.pi2uint8()

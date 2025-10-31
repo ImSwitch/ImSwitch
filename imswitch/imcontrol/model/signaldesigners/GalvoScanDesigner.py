@@ -30,7 +30,7 @@ class GalvoScanDesigner(ScanDesigner):
         """ Check analog scanning signals so that they are inside the range of
         the acceptable scanner voltages."""
         for i in range(len(scanParameters['target_device'])):
-            if scanParameters['target_device'][i] != 'None':
+            if scanParameters['target_device'][i] != 'None' and "Mock" not in scanParameters['target_device'][i]:
                 if np.ceil(scanParameters['axis_length'][i]/scanParameters['axis_step_size'][i]) > 1:
                     positioner = setupInfo.positioners[scanParameters['target_device'][i]]
                     minv = positioner.managerProperties['minVolt']

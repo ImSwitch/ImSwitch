@@ -35,7 +35,6 @@ class PMTManager(DetectorManager):
       the PMT is connected (e.g. 'Dev1/ai0')
     - (legacy compatibility) ``ctrInputLine`` -- kept for template parity with APD,
       but PMT uses analog terminal for readings.
-    - optionally signals from nidaq input are scaled to min max values
     """
 
     def __init__(self, detectorInfo, name, nidaqManager, **_lowLevelManagers):
@@ -59,10 +58,6 @@ class PMTManager(DetectorManager):
         if isinstance(self._channel, int):
             self._channel = f'Dev1/{self._channel}'  # for backwards compatibility
 
-        if "voltage_offset" in detectorInfo.managerProperties:
-            self._voltage_offset = int(detectorInfo.managerProperties["voltage_offset"])
-        else:
-            self._voltage_offset = 0
 
         self._frameCount = 0
         self._scanWorker = None

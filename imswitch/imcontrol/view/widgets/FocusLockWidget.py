@@ -12,7 +12,7 @@ class FocusLockWidget(Widget):
         super().__init__(*args, **kwargs)
 
         # Focus lock
-        self.kpEdit = QtWidgets.QLineEdit('0')
+        self.kpEdit = QtWidgets.QLineEdit('1')
         self.kpLabel = QtWidgets.QLabel('kp')
         self.kiEdit = QtWidgets.QLineEdit('0')
         self.kiLabel = QtWidgets.QLabel('ki')
@@ -22,6 +22,7 @@ class FocusLockWidget(Widget):
         self.lockButton.setSizePolicy(QtWidgets.QSizePolicy.Preferred,
                                       QtWidgets.QSizePolicy.Expanding)
 
+        self.ScanBlock = QtWidgets.QCheckBox('Scan Block')
         self.zStackBox = QtWidgets.QCheckBox('Z-stack')
         self.twoFociBox = QtWidgets.QCheckBox('Two foci')
 
@@ -32,9 +33,9 @@ class FocusLockWidget(Widget):
 
         # Focus lock calibration
         self.calibFromLabel = QtWidgets.QLabel('From (µm)')
-        self.calibFromEdit = QtWidgets.QLineEdit('49')
+        self.calibFromEdit = QtWidgets.QLineEdit('-1')
         self.calibToLabel = QtWidgets.QLabel('To (µm)')
-        self.calibToEdit = QtWidgets.QLineEdit('51')
+        self.calibToEdit = QtWidgets.QLineEdit('1')
         self.focusCalibButton = guitools.BetterPushButton('Calib')
         self.focusCalibButton.setSizePolicy(QtWidgets.QSizePolicy.Preferred,
                                             QtWidgets.QSizePolicy.Expanding)
@@ -58,6 +59,9 @@ class FocusLockWidget(Widget):
         self.vb = self.webcamGraph.addViewBox(invertY=True, invertX=False)
         self.vb.setAspectLocked(True)
         self.vb.addItem(self.camImg)
+        self.center = pg.InfiniteLine()
+        self.vb.addItem(self.center)
+        self.center.setVisible(True)
 
         # GUI layout below
         grid = QtWidgets.QGridLayout()
@@ -71,7 +75,8 @@ class FocusLockWidget(Widget):
         grid.addWidget(self.kiLabel, 2, 3)
         grid.addWidget(self.kiEdit, 2, 4)
         grid.addWidget(self.lockButton, 1, 5, 2, 1)
-        grid.addWidget(self.zStackBox, 3, 6)
+        # grid.addWidget(self.zStackBox, 3, 6)
+        grid.addWidget(self.ScanBlock, 3, 6)
         grid.addWidget(self.twoFociBox, 2, 6)
         grid.addWidget(self.zStepFromLabel, 3, 4)
         grid.addWidget(self.zStepFromEdit, 3, 5)

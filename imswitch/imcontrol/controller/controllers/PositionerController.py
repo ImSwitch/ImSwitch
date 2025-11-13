@@ -4,7 +4,6 @@ from imswitch.imcommon.model import APIExport
 from ..basecontrollers import ImConWidgetController
 from imswitch.imcommon.model import initLogger
 
-
 class PositionerController(ImConWidgetController):
     """ Linked to PositionerWidget."""
 
@@ -20,21 +19,74 @@ class PositionerController(ImConWidgetController):
             if not pManager.forPositioning:
                 continue
 
+            if pName == 'Stage':
+                if self._master.positionersManager[pName].device is None:
+                    continue
+
+            if pManager.joystick:
+                self._widget.addJoystick(pName)
+                self._PreviousJoystickState = True
+
             speed = hasattr(pManager, 'speed')
-            self._widget.addPositioner(pName, pManager.axes, speed)
+            self._widget.addPositioner(pName, pManager.axes, speed, pManager.joystick)
             for axis in pManager.axes:
                 self.setSharedAttr(pName, axis, _positionAttr, pManager.position[axis])
                 if speed:
                     self.setSharedAttr(pName, axis, _positionAttr, pManager.speed)
+                if pName == 'Stage':
+                    self.updatePosition(pName, axis)
+
+            if pManager.joystick:
+                # Set joystick checkbox status for first start
+                self.setJoystickCheckStatus(self._master.positionersManager[pName].joystickStatus)
+                # Connect channels
+                self._widget.sigJoystick.connect(self.setJoystickStatus)
+                self._widget.sigSetJoystickCheck.connect(self.setJoystickCheckStatus)
+                self._commChannel.sigRecordingStarted.connect(lambda: self.setJoystickStatus(False, pName))
+                self._commChannel.sigRecordingEnded.connect(lambda: self.setJoystickStatusAfterRec())
+                self._commChannel.sigInitiateEtMonalisa.connect(lambda state: self.setJoystickStatus(not state, pName))
+
+            if pName=='Stage':
+                if pManager.liveUpdate:
+                    #TODO: for now live update connected to live detector view, should be made as an independant live worker
+                    self._commChannel.sigUpdateImage.connect(lambda: self.updatePosition('Stage', 'all'))
+                    print('liveupdate activated')
+
 
         # Connect CommunicationChannel signals
         self._commChannel.sharedAttrs.sigAttributeSet.connect(self.attrChanged)
         self._commChannel.sigSetSpeed.connect(lambda speed: self.setSpeedGUI(speed))
 
+
         # Connect PositionerWidget signals
         self._widget.sigStepUpClicked.connect(self.stepUp)
         self._widget.sigStepDownClicked.connect(self.stepDown)
         self._widget.sigsetSpeedClicked.connect(self.setSpeedGUI)
+
+
+
+
+    def setJoystickStatusAfterRec(self):
+        if self._PreviousJoystickState:
+            # if the joystick was enabled before the scan, enable it again after rec
+            self.setJoystickStatus(self, True)
+
+
+    def setJoystickStatus(self, enabled, pName):
+        self._PreviousJoystickState = self._master.positionersManager['Stage'].joystickStatus
+        if enabled:
+            self._master.positionersManager['Stage'].activate_joystick()
+        else:
+            self._master.positionersManager['Stage'].deactivate_joystick()
+            self.updatePosition(pName, 'all')
+        self.setJoystickCheckStatus(enabled)
+
+    def setJoystickCheckStatus(self, state=bool):
+        if not state and self._widget.joystickCheck.isChecked():
+            self._widget.joystickCheck.setChecked(False)
+        if state and not self._widget.joystickCheck.isChecked():
+            self._widget.joystickCheck.setChecked(True)
+
 
     def closeEvent(self):
         self._master.positionersManager.execOnAll(
@@ -73,9 +125,20 @@ class PositionerController(ImConWidgetController):
         self._master.positionersManager[positionerName].setSpeed(speed)
         
     def updatePosition(self, positionerName, axis):
-        newPos = self._master.positionersManager[positionerName].position[axis]
-        self._widget.updatePosition(positionerName, axis, newPos)
-        self.setSharedAttr(positionerName, axis, _positionAttr, newPos)
+        if positionerName == 'Stage':
+            self._master.positionersManager['Stage'].updatePosition()
+
+        if axis == 'all':
+            for axisName in self._master.positionersManager[positionerName].axes:
+                newPos = self._master.positionersManager[positionerName].position[axisName]
+                self._widget.updatePosition(positionerName, axisName, newPos)
+                self.setSharedAttr(positionerName, axisName, _positionAttr, newPos)
+        else:
+            newPos = self._master.positionersManager[positionerName].position[axis]
+            self._widget.updatePosition(positionerName, axis, newPos)
+            self.setSharedAttr(positionerName, axis, _positionAttr, newPos)
+
+
 
     def attrChanged(self, key, value):
         if self.settingAttr or len(key) != 4 or key[0] != _attrCategory:

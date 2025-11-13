@@ -6,6 +6,7 @@ from .basewidgets import WidgetFactory
 from .BeadRecWidget import BeadRecWidget
 from .ConsoleWidget import ConsoleWidget
 from .EtSTEDWidget import EtSTEDWidget
+from .EtMonalisaWidget import EtMonalisaWidget
 from .FFTWidget import FFTWidget
 from .FocusLockWidget import FocusLockWidget
 from .ImageWidget import ImageWidget
@@ -20,6 +21,7 @@ from .ScanWidgetPointScan import ScanWidgetPointScan
 from .RotationScanWidget import RotationScanWidget
 from .RotatorWidget import RotatorWidget
 from .SettingsWidget import SettingsWidget
+from .SLMmlWidget import SLMmlWidget
 from .SLMWidget import SLMWidget
 from .TilingWidget import TilingWidget
 from .ULensesWidget import ULensesWidget

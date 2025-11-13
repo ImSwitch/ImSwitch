@@ -191,9 +191,11 @@ class SettingsController(ImConWidgetController):
     def ROIchanged(self):
         """ Update parameters according to ROI. """
         frameStart = self._master.detectorsManager.execOnCurrent(lambda c: c.frameStart)
+        detector_name = self._master.detectorsManager.getCurrentDetectorName()
+        pixel_size = self._commChannel.sharedAttrs[('Detector', detector_name, 'Pixel size')][1]
         ROI = self._widget.getROIGraphicsItem()
-        pos = ROI.position
-        size = ROI.size
+        pos = [round(value/pixel_size) for value in ROI.position]
+        size = [round(value/pixel_size) for value in ROI.size]
 
         currentParams = self.getCurrentParams()
         currentParams.x0.setValue(frameStart[0] + int(pos[0]))

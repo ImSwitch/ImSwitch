@@ -14,6 +14,7 @@ class LaserController(ImConWidgetController):
 
         self.settingAttr = False
         self.presetBeforeScan = None
+        self.is_scanning = False
 
         # Set up lasers
         for lName, lManager in self._master.lasersManager:
@@ -68,7 +69,8 @@ class LaserController(ImConWidgetController):
 
     def valueChanged(self, laserName, magnitude):
         """ Change magnitude. """
-        self._master.lasersManager[laserName].setValue(magnitude)
+        enabled = self._widget.isLaserActive(laserName)
+        self._master.lasersManager[laserName].setValue(magnitude, enabled, self.is_scanning)
         self._widget.setValue(laserName, magnitude)
         self.setSharedAttr(laserName, _valueAttr, magnitude)
     
@@ -206,9 +208,14 @@ class LaserController(ImConWidgetController):
 
     def scanChanged(self, isScanning):
         """ Handles what happens when a scan is started/stopped. """
+
+        self.is_scanning = isScanning
+
         for lName, _ in self._master.lasersManager:
+            enabled = self._widget.isLaserActive(lName)
             self._widget.setLaserEditable(lName, not isScanning)
-        self._master.lasersManager.execOnAll(lambda l: l.setScanModeActive(isScanning))
+            self._master.lasersManager[lName].setScanModeActive(isScanning, enabled)
+        #self._master.lasersManager.execOnAll(lambda l: l.setScanModeActive(isScanning))
 
         defaultScanPresetName = self._setupInfo.defaultLaserPresetForScan
         if defaultScanPresetName in self._setupInfo.laserPresets:

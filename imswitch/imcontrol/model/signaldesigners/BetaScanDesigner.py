@@ -17,6 +17,7 @@ class BetaScanDesigner(ScanDesigner):
                                     'axis_length',
                                     'axis_step_size',
                                     'axis_startpos',
+                                    'axis_centerpos',
                                     'return_time']
 
     def checkSignalComp(self, scanParameters, setupInfo, scanInfo):
@@ -52,9 +53,17 @@ class BetaScanDesigner(ScanDesigner):
         [fast_axis_step_size, middle_axis_step_size, slow_axis_step_size] = \
             [(parameterDict['axis_step_size'][i] / convFactors[i]) for i in range(3)]
 
-        # Retrive starting position
+        # Retrieve starting position
         [fast_axis_start, middle_axis_start, slow_axis_start] = \
             [(parameterDict['axis_startpos'][i][0] / convFactors[i]) for i in range(3)]
+        
+        # Retrieve center positions and deduce new starting positions
+        [fast_axis_center, middle_axis_center, slow_axis_center] = \
+            [(parameterDict['axis_centerpos'][i] / convFactors[i]) for i in range(3)]
+        
+        fast_axis_start = fast_axis_start - fast_axis_center
+        middle_axis_start = middle_axis_start - middle_axis_center
+        slow_axis_start = slow_axis_start - slow_axis_center
 
         fast_axis_positions = 1 if fast_axis_size == 0 or fast_axis_step_size == 0 else \
             1 + int(np.ceil(fast_axis_size / fast_axis_step_size))
@@ -79,18 +88,20 @@ class BetaScanDesigner(ScanDesigner):
         rampSignal = np.zeros(rampSamples)
         self._logger.debug(fast_axis_positions)
         rampValues = self.__makeRamp(fast_axis_start, fast_axis_size, fast_axis_positions)
+        print(rampValues)
         for s in range(fast_axis_positions):
             start = s * sequenceSamples
             end = s * sequenceSamples + sequenceSamples
-            smooth = int(np.ceil(0.001 * sampleRate))
-            settling = int(np.ceil(0.001 * sampleRate))
+            smooth = int(np.ceil(0.002 * sampleRate))
+            settling = int(np.ceil(0.002 * sampleRate))
             rampSignal[start: end] = rampValues[s]
             if s is not fast_axis_positions - 1:
                 if (end - smooth - settling) > 0:
                     rampSignal[end - smooth - settling: end - settling] = self.__smoothRamp(rampValues[s], rampValues[s + 1], smooth)
                     rampSignal[end - settling:end] = rampValues[s + 1]
 
-        returnRamp = self.__smoothRamp(fast_axis_size, fast_axis_start, returnSamples)
+        #rampSignal = self.__makeRamp(fast_axis_start, fast_axis_size, rampSamples)
+        returnRamp = self.__smoothRamp(fast_axis_size+fast_axis_start, fast_axis_start, returnSamples)
         fullLineSignal = np.concatenate((rampSignal, returnRamp))
 
         fastAxisSignal = np.tile(fullLineSignal, middle_axis_positions * slow_axis_positions)
@@ -98,6 +109,7 @@ class BetaScanDesigner(ScanDesigner):
         colSamples = middle_axis_positions * lineSamples
         colValues = self.__makeRamp(middle_axis_start, middle_axis_size, middle_axis_positions)
         fullSquareSignal = np.zeros(colSamples)
+        print(colValues)
         for s in range(middle_axis_positions):
             fullSquareSignal[s * lineSamples: s * lineSamples + rampSamples] = colValues[s]
 
@@ -113,6 +125,7 @@ class BetaScanDesigner(ScanDesigner):
         # Make slow axis signal
         sliceSamples = slow_axis_positions * colSamples
         sliceValues = self.__makeRamp(slow_axis_start, slow_axis_size, slow_axis_positions)
+        print(sliceValues)
         fullCubeSignal = np.zeros(sliceSamples)
         for s in range(slow_axis_positions):
             fullCubeSignal[s * colSamples:(s + 1) * colSamples - returnSamples] = sliceValues[s]
@@ -125,19 +138,30 @@ class BetaScanDesigner(ScanDesigner):
                     self.__smoothRamp(sliceValues[s], slow_axis_start, returnSamples)
         slowAxisSignal = fullCubeSignal
 
-        sig_dict = {parameterDict['target_device'][0]: fastAxisSignal,
-                    parameterDict['target_device'][1]: middleAxisSignal,
-                    parameterDict['target_device'][2]: slowAxisSignal}
+        if slow_axis_size > 0:
+            sig_dict = {parameterDict['target_device'][0]: fastAxisSignal,
+                        parameterDict['target_device'][1]: middleAxisSignal,
+                        parameterDict['target_device'][2]: slowAxisSignal}
+            positions = [fast_axis_positions, middle_axis_positions, slow_axis_positions]
+        else:
+            sig_dict = {parameterDict['target_device'][0]: fastAxisSignal,
+                        parameterDict['target_device'][1]: middleAxisSignal}
+            positions = [fast_axis_positions, middle_axis_positions]
 
         # scanInfoDict, for parameters that are important to relay to TTLCycleDesigner and/or image
         # acquisition managers
         scanInfoDict = {
-            'positions': [fast_axis_positions, middle_axis_positions, slow_axis_positions],
+            'positions': positions,
             'return_time': parameterDict['return_time']
         }
+
+        self.__plot_curves(plot=False, signals=[fastAxisSignal, middleAxisSignal, slowAxisSignal])
+
         return sig_dict, scanInfoDict['positions'], scanInfoDict
 
-    def __makeRamp(self, start, end, samples):
+    def __makeRamp(self, start, size, samples):
+        #return np.linspace(start, end, num=samples)
+        end = start + size
         return np.linspace(float(start), float(end), num=samples)
 
     def __smoothRamp(self, start, end, samples):
@@ -150,6 +174,15 @@ class BetaScanDesigner(ScanDesigner):
         signal = np.append(signal, end * np.ones(int(np.ceil((1 - curve_half) * samples))))
         return signal
 
+    def __plot_curves(self, plot, signals):
+        """ Plot all scan curves, for debugging. """
+        if plot:
+            import matplotlib.pyplot as plt
+            plt.figure(1)
+            plt.clf()
+            for i, signal in enumerate(signals):
+                plt.plot(signal - 0.01 * i)
+            plt.show()
 
 # Copyright (C) 2020, 2021 TestaLab
 # This file is part of ImSwitch.

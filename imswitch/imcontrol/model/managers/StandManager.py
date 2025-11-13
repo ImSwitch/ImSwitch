@@ -14,11 +14,14 @@ class StandManager(ABC):
             # Create sub-manager
             try:
                 package = importlib.import_module(
-                    pythontools.joinModulePath(f'{currentPackage}.{"stands"}',deviceInfo.managerName))
+                        pythontools.joinModulePath(f'{currentPackage}.{"stands"}',deviceInfo.managerName))
                 manager = getattr(package, deviceInfo.managerName)
                 self._subManager = manager(deviceInfo, **lowLevelManagers)
+
             except:
                 self.__logger.error(f'Failed to load LeicaDMIManager (not provided due to NDA). Loading mocker.')
+                print(deviceInfo)
+                print(lowLevelManagers)
                 package = importlib.import_module(
                     pythontools.joinModulePath(f'{currentPackage}.{"stands"}',f'{deviceInfo.managerName}_mock'))
                 manager = getattr(package, f'Mock{deviceInfo.managerName}')

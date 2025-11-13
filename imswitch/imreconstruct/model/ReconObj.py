@@ -68,6 +68,9 @@ class ReconObj:
             self.__logger.debug(f'Shape of reconstructed: {np.shape(self.reconstructed)}')
         else:
             self.__logger.error('Cannot update images without coefficients')
+    
+    def updateReconstructed(self,new_img):
+        self.reconstructed = new_img
 
     def addGridOfCoeffs(self, im, coeffs, t, s, r0, c0, pr, pc):
         # self.__logger.debug(f'Timepoint: {t}')

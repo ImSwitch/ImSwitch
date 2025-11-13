@@ -148,8 +148,11 @@ class DataObj:
                 self.datasetName == other.datasetName)
 
     def checkLock(self):
-        if self.attrs['writing']:
-            raise OSError(f'Writing in progress')
+        try:
+            if self.attrs['writing']:
+                raise OSError(f'Writing in progress')
+        except Exception:
+            pass
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

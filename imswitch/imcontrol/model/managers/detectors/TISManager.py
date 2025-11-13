@@ -55,7 +55,7 @@ class TISManager(DetectorManager):
     def scale(self):
         return [1,1]
 
-    def getLatestFrame(self, is_save=False):
+    def getLatestFrame(self, is_save=True):
         if not self._adjustingParameters:
             self.__image = self._camera.grabFrame()
         return self.__image

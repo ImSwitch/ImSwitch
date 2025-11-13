@@ -1,11 +1,11 @@
 import os
+import time
 import sys
 import ctypes
 import importlib
 import enum
 import h5py
 import csv
-import time
 
 from collections import deque
 from datetime import datetime
@@ -16,11 +16,9 @@ import pyqtgraph as pg
 import numpy as np
 from tkinter.filedialog import askopenfilename
 
-from imswitch.imcommon.framework import Timer
-
 from imswitch.imcommon.model import dirtools
 from ..basecontrollers import ImConWidgetController
-from imswitch.imcommon.model import initLogger, APIExport
+from imswitch.imcommon.model import initLogger
 
 _logsDir = os.path.join(dirtools.UserFileDirs.Root, 'recordings', 'logs_etsted')
 
@@ -62,7 +60,7 @@ class EtSTEDController(ImConWidgetController):
             self._master.lasersManager.execOnAll(lambda c: c.name)
         )
 
-        self.scanInitiationList = ['ScanWidget','(Depreciated) RecordingWidget']
+        self.scanInitiationList = ['ScanWidget','RecordingWidget']
         self._widget.setScanInitiationList(self.scanInitiationList)
 
         sys.path.append(self._widget.analysisDir)
@@ -76,7 +74,6 @@ class EtSTEDController(ImConWidgetController):
 
         # Connect EtSTEDWidget and communication channel signals
         self._widget.initiateButton.clicked.connect(self.initiate)
-        self._widget.initiateButton.clicked.connect(self.stopSlowScanTimelapse) #20240618 (SE) added to stop timelapse
         self._widget.loadPipelineButton.clicked.connect(self.loadPipeline)
         self._widget.recordBinaryMaskButton.clicked.connect(self.initiateBinaryMask)
         self._widget.loadScanParametersButton.clicked.connect(self.getScanParameters)
@@ -93,28 +90,25 @@ class EtSTEDController(ImConWidgetController):
         self.__running = False
         self.__validating = False
         self.__busy = False
-        self.__clock_busy = False
         self.__prevFrames = deque(maxlen=10)
         self.__prevAnaFrames = deque(maxlen=10)
         self.__binary_mask = None
         self.__binary_stack = None
         self.__binary_frames = 10
-        self.__init_frames = 5 #this is the minimum number of frames before a event will trigger the slow method
+        self.__init_frames = 5
         self.__validationFrames = 0
         self.__frame = 0
         self.__t_call = 0
         self.__maxAnaImgVal = 0
-        self.__flipwfcalib = False  # flipping widefield image when loading for transformation calibration
-        self.__timelapseRunning = False
+        self.__flipwfcalib = True  # flipping widefield image when loading for transformation calibration
 
-        # timer for turning laser ON
-        self.timerLaser = Timer(singleShot = False)
-        self._master
-        self.setUpdatePeriod()
+        # Leica stand command example
+        ####self._master.standManager._subManager.setILShutter(0)
 
     def initiate(self):
         """ Initiate or stop an etSTED experiment. """
-        if not self.__running and not self.__timelapseRunning:
+        if not self.__running:
+
             detectorFastIdx = self._widget.fastImgDetectorsPar.currentIndex()
             self.detectorFast = self._widget.fastImgDetectors[detectorFastIdx]
             laserFastIdx = self._widget.fastImgLasersPar.currentIndex()
@@ -129,9 +123,6 @@ class EtSTEDController(ImConWidgetController):
             self.__param_vals = self.readParams()
             # Reset parameter for extra information that pipelines can input and output
             self.__exinfo = None
-
-            self.slow_timelapse_value = self._widget.slow_timelapse_edit.text() #get time interval for slow STED scan timelapse
-            self.slow_frames_value = self._widget.slow_frames_edit.text() #get number of frames for slow STED scan timelapse
             
             # Check if visualization mode, in case launch help widget
             experimentModeIdx = self._widget.experimentModesPar.currentIndex()
@@ -142,73 +133,51 @@ class EtSTEDController(ImConWidgetController):
                 self.__runMode = RunMode.Validate
             else:
                 self.__runMode = RunMode.Experiment
+
             # check if visualization or validation mode
             if self.__runMode == RunMode.Validate or self.__runMode == RunMode.Visualize:
                 self.launchHelpWidget()
             # load selected coordinate transform
             self.loadTransform()
-            #self.__transformCoeffs = self.__coordTransformHelper.getTransformCoeffs()
+            self.__transformCoeffs = self.__coordTransformHelper.getTransformCoeffs()
             # connect communication channel signals and turn on wf laser
-            
+            self._commChannel.sigUpdateImage.connect(self.runPipeline)
             if self.scanInitiationMode == ScanInitiationMode.ScanWidget:
                 self._commChannel.sigToggleBlockScanWidget.emit(False)
                 self._commChannel.sigScanEnded.connect(self.scanEnded)
             elif self.scanInitiationMode == ScanInitiationMode.RecordingWidget:
                 self._commChannel.sigRecordingEnded.connect(self.scanEnded)
-            
-            if self._widget.laser_delay_checkbox.isChecked():
-                self.startTimerLaserOn()
-                self.timerLaser.timeout.connect(self.clock_fct)
-            else:
-                self._master.lasersManager.execOn(self.laserFast, lambda l: l.setEnabled(True))
-                self._commChannel.sigUpdateImage.connect(self.runPipeline)
-            
+            self._master.lasersManager.execOn(self.laserFast, lambda l: l.setEnabled(True))
 
             self._widget.initiateButton.setText('Stop')
             self.__running = True
-        else: #TODO 20240618 (SE): needs work, need to abort timelapse
+        else:
             # disconnect communication channel signals and turn off wf laser
-            try:
-                if self._widget.laser_delay_checkbox.isChecked():
-                    self.timerLaser.stop()
-                    self.timerLaser.timeout.disconnect(self.clock_fct)
-                else :
-                    self._commChannel.sigUpdateImage.disconnect(self.runPipeline)
-
-            except:
-                pass
-
+            self._commChannel.sigUpdateImage.disconnect(self.runPipeline)
             if self.scanInitiationMode == ScanInitiationMode.ScanWidget:
                 self._commChannel.sigToggleBlockScanWidget.emit(True)
                 self._commChannel.sigScanEnded.disconnect(self.scanEnded)
             elif self.scanInitiationMode == ScanInitiationMode.RecordingWidget:
                 self._commChannel.sigRecordingEnded.disconnect(self.scanEnded)
             self._master.lasersManager.execOn(self.laserFast, lambda l: l.setEnabled(False))
-            #if self._widget.laser_delay_checkbox.isChecked():
-            #    self.timerLaser.stop()
-            
+
             self._widget.initiateButton.setText('Initiate')
             self.resetParamVals()
             self.resetRunParams()
 
     def scanEnded(self):
         """ End an etSTED slow method scan. """
-        self._logger.debug('ended')
         self.setDetLogLine("scan_end",datetime.now().strftime('%Ss%fus'))
         if self.scanInitiationMode == ScanInitiationMode.ScanWidget:
-            #self._commChannel.sigSnapImg.emit() # with the timelapse this saves one additional frame that we dont want
+            self._commChannel.sigSnapImg.emit()
             try:
                 total_scan_time = self.scanInfoDict['scan_samples_total'] * 10e-6  # length (s) of total scan signal
                 self.setDetLogLine("total_scan_time", total_scan_time)
             except:
                 self._logger.info("Scan 'total_scan_time' not saved in log as 'scan_samples_total' not available in scanInfoDict using current signal designer.")
         self.endRecording()
-        #self.continueFastModality() #At this position this means going back to widefield after one STED frame. Not compatible with the timelapse addition. needs to go after the last frame
+        self.continueFastModality()
         self.__frame = 0
-
-    def scanFrameEnded(self): 
-        if self.scanInitiationMode == ScanInitiationMode.ScanWidget:
-            self._commChannel.sigSnapImg.emit()
 
     def setDetLogLine(self, key, val, *args):
         if args:
@@ -219,56 +188,15 @@ class EtSTEDController(ImConWidgetController):
     def runSlowScan(self):
         """ Run a scan of the slow method (STED). """
         self.__detLog[f"scan_start"] = datetime.now().strftime('%Ss%fus')
-        self._logger.debug(f'Started runSlowScan')
-        if self.scanInitiationMode == ScanInitiationMode.ScanWidget:      
+        if self.scanInitiationMode == ScanInitiationMode.ScanWidget:
             # Run scan in nidaqManager
             self._master.nidaqManager.runScan(self.signalDic, self.scanInfoDict)
         elif self.scanInitiationMode == ScanInitiationMode.RecordingWidget:
             # Run recording from RecWidget
             self.triggerRecordingWidgetScan()
 
-    def runSlowScanTimelapse(self): 
-        """ Run a timelapse of scans of the slow method (STED). """
-        #TODO: implementing reaction to stop pressed (work in progress, 20240618 SE). Now buggy
-        if self.frameNumber == 0: # for the first frame
-            if self.__timelapseRunning:
-                self.number_of_frames = int(self.slow_frames_value)
-                self.frequency = int(self.slow_timelapse_value)  # next frame after X seconds
-                total_timelapse_time = self.frequency * self.number_of_frames
-                self._logger.debug(f'Total_timelapse_time: {total_timelapse_time} s')
-                self._logger.debug(f'Number_of_frames: {self.number_of_frames}')
-                self._logger.debug(f'Timelapse frame {self.frameNumber}')
-                self.runSlowScan()
-                self.timer = Timer(singleShot=True)
-                self.timer.timeout.connect(self.runSlowScanTimelapse)
-                self.timer.start(int(self.frequency*1000))
-                self.frameNumber += 1
-            else:
-                self._logger.debug(f'Stopped, frame {self.frameNumber} not recorded')
-                self.continueFastModality()
-        elif self.frameNumber == self.number_of_frames: # after the last frame
-            self.scanFrameEnded()
-            self._logger.debug(f'Last slow scan saved ({self.frameNumber-1})')
-            self._logger.debug(f'We should be done')
-            self.__timelapseRunning = False
-            self.continueFastModality() # 20240618 (SE): moved here from inside the scanFrameEnded function, so that in "endless" this only happens after the last STED timelapse frame is gone.           
-        else: #any other frame
-            self.scanFrameEnded()            
-            self._logger.debug(f'Slow scan saved ({self.frameNumber-1})')          
-            if self.__timelapseRunning:
-                self._logger.debug(f'Timelapse frame {self.frameNumber}')
-                self.runSlowScan()
-                self.timer = Timer(singleShot=True)
-                self.timer.timeout.connect(self.runSlowScanTimelapse)
-                self.timer.start(int(self.frequency*1000))
-                self.frameNumber += 1
-            else:
-                self._logger.debug(f'Stopped, frame {self.frameNumber} not recorded')
-                self.continueFastModality()
-            
- 
     def endRecording(self):
-        """ Save an etSTED slow method scan. """ # only a log file I think
+        """ Save an etSTED slow method scan. """
         self.setDetLogLine("pipeline", self.getPipelineName())
         self.logPipelineParamVals()
         # save log file with temporal info of trigger event
@@ -311,23 +239,16 @@ class EtSTEDController(ImConWidgetController):
         """ Continue the fast method, after an event scan has been performed. """
         if self._widget.endlessScanCheck.isChecked() and not self.__running:
             # connect communication channel signals
-            if self._widget.laser_delay_checkbox.isChecked():
-                self.startTimerLaserOn()
-                self.timerLaser.timeout.connect(self.clock_fct)
-            else :
-                self._commChannel.sigUpdateImage.connect(self.runPipeline)
-                self._master.lasersManager.execOn(self.laserFast, lambda l: l.setEnabled(True))    
-
-
+            self._commChannel.sigUpdateImage.connect(self.runPipeline)
+            self._master.lasersManager.execOn(self.laserFast, lambda l: l.setEnabled(True))
+            
             self._widget.initiateButton.setText('Stop')
             self.__running = True
         elif not self._widget.endlessScanCheck.isChecked():
             self._widget.initiateButton.setText('Initiate')
             if self.scanInitiationMode == ScanInitiationMode.ScanWidget:
                 self._commChannel.sigToggleBlockScanWidget.emit(True)
-                try:
-                    self._commChannel.sigScanEnded.disconnect(self.scanEnded)
-                except: pass
+                self._commChannel.sigScanEnded.disconnect(self.scanEnded)
             elif self.scanInitiationMode == ScanInitiationMode.RecordingWidget:
                 self._commChannel.sigRecordingEnded.disconnect(self.scanEnded)
             self.__running = False
@@ -369,8 +290,6 @@ class EtSTEDController(ImConWidgetController):
             elif len(self.__binary_stack) == self.__binary_frames:
                 self._commChannel.sigUpdateImage.disconnect(self.addImgBinStack)
                 self._master.lasersManager.execOn(self.laserFast, lambda l: l.setEnabled(False))
-                if self._widget.laser_delay_checkbox.isChecked():
-                    self.timerLaser.stop()
                 self.calculateBinaryMask(self.__binary_stack)
             else:
                 if np.ndim(self.__binary_stack) == 2:
@@ -407,7 +326,6 @@ class EtSTEDController(ImConWidgetController):
 
         #self._widget.analysisHelpWidget.img.render()
 
-    @APIExport(runOnUIThread=True)
     def getScanParameters(self):
         """ Load STED scan parameters from the scanning widget. """
         self._commChannel.sigRequestScanParameters.emit()
@@ -419,7 +337,6 @@ class EtSTEDController(ImConWidgetController):
 
     def setBusyFalse(self):
         self.__busy = False
-        self.__clock_busy = False
 
     def assignScanParameters(self, analogParams, digitalParams, positionersScan):
         """ Assign scan parameters from the scanning widget. """
@@ -461,13 +378,11 @@ class EtSTEDController(ImConWidgetController):
         self.__validating = False
         self.__frame = 0
         self.__maxAnaImgVal = 0
-        
+
     def runPipeline(self, detectorName, img, init, scale, isCurrentDetector):
         """ If detector is detectorFast: run the analyis pipeline, called after every fast method frame. """
         del init, scale, isCurrentDetector
         if detectorName == self.detectorFast:
-            #if self._widget.laser_delay_checkbox.isChecked():
-            #    self._master.lasersManager.execOn(self.laserFast, lambda l: l.setEnabled(False))
             if not self.__busy:
                 t_sincelastcall = millis() - self.__t_call
                 self.__t_call = millis()
@@ -522,7 +437,6 @@ class EtSTEDController(ImConWidgetController):
                             coords_wf = np.copy(coords_detected[0,:])
                         else:
                             coords_wf = np.copy(coords_detected[0])
-                        coords_wf = self.adjustDetectedCoords(coords_wf, np.shape(img))
                         self.setDetLogLine("prepause", datetime.now().strftime('%Ss%fus'))
                         self.setDetLogLine("fastscan_x_center", coords_wf[0])
                         self.setDetLogLine("fastscan_y_center", coords_wf[1])
@@ -538,31 +452,28 @@ class EtSTEDController(ImConWidgetController):
                                 self.setDetLogLine("det_coord_x_", coords_wf[0], i)
                                 self.setDetLogLine("det_coord_y_", coords_wf[1], i)
                         
-                        self._logger.debug(f'coords_wf: {coords_wf}')
-                        self._logger.debug(f'coords_scan: {coords_scan}')
+                        #self._logger.debug(f'coords_wf: {coords_wf}')
+                        #self._logger.debug(f'coords_scan: {coords_scan}')
                         try:
-                            self._logger.debug(f'trying to initiate slow scan')
-                            self.initiateSlowScan(position=coords_scan) 
+                            self.initiateSlowScan(position=coords_scan)
                         except Exception as e:
                             self._logger.error(f"Failed to initiate slow scan, likely due to not having loaded scanning parameters. Error message: {e}")
                             self.setBusyFalse()
                             self.continueFastModality()
                             return
                         # trigger scan starting signal emission or not - if triggered, use scan-standard laser preset
-                        if self._widget.useScanLaserPresetCheck.isChecked():
+                        if not self._widget.useScanLaserPresetCheck.isChecked():
                             self._commChannel.sigScanStarting.emit()
- 
-                        # update scatter plot of event coordinates in the shown fast method image
-                        self.updateScatter(coords_detected, clear=True) # moved this up, does it now show before the timelapse starts?  
+                        
+                        self.runSlowScan()
 
-                        #self.runSlowScan() #let's replace this with a timelapse
-                        self.runSlowScanTimelapse() # now doing timelapses instead
+                        # update scatter plot of event coordinates in the shown fast method image
+                        self.updateScatter(coords_detected, clear=True)
 
                         self.__prevFrames.append(img)
                         self.saveValidationImages(prev=True, prev_ana=False)
                         self.__exinfo = None
                         self.__busy = False
-                        self.__clock_busy = False
                         return
                 #self.__bkg = img
                 self.__prevFrames.append(img)
@@ -570,48 +481,12 @@ class EtSTEDController(ImConWidgetController):
                     self.__prevAnaFrames.append(img_ana)
                 self.__frame += 1
                 self.setBusyFalse()
-            #if self._widget.laser_delay_checkbox.isChecked():
-            #    if coords_detected.size == 0:
-            #        self.startTimerLaserOn()
-                    
-
-
-
-
-    def clock_fct(self):
-
-        if not self.__clock_busy :
-            self.__clock_busy = True
-            self._master.lasersManager.execOn(self.laserFast, lambda l: l.setEnabled(True))
-            img=self._master.detectorsManager._subManagers[self.detectorFast].wait_and_get_NewFrame(True)
-            self._master.lasersManager.execOn(self.laserFast, lambda l: l.setEnabled(False))
-
-            self.runPipeline(self.detectorFast, img, None, None, None)
-        else :
-            self.__logger.info("clock fct called when busy - update period probably too short")
-
-
-
-    def startTimerLaserOn(self):
-        delay_ms = float(self._widget.laser_delay_edit.text())
-        self.timerLaser.start(delay_ms)
-
-
-    def adjustDetectedCoords(self, coords, img_shape):
-        if self._setupInfo.etSTED.invertX:
-            coords[0] = img_shape[0] - coords[0]
-        if self._setupInfo.etSTED.invertY:
-            coords[1] = img_shape[1] - coords[1]
-        if self._setupInfo.etSTED.swapXY:
-            coords = np.copy(np.flip(coords))
-        return coords
 
     def initiateSlowScan(self, position=[0.0,0.0,0.0]):
         """ Initiate a STED scan. """
         #dt = datetime.now()
         #time_curr_before = round(dt.microsecond/1000)
         self.setCenterScanParameter(position)
-        self.frameNumber = 0
         #dt = datetime.now()
         #time_curr_mid = round(dt.microsecond/1000)
         if self.scanInitiationMode == ScanInitiationMode.ScanWidget:
@@ -620,7 +495,7 @@ class EtSTEDController(ImConWidgetController):
                     self._analogParameterDict, self._digitalParameterDict, False
                 )
             except:
-                self._logger.error('Error when initiating ScanWidget scan, is correct coordinate trafo and widefield ROI loaded')
+                self._logger.debug('Error when initiating ScanWidget scan')
                 return
         elif self.scanInitiationMode == ScanInitiationMode.RecordingWidget:
             self._commChannel.sigRequestScanFreq.emit()
@@ -649,7 +524,6 @@ class EtSTEDController(ImConWidgetController):
             if positionerName not in self._positionersScan:
                 position = self._analogParameterDict['axis_centerpos'][index]
                 self._master.positionersManager[positionerName].setPosition(position, 0)
-                self._logger.debug([positionerName, position])
 
     def logScanFreq(self, scanFreq):
         self.setDetLogLine("scan_period", scanFreq)
@@ -713,25 +587,9 @@ class EtSTEDController(ImConWidgetController):
     def pauseFastModality(self):
         """ Pause the fast method, when an event has been detected. """
         if self.__running:
-            if self._widget.laser_delay_checkbox.isChecked():
-                self.timerLaser.stop()
-                self.timerLaser.timeout.disconnect(self.clock_fct)
-            else :
-                self._commChannel.sigUpdateImage.disconnect(self.runPipeline)
-
+            self._commChannel.sigUpdateImage.disconnect(self.runPipeline)
             self._master.lasersManager.execOn(self.laserFast, lambda l: l.setEnabled(False))
-
             self.__running = False
-            self.__timelapseRunning = True
-
-    def stopSlowScanTimelapse(self): #20240618 (SE) add to abort timelapse scanning
-        """ Stop a running a timelapse, when "stop" is clicked"""
-        self._logger.debug(f'{self.__timelapseRunning}')
-        if self.__timelapseRunning:
-            self.__timelapseRunning = False
-            self._logger.debug(f'Stopped timelapse, finishing current frame')
-            self._widget.endlessScanCheck.setChecked(False)
-        self._logger.debug(f'{self.__timelapseRunning}')
 
     def getFlipWf(self):
         return self.__flipwfcalib
@@ -781,13 +639,13 @@ class EtSTEDCoordTransformHelper():
         # get annotated coordinates in both images and translate to real space coordinates
         self.__loResCoordsPx = self._widget.pointsLayerLo.data
         for pos_px in self.__loResCoordsPx:
+            #pos = (np.around(pos_px[0]*self.__loResPxSize, 3), np.around(pos_px[1]*self.__loResPxSize, 3))
             pos = (np.around(pos_px[0], 3), np.around(pos_px[1], 3))
             self.__loResCoords.append(pos)
         self.__hiResCoordsPx = self._widget.pointsLayerHi.data
         for pos_px in self.__hiResCoordsPx:
             # the following depends on the array viewing/axes order for camera and scan images, works for the current napari viewer (ImSwitch v1.2.1)
-            # 230328 (JA): Added minus in front of both terms to fix the scan not occuring in the right position in etSTED. If it stops working again, perhaps some changes that made this necessary have been reverted. If so, just remove the minus here as a first try.
-            pos = (-np.around((self.__loResSize-pos_px[0])*self.__hiResPxSize - self.__hiResSize/2, 3), -np.around((self.__loResSize-pos_px[1])*self.__hiResPxSize - self.__hiResSize/2, 3))
+            pos = (np.around((self.__loResSize-pos_px[1])*self.__hiResPxSize - self.__hiResSize/2, 3), np.around((self.__loResSize-pos_px[0])*self.__hiResPxSize - self.__hiResSize/2, 3))
             self.__hiResCoords.append(pos)
 
         # calibrate coordinate transform
@@ -807,7 +665,7 @@ class EtSTEDCoordTransformHelper():
         for i in range(0,len(self.__loResCoords)):
             pos = self.poly_thirdorder_transform(self.__transformCoeffs, self.__loResCoords[i])
             # the following depends on the array viewing/axes order for camera and scan images, works for the current napari viewer (ImSwitch v1.2.1)
-            pos_px = (np.around(self.__loResSize-(-pos[0] + self.__hiResSize/2)/self.__hiResPxSize, 3), np.around(self.__loResSize-(-pos[1] + self.__hiResSize/2)/self.__hiResPxSize, 3))
+            pos_px = (np.around(self.__loResSize-(pos[1] + self.__hiResSize/2)/self.__hiResPxSize, 3), np.around(self.__loResSize-(pos[0] + self.__hiResSize/2)/self.__hiResPxSize, 3))
             coords_transf.append(pos_px)
         coords_transf = np.array(coords_transf)
         self._widget.pointsLayerTransf.data = coords_transf
@@ -858,10 +716,7 @@ class EtSTEDCoordTransformHelper():
         elif modality == 'lo':
             viewer = self._widget.napariViewerLo
             if self.etSTEDController.getFlipWf():
-                img_data = np.moveaxis(img_data, 0, 1)  # swapXY
-            else:
-                img_data = np.flip(img_data, 0)  # invertX
-                img_data = np.flip(img_data, 1)  # invertY
+                img_data = np.moveaxis(img_data, 0, 1)
         viewer.add_image(img_data)
         viewer.layers.unselect_all()
         viewer.layers.move_selected(len(viewer.layers)-1,0)

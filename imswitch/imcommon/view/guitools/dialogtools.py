@@ -17,10 +17,11 @@ def askForTextInput(widget, title, label):
     return result if okClicked else None
 
 
-def askForFilePath(widget, caption=None, defaultFolder=None, nameFilter=None, isSaving=False):
+def askForFilePath(widget, caption=None, defaultFolder=None, nameFilter=None, isSaving=False,multiFiles=False):
     """ Asks the user to pick a file path. Returns the file path if "OK" is
     clicked, None otherwise. """
-    func = (QtWidgets.QFileDialog().getOpenFileName if not isSaving
+    func = (QtWidgets.QFileDialog().getOpenFileName if not isSaving and not multiFiles
+            else QtWidgets.QFileDialog().getOpenFileNames if not isSaving
             else QtWidgets.QFileDialog().getSaveFileName)
 
     result = func(widget, caption=caption, directory=defaultFolder, filter=nameFilter)[0]

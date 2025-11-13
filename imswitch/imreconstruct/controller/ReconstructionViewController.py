@@ -59,11 +59,11 @@ class ReconstructionViewController(ImRecWidgetController):
         data = self._widget.getCurrentItemData().reconstructed
 
         if self.getViewId() == 3:
-            transposeOrder = [0, 1, 2, 3, 5, 4]
+            transposeOrder = [0, 1, 2, 3, 4, 5]
         elif self.getViewId() == 4:
-            transposeOrder = [0, 1, 2, 5, 3, 4]
+            transposeOrder = [0, 1, 2, 4, 3, 5]
         else:
-            transposeOrder = [0, 2, 1, 5, 4, 3]
+            transposeOrder = [0, 1, 2, 5, 4, 3]
 
         im = data.transpose(*transposeOrder)
         axisLabels = np.array(['Dataset', 'Base', 'Time point', 'Slice', 'X', 'Y'])[transposeOrder]

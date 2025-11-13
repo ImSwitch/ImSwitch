@@ -5,6 +5,7 @@ from .AufofocusController import AutofocusController
 from .BeadRecController import BeadRecController
 from .ConsoleController import ConsoleController
 from .EtSTEDController import EtSTEDController
+from .EtMonalisaController import EtMonalisaController
 from .FFTController import FFTController
 from .FocusLockController import FocusLockController
 from .ImageController import ImageController
@@ -13,6 +14,7 @@ from .MotCorrController import MotCorrController
 from .PositionerController import PositionerController
 from .RecordingController import RecordingController
 from .SLMController import SLMController
+from .SLMmlController import SLMmlController
 from .ScanControllerBase import ScanControllerBase
 from .ScanControllerMoNaLISA import ScanControllerMoNaLISA
 from .ScanControllerPointScan import ScanControllerPointScan

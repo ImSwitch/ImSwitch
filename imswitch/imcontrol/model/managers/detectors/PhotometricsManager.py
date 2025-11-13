@@ -29,7 +29,7 @@ class PhotometricsManager(DetectorManager):
         self.__acquisition = False
         # Prepare parameters
         parameters = {
-            'Set exposure time': DetectorNumberParameter(group='Timings', value=0,
+            'Set exposure time': DetectorNumberParameter(group='Timings', value=1,
                                                          valueUnits='ms', editable=True),
             'Real exposure time': DetectorNumberParameter(group='Timings', value=0,
                                                           valueUnits='ms', editable=False),
@@ -46,7 +46,7 @@ class PhotometricsManager(DetectorManager):
                                                   options=['Sensitivity',
                                                            'Speed',
                                                            'Dynamic range'], editable=True),
-            'Camera pixel size': DetectorNumberParameter(group='Miscellaneous', value=0.1,
+            'Camera pixel size': DetectorNumberParameter(group='Miscellaneous', value=1.0,
                                                          valueUnits='µm', editable=True),
             'Number of frames per chunk': DetectorNumberParameter(group='Recording', value=self.__chunkFrameSize,
                                                          valueUnits='frames', editable=True)
@@ -55,8 +55,14 @@ class PhotometricsManager(DetectorManager):
         super().__init__(detectorInfo, name, fullShape=fullShape, supportedBinnings=[1, 2, 4],
                          model=model, parameters=parameters, croppable=True)
         self._updatePropertiesFromCamera()
-        super().setParameter('Set exposure time', self.parameters['Real exposure time'].value)
 
+        super().setParameter('Set exposure time', self.parameters['Real exposure time'].value)
+        if 'Photometrics' in detectorInfo.managerProperties:
+            # Update the user-specific settings
+            for key, value in detectorInfo.managerProperties['Photometrics'].items():
+                self.__logger.info(f'Updating user-supplied value for {key}')
+                self.setParameter(key, value)
+            self._updatePropertiesFromCamera()
     @property
     def pixelSizeUm(self):
         umxpx = self.parameters['Camera pixel size'].value
@@ -68,7 +74,7 @@ class PhotometricsManager(DetectorManager):
             if status == "READOUT_NOT_ACTIVE":
                 return self.image
             else:
-                return np.array(self._camera.poll_latest_frame()[0]['pixel_data'])
+                return np.array(self._camera.poll_frame()[0]['pixel_data'])
         except RuntimeError:
             return self.image
 

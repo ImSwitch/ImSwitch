@@ -43,6 +43,9 @@ class FocusLockController(ImConWidgetController):
         self._widget.zStackBox.stateChanged.connect(self.zStackVarChange)
         self._widget.twoFociBox.stateChanged.connect(self.twoFociVarChange)
 
+        self._commChannel.sigScanStarted.connect(self.scanUnlockFocus)
+        self._commChannel.sigScanDone.connect(self.scanLockFocus)
+
         self.setPointSignal = 0
         self.locked = False
         self.aboutToLock = False
@@ -77,6 +80,17 @@ class FocusLockController(ImConWidgetController):
         if hasattr(super(), '__del__'):
             super().__del__()
 
+
+    def scanUnlockFocus(self):
+        # print('unlock')
+        if self._widget.ScanBlock.isChecked():
+            self.locked = False
+
+    def scanLockFocus(self):
+        # print('lock')
+        if self._widget.ScanBlock.isChecked() and self._widget.lockButton.isChecked():
+            self.locked = True
+
     def unlockFocus(self):
         if self.locked:
             self.locked = False
@@ -86,7 +100,7 @@ class FocusLockController(ImConWidgetController):
     def toggleFocus(self):
         self.aboutToLock = False
         if self._widget.lockButton.isChecked():
-            zpos = self._master.positionersManager[self.positioner].get_abs()
+            zpos = self._master.positionersManager[self.positioner].get_abs("Z")
             self.lockFocus(zpos)
             self._widget.lockButton.setText('Unlock')
         else:
@@ -139,7 +153,7 @@ class FocusLockController(ImConWidgetController):
         self.aboutToLockDataPoints[0] = self.setPointSignal
         averageDiff = np.std(self.aboutToLockDataPoints)
         if averageDiff < self.aboutToLockDiffMax:
-            zpos = self._master.positionersManager[self.positioner].get_abs()
+            zpos = self._master.positionersManager[self.positioner].get_abs("Z")
             self.lockFocus(zpos)
             self.aboutToLock = False
 
@@ -157,7 +171,7 @@ class FocusLockController(ImConWidgetController):
     def updatePI(self):
         if not self.noStepVar:
             self.noStepVar = True
-        self.currentPosition = self._master.positionersManager[self.positioner].get_abs()
+        self.currentPosition = self._master.positionersManager[self.positioner].get_abs("Z")
         self.stepDistance = np.abs(self.currentPosition - self.lastPosition)
         distance = self.currentPosition - self.lockPosition
         move = self.pi.update(self.setPointSignal)
@@ -226,11 +240,11 @@ class ProcessDataThread(Thread):
                     else:
                         maxvals[0] = imagearraygf[allmaxcoords[n][0], allmaxcoords[n][1]]
                         maxvalpos[0] = n
-            xcenter = allmaxcoords[maxvalpos[0]][0]
-            ycenter = allmaxcoords[maxvalpos[0]][1]
-            if allmaxcoords[maxvalpos[1]][1] < ycenter:
-                xcenter = allmaxcoords[maxvalpos[1]][0]
-                ycenter = allmaxcoords[maxvalpos[1]][1]
+            xcenter = allmaxcoords[int(maxvalpos[0])][0]
+            ycenter = allmaxcoords[int(maxvalpos[0])][1]
+            if allmaxcoords[int(maxvalpos[1])][0] < xcenter:
+                xcenter = allmaxcoords[int(maxvalpos[1])][0]
+                ycenter = allmaxcoords[int(maxvalpos[1])][1]
             centercoords2 = np.array([xcenter, ycenter])
         else:
             centercoords = np.where(imagearraygf == np.array(imagearraygf.max()))
@@ -246,7 +260,9 @@ class ProcessDataThread(Thread):
         imagearraygfsub = imagearraygf[xlow:xhigh, ylow:yhigh]
         massCenter = np.array(ndi.measurements.center_of_mass(imagearraygfsub))
         # add the information about where the center of the subarray is
-        massCenterGlobal = massCenter[1] + centercoords2[1]  # - subsizey - self.sensorSize[1] / 2
+        massCenterGlobal = massCenter[0] + centercoords2[0]  # - subsizey - self.sensorSize[1] / 2
+        self._controller._widget.center.setValue(massCenterGlobal)
+        #print(massCenterGlobal)
         return massCenterGlobal
 
 
@@ -267,7 +283,7 @@ class FocusCalibThread(Thread):
             time.sleep(0.5)
             self.focusCalibSignal = self._controller.setPointSignal
             self.signalData.append(self.focusCalibSignal)
-            self.positionData.append(self._controller._master.positionersManager[self._controller.positioner].get_abs())
+            self.positionData.append(self._controller._master.positionersManager[self._controller.positioner].get_abs("Z"))
         self.poly = np.polyfit(self.positionData, self.signalData, 1)
         self.calibrationResult = np.around(self.poly, 4)
         self.show()

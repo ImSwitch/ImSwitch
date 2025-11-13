@@ -104,7 +104,7 @@ class RecordingController(ImConWidgetController):
         self._master.recordingManager.snap(detectorNames,
                                            savename,
                                            SaveMode(self._widget.getSnapSaveMode()),
-                                           SaveFormat(self._widget.getSaveFormat()),
+                                           SaveFormat(self._widget.getSaveSnapFormat()),
                                            attrs)
         
     def snapNumpy(self):
@@ -138,7 +138,7 @@ class RecordingController(ImConWidgetController):
 
         self._master.recordingManager.snapImagePrev(detectorName,
                                                     savename,
-                                                    SaveFormat(self._widget.getSaveFormat()),
+                                                    SaveFormat(self._widget.getSaveSnapFormat()),
                                                     image,
                                                     attrs)
 
@@ -184,6 +184,7 @@ class RecordingController(ImConWidgetController):
                 self._master.recordingManager.startRecording(**self.recordingArgs)
             elif self.recMode == RecMode.ScanOnce:
                 self.recordingArgs['recFrames'] = self._commChannel.getNumScanPositions()
+                self.recordingArgs['numCamTTL'] = self._commChannel.getNumCamTTL()
                 self._master.recordingManager.startRecording(**self.recordingArgs)
                 time.sleep(0.3)
                 self._commChannel.sigRunScan.emit(True, False)
@@ -220,6 +221,7 @@ class RecordingController(ImConWidgetController):
                 for detectorName in self.recordingArgs['detectorNames']
             }
             self.recordingArgs['recFrames'] = self._commChannel.getNumScanPositions()  # Update
+            self.recordingArgs['numCamTTL'] = self._commChannel.getNumCamTTL()
 
         self._master.recordingManager.startRecording(**self.recordingArgs)
         time.sleep(0.3)
@@ -329,7 +331,8 @@ class RecordingController(ImConWidgetController):
             )
         elif detectorMode == -3:  # A specific detector
             return self._widget.getSelectedSpecificDetectors()
-
+    
+    @APIExport(runOnUIThread=True)
     def getFileName(self):
         """ Gets the filename of the data to save. """
         filename = self._widget.getCustomFilename()
@@ -466,7 +469,19 @@ class RecordingController(ImConWidgetController):
     def setRecFolder(self, folderPath: str) -> None:
         """ Sets the folder to save recordings into. """
         self._widget.setRecFolder(folderPath)
-
+    
+    @APIExport(runOnUIThread=True)
+    def setSpecifyFileName(self,enable=True) -> None:
+        self._widget.specifyfile.setChecked(enable)
+    
+    @APIExport(runOnUIThread=True)
+    def setSnapModeSave(self,mode="tiff") -> None:
+        self._widget.saveSnapFormatList.setCurrentText(mode)
+    
+    @APIExport(runOnUIThread=True)
+    def getRecFolder(self) -> str:
+        return self._widget.folderEdit.text()
+    
 
 _attrCategory = 'Rec'
 _recModeAttr = 'Mode'

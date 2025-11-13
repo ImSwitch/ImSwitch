@@ -90,6 +90,14 @@ class PositionerInfo(DeviceInfo):
     resetOnClose: bool = True
     """ Whether the positioner should be reset to 0-position upon closing ImSwitch. """
 
+    joystick: bool = False
+    """ Whether the positioner is connected to a joystick. """
+
+    liveUpdate: bool = False
+    """ Whether the positioner position should be updated live. """
+
+
+
 
 @dataclass(frozen=True)
 class RS232Info:
@@ -114,6 +122,9 @@ class SLMInfo:
 
     wavelength: int
     """ Wavelength of the laser line used with the SLM. """
+    
+    serial_number: str
+    """ Unique n° of the SLM head you use. """
 
     pixelSize: float
     """ Pixel size or pixel pitch of the SLM, in millimetres. """

@@ -47,7 +47,7 @@ class CommunicationChannel(SignalInterface):
     )  # (name, image, filePath, savedToDisk)
 
     sigRunScan = Signal(bool, bool)  # (recalculateSignals, isNonFinalPartOfSequence)
-
+    
     sigAbortScan = Signal()
 
     sigScanStarting = Signal()
@@ -94,6 +94,20 @@ class CommunicationChannel(SignalInterface):
 
     sigNewFrame = Signal()
 
+    sigInitiateEtMonalisa = Signal(bool)
+
+    sigQueryCenterCoord = Signal(str) # (search mode)
+    
+    sigCenterCoordPipelineFinished = Signal(object) #(center coordinates or None)
+
+    sigUpdateBeadRecCenter = Signal(int,int) # y,x coordinates
+
+    sigShowBeadRecCenterCross = Signal(bool) # state
+
+    sigAutoAxialToggled = Signal(bool) #state
+
+    sigNewAxialListBuffer = Signal(list) # list of auto axial scans to do e.g. ["XZ","YZ"]
+
     # useq-schema related signals
     sigSetXYPosition = Signal(float, float)
     sigSetZPosition = Signal(float)
@@ -111,7 +125,16 @@ class CommunicationChannel(SignalInterface):
         self.__logger = initLogger(self)
         self._scriptExecution = False
         self.__main._moduleCommChannel.sigExecutionFinished.connect(self.executionFinished)
-
+    
+    def isScanRunning(self) -> bool:
+        """
+        Returns wether a scan is ongoing or not.
+        """
+        if 'Scan' in self.__main.controllers:
+            return self.__main.controllers['Scan'].isRunning
+        else:
+            raise RuntimeError('Required scan widget not available')
+        
     def getCenterViewbox(self):
         """ Returns the center point of the viewbox, as an (x, y) tuple. """
         if 'Image' in self.__main.controllers:
@@ -119,9 +142,21 @@ class CommunicationChannel(SignalInterface):
         else:
             raise RuntimeError('Required image widget not available')
 
+    def getNumCamTTL(self):
+        if 'Scan' in self.__main.controllers:
+            return self.__main.controllers['Scan'].getNumCamTTL()
+        else:
+            raise RuntimeError('Required scan widget not available')
+
     def getDimsScan(self):
         if 'Scan' in self.__main.controllers:
             return self.__main.controllers['Scan'].getDimsScan()
+        else:
+            raise RuntimeError('Required scan widget not available')
+    
+    def getScanStepSizes(self):
+        if 'Scan' in self.__main.controllers:
+            return self.__main.controllers['Scan'].getScanStepSizes()
         else:
             raise RuntimeError('Required scan widget not available')
 
@@ -130,6 +165,19 @@ class CommunicationChannel(SignalInterface):
             return self.__main.controllers['Scan'].getNumScanPositions()
         else:
             raise RuntimeError('Required scan widget not available')
+        
+    def getNumCamTTL(self):
+        if 'Scan' in self.__main.controllers:
+            return self.__main.controllers['Scan'].getNumCamTTL()
+        else:
+            raise RuntimeError('Required scan widget not available')
+    
+    def getNextAxial(self):
+        if 'Scan' in self.__main.controllers:
+            return self.__main.controllers['Scan'].getNextAxial()
+        else:
+            raise RuntimeError('Required scan widget not available')
+
 
     def get_image(self, detectorName=None):
         return self.__main.controllers['View'].get_image(detectorName)

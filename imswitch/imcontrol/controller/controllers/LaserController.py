@@ -18,14 +18,27 @@ class LaserController(ImConWidgetController):
 
         # Set up lasers
         for lName, lManager in self._master.lasersManager:
+            if "calibCsvPath" in lManager._laserInfo.managerProperties:
+                valueRangeMin = 0
+                valueRangeMax = 100
+                valueUnits = "%"
+                valueDecimals = 1
+                valueRangeStep = 0.5 if lManager.valueRangeStep is not None else None
+            else:
+                valueRangeMin = lManager.valueRangeMin
+                valueRangeMax = lManager.valueRangeMax
+                valueUnits = lManager.valueUnits
+                valueDecimals = lManager.valueDecimals
+                valueRangeStep = lManager.valueRangeStep
+
             self._widget.addLaser(
-                lName, lManager.valueUnits, lManager.valueDecimals, lManager.wavelength,
-                (lManager.valueRangeMin, lManager.valueRangeMax) if not lManager.isBinary else None,
-                lManager.valueRangeStep if lManager.valueRangeStep is not None else None,
-                (lManager.freqRangeMin, lManager.freqRangeMax, lManager.freqRangeInit) if lManager.isModulated else (0, 0, 0)
+                lName, valueUnits, valueDecimals, lManager.wavelength,
+                (valueRangeMin, valueRangeMax) if not lManager.isBinary else None,
+                valueRangeStep if valueRangeStep is not None else None,
+                (lManager.freqRangeMin, lManager.freqRangeMax, lManager.freqRangeInit) if lManager.isModulated else (0, 0, 0),
             )
             if not lManager.isBinary:
-                self.valueChanged(lName, lManager.valueRangeMin)
+                self.valueChanged(lName, valueRangeMin)
 
             self.setSharedAttr(lName, _enabledAttr, self._widget.isLaserActive(lName))
             self.setSharedAttr(lName, _valueAttr, self._widget.getValue(lName))
@@ -70,7 +83,7 @@ class LaserController(ImConWidgetController):
     def valueChanged(self, laserName, magnitude):
         """ Change magnitude. """
         enabled = self._widget.isLaserActive(laserName)
-        self._master.lasersManager[laserName].setValue(magnitude, enabled, self.is_scanning)
+        self._master.lasersManager[laserName].setValue(magnitude)# , enabled, self.is_scanning) #TODO find out why this fails
         self._widget.setValue(laserName, magnitude)
         self.setSharedAttr(laserName, _valueAttr, magnitude)
     

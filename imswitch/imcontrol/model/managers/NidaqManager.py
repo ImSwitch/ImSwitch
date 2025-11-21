@@ -232,8 +232,8 @@ class NidaqManager(SignalInterface):
                     if not self.__simulating:
                         try:
                             aotask.write(signal, auto_start=True)
-                        except Exception:
-                            self.__logger.error(
+                        except Exception as e:
+                            self.__logger.error(e,
                                 'Attempted writing analog data that is too large or too small, or other'
                                 ' error when writing the task.'
                             )

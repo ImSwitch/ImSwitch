@@ -38,8 +38,8 @@ class MasterController:
                                                **lowLevelManagers)
 
         self.recordingManager = RecordingManager(self.detectorsManager)
-        # self.slmManager = SLMManager(self.__setupInfo.slm)
-        self.slmManager = SLMmlManager(self.__setupInfo.slm)
+        self.slmManager = SLMManager(self.__setupInfo.slm)
+        # self.slmManager = SLMmlManager(self.__setupInfo.slm)
 
         if self.__setupInfo.microscopeStand:
             self.standManager = StandManager(self.__setupInfo.microscopeStand,

@@ -7,10 +7,9 @@
 
 import os
 import numpy as np
-import imageio.v2 as imageio
+import imageio.v3 as imageio
 import cv2 as opencv
-import scipy.ndimage
-import matplotlib.pyplot as plt
+
 
 import imswitch.imcontrol.controller.Generation_Hologramme.parameters as param
 

@@ -1,7 +1,7 @@
 from imswitch.imcommon.model import VFileItem, initLogger
 from imswitch.imcontrol.model import (
     DetectorsManager, LasersManager, MultiManager, NidaqManager, PositionersManager, RecordingManager, RS232sManager, 
-    ScanManagerPointScan, ScanManagerBase, ScanManagerMoNaLISA, SLMManager, SLMmlManager,SLMsManager, StandManager, RotatorsManager
+    ScanManagerPointScan, ScanManagerBase, ScanManagerMoNaLISA,SLMsManager, StandManager, RotatorsManager
 )
 
 
@@ -39,9 +39,6 @@ class MasterController:
                                                **lowLevelManagers)
 
         self.recordingManager = RecordingManager(self.detectorsManager)
-        # self.slmManager = SLMManager(self.__setupInfo.slm)
-        self.slmManager = SLMmlManager(self.__setupInfo.slm)
-        # self.slmUsbManager = SLMusbManager() # TEMPORARY
 
         self.slmsManager = SLMsManager(self.__setupInfo.slms)
         
@@ -79,8 +76,6 @@ class MasterController:
         self.recordingManager.sigRecordingTimeUpdated.connect(cc.sigUpdateRecTime)
         self.recordingManager.sigMemorySnapAvailable.connect(cc.sigMemorySnapAvailable)
         self.recordingManager.sigMemoryRecordingAvailable.connect(self.memoryRecordingAvailable)
-
-        self.slmManager.sigSLMMaskUpdated.connect(cc.sigSLMMaskUpdated)
 
     def memoryRecordingAvailable(self, name, file, filePath, savedToDisk):
         self.__moduleCommChannel.memoryRecordings[name] = VFileItem(

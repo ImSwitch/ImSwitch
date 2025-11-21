@@ -64,8 +64,6 @@ class ImConMainView(QtWidgets.QMainWindow):
             'Laser': _DockInfo(name='Laser Control', yPosition=0),
             'Rotator': _DockInfo(name='Rotator', yPosition=1),
             'MotCorr': _DockInfo(name='Motorized Correction Collar', yPosition=1),
-            'SLM': _DockInfo(name='SLM', yPosition=2),
-            'SLMml': _DockInfo(name='SLM MonaLisa', yPosition=2),
             'SLMs': _DockInfo(name='SLM Grids', yPosition=2),
             'Scan': _DockInfo(name='Scan', yPosition=2),
             'RotationScan': _DockInfo(name='RotationScan', yPosition=2),

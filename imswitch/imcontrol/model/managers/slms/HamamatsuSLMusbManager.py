@@ -14,7 +14,7 @@ from ctypes import c_int32, c_uint8, c_char_p, byref, create_string_buffer
 from imswitch.imcommon.framework import Signal, SignalInterface
 from imswitch.imcommon.model import initLogger
 
-_dllpath = r"C:\Users\MonaLisa\Documents\GitHub\ImSwitch\imswitch\imcontrol\model\interfaces\hpkSLMdaLV_cdecl_64bit\hpkSLMdaLV.dll"
+_dllpath = r"C:\Users\guillaume.minet\Documents\GitHub\ImSwitch\imswitch\imcontrol\model\interfaces\hpkSLMdaLV_cdecl_64bit\hpkSLMdaLV.dll"
 
 class HamamatsuSLMusbManager(SignalInterface):
     """Manager for communication with Hamamatsu SLM with USB connection"""
@@ -28,21 +28,44 @@ class HamamatsuSLMusbManager(SignalInterface):
         
         self.slmName = slmName
         self.slmInfo = slmInfo
-        self.dll = ctypes.CDLL(_dllpath)
-        self.bID = None
-        self.num_devices = 0
-        self.connected = False
-        self.define_dll_prototypes()
+        self.width = slmInfo.width
+        self.height = slmInfo.height
+        self.pixel_size = slmInfo.pixelSize
+
+        if slmInfo.managerProperties is not None:
+            self.mockermode = slmInfo.managerProperties.get("mockermode", False)
+        
+        if self.mockermode:
+            self.__logger.info(f"SLM Manager {self.slmName} running in MOCKER MODE. No actual connection to SLM will be made.")
+            self.dll = None
+        else:
+            try:
+                self.dll = ctypes.CDLL(_dllpath)
+            except Exception as e:
+                self.__logger.error(f"Could not load Hamamatsu SLM DLL from {_dllpath}: {e}")
+                self.dll = None
+                self.bID = None
+                self.num_devices = 0
+                self.connected = False
+                if self.dll is not None:
+                    self.define_dll_prototypes()
 
     def finalize(self):
-        self.close_device()
+        """Finalize the manager by closing any open connections."""
+        if not self.mockermode:
+            self.close_device()
 
 
     def connect_to_device(self):
         """
         Connect to the Hamamatsu SLM device that matches self.serial_number.
         """
-
+        if self.mockermode:
+            return True, "Mocker mode - no actual device connection."
+        
+        if self.dll is None:
+            self.__logger.warning("DLL not loaded, cannot connect to device.")
+            return False, None
         max_devices = 8
         self.bIDList = (c_uint8 * max_devices)()
         self.num_devices = self.dll.Open_Dev(self.bIDList, max_devices)
@@ -91,6 +114,10 @@ class HamamatsuSLMusbManager(SignalInterface):
     def upload_pattern(self, pattern, slot_no=0, add_correction_pattern=False, apply_max_value=True):
         """ Upload pattern to SLM """
 
+        if self.mockermode:
+            self.__logger.info("Mocker mode - not uploading pattern to device.")
+            return
+
         if self.bID is None:
             raise RuntimeError("No device connected. Cannot upload pattern.")
 
@@ -129,10 +156,18 @@ class HamamatsuSLMusbManager(SignalInterface):
 
     def close_device(self):
         """Close USB connection with SLM """
+
+        if self.mockermode:
+            return True, "Mocker mode - no device to close."
+
         if self.bID is not None:
             # NOTE: Close_Dev(uint8_t bIDList[], int32_t bIDSize) disconnects communication with 
             # the target device(s) specified in bIDList.To disconnect only one, we prepare a list 
             # containing only this device ID
+
+            if self.dll is None:
+                self.__logger.warning("DLL not loaded, cannot close device.")
+                return False, "DLL not loaded"
 
             single_bID_list = (c_uint8 * 1)(self.bID)
             result = self.dll.Close_Dev(single_bID_list, 1)

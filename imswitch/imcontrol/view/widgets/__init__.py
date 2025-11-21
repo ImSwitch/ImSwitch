@@ -14,16 +14,13 @@ from .LaserWidget import LaserWidget
 from .MotCorrWidget import MotCorrWidget
 from .PositionerWidget import PositionerWidget
 from .RecordingWidget import RecordingWidget
-from .SLMWidget import SLMWidget
+from .SLMsWidget import SLMsWidget
 from .ScanWidgetBase import ScanWidgetBase
 from .ScanWidgetMoNaLISA import ScanWidgetMoNaLISA
 from .ScanWidgetPointScan import ScanWidgetPointScan
 from .RotationScanWidget import RotationScanWidget
 from .RotatorWidget import RotatorWidget
 from .SettingsWidget import SettingsWidget
-from .SLMsWidget import SLMsWidget
-from .SLMmlWidget import SLMmlWidget
-from .SLMWidget import SLMWidget
 from .TilingWidget import TilingWidget
 from .ULensesWidget import ULensesWidget
 from .ViewWidget import ViewWidget

@@ -1,3 +1,6 @@
+import numpy as np
+from scipy.interpolate import interp1d
+
 from .LaserManager import LaserManager
 
 
@@ -48,7 +51,20 @@ class AAAOTFLaserManager(LaserManager):
                 #self.blankingOnInternal()
                 self.internalControl()
 
-        super().__init__(laserInfo, name, isBinary=False, valueUnits='arb', valueDecimals=0)
+        self._lut = None
+        self._value_units = 'arb'
+        try:
+            calib_csv_path = laserInfo.managerProperties["calibCsvPath"]
+            self.create_lut_from_calib(calib_csv_path)
+            self._value_units = '%'
+        except AttributeError:
+            pass  # Calib file not specified, managerProperties doesnt exist
+        except KeyError:
+            pass  # Calib file not specified, managerProperties does exist but calib is missing
+        except Exception as e:
+            print(f"creating lut for {laserInfo} from calib failed due to: {e}")
+
+        super().__init__(laserInfo, name, isBinary=False, valueUnits=self._value_units, valueDecimals=0)
 
     def setEnabled(self, enabled):
         """Turn on (1) or off (0) laser emission"""
@@ -73,7 +89,11 @@ class AAAOTFLaserManager(LaserManager):
         """Handles output power.
         Sends a RS232 command to the laser specifying the new intensity.
         """
-        valueaotf = round(power)
+
+        if self._lut is not None:
+            valueaotf = int(self._lut(power))
+        else:
+            valueaotf = round(power)
         cmd = 'L' + str(self._channel) + 'P' + str(valueaotf)
         if self._ttlToggling:
             if self._toggleTrueExternal:
@@ -106,6 +126,12 @@ class AAAOTFLaserManager(LaserManager):
         """Switch the channel to external control"""
         cmd = 'L' + str(self._channel) + 'I0'
         _ = self._rs232manager.query(cmd)
+
+    def create_lut_from_calib(self, calib_csv_path):
+        data = np.loadtxt(calib_csv_path)
+        data[:, 1] -= data[:, 1].min()
+        data[:, 1] /= data[:, 1].max() * 0.01 # convert to %
+        self._lut = interp1d(data[:, 1], data[:, 0], bounds_error=False)
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

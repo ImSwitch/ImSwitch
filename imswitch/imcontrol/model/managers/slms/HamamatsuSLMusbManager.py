@@ -1,20 +1,16 @@
 import os
-import glob
-import enum
-import numpy as np
-from PIL import Image
-import math
-from scipy import signal as sg
-from pathlib import Path
-import matplotlib.pyplot as plt
 
 import ctypes
-from ctypes import c_int32, c_uint8, c_char_p, byref, create_string_buffer
+from ctypes import c_int32, c_uint8, c_char_p, create_string_buffer
 
-from imswitch.imcommon.framework import Signal, SignalInterface
+from imswitch.imcommon.framework import SignalInterface
 from imswitch.imcommon.model import initLogger
 
-_dllpath = r"C:\Users\guillaume.minet\Documents\GitHub\ImSwitch\imswitch\imcontrol\model\interfaces\hpkSLMdaLV_cdecl_64bit\hpkSLMdaLV.dll"
+
+# NOTE: dll is expected to be in "imswitch\imcontrol\model\interfaces" so we define the "_dll_base_directory" like this.
+# But it can be override by providing "dll_base_directory" in the config file under "managerProperties"
+cwd = os.getcwd()
+_dll_base_directory = os.path.join(cwd,r"imswitch\imcontrol\model\interfaces")
 
 class HamamatsuSLMusbManager(SignalInterface):
     """Manager for communication with Hamamatsu SLM with USB connection"""
@@ -40,15 +36,22 @@ class HamamatsuSLMusbManager(SignalInterface):
             self.dll = None
         else:
             try:
-                self.dll = ctypes.CDLL(_dllpath)
+                if slmInfo.managerProperties.get("dll_base_directory") is not None:
+                    baseDir = slmInfo.managerProperties.get("dll_base_directory")
+                else:
+                    baseDir = _dll_base_directory
+                dll_path = os.path.join(baseDir,slmInfo.managerProperties.get("dll"))
+                self.dll = ctypes.CDLL(dll_path)
             except Exception as e:
-                self.__logger.error(f"Could not load Hamamatsu SLM DLL from {_dllpath}: {e}")
+                self.__logger.error(f"Could not load Hamamatsu SLM DLL, using MockerMode")
+                self.mockermode = True
                 self.dll = None
                 self.bID = None
                 self.num_devices = 0
                 self.connected = False
-                if self.dll is not None:
-                    self.define_dll_prototypes()
+
+        if self.dll is not None:
+            self.define_dll_prototypes()
 
     def finalize(self):
         """Finalize the manager by closing any open connections."""
@@ -111,7 +114,7 @@ class HamamatsuSLMusbManager(SignalInterface):
             return False, None
 
 
-    def upload_pattern(self, pattern, slot_no=0, add_correction_pattern=False, apply_max_value=True):
+    def upload_pattern(self, pattern, slot_no=0):
         """ Upload pattern to SLM """
 
         if self.mockermode:
@@ -120,16 +123,6 @@ class HamamatsuSLMusbManager(SignalInterface):
 
         if self.bID is None:
             raise RuntimeError("No device connected. Cannot upload pattern.")
-
-        if add_correction_pattern:
-            if self.correction_pattern is None:
-                raise ValueError("Correction pattern not set.")
-            pattern = pattern + self.correction_pattern
-            pattern = pattern % 256
-        
-        if apply_max_value:
-            pattern = pattern.astype(np.float16) * self.max_value / 255
-            pattern = pattern.astype(np.uint8)
 
         # Flatten to 1D
         array_1d = pattern.flatten()
@@ -148,7 +141,7 @@ class HamamatsuSLMusbManager(SignalInterface):
         )
 
         if success:
-            self.__logger.debug("Array uploaded successfully to slot_no", slot_no)
+            self.__logger.debug(f"Array uploaded successfully to slot_no {slot_no}")
             self.dll.Change_DispSlot(self.bID, slot_no)
             self.currently_displayed = pattern
         else:
@@ -207,9 +200,9 @@ class HamamatsuSLMusbManager(SignalInterface):
 
         # Define prototype
         self.dll.Write_FMemArray.argtypes = [
-            c_uint8,                      # bID
-            ctypes.POINTER(c_uint8),      # ArrayIn
-            c_int32,                      # ArraySize
+            c_uint8,                     # bID
+            ctypes.POINTER(c_uint8),     # ArrayIn
+            c_int32,                     # ArraySize
             c_int32,                     # XPixel
             c_int32,                     # YPixel
             c_int32                      # SlotNo

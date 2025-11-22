@@ -32,7 +32,6 @@ class SLMsController(ImConWidgetController):
         self._slmNames = {}         # {slmKey (widget): slmName (Manager)}
         self._slmKeys = {}          # {slmName (Manager): slmKey (widget)} 
         self._slmInfos = {}         # {slmKey: slmInfo}
-        self._loadedTargets = {}    # {slmKey: {secKey: target_array}}
         self._currentTargets = {}   # {slmKey: {secKey: target_array}}
         self._cghResults = {}       # {slmKey: {secKey: {"cgh_pattern":..., "performances":...}}}
         self._wavelengths = {}      # {slmKey: {secKey: wl}}
@@ -380,20 +379,15 @@ class SLMsController(ImConWidgetController):
             return
 
         cgh_general = cgh_params.get("cgh_general", {})
+        
         # Target preparation
-        if cgh_general.get("use_loaded_target", False):
-            target = self._loadedTargets.get(slmKey,{}).get(secKey,None)
-            if target is None:
-                self._widget.on_cgh_computation_result(slmKey, secKey, success=False, msg="Could not find a loaded target")
-                return
-        else:
-            target_type = cgh_general.get("target_type",None)
-            target_params = cgh_params.get(target_type, None)
-            try:
-                target = cgh.create_target(target_type, **target_params)
-            except Exception as e:
-                self._widget.on_cgh_computation_result(slmKey, secKey,success=False, msg=e)
-                return
+        target_type = cgh_general.get("target_type",None)
+        target_params = cgh_params.get(target_type, None)
+        try:
+            target = cgh.create_target(target_type, **target_params)
+        except Exception as e:
+            self._widget.on_cgh_computation_result(slmKey, secKey,success=False, msg=e)
+            return
         
         self._currentTargets.setdefault(slmKey,{})[slmKey] = target # store current target
 

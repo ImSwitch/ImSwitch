@@ -25,9 +25,21 @@ api.imcontrol
 
       Returns the positions of all positioners. 
 
-   .. method:: loadScanParamsFromFile(filePath: str) -> None
+   .. method:: loadScanParamsFromFile(filePath: str) -> None #comment from Simone: I tink originally from basecontroller, now also scancontrollerpointscan (I guess make sure only one is in the setup)
 
-      Loads scanning parameters from the specified file. 
+      Loads scanning parameters from the specified file.
+
+   .. method:: changeScanCenterPos(positionerName: str, centerPos: float) -> None #new from Simone
+
+      set the center of the scan 
+
+   .. method:: changed3StepDelayPar(d3StepDelayPar: float) -> None #new from Simone
+
+      set the d3Stepdelay parameter (additional parameter rom the pointscan widget, mostly relevant for the polarization during scan)
+
+   .. method:: changeScanSize(positionerName: str, size: float) -> None
+
+      change scan size of positioner
 
    .. method:: movePositioner(positionerName: str, axis: str, dist: float) -> None
 
@@ -37,7 +49,7 @@ api.imcontrol
    .. method:: runScan() -> None
 
       Runs a scan with the set scanning parameters. 
-
+   
    .. method:: saveScanParamsToFile(filePath: str) -> None
 
       Saves the set scanning parameters to the specified file. 
@@ -140,7 +152,7 @@ api.imcontrol
 
    .. method:: snapImage() -> None
 
-      Take a snap and save it to a .tiff file at the set file path. 
+      Take a snap and save it as the selected file format at the set file path. 
 
    .. method:: startRecording() -> None
 
@@ -159,4 +171,36 @@ api.imcontrol
    .. method:: stopRecording() -> None
 
       Stops recording. 
+   
+   .. method:: setMask(maskMode: str) -> None 
+      
+      Sets SLM Mask to Gaussian or Donut or etc. Available: Donut, TopHat, Half, Gauss, Hex, Quad, Split, Black
 
+   .. method:: loadParams() -> None
+
+      Loads saved SLM parameters from file
+   
+   .. method:: toggleSLMDisplay(bool) -> None
+
+      Enable SLM display end thereby turn on
+
+   .. method:: moveAbs(name: str, pos: str) -> None or float?
+
+      Get rotator with name to move to posisition pos
+
+   .. method:: changeRotationParameters(rotationPars: List[str])
+
+      change rotation step, start angle and stop angle
+
+   .. method:: loadCalibration(calibname: str) -> None
+
+      load rotation calibration
+
+   .. method:: activateRotScan(activate: bool) -> None
+
+      activate rotation scan on d3 scan axis
+
+   .. method:: getScanParameters() -> None
+
+      From etSTEd controller.
+      Load the scan parameters of the scan widget for etSTED

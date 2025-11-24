@@ -1,7 +1,6 @@
-from imswitch.imcommon.model import initLogger
-
+from imswitch.imcommon.model import APIExport, initLogger
 from ..basecontrollers import ImConWidgetController
-
+from PyQt5.QtCore import QTimer 
 
 class RotatorController(ImConWidgetController):
     """ Linked to RotatorWidget."""
@@ -17,7 +16,7 @@ class RotatorController(ImConWidgetController):
 
         # Connect PositionerWidget signals
         self._widget.sigMoveRelClicked.connect(lambda name, dir: self.moveRel(name, dir))
-        self._widget.sigMoveAbsClicked.connect(lambda name: self.moveAbs(name))
+        self._widget.sigMoveAbsClicked.connect(lambda name: self.moveAbs(name, self._widget.getAbsPos(name))) # Simone: to get scriptable, make sure that when the button is clicked, the method still fetches the absolute postion from the GUI widget
         self._widget.sigSetZeroClicked.connect(lambda name: self.setZeroPos(name))
         self._widget.sigSetSpeedClicked.connect(lambda name: self.setSpeed(name))
         self._widget.sigStartContMovClicked.connect(lambda name: self.startContMov(name))
@@ -25,11 +24,11 @@ class RotatorController(ImConWidgetController):
 
         # Connect commChannel signals
         self._commChannel.sigUpdateRotatorPosition.connect(lambda name: self.updatePosition(name))
-        self._commChannel.sigSetSyncInMovementSettings.connect(lambda name, pos: self.setSyncInMovement(name, pos))
+        self._commChannel.sigSetSyncInMovementSettings.connect(lambda name, pos, rel_shift, enabled: self.setSyncInMovement(name, pos, rel_shift, enabled))
 
-        # Update current position in GUI
-        self.updatePosition(name)
-
+        for name, _ in self._master.rotatorsManager:
+            self.updatePosition(name)
+ 
     def closeEvent(self):
         pass
 
@@ -38,8 +37,9 @@ class RotatorController(ImConWidgetController):
         self._master.rotatorsManager[name].move_rel(dist)
         self.updatePosition(name)
 
-    def moveAbs(self, name):
-        pos = self._widget.getAbsPos(name)
+    @APIExport(runOnUIThread=True)
+    def moveAbs(self, name, pos): #change by Simone: for scriptable, add pos position
+        #pos = self._widget.getAbsPos(name) #commented by Simone because we want it scriptable. Now connected to the widget through line 20
         self._master.rotatorsManager[name].move_abs(pos)
         self.updatePosition(name)
 
@@ -59,10 +59,11 @@ class RotatorController(ImConWidgetController):
 
     def updatePosition(self, name):
         pos = self._master.rotatorsManager[name].position()
+        #self.__logger.info(f'{name} pos is {pos}') #debugging simone
         self._widget.updatePosition(name, pos)
 
-    def setSyncInMovement(self, name, pos):
-        self._master.rotatorsManager[name].set_sync_in_pos(pos)
+    def setSyncInMovement(self, name, pos, rel_shift, enabled):
+        self._master.rotatorsManager[name].set_sync_in_set(pos, rel_shift, enabled)
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

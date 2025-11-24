@@ -3,7 +3,7 @@ from qtpy import QtCore, QtWidgets
 from abc import abstractmethod
 
 from imswitch.imcontrol.view import guitools as guitools
-from imswitch.imcommon.model import initLogger
+from imswitch.imcommon.model import initLogger, APIExport
 from .basewidgets import Widget
 
 
@@ -67,10 +67,8 @@ class SuperScanWidget(Widget):
     def getTTLIncluded(self, deviceName):
         pass
 
+    @abstractmethod
     def setScanMode(self):
-        pass
-
-    def setContLaserMode(self):
         pass
 
     def repeatEnabled(self):
@@ -110,6 +108,7 @@ class SuperScanWidget(Widget):
     def setScanStepSize(self, positionerName, stepSize):
         self.scanPar['stepSize' + positionerName].setText(str(round(stepSize, 3)))
 
+    @APIExport(runOnUIThread=True)
     def setScanCenterPos(self, positionerName, centerPos):
         self.scanPar['center' + positionerName].setText(str(round(centerPos, 3)))
 

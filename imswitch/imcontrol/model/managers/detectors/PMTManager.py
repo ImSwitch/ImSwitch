@@ -1,37 +1,63 @@
+"""
+First-draft PMTManager for analog-input photomultiplier tubes.
+
+Notes:
+- This mirrors the APDManager structure but reads analog voltages
+  instead of counter integers.
+- The ScanWorker contains a simulated acquisition path and a guarded real path
+  that attempts to call a helper on nidaqManager. Replace or adapt the
+  nidaqManager.read_analog_samples(...) call with your actual API when
+  debugging against hardware.
+"""
+
+import time
+import logging
+
 import numpy as np
-import matplotlib.pyplot as plt
 
 from imswitch.imcommon.framework import Signal, Thread, Worker
 from imswitch.imcommon.model import initLogger
 from .DetectorManager import DetectorManager
 
+# optional plotting for debug mode
+try:
+    import matplotlib.pyplot as plt
+except Exception:
+    plt = None
 
-class APDManager(DetectorManager):
-    """ DetectorManager that deals with an avalanche photodiode connected to a
-    counter input on a Nidaq card.
+
+class PMTManager(DetectorManager):
+    """ DetectorManager that deals with photomultiplier tubes connected to an
+    analog input on a NIDAQ card.
 
     Manager properties:
-    - ``terminal`` -- the physical input terminal on the Nidaq to which the APD
-      is connected
-    - ``ctrInputLine`` -- the counter that the physical input terminal is
-      connected to
+    - ``terminal`` -- the physical analog input terminal on the Nidaq to which
+      the PMT is connected (e.g. 'Dev1/ai0')
+    - (legacy compatibility) ``ctrInputLine`` -- kept for template parity with APD,
+      but PMT uses analog terminal for readings.
     """
 
     def __init__(self, detectorInfo, name, nidaqManager, **_lowLevelManagers):
-
         self.__logger = initLogger(self, instanceName=name)
+        self._log = logging.getLogger(f"PMTManager.{name}")
 
         model = name
         self._name = name
         self.setPixelSize([1, 1])
         fullShape = (100, 100)
-        self._image = np.random.rand(fullShape[0], fullShape[1]) * 100
-        self._detection_samplerate = float(1e6)
-        self._nidaq_clock_source = r'ctr2InternalOutput'  # counter output task generating a 1 MHz frequency digitial pulse train
-        self._channel = detectorInfo.managerProperties["ctrInputLine"]
+        # initial image: floats
+        self._image = np.random.rand(fullShape[0], fullShape[1]) * 100.0
+
+        # default sampling / timing choices (same default as APD)
+        self._detection_samplerate = float(1e6)  # samples per second
+        self._nidaq_clock_source = r'ctr2InternalOutput'  # used if synchronizing tasks
+
+        # maintain compatibility in detectorInfo keys
+
+        self._channel = detectorInfo.managerProperties.get("analogInputLine", None)
         if isinstance(self._channel, int):
-            self._channel = f'Dev1/ctr{self._channel}'  # for backwards compatibility
-        self._terminal = detectorInfo.managerProperties["terminal"]
+            self._channel = f'Dev1/{self._channel}'  # for backwards compatibility
+
 
         self._frameCount = 0
         self._scanWorker = None
@@ -45,18 +71,28 @@ class APDManager(DetectorManager):
         # Prepare detector manager parameters and signal connections
         parameters = {}
         self._nidaqManager = nidaqManager
-        self._nidaqManager.sigScanBuilt.connect(
-            lambda scanInfoDict, signalDict, _: self.initiateScan(scanInfoDict, signalDict)
-        )
-        self._nidaqManager.sigScanStarted.connect(self.startScan)
+        # connect to scan lifecycle signals so PMT participates in scans like APD
+        try:
+            self._nidaqManager.sigScanBuilt.connect(
+                lambda scanInfoDict, signalDict, _: self.initiateScan(scanInfoDict, signalDict)
+            )
+            self._nidaqManager.sigScanStarted.connect(self.startScan)
+        except Exception:
+            # If nidaqManager doesn't expose these signals at init time,
+            # this will be reconnected externally during integration.
+            self._log.debug("nidaqManager sigScanBuilt/sigScanStarted connection deferred or unavailable")
+
         self.__shape = fullShape
         super().__init__(detectorInfo, name, fullShape=fullShape, supportedBinnings=[1],
                          model=model, parameters=parameters, croppable=False)
 
     def __del__(self):
         if self._scanThread is not None:
-            self._scanThread.quit()
-            self._scanThread.wait()
+            try:
+                self._scanThread.quit()
+                self._scanThread.wait()
+            except Exception:
+                pass
         if hasattr(super(), '__del__'):
             super().__del__()
 
@@ -71,12 +107,13 @@ class APDManager(DetectorManager):
                 lambda pixels, pos: self.updateImage(pixels, pos)
             )
             self._scanWorker.acqDoneSignal.connect(self.stopAcquisitionLocal)
+            # follow your template: use d3Step to indicate frame complete (d3 ~ frame)
             self._scanWorker.d3Step.connect(lambda: self.sigNewFrame.emit())
-            if self._debug_mode:
+            if self._debug_mode and plt is not None:
                 plt.figure(1)
 
     def startScan(self):
-        if self.acquisition:
+        if self.acquisition and self._scanThread is not None:
             self._scanThread.start()
 
     def startAcquisition(self):
@@ -85,28 +122,47 @@ class APDManager(DetectorManager):
 
     def stopAcquisition(self):
         try:
-            self._scanWorker.scanning = False
-            self._scanThread.quit()
-            self._scanThread.wait()
-            self._scanWorker.close()
-            self.__currSlice[-1] += 1
+            if self._scanWorker is not None:
+                self._scanWorker.scanning = False
+            if self._scanThread is not None:
+                self._scanThread.quit()
+                self._scanThread.wait()
+            if self._scanWorker is not None:
+                try:
+                    self._scanWorker.close()
+                except Exception:
+                    pass
+            # maintain same bookkeeping as template
+            try:
+                self.__currSlice[-1] += 1
+            except Exception:
+                pass
             self.__newFrameReady = True
         except Exception:
             pass
 
     def stopAcquisitionLocal(self):
         try:
-            self._scanWorker.scanning = False
-            self._scanThread.quit()
-            self._scanThread.wait()
-            self._scanWorker.close()
+            if self._scanWorker is not None:
+                self._scanWorker.scanning = False
+            if self._scanThread is not None:
+                self._scanThread.quit()
+                self._scanThread.wait()
+            if self._scanWorker is not None:
+                try:
+                    self._scanWorker.close()
+                except Exception:
+                    pass
             if self._ttlmultiplying:
                 self._renewImage()
-            self.__currSlice[-1] += 1
+            try:
+                self.__currSlice[-1] += 1
+            except Exception:
+                pass
             self.__newFrameReady = True
         except Exception:
             pass
-        if self._debug_mode:
+        if self._debug_mode and plt is not None:
             plt.show()
 
     def getLatestFrame(self, is_save=True):
@@ -124,8 +180,9 @@ class APDManager(DetectorManager):
     def updateImage(self, pixels, pos: tuple):
         # pos: tuple with current pos for new pixels to be entered, from high dim to low dim (ending at d2)
         (*pos_rest, pos_d2) = (0,) + pos
-        img_slice = tuple(pos_rest)+tuple([pos_d2,])
-        self._image[img_slice] = pixels
+        img_slice = tuple(pos_rest) + tuple([pos_d2, ])
+        # pixels is expected to be an ndarray matching the slice shape (e.g., [rows, cols] or scalar)
+        self._image[img_slice] = (pixels * 32767).astype(np.int16)
         self.__currSlice = pos_rest  # from high dim to low dim (ending at d3)
         if pos_d2 == 0:
             # adjust viewbox shape to new image shape at the start of a d3 step
@@ -133,16 +190,31 @@ class APDManager(DetectorManager):
             self.__newFrameReady = True
 
     def initiateImage(self, img_dims):
-        img_dims_extra = tuple(reversed((*img_dims,1)))
+        img_dims_extra = tuple(reversed((*img_dims, 1)))
         if np.shape(self._image) != img_dims_extra:
             self._image = np.zeros(img_dims_extra)
             self.setShape(img_dims_extra)
 
     def setParameter(self, name, value):
-        pass
+        # placeholder for exposing runtime parameters (gain, offset, debug/sim flags, etc.)
+        if name == "debug_mode":
+            self._debug_mode = bool(value)
+        elif name == "simulation_mode":
+            self._simulation_mode = bool(value)
+        elif name == "detection_samplerate":
+            self._detection_samplerate = float(value)
+        else:
+            # passthrough to parent or store if needed
+            pass
 
     def getParameter(self, name):
-        pass
+        if name == "debug_mode":
+            return self._debug_mode
+        if name == "simulation_mode":
+            return self._simulation_mode
+        if name == "detection_samplerate":
+            return self._detection_samplerate
+        return None
 
     def setBinning(self, binning):
         super().setBinning(binning)
@@ -153,12 +225,13 @@ class APDManager(DetectorManager):
             pos_d3_fin = self.__currSlice[-1] - 1
             pos_rest = self.__currSlice[:-1]
             data = self.getLatestFrame()
-            data = data[tuple(pos_rest)+tuple([pos_d3_fin,])]  # get the last finished d3 position from image ([...,:,:] ending in the indexing is not written, but all x,y taken)
-            return data[np.newaxis,:,:]
+            data = data[tuple(pos_rest) + tuple([pos_d3_fin, ])]
+            return data[np.newaxis, :, :]
         else:
-            return np.empty(shape=(0,0,0))
-            
+            return np.empty(shape=(0, 0, 0))
+
     def flushBuffers(self):
+        # nothing special for analog PMT in this draft
         pass
 
     @property
@@ -171,7 +244,7 @@ class APDManager(DetectorManager):
     @property
     def scale(self):
         return self.__pixel_sizes[::-1]
-        
+
     @property
     def pixelSizeUm(self):
         return [1, *self.__pixel_sizes]
@@ -181,35 +254,45 @@ class APDManager(DetectorManager):
         self.__pixel_sizes = pixel_sizes
 
     def crop(self, hpos, vpos, hsize, vsize):
+        # cropping behavior can be implemented if required
         pass
 
     def remove_nans(self, im):
-        """ Remove slices which only contain np.nan values, called at end of acquisition. 
+        """ Remove slices which only contain np.nan values, called at end of acquisition.
         Source: https://stackoverflow.com/a/43724800 """
         acc = np.maximum.accumulate
         m = ~np.isnan(im)
         dims = im.ndim
 
-        if dims==1:
-            return im[acc(m) & acc(m[::-1])[::-1]]    
+        if dims == 1:
+            return im[acc(m) & acc(m[::-1])[::-1]]
         else:
-            r = np.tile(np.arange(dims),dims)
-            per_axis_combs = np.delete(r,range(0,len(r),dims+1)).reshape(-1,dims-1)
-            per_axis_combs_tuple = map(tuple,per_axis_combs)
+            r = np.tile(np.arange(dims), dims)
+            per_axis_combs = np.delete(r, range(0, len(r), dims + 1)).reshape(-1, dims - 1)
+            per_axis_combs_tuple = map(tuple, per_axis_combs)
 
             mask = []
-            for i in per_axis_combs_tuple:            
-                m0 = m.any(i)            
+            for i in per_axis_combs_tuple:
+                m0 = m.any(i)
                 mask.append(acc(m0) & acc(m0[::-1])[::-1])
             im_ret = im[np.ix_(*mask)]
             ax_rem = [i for i, val in enumerate(np.shape(im_ret)[1:]) if val == 1]
-            return np.expand_dims(np.squeeze(im_ret), axis=0).astype(int), ax_rem
+            # return as float array for PMT (unlike APD's int conversion)
+            return np.expand_dims(np.squeeze(im_ret).astype(int), axis=0), ax_rem
 
 
 class ScanWorker(Worker):
-    d2Step = Signal(np.ndarray, tuple)
-    d3Step = Signal()
-    acqDoneSignal = Signal()
+    """Worker that performs per-pixel analog reads for the PMT.
+
+    Expected behavior:
+    - Emit d2Step with pixel data (numpy array) and position tuple.
+    - Emit d3Step at frame boundaries.
+    - Emit acqDoneSignal when acquisition completes or is stopped.
+    """
+
+    d2Step = Signal(np.ndarray, tuple)         # (pixels, pos)
+    d3Step = Signal()         # frame complete
+    acqDoneSignal = Signal()  # acquisition done
 
     def __init__(self, manager, scanInfoDict, signalDict):
         super().__init__()
@@ -231,11 +314,12 @@ class ScanWorker(Worker):
         # ratio between detection sample rate and scanning sample rate
         self._frac_scan_det_rate = round(self._manager._detection_samplerate * scanInfoDict['scan_time_step'])
 
-        # extract APD signals from signalDict
+        # extract PMT signals from signalDict
         if self._manager._ttlmultiplying:
             for target in signalDict['TTLCycleSignalsDict'].keys():
                 if self._name == target:
-                    self._seq_signal = np.repeat(signalDict['TTLCycleSignalsDict'][target].copy(), self._frac_scan_det_rate)
+                    self._seq_signal = np.repeat(signalDict['TTLCycleSignalsDict'][target].copy(),
+                                                 self._frac_scan_det_rate)
                     self._seq_signal = self._seq_signal.astype('float')
                     self._seq_signal[self._seq_signal == 0] = np.nan
                     break
@@ -244,37 +328,40 @@ class ScanWorker(Worker):
         self._img_dims = scanInfoDict['img_dims']
 
         # det samples per scan steps in different dims
-        self._samples_d_scanstep = [round(samples)*self._frac_scan_det_rate for samples in scanInfoDict['scan_samples']]
+        self._samples_d_scanstep = [round(samples) * self._frac_scan_det_rate for samples in
+                                    scanInfoDict['scan_samples']]
         # det samples per fast axis period
         self._samples_d2_period = round(scanInfoDict['scan_samples_d2_period'] * self._frac_scan_det_rate)
         # det samples in total signal
         self._samples_total = round(scanInfoDict['scan_samples_total'] * self._frac_scan_det_rate)
-        # samples to throw due to: 
-        self._throw_startzero = round(scanInfoDict['scan_throw_startzero'] * self._frac_scan_det_rate)  # starting zero-padding
-        self._scan_pads_initpos = [round(initpos)*self._frac_scan_det_rate for initpos in scanInfoDict['scan_pads_initpos']] # smooth inital positioning times
+        # samples to throw due to:
+        self._throw_startzero = round(
+            scanInfoDict['scan_throw_startzero'] * self._frac_scan_det_rate)  # starting zero-padding
+        self._scan_pads_initpos = [round(initpos) * self._frac_scan_det_rate for initpos in
+                                   scanInfoDict['scan_pads_initpos']]  # smooth inital positioning times
         self._throw_settling = round(scanInfoDict['scan_throw_settling'] * self._frac_scan_det_rate)  # settling time
-        self._throw_startacc = round(scanInfoDict['scan_throw_startacc'] * self._frac_scan_det_rate)  # starting acceleration
+        self._throw_startacc = round(
+            scanInfoDict['scan_throw_startacc'] * self._frac_scan_det_rate)  # starting acceleration
 
         self._phase_delay = int(scanInfoDict['phase_delay'])  # phase delay samples - galvo response time
         self._smooth_axes = scanInfoDict['smooth_axes']
-        
+
         # samples to throw due to smooth between d>2 step transitioning
-        pad_initpos = self._scan_pads_initpos[0] if len(self._scan_pads_initpos)>0 else 0
+        pad_initpos = self._scan_pads_initpos[0] if len(self._scan_pads_initpos) > 0 else 0
         self._throw_init_smooth = (pad_initpos + self._throw_settling + self._throw_startacc)
         # initiate parameter for thrown samples for smooth higher dimensions step init
         self._throw_init_higher_d = False
 
         if not self._manager._simulation_mode:
-            self._manager._nidaqManager.startInputTask(self._name, 'ci', self._channel, 'finite',
+            self._manager._nidaqManager.startInputTask(self._name, 'ai', self._channel, 'finite',
                                                        self._manager._nidaq_clock_source,
-                                                       self._manager._detection_samplerate,
-                                                       self._samples_total, True, 'ao/StartTrigger',
-                                                       self._manager._terminal)
+                                                       self._manager._detection_samplerate, None, None ,
+                                                       self._samples_total, True, 'ao/StartTrigger')
         self._manager.initiateImage(self._img_dims)
         self._manager.setPixelSize(scanInfoDict['pixel_sizes'])  # 'pixel_sizes' order: low dim to high dim
 
     def throwdata(self, datalen):
-        """ Throw away data with length datalen, save the last value, 
+        """ Throw away data with length datalen, save the last value,
         and add length of data to total samples_read length.
         """
         if datalen > 0:
@@ -356,7 +443,7 @@ class ScanWorker(Worker):
         Works for arbitrary amount of dimensions, tested for <=5.
         """
         while self._pos[dim-1] < self._img_dims[dim-1]:
-            if dim > 2:                 
+            if dim > 2:
                 if dim == 3:
                     if any(self._smooth_axes[:dim-1]) or self._pos[dim-1] == 0:
                         # begin d step: throw data from initial smooth step positioning,
@@ -427,19 +514,3 @@ class ScanWorker(Worker):
     def randomInput(self, datalen):
         return np.random.randint(100, size=datalen)
 
-
-# Copyright (C) 2020-2021 ImSwitch developers
-# This file is part of ImSwitch.
-#
-# ImSwitch is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# ImSwitch is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.

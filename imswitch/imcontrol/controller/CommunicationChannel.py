@@ -90,7 +90,7 @@ class CommunicationChannel(SignalInterface):
     
     sigUpdateRotatorPosition = Signal(str)  # (rotatorName)
 
-    sigSetSyncInMovementSettings = Signal(str, float)  # (rotatorName, position)
+    sigSetSyncInMovementSettings = Signal(str, float, bool, bool)  # (rotatorName, position, relativeShift, enabled)
 
     sigNewFrame = Signal()
 

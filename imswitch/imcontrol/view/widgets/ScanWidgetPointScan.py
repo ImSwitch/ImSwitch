@@ -11,11 +11,12 @@ class ScanWidgetPointScan(SuperScanWidget):
 
         self.seqTimePar = QtWidgets.QLineEdit('0.02')  # ms
         self.phaseDelayPar = QtWidgets.QLineEdit('100')  # samples
-        #self.extraLaserOnPar = QtWidgets.QLineEdit('10')  # samples
+        self.d3StepDelayPar = QtWidgets.QLineEdit('0')  # samples
 
         self.scanPar = {
                         'seqTime': self.seqTimePar,
-                        'phaseDelay': self.phaseDelayPar
+                        'phaseDelay': self.phaseDelayPar,
+                        'frameDelay': self.d3StepDelayPar
                         }
 
         self.ttlParameters = {}
@@ -23,7 +24,7 @@ class ScanWidgetPointScan(SuperScanWidget):
         # Connect signals
         self.seqTimePar.textChanged.connect(self.sigSeqTimeParChanged)
         self.phaseDelayPar.textChanged.connect(self.sigStageParChanged)
-        #self.extraLaserOnPar.textChanged.connect(self.sigStageParChanged)  # for debugging
+        self.d3StepDelayPar.textChanged.connect(self.sigStageParChanged)
 
     def initControls(self, positionerNames, TTLDeviceNames):
         currentRow = 0
@@ -128,11 +129,11 @@ class ScanWidgetPointScan(SuperScanWidget):
         self.grid.addWidget(QtWidgets.QLabel('Phase delay (samples):'), currentRow, 5)
         self.grid.addWidget(self.phaseDelayPar, currentRow, 6)
 
-        #currentRow += 1
+        currentRow += 1
         
-        # Add detection phase delay parameter
-        #self.grid.addWidget(QtWidgets.QLabel('Extra laser on (samples):'), currentRow, 5)
-        #self.grid.addWidget(self.extraLaserOnPar, currentRow, 6)
+        # Add scan d3 step delay parameter
+        self.grid.addWidget(QtWidgets.QLabel('D3 step delay (samples):'), currentRow, 5)
+        self.grid.addWidget(self.d3StepDelayPar, currentRow, 6)
 
         # Add space item to make the grid look nicer
         self.grid.addItem(
@@ -202,8 +203,8 @@ class ScanWidgetPointScan(SuperScanWidget):
     def getPhaseDelayPar(self):
         return float(self.phaseDelayPar.text())
 
-    #def getExtraLaserOnPar(self):
-    #    return float(self.extraLaserOnPar.text())
+    def getd3StepDelayPar(self):
+        return float(self.d3StepDelayPar.text())
 
     def setScanPixels(self, positionerName, pixels):
         txt = str(pixels) if pixels > 1 else '-'
@@ -225,6 +226,12 @@ class ScanWidgetPointScan(SuperScanWidget):
 
     def setPhaseDelayPar(self, phaseDelayPar):
         self.phaseDelayPar.setText(str(round(int(phaseDelayPar))))
+
+    def setd3StepDelayPar(self, d3StepDelayPar):
+        self.d3StepDelayPar.setText(str(round(int(d3StepDelayPar))))
+
+    def setScanMode(self):
+        pass
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

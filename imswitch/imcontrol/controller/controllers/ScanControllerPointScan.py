@@ -4,7 +4,7 @@ import configparser
 from ast import literal_eval
 
 from ..basecontrollers import SuperScanController
-
+from imswitch.imcommon.model import APIExport
 
 class ScanControllerPointScan(SuperScanController):
     def __init__(self, *args, **kwargs):
@@ -49,7 +49,7 @@ class ScanControllerPointScan(SuperScanController):
             self._widget.setPhaseDelayPar(self._analogParameterDict['phase_delay'])
         finally:
             self.settingParameters = False
-
+    
     def runScanAdvanced(self, *, recalculateSignals=True, isNonFinalPartOfSequence=False,
                         sigScanStartingEmitted):
         """ Runs a scan with the set scanning parameters. """
@@ -152,6 +152,8 @@ class ScanControllerPointScan(SuperScanController):
         self._digitalParameterDict['sequence_time'] = self._widget.getSeqTimePar()
         self._analogParameterDict['sequence_time'] = self._widget.getSeqTimePar()
         self._analogParameterDict['phase_delay'] = self._widget.getPhaseDelayPar()
+        self._analogParameterDict['d3step_delay'] = self._widget.getd3StepDelayPar()
+        #self._analogParameterDict['extra_laser_on'] = self._widget.getExtraLaserOnPar()
 
     def updatePixels(self):
         self.getParameters()
@@ -176,6 +178,7 @@ class ScanControllerPointScan(SuperScanController):
         with open(filePath, 'w') as configfile:
             config.write(configfile)
 
+    @APIExport(runOnUIThread=True)
     def loadScanParamsFromFile(self, filePath: str) -> None:
         """ Loads scanning parameters from the specified file. """
         config = configparser.ConfigParser()
@@ -194,6 +197,17 @@ class ScanControllerPointScan(SuperScanController):
 
         self.setParameters()
 
+    @APIExport(runOnUIThread=True)
+    def changed3StepDelayPar(self, d3StepDelay): #Simone: Simone added this to allow imscripting
+        self._widget.setd3StepDelayPar(d3StepDelay)
+
+    @APIExport(runOnUIThread=True)
+    def changeScanCenterPos(self, positionerName, positionerScanCenterPos): #Simone added this to allow imscripting
+        self._widget.setScanCenterPos(positionerName, positionerScanCenterPos)
+
+    @APIExport(runOnUIThread=True)
+    def changeScanSize(self, positioner: str, size: float): #Simone added this to allow imscripting
+        self._widget.setScanSize(positioner, size)
 
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

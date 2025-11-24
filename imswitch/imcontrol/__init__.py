@@ -47,7 +47,7 @@ def getMainViewAndController(moduleCommChannel, *_args,
     else:
         setupInfo = overrideSetupInfo
 
-    logger.debug(f'Setup used: {options.setupFileName}')
+    logger.info(f'Setup used: {options.setupFileName}')
     
     view = ImConMainView(options, setupInfo)
     try:

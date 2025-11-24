@@ -3,7 +3,7 @@ import os
 from imswitch.imcommon.model import initLogger
 
 import pyqtgraph as pg
-from pyqtgraph.Qt import QtGui, QtCore
+from pyqtgraph.Qt import QtGui, QtCore, QtWidgets
 
 from imswitch.imcommon.model import dirtools
 from imswitch.imcontrol.view import guitools
@@ -35,7 +35,7 @@ class EtSTEDWidget(Widget):
         
         # add all available analysis pipelines to a dropdown list
         self.analysisPipelines = list()
-        self.analysisPipelinePar = QtGui.QComboBox()
+        self.analysisPipelinePar = QtWidgets.QComboBox()
         for pipeline in os.listdir(self.analysisDir):
             if os.path.isfile(os.path.join(self.analysisDir, pipeline)):
                 pipeline = pipeline.split('.')[0]
@@ -47,10 +47,10 @@ class EtSTEDWidget(Widget):
         self.__paramsExclude = ['img', 'prev_frames', 'binary_mask', 'exinfo', 'testmode']
         
         # add all available coordinate transformations to a dropdown list
-        self.transformPipeline_label = QtGui.QLabel('Transform pipeline')
+        self.transformPipeline_label = QtWidgets.QLabel('Transform pipeline')
         self.transformPipeline_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignBottom)
         self.transformPipelines = list()
-        self.transformPipelinePar = QtGui.QComboBox()
+        self.transformPipelinePar = QtWidgets.QComboBox()
         for transform in os.listdir(self.transformDir):
             if os.path.isfile(os.path.join(self.transformDir, transform)):
                 if transform.endswith('.py'):
@@ -61,75 +61,85 @@ class EtSTEDWidget(Widget):
         self.transformPipelinePar.setCurrentIndex(0)
         
         # add all available coordinate transform coefs to a dropdown list
-        self.transformCoefs_label = QtGui.QLabel('Transform coefficients')
+        self.transformCoefs_label = QtWidgets.QLabel('Transform coefficients')
         self.transformCoefs_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignBottom)
         self.transformCoefs = list()
-        self.transformCoefsPar = QtGui.QComboBox()
+        self.transformCoefsPar = QtWidgets.QComboBox()
         for transform in os.listdir(self.transformDir):
             if os.path.isfile(os.path.join(self.transformDir, transform)):
                 if transform.endswith('.csv'):
                     transform = transform.split('.')[0]
                     self.transformCoefs.append(transform)
-        
+        self.transformCoefs = sorted(self.transformCoefs, reverse=True)
         self.transformCoefsPar.addItems(self.transformCoefs)
         self.transformCoefsPar.setCurrentIndex(0)
 
         # add all forAcquisition detectors in a dropdown list, for being the fastImgDetector (widefield)
         self.fastImgDetectors = list()
-        self.fastImgDetectorsPar = QtGui.QComboBox()
-        self.fastImgDetectorsPar_label = QtGui.QLabel('Fast detector')
+        self.fastImgDetectorsPar = QtWidgets.QComboBox()
+        self.fastImgDetectorsPar_label = QtWidgets.QLabel('Fast detector')
         self.fastImgDetectorsPar_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignBottom)
-        # add all lasers in a dropdown list, for being the fastImgLaser (widefield)
+        # add all lasers in a dropdown list, for being the fastImgLaser (widefield) 473 laser
         self.fastImgLasers = list()
-        self.fastImgLasersPar = QtGui.QComboBox()
-        self.fastImgLasersPar_label = QtGui.QLabel('Fast laser')
+        self.fastImgLasersPar = QtWidgets.QComboBox()
+        self.fastImgLasersPar_label = QtWidgets.QLabel('Fast laser')
         self.fastImgLasersPar_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignBottom)
         # add all experiment modes in a dropdown list
         self.experimentModes = ['Experiment','TestVisualize','TestValidate']
-        self.experimentModesPar = QtGui.QComboBox()
-        self.experimentModesPar_label = QtGui.QLabel('Experiment mode')
+        self.experimentModesPar = QtWidgets.QComboBox()
+        self.experimentModesPar_label = QtWidgets.QLabel('Experiment mode')
         self.experimentModesPar_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignCenter)
         self.experimentModesPar.addItems(self.experimentModes)
         self.experimentModesPar.setCurrentIndex(0)
         # add dropdown list for the type of recording I want to perform (pure scanWidget or recordingManager for timelapses with defined frequency)
         self.scanInitiation = list()
-        self.scanInitiationPar = QtGui.QComboBox()
-        self.scanInitiationPar_label = QtGui.QLabel('Scan type')
+        self.scanInitiationPar = QtWidgets.QComboBox()
+        self.scanInitiationPar_label = QtWidgets.QLabel('Scan type')
         self.scanInitiationPar_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignBottom)
 
         self.param_names = list()
         self.param_edits = list()
 
         self.initiateButton = guitools.BetterPushButton('Initiate etSTED')
-        self.initiateButton.setSizePolicy(QtGui.QSizePolicy.Preferred, QtGui.QSizePolicy.Expanding)
+        self.initiateButton.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Expanding)
         self.loadPipelineButton = guitools.BetterPushButton('Load pipeline')
         
         self.coordTransfCalibButton = guitools.BetterPushButton('Transform calibration')
-        self.coordTransfCalibButton.setSizePolicy(QtGui.QSizePolicy.Preferred, QtGui.QSizePolicy.Expanding)
+        self.coordTransfCalibButton.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Expanding)
         self.recordBinaryMaskButton = guitools.BetterPushButton('Record binary mask')
-        self.recordBinaryMaskButton.setSizePolicy(QtGui.QSizePolicy.Preferred, QtGui.QSizePolicy.Expanding)
+        self.recordBinaryMaskButton.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Expanding)
         self.loadScanParametersButton = guitools.BetterPushButton('Load scan parameters')
         self.setUpdatePeriodButton = guitools.BetterPushButton('Set update period')
         self.setBusyFalseButton = guitools.BetterPushButton('Unlock softlock')
 
-        self.loadScanParametersStatus = QtGui.QTextEdit('')
+        self.loadScanParametersStatus = QtWidgets.QTextEdit('')
         self.loadScanParametersStatus.setEnabled(False)
-        #self.loadScanParametersStatus.setTextColor(QtGui.QColor('white'))
+        #self.loadScanParametersStatus.setTextColor(QtWidgets.QColor('white'))
         self.loadScanParametersStatus.setText('No scan parameters loaded.')
 
-        self.endlessScanCheck = QtGui.QCheckBox('Endless')
-        self.fastaxisshiftCheck = QtGui.QCheckBox('Fast scan axis shift')
-        self.useScanLaserPresetCheck = QtGui.QCheckBox('Use laser preset for triggered scan')
+        self.endlessScanCheck = QtWidgets.QCheckBox('Endless')
+        self.fastaxisshiftCheck = QtWidgets.QCheckBox('Fast scan axis shift')
+        self.useScanLaserPresetCheck = QtWidgets.QCheckBox('Use laser preset for triggered scan')
 
-        self.bin_thresh_label = QtGui.QLabel('Bin. threshold (int.)')
+        self.bin_thresh_label = QtWidgets.QLabel('Bin. threshold (int.)')
         self.bin_thresh_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignBottom)
-        self.bin_thresh_edit = QtGui.QLineEdit(str(10))
-        self.bin_smooth_label = QtGui.QLabel('Bin. smooth (px)')
+        self.bin_thresh_edit = QtWidgets.QLineEdit(str(10))
+        self.bin_smooth_label = QtWidgets.QLabel('Bin. smooth (px)')
         self.bin_smooth_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignBottom)
-        self.bin_smooth_edit = QtGui.QLineEdit(str(2))
-        self.update_period_label = QtGui.QLabel('Update period (ms)')
+        self.bin_smooth_edit = QtWidgets.QLineEdit(str(2))
+        self.update_period_label = QtWidgets.QLabel('Update period (ms)')
         self.update_period_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignBottom)
-        self.update_period_edit = QtGui.QLineEdit(str(100))
+        self.update_period_edit = QtWidgets.QLineEdit(str(100))
+        self.slow_frames_label = QtWidgets.QLabel('Number of slow frames') # adding two new boxes for the timelapse scanning
+        self.slow_frames_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignBottom)
+        self.slow_frames_edit = QtWidgets.QLineEdit(str(1))
+        self.slow_timelapse_label = QtWidgets.QLabel('Time between slow frames (s)')
+        self.slow_timelapse_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignBottom)
+        self.slow_timelapse_edit = QtWidgets.QLineEdit(str(30))
+        self.laser_delay_label = QtWidgets.QLabel('Update period - Laser delay feature (ms)')
+        self.laser_delay_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignBottom)
+        self.laser_delay_edit = QtWidgets.QLineEdit(str(1000))
+        self.laser_delay_checkbox = QtWidgets.QCheckBox('Use laser delay feature')
 
         # help widget for coordinate transform
         self.coordTransformWidget = CoordTransformWidget(*args, **kwargs)
@@ -137,7 +147,7 @@ class EtSTEDWidget(Widget):
         # help widget for showing images from the analysis pipelines, i.e. binary masks or analysed images in live
         self.analysisHelpWidget = AnalysisWidget(*args, **kwargs)
 
-        self.grid = QtGui.QGridLayout()
+        self.grid = QtWidgets.QGridLayout()
         self.setLayout(self.grid)
 
         # initialize widget controls
@@ -168,7 +178,7 @@ class EtSTEDWidget(Widget):
         self.grid.addWidget(self.transformPipelinePar, currentRow, 3)
         self.grid.addWidget(self.coordTransfCalibButton, currentRow, 4, 2, 1)
 
-        currentRow +=1
+        currentRow += 1
 
         self.grid.addWidget(self.transformCoefs_label, currentRow, 2)
         self.grid.addWidget(self.transformCoefsPar, currentRow, 3)
@@ -179,7 +189,23 @@ class EtSTEDWidget(Widget):
         self.grid.addWidget(self.update_period_edit, currentRow, 3)
         self.grid.addWidget(self.setUpdatePeriodButton, currentRow, 4)
 
-        currentRow +=1
+        currentRow += 1
+        
+        self.grid.addWidget(self.laser_delay_label, currentRow, 2)
+        self.grid.addWidget(self.laser_delay_edit, currentRow, 3)
+        self.grid.addWidget(self.laser_delay_checkbox, currentRow, 4)
+
+        currentRow += 1
+
+        self.grid.addWidget(self.slow_frames_label, currentRow, 2) #new addition for timelapse etSTED
+        self.grid.addWidget(self.slow_frames_edit, currentRow, 3)
+        # do I need to add something to update this?
+        currentRow += 1
+
+        self.grid.addWidget(self.slow_timelapse_label, currentRow, 2) #new addition for timelapse etSTED
+        self.grid.addWidget(self.slow_timelapse_edit, currentRow, 3)
+        # do I need to add something to update this?
+        currentRow += 1
 
         self.grid.addWidget(self.fastImgDetectorsPar_label, currentRow, 2)
         self.grid.addWidget(self.fastImgDetectorsPar, currentRow, 3)
@@ -191,13 +217,13 @@ class EtSTEDWidget(Widget):
         self.grid.addWidget(self.fastImgLasersPar, currentRow, 3)
         self.grid.addWidget(self.useScanLaserPresetCheck, currentRow, 4)
 
-        currentRow +=1
+        currentRow += 1
 
         self.grid.addWidget(self.scanInitiationPar_label, currentRow, 2)
         self.grid.addWidget(self.scanInitiationPar, currentRow, 3)
         self.grid.addWidget(self.loadScanParametersButton, currentRow, 4)
 
-        currentRow +=1
+        currentRow += 1
 
         self.grid.addWidget(self.loadScanParametersStatus, currentRow, 3, 2, 2)
 
@@ -219,9 +245,9 @@ class EtSTEDWidget(Widget):
         for pipeline_param_name, pipeline_param_val in parameters.items():
             if pipeline_param_name not in self.__paramsExclude:
                 # create param for input
-                param_name = QtGui.QLabel('{}'.format(pipeline_param_name))
+                param_name = QtWidgets.QLabel('{}'.format(pipeline_param_name))
                 param_value = pipeline_param_val.default if pipeline_param_val.default is not pipeline_param_val.empty else 0
-                param_edit = QtGui.QLineEdit(str(param_value))
+                param_edit = QtWidgets.QLineEdit(str(param_value))
                 # add param name and param to grid
                 self.grid.addWidget(param_name, currentRow, 0)
                 self.grid.addWidget(param_edit, currentRow, 1)
@@ -235,6 +261,7 @@ class EtSTEDWidget(Widget):
         """ Set combobox with available detectors to use for the fast method. """
         for detectorName, _ in detectorNames.items():
             self.fastImgDetectors.append(detectorName)
+        self.fastImgDetectors = sorted(self.fastImgDetectors, reverse=True) #sorted to have Widefield automatically there
         self.fastImgDetectorsPar.addItems(self.fastImgDetectors)
         self.fastImgDetectorsPar.setCurrentIndex(0)
 
@@ -293,7 +320,7 @@ class AnalysisWidget(Widget):
         self.imgVb = self.imgVbWidget.addViewBox(row=1, col=1)
 
         self.img = pg.ImageItem(axisOrder = 'row-major')
-        self.img.translate(-0.5, -0.5)
+        self.img.setPos(-0.5, -0.5)
 
         self.scatter = pg.ScatterPlotItem()
 
@@ -301,9 +328,9 @@ class AnalysisWidget(Widget):
         self.imgVb.setAspectLocked(True)
         self.imgVb.addItem(self.scatter)
 
-        self.info_label = QtGui.QLabel('<image info>')
+        self.info_label = QtWidgets.QLabel('<image info>')
         
-        self.grid = QtGui.QGridLayout()
+        self.grid = QtWidgets.QGridLayout()
         self.setLayout(self.grid)
         self.grid.addWidget(self.info_label, 0, 0)
         self.grid.addWidget(self.imgVbWidget, 1, 0)
@@ -327,7 +354,7 @@ class CoordTransformWidget(Widget):
         self.pointsLayerTransf = self.napariViewerHi.add_points(name="transf_points", symbol='cross', size=20, face_color='red', edge_color='red')
         self.pointsLayerHi = self.napariViewerHi.add_points(name="hi_points", symbol='ring', size=20, face_color='green', edge_color='green')
 
-        self.grid = QtGui.QGridLayout()
+        self.grid = QtWidgets.QGridLayout()
         self.setLayout(self.grid)
     
         # initialize the controls for the coordinate transform help widget

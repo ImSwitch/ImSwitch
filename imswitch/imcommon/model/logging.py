@@ -4,9 +4,16 @@ import weakref
 
 import coloredlogs
 
+LEVEL_STYLES = {
+    'debug': {'color': 'cyan', 'bold': True},
+    'info': {'color': 'blue'},
+    'warning': {'color': 'yellow'},
+    'error': {'color': 'red'},
+    'critical': {'color': 'red', 'bold': True},
+}
 
 baseLogger = logging.getLogger('imswitch')
-coloredlogs.install(level='DEBUG', logger=baseLogger,
+coloredlogs.install(level='DEBUG', logger=baseLogger, level_styles=LEVEL_STYLES,
                     fmt='%(asctime)s %(levelname)s %(message)s')
 objLoggers = {}
 

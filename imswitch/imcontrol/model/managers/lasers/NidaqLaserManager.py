@@ -1,3 +1,6 @@
+import numpy as np
+from scipy.interpolate import interp1d
+
 from .LaserManager import LaserManager
 from imswitch.imcommon.model import initLogger
 from imswitch.imcontrol.controller import CommunicationChannel
@@ -12,8 +15,24 @@ class NidaqLaserManager(LaserManager):
 
         self._nidaqManager = lowLevelManagers['nidaqManager']
         self.__logger = initLogger(self, tryInheritParent=True)
+
+        self._lut = None
+        self._value_units = 'V'
+        try:
+            calib_csv_path = laserInfo.managerProperties["calibCsvPath"]
+            self.create_lut_from_calib(calib_csv_path)
+            self._value_units = '%'
+
+        except AttributeError:
+            pass # Calib file not specified, managerProperties doesnt exist
+        except KeyError:
+            pass  # Calib file not specified, managerProperties does exist but calib is missing
+        except Exception as e:
+            print(f"creating lut for {laserInfo} from calib failed due to: {e}")
+
+
         super().__init__(laserInfo, name, isBinary=laserInfo.getAnalogChannel() is None,
-                         valueUnits='V', valueDecimals=2)
+                         valueUnits=self._value_units, valueDecimals=2)
 
     def setEnabled(self, enabled):
         try:
@@ -21,9 +40,13 @@ class NidaqLaserManager(LaserManager):
         except:
             self.__logger.error("Error trying to enable laser.")
 
-    def setValue(self, voltage, enabled=True, for_scanning=False):
+    def setValue(self, val, enabled=True, for_scanning=False):
         if self.isBinary:
             return
+        if self._lut is not None:
+            voltage = self._lut(val)
+        else:
+            voltage = val
         if for_scanning and not enabled:
             voltage = 0
         try:
@@ -31,8 +54,8 @@ class NidaqLaserManager(LaserManager):
                 target=self.name, voltage=voltage,
                 min_val=self.valueRangeMin, max_val=self.valueRangeMax
             )
-        except:
-            self.__logger.error("Error trying to set value to laser.")
+        except Exception as e:
+            self.__logger.error(e, "Error trying to set value to laser.")
 
     def setScanModeActive(self, active, enabled=True):
         if active:
@@ -43,8 +66,11 @@ class NidaqLaserManager(LaserManager):
             self.setValue(0, True)
             self.setEnabled(True)
 
-
-
+    def create_lut_from_calib(self, calib_csv_path):
+        data = np.loadtxt(calib_csv_path)
+        data[:, 1] -= data[:, 1].min()
+        data[:, 1] /= data[:, 1].max() * 0.01 # convert to %
+        self._lut = interp1d(data[:, 1], data[:, 0], bounds_error=False)
 
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

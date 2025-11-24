@@ -26,6 +26,7 @@ class Cobolt0601LaserManager(LantzLaserManager):
         self._laser.autostart = False
 
     def setEnabled(self, enabled):
+        print(f'Laser turning {enabled}')
         self._laser.enabled = enabled
 
     def setValue(self, power, enabled=True, for_scanning=False):

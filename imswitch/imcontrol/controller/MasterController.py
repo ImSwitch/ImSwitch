@@ -1,7 +1,7 @@
 from imswitch.imcommon.model import VFileItem, initLogger
 from imswitch.imcontrol.model import (
     DetectorsManager, LasersManager, MultiManager, NidaqManager, PositionersManager, RecordingManager, RS232sManager, 
-    ScanManagerPointScan, ScanManagerBase, ScanManagerMoNaLISA,SLMsManager, StandManager, RotatorsManager
+    ScanManagerPointScan, ScanManagerBase, ScanManagerMoNaLISA, SLMManager, SLMmlManager, StandManager, RotatorsManager
 )
 
 
@@ -30,7 +30,7 @@ class MasterController:
 
         self.detectorsManager = DetectorsManager(self.__setupInfo.detectors, updatePeriod=300,
                                                  **lowLevelManagers)
-        
+
         self.lasersManager = LasersManager(self.__setupInfo.lasers,
                                            **lowLevelManagers)
         self.positionersManager = PositionersManager(self.__setupInfo.positioners,
@@ -39,9 +39,10 @@ class MasterController:
                                                **lowLevelManagers)
 
         self.recordingManager = RecordingManager(self.detectorsManager)
+        # self.slmManager = SLMManager(self.__setupInfo.slm) # old slm s. below
 
         self.slmsManager = SLMsManager(self.__setupInfo.slms)
-        
+
         if self.__setupInfo.microscopeStand:
             self.standManager = StandManager(self.__setupInfo.microscopeStand,
                                              **lowLevelManagers)
@@ -77,6 +78,8 @@ class MasterController:
         self.recordingManager.sigMemorySnapAvailable.connect(cc.sigMemorySnapAvailable)
         self.recordingManager.sigMemoryRecordingAvailable.connect(self.memoryRecordingAvailable)
 
+        # self.slmManager.sigSLMMaskUpdated.connect(cc.sigSLMMaskUpdated) # old slm
+
     def memoryRecordingAvailable(self, name, file, filePath, savedToDisk):
         self.__moduleCommChannel.memoryRecordings[name] = VFileItem(
             data=file, filePath=filePath, savedToDisk=savedToDisk
@@ -87,12 +90,9 @@ class MasterController:
 
         for attrName in dir(self):
             attr = getattr(self, attrName)
-            
+
             if isinstance(attr, MultiManager):
                 attr.finalize()
-
-            # elif isinstance(attr, SLMusbManager):
-            #     attr.finalize()
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

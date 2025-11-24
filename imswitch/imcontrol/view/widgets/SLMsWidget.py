@@ -109,7 +109,7 @@ class SLMsWidget(Widget):
         If N == 1, just builds the single SLM section directly.
         """
         if n_tabs is None:
-            n_tabs == 1
+            n_tabs = 1
             tab_names = ["Full SLM"]
 
         elif not tab_names:

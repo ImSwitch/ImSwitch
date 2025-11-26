@@ -462,50 +462,8 @@ class SLMsWidget(Widget):
             ("checkbox","active",False, "active")
         )
 
-        # --- 2. Target Source Controls ---
-        targetSourceBox = QtWidgets.QGroupBox("Target Source")
-        
-        targetSourceLayout = QtWidgets.QVBoxLayout(targetSourceBox)
-        targetSourceLayout.setSpacing(4)
-
-        # row 1: load target + label
-        loadTargetLayout = QtWidgets.QHBoxLayout()
-        loadTargetBtn = BetterPushButton("Load Target")
-        loadedLabel = QtWidgets.QLabel("Loaded: None")
-        loadedLabel.setStyleSheet("color: #888;")
-
-        setattr(self, f"{slmKey}_{secKey}_cgh_load_target_btn",loadTargetBtn)
-        setattr(self, f"{slmKey}_{secKey}_cgh_loaded_target_label", loadedLabel)
-
-        loadTargetLayout.addWidget(loadTargetBtn)
-        loadTargetLayout.addWidget(loadedLabel)
-        loadTargetLayout.addStretch()
-        targetSourceLayout.addLayout(loadTargetLayout)
-
-        # row 2: radio buttons for source choice
-        radioLayout = QtWidgets.QHBoxLayout()
-
-        radioLoadedTargetBtn = QtWidgets.QRadioButton("Use Loaded Target")
-        radioManualTargetBtn = QtWidgets.QRadioButton("Use Manual Target Parameters")
-        radioManualTargetBtn.setChecked(True)
-        setattr(self, f"{slmKey}_{secKey}_{generalsubsec}_loaded_target", radioLoadedTargetBtn)
-        setattr(self, f"{slmKey}_{secKey}_{generalsubsec}_manual_target", radioManualTargetBtn)
-
-        radioLayout.addWidget(radioLoadedTargetBtn)
-        radioLayout.addWidget(radioManualTargetBtn)
-        radioLayout.addStretch()
-        targetSourceLayout.addLayout(radioLayout)
-
-        self._param_definitions[slmKey][secKey]["cgh"][generalsubsec].extend([
-            ("radio","loaded_target", False, "loaded_target"),
-            ("radio","manual_target", False, "manual_target"),
-            ]
-        )
-
-        cghLayout.addWidget(targetSourceBox)
-
-        # --- 3. Target Definition Area ---
-        targetBox = QtWidgets.QGroupBox("Target Definition (Manual)")
+        # --- 2. Target Definition Area ---
+        targetBox = QtWidgets.QGroupBox("Target Definition")
         targetLayout = QtWidgets.QVBoxLayout(targetBox)
 
         # target type + visualize button
@@ -542,7 +500,7 @@ class SLMsWidget(Widget):
 
         cghLayout.addWidget(targetBox)
 
-        # --- 4. Computation Area ---
+        # --- 3. Computation Area ---
 
         # computation parameters stored in subsection "cgh_computation":
         # ==> related attributes will be named accordingly:
@@ -587,7 +545,7 @@ class SLMsWidget(Widget):
         ]
         )
 
-        # --- 5. Compute + Save Row ---
+        # --- 4. Compute + Save Row ---
         bottomBtnLayout = QtWidgets.QHBoxLayout()
         computeCghBtn = BetterPushButton("Compute CGH")
         plotCghPerfBtn = BetterPushButton("Plot Perf")

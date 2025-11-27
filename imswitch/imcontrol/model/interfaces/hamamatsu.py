@@ -48,6 +48,8 @@ import numpy as np
 
 from imswitch.imcommon.model import initLogger
 
+import time
+
 
 # Hamamatsu constants.
 DCAMCAP_EVENT_FRAMEREADY = int("0x0002", 0)
@@ -573,6 +575,20 @@ class HamamatsuCamera:
             return True
         else:
             return False
+        
+
+
+    def wait_next_frame(self, last_count):
+        while True:
+            time.sleep(0.0001)
+            _, new_count = self.getAq_Info()
+            if new_count > last_count:
+                break
+
+
+
+
+
 
     # ## newFrames
     #

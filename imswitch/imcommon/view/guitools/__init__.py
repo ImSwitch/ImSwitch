@@ -8,3 +8,4 @@ from .stylesheet import getBaseStyleSheet
 from .texttools import ordinalSuffix
 from .FileWatcher import FileWatcher
 from .CollapsibleSection import CollapsibleSection
+from .JsonEditorDialog import JsonEditorDialog

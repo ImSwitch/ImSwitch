@@ -2,6 +2,7 @@ import pyqtgraph as pg
 from qtpy import QtCore, QtWidgets, QtGui
 from datetime import datetime
 from imswitch.imcommon.view.guitools import naparitools
+from imswitch.imcommon.view.guitools.JsonEditorDialog import JsonEditorDialog
 from imswitch.imcontrol.view import guitools
 from .basewidgets import Widget
 import json
@@ -151,14 +152,9 @@ class BeadRecWidget(Widget):
         # self.removeCenterCoord()
     
     def open_settings_dialog(self):
-        dialog = JsonEditorDialog(self.analysisPrm, self)
-        if dialog.exec_() == QtWidgets.QDialog.Accepted:
-            updated = dialog.get_updated_params()
-            if updated is not None:
-                self.analysisPrm = updated
-                print("Updated parameters:", self.analysisPrm)
-            else:
-                print("Invalid JSON input")
+        updated = JsonEditorDialog.edit_params(self, self.analysisPrm)
+        if updated is not None:
+            self.analysisPrm = updated
     
     def addToList(self,name=None,axialName=None):
         """ Adds a new item to the list, after any current run items. """
@@ -291,33 +287,6 @@ class BeadRecWidget(Widget):
         if hasattr(self, 'hline') and self.hline in self.vb.addedItems:
             self.vb.removeItem(self.hline)
             del self.hline
-
-
-class JsonEditorDialog(QtWidgets.QDialog):
-    def __init__(self, params_dict, parent=None):
-        super().__init__(parent)
-        self.setWindowTitle("Edit Parameters")
-
-        self.text_edit = QtWidgets.QTextEdit(self)
-        self.text_edit.setText(json.dumps(params_dict, indent=4))
-
-        self.button_box = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Save | QtWidgets.QDialogButtonBox.Cancel)
-        self.button_box.accepted.connect(self.accept)
-        self.button_box.rejected.connect(self.reject)
-
-        layout = QtWidgets.QVBoxLayout()
-        layout.addWidget(QtWidgets.QLabel("Edit parameters as JSON:"))
-        layout.addWidget(self.text_edit)
-        layout.addWidget(self.button_box)
-
-        self.setLayout(layout)
-
-    def get_updated_params(self):
-        try:
-            return json.loads(self.text_edit.toPlainText())
-        except json.JSONDecodeError:
-            return None
-
 
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

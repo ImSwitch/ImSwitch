@@ -5,7 +5,6 @@ Computer Generated Holograms (CGH) using Gerchberg-Saxton algorithm and variants
 import numpy as np
 import matplotlib.pyplot as plt
 
-
 def gerchberg_saxton(target, n_iterations=30, phase_fixing=False, phase_fixing_value=20, 
                      weighted_gs=True, initial_phase=None):
     """ 
@@ -53,7 +52,8 @@ def gerchberg_saxton(target, n_iterations=30, phase_fixing=False, phase_fixing_v
     try: 
         for k in range(n_iterations):
 
-            print(f"\033[1A \x1b[2K GSW iteration number: {k+1}")  
+            s = f"\033[1A \x1b[2K GSW iteration number: {k+1}"
+            # print(s)
 
             u = source * np.exp(1j*phase_slm)
             v = np.fft.fft2(u)
@@ -145,67 +145,3 @@ def eval_performances(signal, target):
     std = np.sqrt(Var) / np.mean(I) # sqrt(<(I - <I>) ^ 2>) / <I>
     # std = np.sqrt(np.mean((target[target!=0] - I) ** 2)) / np.mean(I)
     return efficiency, uniformity, std
-
-
-
-
-# --- Targets --- #
-
-def create_target(target_type, **target_params):
-    """Create target pattern for CGH generation."""
-    if target_type == "multi_foci":
-        return focal_array(**target_params)
-    elif target_type == "bfp_spots":
-        return bfp_spots(**target_params)
-    else:
-        raise ValueError(f"Unknown target type '{target_type}'.")
-
-
-def focal_array(target_size_x, target_size_y, n_foci, period):
-    """Create a matrix of focal points arranged on a grid.
-
-    Args:
-        target_size_x (int): width of the target image in pixels.
-        target_size_y (int): height of the target image in pixels.
-        n_foci (int): number of points along each axis (n x n total).
-        period (int): spacing between points, in pixels.
-
-    Returns:
-        np.ndarray: array of shape (target_size_y, target_size_x) 
-                    with focal points (ones) at grid positions.
-    """
-    # Build one focal point
-    focal = np.zeros((period, period))
-    focal[period // 2, period // 2] = 1
-
-    # Tile the pattern to create the foci grid
-    grid = np.tile(focal, (n_foci, n_foci))
-
-    # padding
-    pad_y = target_size_y - grid.shape[0]
-    pad_x = target_size_x - grid.shape[1]
-    if pad_x < 0 or pad_y < 0:
-        raise ValueError("Target size must be larger than n_foci * period in both dimensions.")
-    padded = np.pad(
-        grid,
-        (
-            (pad_y // 2, (pad_y + 1) // 2),
-            (pad_x // 2, (pad_x + 1) // 2)
-        ),
-        mode='constant'
-    )
-    return padded
-
-
-def bfp_spots(**kwargs):
-    """Create back focal plane spots target pattern."""
-    raise NotImplementedError("bfp_spots target pattern is not yet implemented.")
-
-
-
-# ------- Testing-------- #
-if __name__ == "__main__":
-    
-    target = focal_array(target_size_x=500, target_size_y=512, n_foci=50, period=6)
-    plt.imshow(target, cmap='gray')
-    plt.show()

@@ -1,6 +1,7 @@
 
 PATTERNS_REGISTRY = {}
 ABERRATIONS_REGISTRY = {}
+TARGETS_REGISTRY = {}
 
 def register_pattern(name, params=None):
     """
@@ -24,7 +25,6 @@ def register_pattern(name, params=None):
     return decorator
 
 
-
 def register_aberration(name, noll=None):
     """
     Function to register an aberration to ABERRATIONS_REGISTRY.
@@ -37,3 +37,18 @@ def register_aberration(name, noll=None):
         "params": [("coeff", 0.0, float)],
         "noll": noll
     }
+
+
+def register_target(name, params=None, feedback=False):
+    """
+    Decorator to register a Target class.
+    Feedback defines if the feedback loop is available for that target.
+    """
+    def decorator(cls):
+        TARGETS_REGISTRY[name] = {
+            "class": cls,
+            "feedback": feedback,
+            "params": params or []
+        }
+        return cls
+    return decorator

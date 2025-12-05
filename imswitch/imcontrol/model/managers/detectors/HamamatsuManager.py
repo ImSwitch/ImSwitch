@@ -4,7 +4,6 @@ from .DetectorManager import (
 )
 import copy
 
-
 class HamamatsuManager(DetectorManager):
     """ DetectorManager that deals with the Hamamatsu parameters and frame
     extraction for a Hamamatsu camera.
@@ -49,7 +48,7 @@ class HamamatsuManager(DetectorManager):
                                                              'External "start-trigger"',
                                                              'External "frame-trigger"'],
                                                     editable=True),
-            'Camera pixel size': DetectorNumberParameter(group='Miscellaneous', value=1,
+            'Camera pixel size': DetectorNumberParameter(group='Miscellaneous', value=1.0,
                                                          valueUnits='µm', editable=True)
         }
 
@@ -62,8 +61,8 @@ class HamamatsuManager(DetectorManager):
     def pixelSizeUm(self):
         umxpx = self.parameters['Camera pixel size'].value
         return [1, umxpx, umxpx]
-    
-    
+
+
     def wait_and_get_NewFrame(self, properFrame=False):
         self.__logger.info("start wait_and_get_NewFrame")
 
@@ -138,7 +137,7 @@ class HamamatsuManager(DetectorManager):
             self._setTriggerSource(value)
 
         return self.parameters
-    
+
     def getParameter(self, name):
         """Gets a parameter value and returns the value.
         If the parameter doesn't exist, return 0."""

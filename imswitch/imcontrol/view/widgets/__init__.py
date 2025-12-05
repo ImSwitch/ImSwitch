@@ -21,8 +21,10 @@ from .ScanWidgetPointScan import ScanWidgetPointScan
 from .RotationScanWidget import RotationScanWidget
 from .RotatorWidget import RotatorWidget
 from .SettingsWidget import SettingsWidget
+from .SLMWidget import SLMWidget
 from .TilingWidget import TilingWidget
 from .ULensesWidget import ULensesWidget
 from .ViewWidget import ViewWidget
 from .WatcherWidget import WatcherWidget
 from .BFTimelapseWidget import BFTimelapseWidget
+from .EtWidget import EtWidget

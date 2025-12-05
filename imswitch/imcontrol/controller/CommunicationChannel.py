@@ -165,12 +165,6 @@ class CommunicationChannel(SignalInterface):
             return self.__main.controllers['Scan'].getNumScanPositions()
         else:
             raise RuntimeError('Required scan widget not available')
-        
-    def getNumCamTTL(self):
-        if 'Scan' in self.__main.controllers:
-            return self.__main.controllers['Scan'].getNumCamTTL()
-        else:
-            raise RuntimeError('Required scan widget not available')
     
     def getNextAxial(self):
         if 'Scan' in self.__main.controllers:

@@ -70,7 +70,8 @@ class TargetBase(ABC):
         return changed
 
 
-    # feedback related
+    # ----- feedback related ----- *
+    
     def analyze_result(self, experimental_result,params=None,show_plot=True):
         """
         Template method:

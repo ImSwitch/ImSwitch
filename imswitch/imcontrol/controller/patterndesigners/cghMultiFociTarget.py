@@ -23,18 +23,21 @@ class MultiFociTarget(TargetBase):
     def __init__(self, **params):
         super().__init__(**params)
         self.analysis_prm = {
-            "foci_integration_size": 7,
-            "Threshold": 0.5,
+            "foci_integration_size": 3,
+            "Threshold": 0.2,
             "Dilat_kernel_size":5,
-            "auto_freq_finder": True,
-            "period_x": None,
-            "period_y": None,
+            "auto_freq_finder": False,
+            "period_x": 9.2,
+            "period_y": 9.2,
             "freq_search_window_px": 0.1,
             "foci_loc_method": "max",
-            "foci_search_window_px": 3,
+            "foci_search_window_px": 4,
             "auto_freq_blur_sigma":1.0,
             "auto_freq_exclude_frac":0.05,
             "auto_freq_peak_prom": 0.05,
+            "offset_blur_sigma":1.0,
+            "offset_search_frac":0.5,
+            "offset_search_steps": 8,
         }
 
     # feedback allowed
@@ -158,7 +161,10 @@ class MultiFociTarget(TargetBase):
         ax, ay = 1.0 / abs(fx), 1.0 / abs(fy)
 
         # offsets
-        dx0, dy0 = estimate_lattice_offset(image_cropped,ax,ay,self.npx,self.npy)
+        dx0, dy0 = estimate_lattice_offset(image_cropped,ax,ay,self.npx,self.npy,
+                                           self.analysis_prm.get("offset_blur_sigma"),
+                                           self.analysis_prm.get("offset_search_frac"),
+                                           self.analysis_prm.get("offset_search_steps"))
         
         # base positions
         rx, ry = [], []
@@ -237,5 +243,8 @@ class MultiFociTarget(TargetBase):
 
         # Apply the weights
         new_target = self.array * weights_2d
+        new_target = (new_target - np.min(new_target))/(np.max(new_target)- np.min(new_target))
+        # new_target = new_target[:,::-1]  # flip horizontal
+        # new_target = new_target[::-1,:]  # flip vertical
 
         return new_target, None

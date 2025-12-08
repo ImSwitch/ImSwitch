@@ -4,9 +4,10 @@ Computer Generated Holograms (CGH) using Gerchberg-Saxton algorithm and variants
 
 import numpy as np
 import matplotlib.pyplot as plt
+import traceback
 
 def gerchberg_saxton(target, n_iterations=30, phase_fixing=False, phase_fixing_value=20, 
-                     weighted_gs=True, initial_phase=None):
+                     weighted_gs=True, initial_phase=None,previous_pattern=None):
     """ 
     Performs the (weighted) Gerchberg-Saxton algorithm with optional cooperative stop.
 
@@ -20,7 +21,10 @@ def gerchberg_saxton(target, n_iterations=30, phase_fixing=False, phase_fixing_v
         weighted_gs: bool, default=True
             whether to use weighted version of Gerchberg-Saxton algorithm
         initial_phase: np.array, default=None
-            initial guess for the slm phase
+            initial guess for the slm phase - ignored if previous_pattern is not None.
+        previous_pattern: np.array, default=None
+            result of previous feedback loop iteration as a complex field. If given, its phase
+            is use as the algo initial phase (overriding arg:`initial_phase`)
 
     Returns:
         field_slm: 2D array of complex amplitude exp(1j*phase) with phase between -pi and pi.
@@ -31,7 +35,7 @@ def gerchberg_saxton(target, n_iterations=30, phase_fixing=False, phase_fixing_v
 
     if len(size) != 2:
         msg = "Target must be a 2D array."
-        return None, None, msg
+        return None, None, msg, None
 
     target = normalize(target)
     performances = []
@@ -41,13 +45,32 @@ def gerchberg_saxton(target, n_iterations=30, phase_fixing=False, phase_fixing_v
     weights = np.ones(size , dtype=float)
     source = np.ones(size)
 
-    if initial_phase is None:
-        phase_slm = (np.random.rand(*size)) * 2 * np.pi - np.pi
-    else:
+    msg = ""
+    err = None
+    if previous_pattern is not None:
+        if np.iscomplexobj(previous_pattern) and previous_pattern.shape == size:
+            try:
+                initial_phase = np.angle(previous_pattern)
+            except Exception as e:
+                msg = f"Error when trying to convert previous pattern field to phase: {e}\nUsing random initial phase instead"
+                err = (traceback.format_exc())
+                np.random.seed(1)
+                phase_slm = (np.random.rand(*size)) * 2 * np.pi - np.pi
+        else:
+            msg = f"Previous pattern does not match in size or dtype. Using random initial phase instead"
+            np.random.seed(1)
+            phase_slm = (np.random.rand(*size)) * 2 * np.pi - np.pi
+    
+    elif initial_phase is not None:
         if initial_phase.shape != size:
-            msg = "Initial phase shape does not match target shape."
-            return None, None, msg
-        phase_slm = initial_phase
+            msg = "Initial phase shape does not match target shape. Using random initial phase instead"
+            np.random.seed(1)
+            phase_slm = (np.random.rand(*size)) * 2 * np.pi - np.pi
+        else:
+            phase_slm = initial_phase
+    else:
+        np.random.seed(1)
+        phase_slm = (np.random.rand(*size)) * 2 * np.pi - np.pi
 
     try: 
         for k in range(n_iterations):
@@ -81,10 +104,11 @@ def gerchberg_saxton(target, n_iterations=30, phase_fixing=False, phase_fixing_v
 
     except Exception as e:
         msg = str(e)
-        return None, None, msg
+        err = traceback.format_exc(e)
+        return None, None, msg, err
 
     field_slm = np.exp(1j*phase_slm)
-    return field_slm, performances, None
+    return field_slm, performances, msg, err
 
         
 

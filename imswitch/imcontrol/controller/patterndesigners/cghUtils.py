@@ -170,7 +170,8 @@ def estimate_lattice_offset(arr, ax, ay, npx, npy, blur_sigma=1.0,
     dx0, dy0 : int
         Estimated integer pixel offset for the lattice origin.
     """
-
+    search_steps=int(search_steps)
+    
     # Smooth image for robustness
     arr_smooth = gaussian_filter(arr.astype(float), blur_sigma)
     h, w = arr.shape
@@ -182,7 +183,7 @@ def estimate_lattice_offset(arr, ax, ay, npx, npy, blur_sigma=1.0,
 
     # Steps in dx, dy
     step = max(1, search_r // search_steps)
-    candidates = range(-search_r, search_r + 1, step)
+    candidates = range(0, 2*search_r + 1, step)
 
     best_score = -np.inf
     best_offset = (0, 0)
@@ -257,7 +258,7 @@ def crop_with_preview(arr, kernel_size, threshold1):
     cropped = arr[y1:y2, x1:x2].copy()
 
     preview = arr.copy()
-    cv2.rectangle(preview, (x1, y1), (x2, y2), (0, 255, 0), 2)
+    preview = cv2.rectangle(preview, (x1, y1), (x2, y2), (255, 255, 255), 2)
 
     return cropped, preview
 

@@ -1,6 +1,11 @@
+import sys
+
 import numpy as np
 import skimage
-from PyQt5.QtWidgets import QLabel
+from PyQt5.QtGui import QGuiApplication
+from PyQt5.QtWidgets import QLabel, QApplication
+from cupy import asfortranarray
+from matplotlib import pyplot as plt
 from qtpy import QtCore, QtGui
 
 from imswitch.imcommon.framework import SignalInterface
@@ -18,6 +23,7 @@ class HamamatsuSLMdviManager(SignalInterface):
         self.slmInfo = slmInfo
         self.width = slmInfo.width
         self.height = slmInfo.height
+        self.__logger.debug(self.slmInfo)
         self.pixel_size = slmInfo.pixelSize
 
         self.preferredMonitor = slmInfo.monitorIdx
@@ -32,20 +38,40 @@ class HamamatsuSLMdviManager(SignalInterface):
 
         # prepare the qwidget
 
-        self.SLMQwindow = QLabel()
-        self.imgArr = np.zeros((2, 2))
+        self.SLMQLabel = QLabel()
+        self.imgArr = np.random.randint(1, 250, size=(self.width, self.height), dtype=np.uint8)
 
-        self.setup_qlabel_as_display_output()
+        self.init_slm_window()
 
 
-    def setup_qlabel_as_display_output(self):
+    def init_slm_window(self):
+        """Init SLM QLabel as fullscreen wundow and show a random pattern on specified screen"""
 
-        self.SLMQwindow.monitor = self.preferredMonitor
-        self.SLMQwindow.setWindowTitle('SLM display')
-        self.SLMQwindow.setWindowFlags(QtCore.Qt.Window)
-        self.SLMQwindow.setWindowState(QtCore.Qt.WindowFullScreen)
+        app = QApplication.instance()
 
-        self.SLMQwindow.hasShownMonitorWarning = False
+        screens = list(app.screens())
+
+        if self.preferredMonitor >= len(screens):
+            raise RuntimeError(f"Preferred monitor {self.preferredMonitor} is not available")
+
+        screen = screens[self.preferredMonitor]
+        geo = screen.geometry()
+
+        self.width = geo.width()
+        self.height = geo.height()
+
+        self.__logger.debug(f"Screen geometry: {self.width}x{self.height}")
+
+        self.SLMQLabel.setWindowFlags(QtCore.Qt.Window)
+        self.SLMQLabel.setWindowTitle("SLM display")
+
+        self.SLMQLabel.setGeometry(geo)
+        self.SLMQLabel.move(geo.topLeft())
+
+        self.SLMQLabel.setScaledContents(False)
+        self.SLMQLabel.setAlignment(QtCore.Qt.AlignCenter)
+
+        self.SLMQLabel.showFullScreen()
 
     def upload_pattern(self, pattern, slot_no=0):
         """ Upload pattern to SLM """
@@ -54,17 +80,46 @@ class HamamatsuSLMdviManager(SignalInterface):
             self.__logger.info("Mocker mode - not uploading pattern to device.")
             return
 
-        imgScaled = skimage.img_as_ubyte(
-            skimage.transform.resize(pattern, (self.height, self.width), order=0)
-        )
+        pix = self._array_to_qpixmap(pattern)
+        self.SLMQLabel.setPixmap(pix)
 
-        qimage = QtGui.QImage(
-            imgScaled, imgScaled.shape[1], imgScaled.shape[0], imgScaled.shape[1] * 3,
-            QtGui.QImage.Format_RGB888
-        )
+    def finalize(self):
+        pass
 
-        qpixmap = QtGui.QPixmap(qimage)
-        self.SLMQwindow.setPixmap(qpixmap)
+    def connect_to_device(self):
+        pass
+
+    def close_device(self):
+        pass
+
+
+    def _array_to_qpixmap(self, arr2d: np.ndarray) -> QtGui.QPixmap:
+        """
+        Converts a numpy array to RGB888 QPixmap.
+        """
+        array = np.ascontiguousarray(arr2d, dtype=np.uint8)
+
+        w, h = array.shape
+
+        if h != self.height or w != self.width:
+            self.__logger.warning(f"Pattern shape {array.shape} does not match SLM {self.width} x {self.height} shape")
+
+            array = skimage.transform.resize(array, (self.height, self.width), order=0, preserve_range=True)
+
+            h = self.height
+            w = self.width
+
+        rgb = np.repeat(array[:, :, None], 3, axis=2)
+
+        rgb = np.ascontiguousarray(rgb)
+
+        qimg = QtGui.QImage(rgb.data, w, h, w * 3, QtGui.QImage.Format_RGB888).copy()
+
+        return QtGui.QPixmap.fromImage(qimg)
+
+
+
+
 
 
 

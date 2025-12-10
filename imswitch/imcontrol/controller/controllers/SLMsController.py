@@ -436,12 +436,13 @@ class SLMsController(ImConWidgetController):
         try:
             self.sync_target(slmKey, secKey)
             target_array =  self._targets.get(slmKey).get(secKey).array
+            feedback_count = self._targets.get(slmKey).get(secKey).feedback_count
         except Exception as e:
             self._widget.on_cgh_computation_result(slmKey, secKey,success=False, msg=e)
             self.__logger.error(traceback.format_exc())
             return
 
-        if self._cghResults.get(slmKey,{}).get(secKey,{}).get("cgh_pattern") is not None:
+        if feedback_count > 0 and self._cghResults.get(slmKey,{}).get(secKey,{}).get("cgh_pattern") is not None:
             previous_pattern = np.angle(self._cghResults.get(slmKey).get(secKey).get("cgh_pattern"))
         else:
             previous_pattern = None
@@ -655,7 +656,8 @@ class SLMsController(ImConWidgetController):
             self.is_running = False
             self.__logger = initLogger(self)
 
-        def prepareForNewComputation(self, slmKey, secKey, target, comput_params, target_params,previous_pattern):
+        def prepareForNewComputation(self, slmKey, secKey, target, comput_params, target_params,
+                                     previous_pattern=None, quad_initial_phase=None):
             self._skmKey = slmKey
             self._secKey = secKey
             self._target = target
@@ -672,8 +674,7 @@ class SLMsController(ImConWidgetController):
                 if self._numQueuedComputations > 1:
                     # Skip to catch up
                     return
-                pattern, performances, msg, err = cgh.gerchberg_saxton(self._target,previous_pattern=self._previous_pattern,
-                                                                        **self._comput_params)
+                pattern, performances, msg, err = cgh.gerchberg_saxton(self._target,previous_pattern=self._previous_pattern,**self._comput_params)
 
                 if pattern is None:
                     self.sigWorkerCGHComputationFailed.emit(self._skmKey, self._secKey,msg)

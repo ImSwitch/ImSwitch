@@ -7,7 +7,8 @@ import matplotlib.pyplot as plt
 import traceback
 
 def gerchberg_saxton(target, n_iterations=30, phase_fixing=False, phase_fixing_value=20, 
-                     weighted_gs=True, initial_phase=None,previous_pattern=None):
+                     weighted_gs=True, initial_phase=None,previous_pattern=None, 
+                     quad_phase=False,quad_phase_coeff=None):
     """ 
     Performs the (weighted) Gerchberg-Saxton algorithm with optional cooperative stop.
 
@@ -21,10 +22,16 @@ def gerchberg_saxton(target, n_iterations=30, phase_fixing=False, phase_fixing_v
         weighted_gs: bool, default=True
             whether to use weighted version of Gerchberg-Saxton algorithm
         initial_phase: np.array, default=None
-            initial guess for the slm phase - ignored if previous_pattern is not None.
+            initial guess for the slm phase - only used if not using previous_pattern and quad_phase.
         previous_pattern: np.array, default=None
             result of previous feedback loop iteration as a complex field. If given, its phase
             is use as the algo initial phase (overriding arg:`initial_phase`)
+        quad_phase: bool, default = False
+            if true, and no `previous_pattern`, sets the initial phase as a quadratic
+            phase with a coefficient value `quad_phase_coeff`.
+        quad_phase_coeff: float, default = None
+            quad phase value coeffcient, only needed if `quad_phase` is True.
+        
 
     Returns:
         field_slm: 2D array of complex amplitude exp(1j*phase) with phase between -pi and pi.
@@ -48,18 +55,28 @@ def gerchberg_saxton(target, n_iterations=30, phase_fixing=False, phase_fixing_v
     msg = ""
     err = None
     if previous_pattern is not None:
-        if np.iscomplexobj(previous_pattern) and previous_pattern.shape == size:
+        if previous_pattern.shape == size:
             try:
-                initial_phase = np.angle(previous_pattern)
+                phase_slm = np.angle(previous_pattern)
+                # print("using previous pattern phase as initial phase")
             except Exception as e:
                 msg = f"Error when trying to convert previous pattern field to phase: {e}\nUsing random initial phase instead"
-                err = (traceback.format_exc())
+                err = traceback.format_exc()
                 np.random.seed(1)
                 phase_slm = (np.random.rand(*size)) * 2 * np.pi - np.pi
         else:
-            msg = f"Previous pattern does not match in size or dtype. Using random initial phase instead"
+            msg = f"Previous pattern size {previous_pattern.shape} does not match target {target.shape}). Using random initial phase instead"
             np.random.seed(1)
             phase_slm = (np.random.rand(*size)) * 2 * np.pi - np.pi
+
+    elif quad_phase:
+        if quad_phase_coeff is None:
+            msg = "Quadratic Phase checked but no coefficient value given. Using random initial pahse instead."
+            np.random.seed(1)
+            phase_slm = (np.random.rand(*size)) * 2 * np.pi - np.pi
+        else:
+            # print("Using quadratic phase with coeff: ", quad_phase_coeff)
+            phase_slm=quadratic_phase_generator(target.shape[0],target.shape[1],quad_phase_coeff)
     
     elif initial_phase is not None:
         if initial_phase.shape != size:
@@ -104,7 +121,7 @@ def gerchberg_saxton(target, n_iterations=30, phase_fixing=False, phase_fixing_v
 
     except Exception as e:
         msg = str(e)
-        err = traceback.format_exc(e)
+        err = traceback.format_exc()
         return None, None, msg, err
 
     field_slm = np.exp(1j*phase_slm)
@@ -169,3 +186,40 @@ def eval_performances(signal, target):
     std = np.sqrt(Var) / np.mean(I) # sqrt(<(I - <I>) ^ 2>) / <I>
     # std = np.sqrt(np.mean((target[target!=0] - I) ** 2)) / np.mean(I)
     return efficiency, uniformity, std
+
+
+
+
+def quadratic_phase_generator(width: int,height: int,coeff: float):
+    """
+    Generate a quadratic phase map wrapped to [-pi, pi].
+
+    Parameters
+    ----------
+    width, height : int
+        Dimensions of the phase array.
+    coeff : float
+        Quadratic coefficient.
+    centre : (float, float), optional
+        Center of the phase pattern. Defaults to the array center.
+
+    Returns
+    -------
+    phase : 2D np.ndarray of shape (height, width)
+        Quadratic phase wrapped to [-pi, pi].
+    """
+    x0 = (width - 1) / 2
+    y0 = (height - 1) / 2
+
+    # coordinate grid
+    x = np.arange(width) - x0
+    y = np.arange(height) - y0
+    X, Y = np.meshgrid(x, y)
+
+    # quadratic phase
+    phase = coeff * (X**2 + Y**2)
+
+    # wrap to [-pi, pi]
+    phase_wrapped = (phase + np.pi) % (2 * np.pi) - np.pi
+
+    return phase_wrapped

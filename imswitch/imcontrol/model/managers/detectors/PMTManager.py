@@ -58,6 +58,12 @@ class PMTManager(DetectorManager):
         if isinstance(self._channel, int):
             self._channel = f'Dev1/{self._channel}'  # for backwards compatibility
 
+        if detectorInfo.managerProperties.get("offset_v", None) is not None:
+            self._offset_v = float(detectorInfo.managerProperties.get("offset_v"))
+        else:
+            self._offset_v = 0.0
+
+
 
         self._frameCount = 0
         self._scanWorker = None
@@ -182,7 +188,7 @@ class PMTManager(DetectorManager):
         (*pos_rest, pos_d2) = (0,) + pos
         img_slice = tuple(pos_rest) + tuple([pos_d2, ])
         # pixels is expected to be an ndarray matching the slice shape (e.g., [rows, cols] or scalar)
-        self._image[img_slice] = (pixels * 32767).astype(np.int16)
+        self._image[img_slice] = ((pixels + self._offset_v) * 3276.7).astype(np.uint16)
         self.__currSlice = pos_rest  # from high dim to low dim (ending at d3)
         if pos_d2 == 0:
             # adjust viewbox shape to new image shape at the start of a d3 step
@@ -490,9 +496,9 @@ class ScanWorker(Worker):
                 if self._manager._ttlmultiplying:
                     seq_signal_xend = self._samples_read-self._phase_delay
                     ttl_seq = self._seq_signal[seq_signal_xstart:seq_signal_xend]
-            # get photon counts from data array (which is cumsummed)
-            data_cnts = np.concatenate(([data[0]-self._last_value], np.diff(data)))
-            self._last_value = data[-1]
+            # get photon counts from data array (in contrast to APD not cumsummed!)
+            data_cnts = data
+
             # only take the first samples that corresponds to the samples during the line
             line_samples = data_cnts[:self._samples_d_scanstep[1]]
             if self._manager._ttlmultiplying:

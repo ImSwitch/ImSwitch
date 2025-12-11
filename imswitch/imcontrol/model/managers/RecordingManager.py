@@ -382,27 +382,30 @@ class RecordingWorker(Worker):
         try:
             if len(self.detectorNames) < 1:
                 raise ValueError('No detectors to record specified')
-
+            
             if self.recMode in [RecMode.SpecFrames, RecMode.ScanOnce, RecMode.ScanLapse]:
                 recFrames = self.recFrames
                 if recFrames is None:
                     raise ValueError('recFrames must be specified in SpecFrames, ScanOnce or'
                                      ' ScanLapse mode')
-                
-                numCamTTL = self.numCamTTL
-                if numCamTTL is not None:
-                    recFrames = numCamTTL * recFrames
-                    
+
+                # calculate total number offrames for each detector (recFrames * number of TTL)
+                numCamTTL = self.numCamTTL if self.numCamTTL is not None else {}
+                nFramesPerDetector = {}
+                for detectorName in self.detectorNames:
+                    nFramesPerDetector[detectorName] = recFrames * numCamTTL.get(detectorName, 1) 
+                maxFrames = max(nFramesPerDetector.values())
+
                 while (self.__recordingManager.record and
-                       any([currentFrame[detectorName] < recFrames
+                       any([currentFrame[detectorName] < maxFrames
                             for detectorName in self.detectorNames])):
                     for detectorName in self.detectorNames:
-                        if currentFrame[detectorName] >= recFrames:
+                        nFrames = nFramesPerDetector[detectorName]
+                        if currentFrame[detectorName] >= nFrames:
                             continue  # Reached requested number of frames with this detector, skip
 
                         newFrames = self._getNewFrames(detectorName)
                         n = len(newFrames)
-
                         if n > 0:
                             it = currentFrame[detectorName]
                             if self.saveFormat == SaveFormat.TIFF:
@@ -417,14 +420,14 @@ class RecordingWorker(Worker):
                                         continue
                             elif self.saveFormat == SaveFormat.HDF5:
                                 dataset = datasets[detectorName]
-                                if (it + n) <= recFrames:
+                                if (it + n) <= nFrames:
                                     dataset.resize(n + it, axis=0)
                                     dataset[it:it + n, :, :] = newFrames
                                     currentFrame[detectorName] += n
                                 else:
-                                    dataset.resize(recFrames, axis=0)
-                                    dataset[it:recFrames, :, :] = newFrames[0:recFrames - it]
-                                    currentFrame[detectorName] = recFrames
+                                    dataset.resize(nFrames, axis=0)
+                                    dataset[it:nFrames, :, :] = newFrames[0:nFrames - it]
+                                    currentFrame[detectorName] = nFrames
                             elif self.saveFormat == SaveFormat.ZARR:
                                 dataset = datasets[detectorName]
                                 if it == 0:

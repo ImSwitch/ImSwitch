@@ -2,20 +2,22 @@ import json
 import os
 import numpy as np
 from PIL import Image
-
+from PyQt5 import QtCore
+import traceback
 from ..basecontrollers import ImConWidgetController
 from imswitch.imcommon.model import initLogger
-from imswitch.imcontrol.view.guitools import askForFilePath
+from imswitch.imcontrol.view.guitools import askForFilePath, JsonEditorDialog
 from imswitch.imcommon.framework import Signal, Thread, Worker, Mutex
-from imswitch.imcommon.model import dirtools
+from imswitch.imcommon.model import dirtools, signaltools
 
-from ..patterndesigners.registries import PATTERNS_REGISTRY, ABERRATIONS_REGISTRY
-from ..patterndesigners import cghPatterns as cgh
+from ..patterndesigners.registries import PATTERNS_REGISTRY, ABERRATIONS_REGISTRY, TARGETS_REGISTRY
+from ..patterndesigners import cghComputations as cgh
 from ..patterndesigners.patternEngine import PatternEngine
 
 full_registry = {
     "patterns": PATTERNS_REGISTRY,
-    "aberrations": ABERRATIONS_REGISTRY
+    "aberrations": ABERRATIONS_REGISTRY,
+    "cgh_targets": TARGETS_REGISTRY
 }
 
 class SLMsController(ImConWidgetController):
@@ -32,9 +34,11 @@ class SLMsController(ImConWidgetController):
         self._slmNames = {}         # {slmKey (widget): slmName (Manager)}
         self._slmKeys = {}          # {slmName (Manager): slmKey (widget)} 
         self._slmInfos = {}         # {slmKey: slmInfo}
-        self._currentTargets = {}   # {slmKey: {secKey: target_array}}
+        self._targets = {}          # {slmKey: {secKey: TargetInstance}}
         self._cghResults = {}       # {slmKey: {secKey: {"cgh_pattern":..., "performances":...}}}
         self._wavelengths = {}      # {slmKey: {secKey: wl}}
+        self._experimentalResults={}# {slmKey: {secKey: result}
+        self._analysisPrms={}       # {target_name: prms}
 
         # define directories for SLM-related files
         self.slmDir = os.path.join(dirtools.UserFileDirs.Root, r'imcontrol_slm')
@@ -76,6 +80,13 @@ class SLMsController(ImConWidgetController):
         self._widget.sigSaveConfig.connect(self.on_save_config)
         self._widget.sigSaveAberr.connect(self.on_save_aberr)
         self._widget.sigSaveCgh.connect(self.on_save_cgh)
+
+        self._widget.sigSnapFeedback.connect(self.on_feedback_snap)
+        self._widget.sigAnalysisFeedback.connect(self.on_feedback_analysis)
+        self._widget.sigUpdateTarget.connect(self.on_feedback_update_target)
+        self._widget.sigResetFeedback.connect(self.on_feedback_reset)
+        self._widget.sigAnalysisFeedbackPrm.connect(self.on_feedback_analysis_prm)
+        self._widget.sigLoadFeedback.connect(self.on_load_feedback)
 
         # cgh worker initialization
         self._cghWorker = self.CGHWorker()
@@ -181,6 +192,7 @@ class SLMsController(ImConWidgetController):
         except Exception as e:
             sectionName = self._widget._tab_names_dict.get(slmKey,{}).get(secKey,secKey)
             msg = f"<b>{slmName} - {sectionName}</b>: Failed to load correction pattern :\n{e}"
+            self.__logger.error(traceback.format_exc())
         
         return msg
 
@@ -233,7 +245,8 @@ class SLMsController(ImConWidgetController):
         except Exception as e:
             sectionName = self._widget._tab_names_dict.get(slmKey,{}).get(secKey,secKey)
             msg = f"<b>{slmName} - {sectionName}</b>: failed to update 2pi value:\n{e}"
-
+            self.__logger.error(traceback.format_exc())
+            
         return msg
     
     def update_cached_wl(self,slmKey,params):
@@ -243,6 +256,7 @@ class SLMsController(ImConWidgetController):
             wl = params.get(secKey).get("general").get("wavelength_nm")
             if wl != self._wavelengths.get(slmKey,{}).get(secKey,0): 
                 self._wavelengths.setdefault(slmKey,{})[secKey] = wl
+
 
 
     # --------- saving/loading related -------- #
@@ -259,7 +273,7 @@ class SLMsController(ImConWidgetController):
                 json.dump(slm_params, f, indent=2)
                 
         except Exception as e:
-            self.__logger.error(f"Failed to save config: {e}")
+            self.__logger.error(traceback.format_exc())
             if msg_box:
                 self._widget.show_message_box(title="Error Saving Configuration",msg_type="error",
                                       message=f"Could not save configuration:\n{e}")
@@ -308,6 +322,42 @@ class SLMsController(ImConWidgetController):
 
 
     # ----- CGH related methods ----- #
+
+    def sync_target(self, slmKey, secKey):
+        """
+        Sync target object with target parameters for a given SLM section.
+        Exception is raised if cgh params cannot be found in slmKey, secKey.
+        """
+        # get target parameters
+        cgh_params = self._widget.get_cgh_params(slmKey,secKey)
+        target_type = cgh_params.get("cgh_general",{}).get("target_type","")
+        target_params = cgh_params.get(target_type)
+        if cgh_params is None or target_type=="" or target_params is None:
+            raise Exception(f"Could not find target parameters for {slmKey},{secKey}")
+        
+        # get current cahed target and update or create
+        target = self._targets.get(slmKey, {}).get(secKey)
+        if target is None or target.target_type != target_type:
+            target = self.create_target(target_type, **target_params)
+            self._targets.setdefault(slmKey, {})[secKey] = target
+
+        else:
+            changed = target.update_params(**target_params)
+            if changed:
+                self._widget.on_feedback_reset(slmKey,secKey,emitSig=False)
+
+        return True
+
+    def create_target(self,target_type, **target_params):
+        """
+        Creates a target object 
+        """
+        target_class = TARGETS_REGISTRY.get(target_type,{}).get("class")
+        if target_class is None:
+            raise KeyError(f"{target_type} not found")
+        
+        target = target_class(**target_params)
+        return target
 
 
     def on_load_cgh(self, slmKey, secKey, path=None, msg_box=True):
@@ -384,17 +434,16 @@ class SLMsController(ImConWidgetController):
         target_type = cgh_general.get("target_type",None)
         target_params = cgh_params.get(target_type, None)
         try:
-            target = cgh.create_target(target_type, **target_params)
+            self.sync_target(slmKey, secKey)
+            target_array =  self._targets.get(slmKey).get(secKey).array
         except Exception as e:
             self._widget.on_cgh_computation_result(slmKey, secKey,success=False, msg=e)
+            self.__logger.error(traceback.format_exc())
             return
-        
-        self._currentTargets.setdefault(slmKey,{})[slmKey] = target # store current target
 
         # dispatch computation to CGH worker
-        target_params["target_name"] = target_type
         comput_params = cgh_params.get("cgh_computation",{})
-        self._cghWorker.prepareForNewComputation(slmKey, secKey, target, comput_params, target_params)
+        self._cghWorker.prepareForNewComputation(slmKey, secKey, target_array, comput_params, target_params)
         self._cghWorker.sigStartComputation.emit()
     
 
@@ -405,12 +454,16 @@ class SLMsController(ImConWidgetController):
         try:
             msg = engine.set_new_cgh_pattern(secKey, result_dict["cgh_pattern"])
         except:
-            msg = f"Computation sucessful setting new cgh pattern in PatternEngine failed, " \
+            msg = f"Computation sucessful but setting new cgh pattern in PatternEngine failed, " \
                   f"likely due to padding/cropping patterns. Double-check that target sizes make sense."
             self._widget.on_cgh_computation_result(slmKey,secKey,success=False,msg=msg)
             raise
+        
+        if self._targets.get(slmKey,{}).get(secKey) is not None:
+            cgh_name = self._targets.get(slmKey).get(secKey).name
+        else:
+            cgh_name = None
 
-        cgh_name = targetPrmToStr(result_dict.get("target_params"))
         # store results and notify widget computation is done
         self._cghResults.setdefault(slmKey,{})[secKey] = result_dict
         self._widget.on_cgh_computation_result(slmKey,secKey,success=True,msg=msg,cgh_name=cgh_name)
@@ -420,16 +473,17 @@ class SLMsController(ImConWidgetController):
         self._widget.on_cgh_computation_result(slmKey,secKey,success=False, msg=msg)
 
 
-    def on_visualize_target(self,target_type,target_params):
-        """Create target pattern based on provided parameters and send it to widget."""
+    def on_visualize_target(self,slmKey,secKey):
+        """Retrieve target array and send it to widget."""
         try:
-            target = cgh.create_target(target_type, **target_params)
+            self.sync_target(slmKey,secKey)
+            target_array =  self._targets.get(slmKey).get(secKey).array
+            self._widget.plot_target(target_array)
         except Exception as e:
             self._widget.show_message_box(title="Error Creating Target",msg_type="warning",
                                           message=f"Could not create target:\n{e}")
+            self.__logger.error(traceback.format_exc())
             return
-        
-        self._widget.plot_target(target)
 
     def on_visualize_cgh_performances(self, slmKey,secKey):
         """Query CGH performances for given SLM and send them to widget to be displayed."""
@@ -448,6 +502,128 @@ class SLMsController(ImConWidgetController):
         result = cgh.simulate_propagation_fft(cgh_array, padding=True, pad_size=pad_size)
         self._widget.plot_cgh_result(result)
 
+    def on_load_feedback(self,slmKey,secKey,path=None):
+        if path is None:
+            path = askForFilePath(self._widget, "Select feedback image",isSaving=False)
+            if not path or not os.path.exists(path):
+                return
+        try:
+            img = np.array(Image.open(path))
+            self._experimentalResults.setdefault(slmKey, {})[secKey] = img
+        except Exception as e:
+            self._widget.show_message_box(title="Error Loading Feedback",msg_type="error",message=e)
+            self.__logger.error(traceback.format_exc())
+            return
+
+
+    def on_feedback_analysis_prm(self,slmKey,secKey):
+        """ Retrieves analysis parameters of the current target, opens JSON editor dialog
+        enabling user to modify them, and upates target analysis paramters."""
+        target_type = self._widget.getCurrentTargetType(slmKey,secKey)
+        if target_type is None:
+            return
+        target = self._targets.get(slmKey,{}).get(secKey,None)
+        if target is None or target.name != target_type:
+            try:
+                self.sync_target(slmKey,secKey)
+                target = self._targets.get(slmKey,{}).get(secKey,None)
+            except:
+                self.__logger.error(traceback.format_exc())
+                return 
+            
+        if not hasattr(target, "analysis_prm"):
+            return
+        
+        params = target.analysis_prm
+        updated = JsonEditorDialog.edit_params(self._widget, params)
+        if updated is not None:
+            target.update_analyze_prm(updated)
+
+
+    def on_feedback_reset(self,slmKey,secKey):
+        target = self._targets.get(slmKey,{}).get(secKey) 
+        if target is not None:
+            target.reset_feedback()
+        self._experimentalResults.setdefault(slmKey,{})[secKey]=None
+
+
+    def on_feedback_snap(self, slmKey, secKey):
+        """
+        Connect communication channel signal "sigUpdateImage" to a handler waiting 
+        for the snap image to arrive, with a timeout of 1s. 
+        """
+        def handle_image(img=None, isCurrentDetector=None,timeout=False):
+            if timeout:                    
+                self._widget.show_message_box(title="Snap failed",msg_type="warning",
+                                            message="No feedback image acquired.")
+                return False
+            
+            if isCurrentDetector and img is not None:
+                self._experimentalResults.setdefault(slmKey, {})[secKey] = img
+                return True
+            else:
+                return False
+
+        timeout_ms = 1000 # 1s
+        wrapper_slot = lambda _, img, __, ___, isCurrentDetector: handle_image(img, isCurrentDetector)
+        wrapper_slot._timeout_handler = lambda timeout=False: handle_image(timeout=timeout)
+
+        self._oneshot = signaltools.OneShotConnection(
+            signal = self._commChannel.sigUpdateImage,
+            slot = wrapper_slot,
+            timeout_ms = timeout_ms,
+            notify_timeout = True,
+            wait_for_success = True
+        )
+
+    
+    def on_feedback_analysis(self,slmKey,secKey):
+        target = self._targets.get(slmKey,{}).get(secKey) 
+        result = self._experimentalResults.get(slmKey,{}).get(secKey)
+        
+        if target is None:
+            msg = "Target not created yet."
+            success = False
+
+        elif result is None:
+            msg = "Not result found, acquire first before doing result analysis."
+            success = False
+
+        else:
+            try: 
+                success, msg = target.analyze_result(result)
+            except Exception as e:
+                success = False
+                msg = e
+                self.__logger.error(traceback.format_exc())
+
+        if not success:
+            self._widget.show_message_box(title="Feedback analysis failed",msg_type="error",message=msg)
+
+
+    def on_feedback_update_target(self, slmKey,secKey):
+
+        target = self._targets.get(slmKey,{}).get(secKey)
+        if target is None:
+            msg = "Target not created yet."
+            success = False
+
+        else:
+            try:
+                success, msg = target.adapt_target()
+            except Exception as e:
+                success = False
+                msg = e
+                self.__logger.error(traceback.format_exc())
+
+        if not success:
+            self._widget.show_message_box(title="Updating target failed",msg_type="error",message=msg)
+        else:
+            # clear experimental result and update widget count
+            self._experimentalResults.setdefault(slmKey,{})[secKey]=None
+            self._widget.update_feedback_count(slmKey,secKey,target.feedback_count)
+
+
 
      # ----- CGH Worker ----- #
     class CGHWorker(Worker):
@@ -462,6 +638,7 @@ class SLMsController(ImConWidgetController):
             self._mutex = Mutex()
             self._numQueuedComputations = 0
             self.is_running = False
+            self.__logger = initLogger(self)
 
         def prepareForNewComputation(self, slmKey, secKey, target, comput_params, target_params):
             self._skmKey = slmKey
@@ -495,6 +672,7 @@ class SLMsController(ImConWidgetController):
             except Exception as e:
                 msg = str(e)
                 self.sigWorkerCGHComputationFailed.emit(self._skmKey, self._secKey,msg)
+                self.__logger.error(traceback.format_exc())
 
             finally:
                 self.is_running = False
@@ -502,26 +680,3 @@ class SLMsController(ImConWidgetController):
                 self._numQueuedComputations -= 1
                 self._mutex.unlock()
 
-
-
-def targetPrmToStr(target_prm:dict):
-    if target_prm.get("target_name") == "multi_foci":
-        targetx = target_prm.get("target_size_x")
-        targety = target_prm.get("target_size_y")
-        nfoci = target_prm.get("n_foci")
-        period = target_prm.get("period")
-        name = f"mf_trgt{targetx}x{targety}_N{nfoci}_P{period}"
-        return name
-    
-    elif target_prm.get("target_name") == "bfp_spots":
-        target = target_prm.get("target_size")
-        direction = target_prm.get("direction")
-        dist = target_prm.get("spot_distance")
-        offset = target_prm.get("offset")
-        i1 = target_prm.get("spot1_intensity")
-        i2 = target_prm.get("spot2_intensity")
-        name = f"bfpSpots_{direction}_trgt{target}_dist{dist}_offset{offset}_i1{i1}_i2{i2}"
-        return name
-    
-    else:
-        return None

@@ -1,6 +1,6 @@
 import numpy as np
 from .registries import PATTERNS_REGISTRY, ABERRATIONS_REGISTRY
-from . import cghPatterns as cgh
+from . import cghComputations as cgh
 from .aberrationPatterns import ZernikeGenerator
 from PyQt5.QtCore import QObject
 

@@ -135,8 +135,8 @@ class HamamatsuSLMusbManager(SignalInterface):
             self.bID,
             c_array,
             array_1d.size,
-            1272,
-            1024,
+            self.width,
+            self.height,
             slot_no
         )
 
@@ -153,7 +153,7 @@ class HamamatsuSLMusbManager(SignalInterface):
         if self.mockermode:
             return True, "Mocker mode - no device to close."
 
-        if self.bID is not None:
+        if hasattr(self,"bID") and self.bID is not None:
             # NOTE: Close_Dev(uint8_t bIDList[], int32_t bIDSize) disconnects communication with 
             # the target device(s) specified in bIDList.To disconnect only one, we prepare a list 
             # containing only this device ID

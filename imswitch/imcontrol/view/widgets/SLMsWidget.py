@@ -1,11 +1,11 @@
 from qtpy import QtCore, QtWidgets, QtGui
-from imswitch.imcontrol.view.guitools import CollapsibleSection, BetterPushButton, askForFilePath
+from imswitch.imcontrol.view.guitools import CollapsibleSection, BetterPushButton
+from imswitch.imcommon.view.guitools import JsonEditorDialog
 import pyqtgraph as pg
 from .basewidgets import Widget
-from imswitch.imcommon.model import initLogger, dirtools
+from imswitch.imcommon.model import initLogger
 import re
 import json
-import os
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -17,7 +17,7 @@ class SLMsWidget(Widget):
     sigComputeCGH = QtCore.Signal(str, str,dict)            # slmKey, secKey, cgh_params
 
     sigVisualizeCghPerformances = QtCore.Signal(str, str)   # slmKey, secKey
-    sigVisualizeTarget = QtCore.Signal(str, dict)           # target_type, target_params
+    sigVisualizeTarget = QtCore.Signal(str,str)             # slmKey, secKey, target_type, target_params
     sigShowCghResult = QtCore.Signal(str, str, int)         # slmKey, secKey, pad_size
     
     sigLoadConfig = QtCore.Signal(str)                      # slmKey
@@ -26,6 +26,13 @@ class SLMsWidget(Widget):
     sigSaveConfig = QtCore.Signal(str,dict)                 # slmKey, parameters
     sigSaveAberr = QtCore.Signal(str,str,dict)              # slmKey, secKey, aberr_params
     sigSaveCgh = QtCore.Signal(str, str)                    # slmKey, secKey
+
+    sigSnapFeedback = QtCore.Signal(str,str)                # slmKey, secKey
+    sigAnalysisFeedback = QtCore.Signal(str,str)            # slmKey, secKey
+    sigUpdateTarget = QtCore.Signal(str,str)                # slmKey, secKey
+    sigResetFeedback = QtCore.Signal(str,str)               # slmKey, secKey
+    sigAnalysisFeedbackPrm = QtCore.Signal(str,str)         # slmKey, secKey
+    sigLoadFeedback = QtCore.Signal(str,str)                # slmKey, secKey
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -164,7 +171,7 @@ class SLMsWidget(Widget):
         # CGH
         if options.get("cgh",True):
             self._param_definitions[slmKey][secKey]["cgh"]={}
-            vbox.addWidget(self.create_cgh_group(slmKey,secKey))
+            vbox.addWidget(self.create_cgh_group(slmKey,secKey,full_registry.get("cgh_targets")))
 
         vbox.addStretch()
         return container
@@ -418,7 +425,7 @@ class SLMsWidget(Widget):
 
 
     # CGH patterns section
-    def create_cgh_group(self, slmKey="slm",secKey="sec_0"):
+    def create_cgh_group(self, slmKey="slm",secKey="sec_0",registry=None):
 
         # NOTE: general cgh parameters stored in subsection "cgh_general":
         # ==> related attributes will be named accordingly:
@@ -467,7 +474,7 @@ class SLMsWidget(Widget):
         targetLayout = QtWidgets.QVBoxLayout(targetBox)
 
         # target type + visualize button
-        targets_list=["Multi-Foci", "BFP spots"]
+        targets_list=[make_display_name(target_name) for target_name in registry.keys()]
         typeLayout = QtWidgets.QHBoxLayout()
         typeLayout.addWidget(QtWidgets.QLabel("Target Type:"))
         combo = QtWidgets.QComboBox()
@@ -485,15 +492,20 @@ class SLMsWidget(Widget):
         typeLayout.addStretch()
         targetLayout.addLayout(typeLayout)
 
-        # stacked widget for parameters
+        # target parameters based on registry
         stack = QtWidgets.QStackedWidget()
         setattr(self, f"{slmKey}_{secKey}_cghParamStack", stack)
 
-        # populate sub-widgets
-        multifociWidget = self.create_cgh_multifoci_widget(slmKey,secKey)
-        bfpWidget = self.create_cgh_bfp_widget(slmKey,secKey)
-        stack.addWidget(multifociWidget)
-        stack.addWidget(bfpWidget)
+        for target_name,infos in registry.items():
+            _widget = QtWidgets.QWidget()
+            layout = QtWidgets.QGridLayout(_widget)
+            row = self.add_generic_pattern(layout, 0, slmKey, secKey, "cgh",target_name,infos["params"],
+                                    add_checkbox=False, per_row=2)
+            if infos.get("feedback",False):
+                spacer = QtWidgets.QSpacerItem(0, 10, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Fixed)
+                layout.addItem(spacer, row, 0)
+                self.add_feedback_buttons(layout,row,slmKey,secKey,target_name)
+            stack.addWidget(_widget)
 
         combo.currentIndexChanged.connect(lambda idx: stack.setCurrentIndex(idx))
         targetLayout.addWidget(stack)
@@ -573,7 +585,7 @@ class SLMsWidget(Widget):
         computeCghBtn.clicked.connect(lambda: self.on_compute_cgh(slmKey, secKey))
 
         plotCghPerfBtn.clicked.connect(lambda: self.sigVisualizeCghPerformances.emit(slmKey, secKey))
-        visualizeTargetBtn.clicked.connect(lambda: self.on_visualize_target(slmKey, secKey))
+        visualizeTargetBtn.clicked.connect(lambda: self.sigVisualizeTarget.emit(slmKey, secKey))
         showResultBtn.clicked.connect(lambda: self.sigShowCghResult.emit(
             slmKey, secKey, int(padSizeValue.text())))
         
@@ -582,49 +594,55 @@ class SLMsWidget(Widget):
 
         return group
 
-
-
-    # ----------------------------------- #
-    #   Explicit UI BUILDER FUNCTIONS     #
-    # ----------------------------------- #
-
-    def create_cgh_bfp_widget(self, slmKey="slm", secKey="sec_0"):
+    def add_feedback_buttons(self, layout, row, slmKey, secKey, target_name):
         """
-        Build the BFP spots parameters widget for a CGH section.
+        Adds feedback controls in 3 rows for targets supporting adaptive feedback,
+        grouped in a CollapsibleSection titled 'Feedback'.
         """
-        widget = QtWidgets.QWidget()
-        layout = QtWidgets.QGridLayout(widget)
+        section = CollapsibleSection("Feedback")
+        grid = QtWidgets.QGridLayout()
+        counter = QtWidgets.QLabel("Feedback Rounds: 0")
+        counter.setStyleSheet("color: #888;")
+        setattr(self, f"{slmKey}_{secKey}_cgh_feedback_counter", counter)
+        resetbtn = BetterPushButton("Reset")
+        setattr(self, f"{slmKey}_{secKey}_cgh_reset", resetbtn)
+        section.addHeaderWidget(counter)
+        section.addHeaderWidget(resetbtn)
 
-        params = [
-            ("combo","Direction", ["X","Y"]),
-            ("lineedit", "Target Size", 512),
-            ("lineedit","Spot distance", "200"),
-            ("lineedit","Offset", "0"),
-            ("lineedit","Spot1 Intensity", "1.0"),
-            ("lineedit","Spot2 Intensity", "1.0"),
-        ]
-        self.add_param_grid(slmKey, secKey, "cgh", params, 0, layout, per_row=2, width=60, sub_section="bfp_spots")
-        return widget
+        resetbtn.clicked.connect(lambda: self.on_feedback_reset(slmKey,secKey))
 
+        rows = [
+                [("1. Acquire Result:", "acquire_label", None),
+                ("Snap", "snap_btn", self.sigSnapFeedback),
+                ("Load", "load_btn", self.sigLoadFeedback)],
 
-    def create_cgh_multifoci_widget(self, slmKey="slm",secKey="sec_0"):
-        """
-        Build the Multi-Foci parameters widget for a CGH section.
-        Arranges parameters in 2 per row (4 columns).
-        """
-        widget = QtWidgets.QWidget()
-        layout = QtWidgets.QGridLayout(widget)
+                [("2. Result analysis:", "analysis_label", None),
+                ("Analyze", "analyze_btn", self.sigAnalysisFeedback),
+                ("Modify parameters","analysis_prm", self.sigAnalysisFeedbackPrm)],
 
-        params = [
-            ("lineedit","Target size X", "512"),
-            ("lineedit","Target size Y", "512"),
-            ("lineedit","N foci", "3"),
-            ("lineedit","Period", "10"),
-        ]
-        self.add_param_grid(slmKey,secKey,"cgh", params, 0, layout, per_row=2, width=60,sub_section="multi_foci")
-        return widget
+                [("3. Update target w/ feedback:", "define_label", None),
+                ("Update","update_target_btn", self.sigUpdateTarget)]
+            ]
 
+        for r, row_buttons in enumerate(rows):
+            col = 1  # buttons start at column 1
+            for label, attr_suffix, signal in row_buttons:
+                if "label" in attr_suffix:
+                    widget = QtWidgets.QLabel(label)
+                    widget.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
+                    grid.addWidget(widget, r, 0)  # all labels in column 0
+                else:
+                    widget = BetterPushButton(label)
+                    widget.setFixedWidth(120)
+                    if signal is not None:
+                        widget.clicked.connect(lambda _, s=signal, k=slmKey, c=secKey: s.emit(k, c))
+                    grid.addWidget(widget, r, col)
+                    col += 1
+                    setattr(self, f"{slmKey}_{secKey}_cgh_{target_name}_{attr_suffix}", widget)
 
+        section.setContentLayout(grid)
+        layout.addWidget(section, row, 0, 1, -1)
+        return row + 1
 
 
     # ------------------------------------- #
@@ -974,6 +992,22 @@ class SLMsWidget(Widget):
         return val
 
 
+    def getCurrentTargetType(self,slmKey,secKey):
+        """ Returns current target selected in combo box of slmKey, secKey """
+        attrname = f"{slmKey}_{secKey}_cgh_general_target_type"
+        if hasattr(self,attrname):
+            return getattr(self,attrname).currentText()
+        return None
+    
+    def get_cgh_params(self,slmKey,secKey):
+        """ Returns current cgh params set in slmKey, secKey"""
+        all_params = self.get_params()
+        sec_params = all_params.get(slmKey, {}).get(secKey, {})
+        cgh_params = sec_params.get("cgh", None)
+        if cgh_params is not None:
+            return cgh_params
+        return None
+
 
     # ------------------------------------- #
     #       LOGIC HANDLING FUNCTIONS        #
@@ -1056,9 +1090,7 @@ class SLMsWidget(Widget):
         Gather CGH parameters, emits signal to compute CGH and 
         change state of ALL compute buttons. 
         """
-        all_params = self.get_params()
-        sec_params = all_params.get(slmKey, {}).get(secKey, {})
-        cgh_params = sec_params.get("cgh", {})
+        cgh_params = self.get_cgh_params(slmKey,secKey)
         if not cgh_params:
             self.__logger.warning(f"No CGH parameters found for {slmKey}:{secKey}")
             self.on_cgh_computation_failed("No CGH parameters found.")
@@ -1093,6 +1125,18 @@ class SLMsWidget(Widget):
                 
         elif not success:
             self.show_message_box(title="CGH computation failed", message=msg,msg_type="error")
+
+    def on_feedback_reset(self,slmKey,secKey,emitSig=True):
+        lbl = getattr(self,f"{slmKey}_{secKey}_cgh_feedback_counter")
+        lbl.setText("Feedback Rounds: 0")
+        if emitSig:
+            self.sigResetFeedback.emit(slmKey,secKey)
+    
+    def update_feedback_count(self,slmKey,secKey,feedback_count):
+        if hasattr(self,f"{slmKey}_{secKey}_cgh_feedback_counter"):
+            lbl = getattr(self,f"{slmKey}_{secKey}_cgh_feedback_counter")
+            lbl.setText(f"Feedback Rounds: {feedback_count}")
+    
     
     # --------- saving/loading related -------- #
 
@@ -1209,18 +1253,6 @@ class SLMsWidget(Widget):
     
         
     # ----- plots and displays ----- #
-    def on_visualize_target(self, slmKey, secKey):
-        """Get target params and emits signal to request target visualization."""
-        all_params = self.get_params()
-        cgh_params = all_params.get(slmKey, {}).get(secKey, {}).get("cgh", {})
-        target_type = cgh_params.get("cgh_general", {}).get("target_type", None)
-        if target_type is None:
-            return
-        target_params = cgh_params.get(target_type, None)
-        if target_params is None:
-            return
-        self.sigVisualizeTarget.emit(target_type, target_params)
-
     def plot_target(self,target):
         """Show target."""
         if target is None:

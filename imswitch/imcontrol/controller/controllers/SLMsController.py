@@ -1,3 +1,4 @@
+import glob
 import json
 import os
 import numpy as np
@@ -183,7 +184,17 @@ class SLMsController(ImConWidgetController):
             correctionFile = f"CAL_{serial}_{wl}nm.bmp"
             correctionPatternFullPath = os.path.join(correctionPatternsDir,correctionFile)
             if not os.path.isfile(correctionPatternFullPath):
-                raise FileNotFoundError(f"Cannot find correction pattern of {slmName} at wavelength {wl}")
+                wls_available = []
+                wl_errors = []
+                for file in glob.glob(correctionPatternsDir + "/*.bmp"):
+                    wl_avail = file.split("_")[-1].split("nm")[-2]
+                    wls_available.append(wl_avail)
+                    wl_errors.append(int(wl_avail)-wl)
+                min_err_idx = np.argmin(wl_errors)
+                self.__logger.warning(f"Cannot find correction pattern of {slmName} at wavelength {wl}, switching to "
+                                      f"closest one found in {correctionPatternsDir}: {wls_available[min_err_idx]}")
+                correctionPatternFullPath = os.path.join(correctionPatternsDir,f"CAL_{serial}_{wls_available[min_err_idx]}nm.bmp")
+                # raise FileNotFoundError(f"Cannot find correction pattern of {slmName} at wavelength {wl}")
             
             correctionImg = np.array(Image.open(correctionPatternFullPath))
             engine.update_correction_pattern(secKey,correctionImg)
@@ -213,28 +224,34 @@ class SLMsController(ImConWidgetController):
                 raise KeyError(f"Cannot find 'correctionPatternsDir' of {slmName} in config file")
 
             wavelengthTableFile = slmInfo.wavelengthTableFile
+
             if wavelengthTableFile is None:
                 raise ValueError(f"Cannot find 'wavelengthTableFile' of {slmName} in config file")
-            if wavelengthTableFile.split('.')[-1] != "json":
-                raise ValueError(f"The wavelength table shoule be a json file, not {wavelengthTableFile.split('.')[-1]}")
-            
-            wavelengthTableFullPath = os.path.join(correctionPatternsDir,wavelengthTableFile)
-            if not os.path.isfile(wavelengthTableFullPath):
-                raise FileNotFoundError(f"The wavelength table for {slmName} not found at {wavelengthTableFullPath}")
-            
-            with open(wavelengthTableFullPath, 'r') as f:
-                data = json.load(f)
-            if data.get("measurement",{}).get(f"{wl}nm") is not None:
-                twopivalue = data.get("measurement",{}).get(f"{wl}nm")
-                measured = True
-            elif data.get("manufacturer",{}).get(f"{wl}nm") is not None:
-                twopivalue = data.get("manufacturer",{}).get(f"{wl}nm")
-                measured = False
-            elif data.get(f"{wl}nm") is not None:
-                twopivalue = data.get(f"{wl}nm")
-                measured = False
+            if wavelengthTableFile != "none":
+                if wavelengthTableFile.split('.')[-1] != "json":
+                    raise ValueError(f"The wavelength table shoule be a json file, not {wavelengthTableFile.split('.')[-1]}")
+
+                wavelengthTableFullPath = os.path.join(correctionPatternsDir,wavelengthTableFile)
+                if not os.path.isfile(wavelengthTableFullPath):
+                    raise FileNotFoundError(f"The wavelength table for {slmName} not found at {wavelengthTableFullPath}")
+
+                with open(wavelengthTableFullPath, 'r') as f:
+                    data = json.load(f)
+                if data.get("measurement",{}).get(f"{wl}nm") is not None:
+                    twopivalue = data.get("measurement",{}).get(f"{wl}nm")
+                    measured = True
+                elif data.get("manufacturer",{}).get(f"{wl}nm") is not None:
+                    twopivalue = data.get("manufacturer",{}).get(f"{wl}nm")
+                    measured = False
+                elif data.get(f"{wl}nm") is not None:
+                    twopivalue = data.get(f"{wl}nm")
+                    measured = False
+                else:
+                    raise KeyError(f"Cannot find the 2pi value for {slmName} and wavelength {wl}")
             else:
-                raise KeyError(f"Cannot find the 2pi value for {slmName} and wavelength {wl}")
+                self.__logger.warning(f"Cannot find 2pi value for {slmName} and wavelength {wl} using default 255")
+                twopivalue = 255
+                measured = False
 
             engine.update_twopi_value(secKey,twopivalue)
             msg = None

@@ -7,29 +7,32 @@ from .LaserManager import LaserManager
 
 class MPBLaserManager(LaserManager):
     def __init__(self, laserInfo, name, **kwargs):
-        self.__logger = initLogger(self, instanceName=name)
-        self._rs232manager = kwargs['rs232sManager']._subManagers[laserInfo.managerProperties['rs232device']]
-        self.__logger.debug(f'Laser 775, SN: {self._rs232manager.query("GETSN")}')
+        try:
+            self.__logger = initLogger(self, instanceName=name)
+            self._rs232manager = kwargs['rs232sManager']._subManagers[laserInfo.managerProperties['rs232device']]
+            self.__logger.debug(f'Laser 775, SN: {self._rs232manager.query("GETSN")}')
 
-        self.__power_setting = 1  # To change power with python (1) or knob (0) -> not functional currently
-        self.__mode = 1  # Constant current (0) or constant power (1) mode
-        self.__triggerMode = 0  # Trigger: internal (0) --> not functional currently
+            self.__power_setting = 1  # To change power with python (1) or knob (0) -> not functional currently
+            self.__mode = 1  # Constant current (0) or constant power (1) mode
+            self.__triggerMode = 0  # Trigger: internal (0) --> not functional currently
 
-        self.check_that_laser_is_in_APC_mode()
+            self.check_that_laser_is_in_APC_mode()
 
-        # find out min max powers, the command gives them back in such a format: 'F >99 3050'
-        self.__min_max_powers = [int(val) for val in self._rs232manager.query("GETPOWERSETPTLIM 0").split('>')[1].split(' ')]
-        assert(len(self.__min_max_powers) == 2)
-        self.__logger.debug(f"Min Power setting: {self.__min_max_powers[0]} mW,"
-                            f" Max Power setting: {self.__min_max_powers[1]} mW")
+            # find out min max powers, the command gives them back in such a format: 'F >99 3050'
+            self.__min_max_powers = [int(val) for val in self._rs232manager.query("GETPOWERSETPTLIM 0").split('>')[1].split(' ')]
+            assert(len(self.__min_max_powers) == 2)
+            self.__logger.debug(f"Min Power setting: {self.__min_max_powers[0]} mW,"
+                                f" Max Power setting: {self.__min_max_powers[1]} mW")
 
-        self.setPowerSetting(self.__power_setting)
-        self.setTriggerSource(self.__triggerMode)
-        self.setMode(self.__mode)
-        self.__enabled = True
-        self.setEnabled(self.__enabled)
+            self.setPowerSetting(self.__power_setting)
+            self.setTriggerSource(self.__triggerMode)
+            self.setMode(self.__mode)
+            self.__enabled = True
+            self.setEnabled(self.__enabled)
 
-        super().__init__(laserInfo, name, isBinary=False, valueUnits='mW', valueDecimals=0)
+            super().__init__(laserInfo, name, isBinary=False, valueUnits='mW', valueDecimals=0)
+        except Exception as e:
+            print(e, flush=True)
 
     def setEnabled(self, enabled):
         """Turn on (1) or off (0) laser emission"""

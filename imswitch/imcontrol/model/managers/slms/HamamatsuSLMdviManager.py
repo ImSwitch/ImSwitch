@@ -34,7 +34,6 @@ class HamamatsuSLMdviManager(SignalInterface):
         if self.mockermode:
             self.__logger.info(
                 f"SLM Manager {self.slmName} running in MOCKER MODE. No actual connection to SLM will be made.")
-            self.dll = None
 
         # prepare the qwidget
 

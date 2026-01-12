@@ -16,8 +16,9 @@ class ImageWidget(QtWidgets.QWidget):
         self.updateLevelsWidget = naparitools.NapariUpdateLevelsWidget.addToViewer(
             self.napariViewer
         )
-        self.NapariResetViewWidget = naparitools.NapariResetViewWidget.addToViewer(self.napariViewer, 'right')
-        self.NapariSumImageWidget = naparitools.NapariSumImageWidget.addToViewer(self.napariViewer, 'right')
+        #LR: The next to widgets are etSTED specific and i.m.o. not needed --> at least for now commented
+        #self.NapariResetViewWidget = naparitools.NapariResetViewWidget.addToViewer(self.napariViewer, 'right')
+        #self.NapariSumImageWidget = naparitools.NapariSumImageWidget.addToViewer(self.napariViewer, 'right')
         self.NapariShiftWidget = naparitools.NapariShiftWidget.addToViewer(self.napariViewer)
         self.imgLayers = {}
 

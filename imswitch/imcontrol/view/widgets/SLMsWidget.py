@@ -537,12 +537,18 @@ class SLMsWidget(Widget):
         quadPhaseCoeff = QtWidgets.QLineEdit("0.004")
         quadPhaseCoeff.setFixedWidth(50)
 
+        relaxCheckBox = QtWidgets.QCheckBox("Relax. Consraint")
+        relaxFactor = QtWidgets.QLineEdit("0.9")
+        relaxFactor.setFixedWidth(50)
+
         setattr(self, f"{slmKey}_{secKey}_{computsubsec}_weighted_gs", weightedgsCheckbox)
         setattr(self, f"{slmKey}_{secKey}_{computsubsec}_n_iterations", niterEdit)
         setattr(self, f"{slmKey}_{secKey}_{computsubsec}_phase_fixing", phaseFixingCheckbox)
         setattr(self, f"{slmKey}_{secKey}_{computsubsec}_phase_fixing_value", phaseFixingValue)
         setattr(self, f"{slmKey}_{secKey}_{computsubsec}_quad_phase", quadPhaseCheckBox)
         setattr(self, f"{slmKey}_{secKey}_{computsubsec}_quad_phase_coeff", quadPhaseCoeff)
+        setattr(self, f"{slmKey}_{secKey}_{computsubsec}_relaxed_constraint", relaxCheckBox)
+        setattr(self, f"{slmKey}_{secKey}_{computsubsec}_relax_factor", relaxFactor)
 
 
         # params layout
@@ -561,6 +567,9 @@ class SLMsWidget(Widget):
         row2.addWidget(quadPhaseCheckBox)
         row2.addWidget(QtWidgets.QLabel("Coeff:"))
         row2.addWidget(quadPhaseCoeff)
+        row2.addWidget(relaxCheckBox)
+        row2.addWidget(QtWidgets.QLabel("Factor:"))
+        row2.addWidget(relaxFactor)
         row2.addStretch()
 
         paramsLayout.addLayout(row1)
@@ -575,6 +584,8 @@ class SLMsWidget(Widget):
             ("lineedit","phase_fixing_value", 0, "phase_fixing_value"),
             ("checkbox","quad_phase", False, "quad_phase"),
             ("lineedit","quad_phase_coeff", False, "quad_phase_coeff"),
+            ("checkbox","relaxed_constraint", False, "relaxed_constraint"),
+            ("lineedit","relax_factor", False, "relax_factor"),
         ]
         )
 

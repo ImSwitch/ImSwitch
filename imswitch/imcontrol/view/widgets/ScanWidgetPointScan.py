@@ -1,3 +1,5 @@
+from PyQt5.QtWidgets import QCheckBox, QSpinBox
+from qtpy.QtWidgets import QWidget
 from qtpy import QtCore, QtWidgets
 
 from imswitch.imcontrol.view import guitools as guitools
@@ -20,6 +22,12 @@ class ScanWidgetPointScan(SuperScanWidget):
                         }
 
         self.ttlParameters = {}
+
+        self.linestep_counter = QSpinBox()
+        self.linestep_counter.setMinimum(1)
+        self.linestep_counter.setMaximum(100)
+        self.linestep_counter.setSingleStep(1)
+        self.linestep_counter.valueChanged.connect(self.update_n_linesteps)
 
         # Connect signals
         self.seqTimePar.textChanged.connect(self.sigSeqTimeParChanged)
@@ -144,35 +152,51 @@ class ScanWidgetPointScan(SuperScanWidget):
         currentRow += 1
 
         # TTL param labels
-        sequenceLabel = QtWidgets.QLabel('Sequence (h#,l#,...)')
+        sequenceLabel = QtWidgets.QLabel('Line steps')
         sequenceLabel.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignBottom)
         self.grid.addWidget(sequenceLabel, currentRow, 1)
         sequenceAxisLabel = QtWidgets.QLabel('Axis')
         sequenceAxisLabel.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignBottom)
-        self.grid.addWidget(sequenceAxisLabel, currentRow, 2)
+        self.grid.addWidget(sequenceAxisLabel, currentRow, 4)
+        currentRow += 1
+
+        linestepLabel = QtWidgets.QLabel('#Line steps')
+        linestepLabel.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignBottom)
+        self.grid.addWidget(linestepLabel, currentRow, 1)
+
+        self.grid.addWidget(self.linestep_counter, currentRow, 2)
         currentRow += 1
 
         for deviceName in TTLDeviceNames:
             # TTL sequence param
             self.grid.addWidget(QtWidgets.QLabel(deviceName), currentRow, 0)
-            self.ttlParameters['seq' + deviceName] = QtWidgets.QLineEdit('l1')
-            self.grid.addWidget(self.ttlParameters['seq' + deviceName], currentRow, 1)
+            self.ttlParameters['seq' + deviceName] = ScanLineWidget()#QtWidgets.QLineEdit('l1')
+            self.grid.addWidget(self.ttlParameters['seq' + deviceName], currentRow, 1, 1, 3)
 
             # TTL sequence axis param
             ttlAxisPar = QtWidgets.QComboBox()
             ttlAxisPar.addItems(self.scanDims)
             ttlAxisPar.setCurrentIndex(self.scanDims.index('None'))
             self.ttlParameters['seqAxis' + deviceName] = ttlAxisPar
-            self.grid.addWidget(ttlAxisPar, currentRow, 2)
+            self.grid.addWidget(ttlAxisPar, currentRow, 4)
 
             currentRow += 1
 
             # Connect signals
-            self.ttlParameters['seq' + deviceName].textChanged.connect(self.sigSignalParChanged)
+            self.ttlParameters['seq' + deviceName].line_steps_changed.connect(self.sigSignalParChanged)
+            #self.ttlParameters['seq' + deviceName].textChanged.connect(self.sigSignalParChanged)
             self.ttlParameters['seqAxis' + deviceName].currentIndexChanged.connect(self.sigSignalParChanged)
         
         # Set grid layout options
         self.grid.setColumnMinimumWidth(6, 90)
+
+    def update_n_linesteps(self):
+        n_steps = int(self.linestep_counter.value())
+        for deviceName in self.ttlParameters.keys():
+            if 'Axis' not in deviceName:
+                self.ttlParameters[deviceName].n_checkboxes_changed(n_steps)
+        self.sigSignalParChanged.emit()
+
 
     def getScanStepSize(self, positionerName):
         if self.scanPar['stepSize' + positionerName].isEnabled():
@@ -232,6 +256,72 @@ class ScanWidgetPointScan(SuperScanWidget):
 
     def setScanMode(self):
         pass
+
+
+class ScanLineWidget(QWidget):
+    line_steps_changed = QtCore.Signal()
+    def __init__(self, parent=None, initial_count=1):
+
+        super(ScanLineWidget, self).__init__(parent)
+        self.layout = QtWidgets.QHBoxLayout(self)
+        self.layout.setContentsMargins(0, 0, 0, 0)
+        self.layout.setSpacing(4)
+        self.checkboxes = []
+        for _ in range(initial_count):
+            self.add_checkbox()
+
+    def add_checkbox(self, n_total=None):
+        if n_total is None:
+            n_total = len(self.checkboxes) + 1
+        while len(self.checkboxes) < n_total:
+            cb = QCheckBox()
+            try:
+                if self.checkboxes[-1].isChecked():
+                    cb.setChecked(True)
+            except IndexError:
+                pass
+            cb.toggled.connect(self.line_steps_changed)
+            self.checkboxes.append(cb)
+            self.layout.addWidget(cb)
+
+    def remove_checkbox(self, n_total=None):
+        if n_total is None:
+            n_total = len(self.checkboxes) - 1
+        while len(self.checkboxes) > n_total:
+            cb = self.checkboxes[-1]
+            self.checkboxes.pop()
+            self.layout.removeWidget(cb)
+            cb.setParent(None)
+            cb.deleteLater()
+
+    def n_checkboxes_changed(self, n_total):
+        if n_total < len(self.checkboxes):
+            self.remove_checkbox(n_total)
+        elif n_total > len(self.checkboxes):
+            self.add_checkbox(n_total)
+        else:
+            pass
+
+
+
+    def states(self):
+        """for now keep old format of strings combining l1 and h1 for on and off"""
+        out_str = ""
+        for checkbox in self.checkboxes:
+            if checkbox.isChecked():
+                out_str += "h1"
+            else:
+                out_str += "l1"
+            out_str += ","
+        out_str = out_str[:-1]
+        return out_str
+
+    #@property
+    def text(self):
+        """compatibility wrapper to be drop-in replacement for old text edits"""
+        return self.states()
+
+
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

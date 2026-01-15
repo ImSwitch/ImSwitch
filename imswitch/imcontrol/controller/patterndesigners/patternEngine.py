@@ -31,7 +31,8 @@ class PatternEngine(QObject):
     def set_new_cgh_pattern(self, sec_key, cgh_pattern):
         """
         Receives a new CGH pattern, pads and/or crops to fit the section size,
-        stores it, and returns a warning if cropping occurs.
+        stores it, and returns a warning if cropping occurs. 
+        Returns a warning message if cropping occured, None otherwise.
         """
 
         target_h, target_w = self._sectionShapes[sec_key]

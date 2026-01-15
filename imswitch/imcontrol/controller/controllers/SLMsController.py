@@ -357,12 +357,12 @@ class SLMsController(ImConWidgetController):
         if target is None or target.target_type != target_type:
             target = self.create_target(target_type, **target_params)
             self._targets.setdefault(slmKey, {})[secKey] = target
-
+            self._cghResults.setdefault(slmKey, {})[secKey] = {} # clear any previous cgh result
         else:
             changed = target.update_params(**target_params)
             if changed:
                 self._widget.on_feedback_reset(slmKey,secKey,emitSig=False)
-
+                self._cghResults.setdefault(slmKey, {})[secKey] = {} # clear any previous cgh result
         return True
 
     def create_target(self,target_type, **target_params):
@@ -412,7 +412,7 @@ class SLMsController(ImConWidgetController):
         slmName = self._slmNames.get(slmKey)
         secName = self._widget._tab_names_dict.get(slmKey,{}).get(secKey,secKey)
 
-        result_dict = self._cghResults.get(slmKey,{}).get(secKey,{})
+        result_dict = self._cghResults.get(slmKey,{}).get(secKey,{}) 
         if result_dict is None:
             self._widget.show_message_box(title="No CGH Pattern",msg_type="error",
                                       message=f"No CGH pattern found for {slmName}, {secName}")
@@ -420,8 +420,8 @@ class SLMsController(ImConWidgetController):
         
         try:
             name = None
-            if result_dict.get("target_params") is not None:
-                name = targetPrmToStr(result_dict.get("target_params"))
+            if self._targets.get(slmKey, {}).get(secKey) is not None:
+                name =  self._targets.get(slmKey).get(secKey).name
             name = "cgh_pattern" if name is None else name
 
             suggested = os.path.join(self.cghPatternsDir,name)
@@ -453,37 +453,52 @@ class SLMsController(ImConWidgetController):
         try:
             self.sync_target(slmKey, secKey)
             target_array =  self._targets.get(slmKey).get(secKey).array
+            feedback_count = self._targets.get(slmKey).get(secKey).feedback_count
         except Exception as e:
             self._widget.on_cgh_computation_result(slmKey, secKey,success=False, msg=e)
             self.__logger.error(traceback.format_exc())
             return
 
+        if feedback_count > 0 and self._cghResults.get(slmKey,{}).get(secKey,{}).get("cgh_pattern") is not None:
+            previous_pattern = np.angle(self._cghResults.get(slmKey).get(secKey).get("cgh_pattern"))
+        else:
+            previous_pattern = None
+
         # dispatch computation to CGH worker
         comput_params = cgh_params.get("cgh_computation",{})
-        self._cghWorker.prepareForNewComputation(slmKey, secKey, target_array, comput_params, target_params)
+        self._cghWorker.prepareForNewComputation(slmKey, secKey, target_array, comput_params, target_params,previous_pattern)
         self._cghWorker.sigStartComputation.emit()
     
 
-    def on_cgh_computed(self,slmKey,secKey, result_dict):
+    def on_cgh_computed(self,slmKey,secKey, result_dict,msg=""):
         """Handle CGH computed signal from CGH worker."""
-    
+
+        msgs=[msg] if msg else []
         engine = self._patternEngines.get(slmKey)
         try:
-            msg = engine.set_new_cgh_pattern(secKey, result_dict["cgh_pattern"])
+            engine_msg = engine.set_new_cgh_pattern(secKey, result_dict["cgh_pattern"])
+            if engine_msg is not None:
+                msgs.append(engine_msg)
         except:
-            msg = f"Computation sucessful but setting new cgh pattern in PatternEngine failed, " \
+            m = f"Computation sucessful but setting new cgh pattern in PatternEngine failed, " \
                   f"likely due to padding/cropping patterns. Double-check that target sizes make sense."
-            self._widget.on_cgh_computation_result(slmKey,secKey,success=False,msg=msg)
+            self._widget.on_cgh_computation_result(slmKey,secKey,success=False,msg=m)
             raise
-        
+
         if self._targets.get(slmKey,{}).get(secKey) is not None:
             cgh_name = self._targets.get(slmKey).get(secKey).name
         else:
             cgh_name = None
+        
+        # format msg
+        full_msg = None
+        if len(msgs) >0:
+            processed_msgs = [m.replace("\n", "<br>") for m in msgs]
+            full_msg = "<br><br>".join(processed_msgs)
 
         # store results and notify widget computation is done
         self._cghResults.setdefault(slmKey,{})[secKey] = result_dict
-        self._widget.on_cgh_computation_result(slmKey,secKey,success=True,msg=msg,cgh_name=cgh_name)
+        self._widget.on_cgh_computation_result(slmKey,secKey,success=True,msg=full_msg,cgh_name=cgh_name)
 
 
     def on_cgh_computation_failed(self, slmKey, secKey, msg):
@@ -562,6 +577,7 @@ class SLMsController(ImConWidgetController):
         if target is not None:
             target.reset_feedback()
         self._experimentalResults.setdefault(slmKey,{})[secKey]=None
+        self._cghResults.setdefault(slmKey, {})[secKey] = {} # clear any previous cgh result
 
 
     def on_feedback_snap(self, slmKey, secKey):
@@ -647,7 +663,7 @@ class SLMsController(ImConWidgetController):
         """ Worker class to compute CGH patterns in a separate thread. """
 
         sigStartComputation = Signal()
-        sigWorkerCGHComputed = Signal(str, str, dict)  # slmKey, secKey, result dict: {"cgh_pattern":..., "performances":...}
+        sigWorkerCGHComputed = Signal(str, str, dict, str)  # slmKey, secKey, result dict, optional message
         sigWorkerCGHComputationFailed = Signal(str, str, str)  # slmKey, secKey, error message
 
         def __init__(self):
@@ -657,10 +673,12 @@ class SLMsController(ImConWidgetController):
             self.is_running = False
             self.__logger = initLogger(self)
 
-        def prepareForNewComputation(self, slmKey, secKey, target, comput_params, target_params):
+        def prepareForNewComputation(self, slmKey, secKey, target, comput_params, target_params,
+                                     previous_pattern=None, quad_initial_phase=None):
             self._skmKey = slmKey
             self._secKey = secKey
             self._target = target
+            self._previous_pattern = previous_pattern
             self._comput_params = comput_params
             self._target_params = target_params
             self._mutex.lock()
@@ -673,10 +691,12 @@ class SLMsController(ImConWidgetController):
                 if self._numQueuedComputations > 1:
                     # Skip to catch up
                     return
-                pattern, performances, msg = cgh.gerchberg_saxton(self._target,**self._comput_params)
+                pattern, performances, msg, err = cgh.gerchberg_saxton(self._target,previous_pattern=self._previous_pattern,**self._comput_params)
 
                 if pattern is None:
                     self.sigWorkerCGHComputationFailed.emit(self._skmKey, self._secKey,msg)
+                    if err is not None:
+                        self.__logger.error(traceback.format_exc())
                 else:
                     result_dict = {
                         "cgh_pattern": pattern,
@@ -684,8 +704,9 @@ class SLMsController(ImConWidgetController):
                         "comput_params": self._comput_params,
                         "target_params": self._target_params,
                     }
-                    self.sigWorkerCGHComputed.emit(self._skmKey, self._secKey, result_dict)
-            
+
+                    self.sigWorkerCGHComputed.emit(self._skmKey, self._secKey, result_dict, msg)
+
             except Exception as e:
                 msg = str(e)
                 self.sigWorkerCGHComputationFailed.emit(self._skmKey, self._secKey,msg)

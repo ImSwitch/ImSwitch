@@ -4,6 +4,7 @@ from .cghUtils import fft_constrained_frequency_estimation, refine_foci_position
 from .cghUtils import fft_frequency_estimation, estimate_lattice_offset
 from .registries import register_target
 import matplotlib.pyplot as plt
+import cv2
 
 @register_target("multi_foci", feedback=True,
 params=[
@@ -23,19 +24,24 @@ class MultiFociTarget(TargetBase):
     def __init__(self, **params):
         super().__init__(**params)
         self.analysis_prm = {
-            "foci_integration_size": 7,
-            "Threshold": 0.5,
-            "Dilat_kernel_size":5,
+            "reuse_prev_localisation": True,
+            "foci_integration_size": 5,
+            "Threshold": 0.4,
+            "Dilat_kernel_size": 3,
             "auto_freq_finder": True,
-            "period_x": None,
-            "period_y": None,
+            "period_x": 9.2,
+            "period_y": 9.2,
             "freq_search_window_px": 0.1,
             "foci_loc_method": "max",
-            "foci_search_window_px": 3,
-            "auto_freq_blur_sigma":1.0,
-            "auto_freq_exclude_frac":0.05,
+            "foci_search_window_px": 2,
+            "auto_freq_blur_sigma": 1.0,
+            "auto_freq_exclude_frac": 0.05,
             "auto_freq_peak_prom": 0.05,
+            "offset_blur_sigma": 1.0,
+            "offset_search_frac": 0.5,
+            "offset_search_steps": 8
         }
+        self.pattern_localization={}
 
     # feedback allowed
     @property
@@ -134,45 +140,29 @@ class MultiFociTarget(TargetBase):
 
 
     def _analyze_result_impl(self, image, show_plot=True):
-        # localize array and crop
-        kernel_size = self.analysis_prm.get("Dilat_kernel_size")
-        threshold = self.analysis_prm.get("Threshold")
-        image_cropped,crop_preview = crop_with_preview(image, kernel_size, threshold)
-
-        # frequency estimation
-        if self.analysis_prm.get("auto_freq_finder",True):
-            fx,fy = fft_frequency_estimation(image_cropped,self.analysis_prm.get("auto_freq_blur_sigma"),
-                                             self.analysis_prm.get("auto_freq_exclude_frac"),
-                                             self.analysis_prm.get("auto_freq_peak_prom"))
-        else:
-            period_x = self.analysis_prm.get("period_x","auto")
-            period_y = self.analysis_prm.get("period_x","auto")
-            if period_x is None or period_y is None:
-                raise Exception("Period x and y needs to be specify if auto_freq_finder=False")
-
-            fx_exp, fy_exp = 1.0 / period_x, 1.0 / period_y
-            fx, fy = fft_constrained_frequency_estimation(image_cropped, fx_exp, fy_exp,
-                                                        self.analysis_prm.get("freq_search_window_px"))
         
-        # periods
-        ax, ay = 1.0 / abs(fx), 1.0 / abs(fy)
+        localized = False
 
-        # offsets
-        dx0, dy0 = estimate_lattice_offset(image_cropped,ax,ay,self.npx,self.npy)
-        
-        # base positions
-        rx, ry = [], []
-        for j in range(self.npy):
-            for i in range(self.npx):
-                rx.append(i * ax + dx0)
-                ry.append(j * ay + dy0)
-        rx, ry = np.array(rx), np.array(ry)
+        # reusing previous localization
+        if self.analysis_prm.get("reuse_prev_localisation") and self.pattern_localization!={}:
+            crop_coord = self.pattern_localization.get("crop_coord")
+            rx = self.pattern_localization.get("rx")
+            ry = self.pattern_localization.get("ry")
+            if crop_coord is not None and rx is not None and ry is not None:
+                if len(rx)==self.npx*self.npy and len(ry)==self.npy*self.npy:
+                    image_cropped,crop_coord = crop_with_preview(image,crop_coord=crop_coord)
+                    localized=True
 
-        # refined positions
-        if self.analysis_prm.get("foci_search_window_px") !=0:
-            rx, ry = refine_foci_positions(image_cropped, rx, ry,
-                                        method=self.analysis_prm.get("foci_loc_method"),
-                                        window=self.analysis_prm.get("foci_search_window_px"))
+        # automatic localization
+        if not localized:
+            kernel_size = self.analysis_prm.get("Dilat_kernel_size")
+            threshold = self.analysis_prm.get("Threshold")
+            image_cropped,crop_coord = crop_with_preview(image, kernel_size, threshold)
+            self.pattern_localization["crop_coord"] = crop_coord
+
+            rx,ry = self._localize_pattern(image_cropped)
+            self.pattern_localization["rx"]=rx
+            self.pattern_localization["ry"]=ry
 
         # calculate trap_power and metrics
         img_for_preview = image_cropped.copy()
@@ -189,8 +179,6 @@ class MultiFociTarget(TargetBase):
         std = trap_power.std() / trap_power.mean()
 
         analysis = {
-            "refined_x": rx,
-            "refined_y": ry,
             "trap_power": trap_power,
             "efficiency": efficiency,
             "uniformity": uniformity,
@@ -199,8 +187,10 @@ class MultiFociTarget(TargetBase):
 
         if show_plot:
             fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(12, 4))
-            ax1.imshow(crop_preview, vmin=0, cmap='gray')
-            ax1.set_title('Crop area')
+            ax1.imshow(image, vmin=0, cmap='gray')
+            y1,y2,x1,x2 = crop_coord
+            rect = plt.Rectangle((x1, y1), x2-x1, y2-y1, edgecolor='r', facecolor='none', linewidth=2)
+            ax1.add_patch(rect)
 
             ax2.imshow(image_cropped, vmin=0, cmap='gray')
             ax2.scatter(rx, ry, c='r', marker='x', s=50, label='Refined traps')
@@ -237,5 +227,57 @@ class MultiFociTarget(TargetBase):
 
         # Apply the weights
         new_target = self.array * weights_2d
+        new_target = (new_target - np.min(new_target))/(np.max(new_target)- np.min(new_target))
+        # new_target = new_target[:,::-1]  # flip horizontal
+        # new_target = new_target[::-1,:]  # flip vertical
 
         return new_target, None
+    
+
+    def _localize_pattern(self,img):
+        # frequency estimation
+        if self.analysis_prm.get("auto_freq_finder",True):
+            fx,fy = fft_frequency_estimation(img,self.analysis_prm.get("auto_freq_blur_sigma"),
+                                             self.analysis_prm.get("auto_freq_exclude_frac"),
+                                             self.analysis_prm.get("auto_freq_peak_prom"))
+        else:
+            period_x = self.analysis_prm.get("period_x","auto")
+            period_y = self.analysis_prm.get("period_x","auto")
+            if period_x is None or period_y is None:
+                raise Exception("Period x and y needs to be specify if auto_freq_finder=False")
+
+            # refinement (optional)
+            if self.analysis_prm.get("freq_search_window_px",0) > 0:
+                fx_exp, fy_exp = 1.0 / period_x, 1.0 / period_y
+                fx, fy = fft_constrained_frequency_estimation(img, fx_exp, fy_exp,
+                                                            self.analysis_prm.get("freq_search_window_px"))
+            else:
+                fx, fy = 1.0 / period_x, 1.0 / period_y
+        
+        # periods
+        ax, ay = 1.0 / abs(fx), 1.0 / abs(fy)
+
+        # offsets
+        dx0, dy0 = estimate_lattice_offset(img,ax,ay,self.npx,self.npy,
+                                           self.analysis_prm.get("offset_blur_sigma"),
+                                           self.analysis_prm.get("offset_search_frac"),
+                                           self.analysis_prm.get("offset_search_steps"))
+        
+        # base positions
+        rx, ry = [], []
+        for j in range(self.npy):
+            for i in range(self.npx):
+                rx.append(i * ax + dx0)
+                ry.append(j * ay + dy0)
+        rx, ry = np.array(rx), np.array(ry)
+
+        # refined positions (optional)
+        if self.analysis_prm.get("foci_search_window_px") !=0:
+            rx, ry = refine_foci_positions(img, rx, ry,
+                                        method=self.analysis_prm.get("foci_loc_method"),
+                                        window=self.analysis_prm.get("foci_search_window_px"))
+        
+        return rx,ry
+    
+    def _feedback_reset(self):
+        self.pattern_localization={}

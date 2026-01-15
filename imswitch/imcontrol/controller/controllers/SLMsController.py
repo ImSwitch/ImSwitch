@@ -59,11 +59,12 @@ class SLMsController(ImConWidgetController):
             self._slmInfos[slmKey] = slmInfo
 
             if slmInfo is not None:
-                if slmInfo.widgetOptions.get("startConfig") is not None:
-                    start_config = slmInfo.widgetOptions.get("startConfig")
+                if slmInfo.managerProperties.get("startConfig") is not None:
+                    start_config = slmInfo.managerProperties.get("startConfig")
                     config_path = os.path.join(self.configsDir, start_config)
                     if os.path.isfile(config_path):
                         self.on_load_config(slmKey, path=config_path)
+                        self.__logger.info(f"Successfully loaded startup config for {slmName}")
                     else:
                         self.__logger.warning(f"Initial SLM config file {config_path} not found.")
 

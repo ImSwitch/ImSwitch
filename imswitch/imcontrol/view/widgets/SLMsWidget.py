@@ -1182,6 +1182,7 @@ class SLMsWidget(Widget):
             tab_names = slm_params.get("tab_names", {})
             if tab_names:
                 self.update_tab_names(slmKey, tab_names)
+            self.on_update_pattern(slmKey)
 
         except Exception as e:
             self.__logger.error(f"Failed to load config: {e}")
@@ -1193,7 +1194,7 @@ class SLMsWidget(Widget):
         try:
             self.set_params({slmKey: {secKey: {"aberrations": aberr_params}}})
             self.update_label(slmKey,secKey,"load_aberrations_label",f"Loaded: {label_name}")
-
+            self.on_update_pattern(slmKey)
         except Exception as e:
             self.__logger.error(f"Failed to load aberrations: {e}")
             if msg_box:

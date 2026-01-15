@@ -32,7 +32,7 @@ class MPBLaserManager(LaserManager):
 
             super().__init__(laserInfo, name, isBinary=False, valueUnits='mW', valueDecimals=0)
         except Exception as e:
-            print(e, flush=True)
+            print("Error in MPBLaserManager:", e, flush=True)
 
     def setEnabled(self, enabled):
         """Turn on (1) or off (0) laser emission"""

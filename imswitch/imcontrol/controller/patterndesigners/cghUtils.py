@@ -170,7 +170,8 @@ def estimate_lattice_offset(arr, ax, ay, npx, npy, blur_sigma=1.0,
     dx0, dy0 : int
         Estimated integer pixel offset for the lattice origin.
     """
-
+    search_steps=int(search_steps)
+    
     # Smooth image for robustness
     arr_smooth = gaussian_filter(arr.astype(float), blur_sigma)
     h, w = arr.shape
@@ -182,7 +183,7 @@ def estimate_lattice_offset(arr, ax, ay, npx, npy, blur_sigma=1.0,
 
     # Steps in dx, dy
     step = max(1, search_r // search_steps)
-    candidates = range(-search_r, search_r + 1, step)
+    candidates = range(0, 2*search_r + 1, step)
 
     best_score = -np.inf
     best_offset = (0, 0)
@@ -217,20 +218,21 @@ def estimate_lattice_offset(arr, ax, ay, npx, npy, blur_sigma=1.0,
     return best_offset
 
 
-
-def crop_with_preview(arr, kernel_size, threshold1):
+def crop_with_preview(arr, kernel_size=3, threshold=0.3,crop_coord=None):
     """
-    Crop the array based on threshold + dilation and return the cropped region
-    as well as a preview image showing the crop rectangle.
+    Crop the array based on crop_coord or automatic crop area detection (threshold + dilation).
+    Return the cropped region and the crop_coord.
 
     Parameters
     ----------
     arr : np.ndarray
         Input image (2D or 3D).
-    kernel_size : int
+    kernel_size : int, default = 3
         Kernel size used for dilation.
-    threshold1 : float
+    threshold1 : float, default = 0.3
         Fraction of maximum brightness used to binarize the image.
+    crop_coord : tuple, default = None
+        Cropping coordinates (y1,y2,x1,x2) --> arr[y1:y2, x1:x2]
 
     Returns
     -------
@@ -238,28 +240,32 @@ def crop_with_preview(arr, kernel_size, threshold1):
         Cropped array.
     preview : np.ndarray (uint8)
         RGB preview image with the crop rectangle drawn.
+    crop_coord: tuple
+        cropping coordinates(y1,y2,x1,x2)
     """
 
-    binary = (arr > arr.max() * threshold1).astype("uint8")
+    if crop_coord is not None:
+        y1,y2,x1,x2 = crop_coord
+    else:
+        binary = (arr > arr.max() * threshold).astype("uint8")
 
-    kernel = np.ones((kernel_size, kernel_size), dtype="uint8")
-    arr_dilation = cv2.dilate(binary, kernel, iterations=1)
+        kernel = np.ones((kernel_size, kernel_size), dtype="uint8")
+        arr_dilation = cv2.dilate(binary, kernel, iterations=1)
 
-    nonzero_y, nonzero_x = np.nonzero(arr_dilation)
-    if len(nonzero_y) == 0:
-        # nothing detected → return original + no rectangle
-        cropped = arr.copy()
-        return cropped, arr
+        nonzero_y, nonzero_x = np.nonzero(arr_dilation)
+        if len(nonzero_y) == 0:
+            # nothing detected → return original + no rectangle
+            cropped = arr.copy()
+            return cropped, arr
 
-    y1, y2 = nonzero_y.min(), nonzero_y.max()
-    x1, x2 = nonzero_x.min(), nonzero_x.max()
+        y1, y2 = nonzero_y.min(), nonzero_y.max()
+        x1, x2 = nonzero_x.min(), nonzero_x.max()
+        crop_coord = (y1,y2,x1,x2)
 
     cropped = arr[y1:y2, x1:x2].copy()
 
-    preview = arr.copy()
-    cv2.rectangle(preview, (x1, y1), (x2, y2), (0, 255, 0), 2)
+    return cropped,crop_coord
 
-    return cropped, preview
 
 def sum_around(array: np.ndarray, coord_x: float, coord_y: float, window_size: int, zero_out: bool = False):
     """

@@ -176,12 +176,12 @@ class RecordingController(ImConWidgetController):
             elif self.recMode == RecMode.SpecTime:
                 self.recordingArgs['recTime'] = self._widget.getTimeToRec()
                 self._master.recordingManager.startRecording(**self.recordingArgs)
-            #elif self.recMode == RecMode.SpecLapse: # not generally recognized !
-            #    #TODO: trying to implement a non-continuous camera-only imaging (widefield)
-            #    self.recordingArgs['recLapseFrames'] = self._widget.getTimelapseNumFrames()
-            #    self.recordingArgs['recLapseFrameTime'] = self._widget.getSpecTimelapseFrameTime()
-            #    self.recordingArgs['recLapseLaser'] = self._widget.getSpecTimelapseLaser()
-            #    self._master.recordingManager.startRecording(**self.recordingArgs)
+            # elif self.recMode == RecMode.SpecLapse:
+            #     #TODO: trying to implement a non-continuous camera-only imaging (widefield)
+            #     self.recordingArgs['recLapseFrames'] = self._widget.getTimelapseNumFrames()
+            #     self.recordingArgs['recLapseFrameTime'] = self._widget.getSpecTimelapseFrameTime()
+            #     self.recordingArgs['recLapseLaser'] = self._widget.getSpecTimelapseLaser()
+            #     self._master.recordingManager.startRecording(**self.recordingArgs)
             elif self.recMode == RecMode.ScanOnce:
                 self.recordingArgs['recFrames'] = self._commChannel.getNumScanPositions()
                 self.recordingArgs['numCamTTL'] = self._commChannel.getNumCamTTL()

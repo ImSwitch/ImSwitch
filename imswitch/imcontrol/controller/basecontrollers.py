@@ -167,8 +167,11 @@ class SuperScanController(ImConWidgetController):
         return None
 
     def getNumCamTTL(self):
-        camTTL = self._master.scanManager.getTTLCycleSignalsDict(self._digitalParameterDict)['Green'].tolist()
-        numCamTTL = len ([i for i in range(len(camTTL)-1) if camTTL[i+1]-camTTL[i] == 1]) #counting for first True in list
+        numCamTTL = {}
+        for detector in self._setupInfo.detectors.keys():
+            if self._master.scanManager.getTTLCycleSignalsDict(self._digitalParameterDict).get(detector,None) is not None:
+                ttl=self._master.scanManager.getTTLCycleSignalsDict(self._digitalParameterDict).get(detector).tolist()
+                numCamTTL[detector] = len ([i for i in range(len(ttl)-1) if ttl[i+1]-ttl[i] == 1])
         return numCamTTL
 
     def getNumScanPositions(self):
@@ -256,8 +259,6 @@ class SuperScanController(ImConWidgetController):
 
         for key, value in self._digitalParameterDict.items():
             self.setSharedAttr(_attrCategoryTTL, key, value)
-
-
 
 
     @APIExport(runOnUIThread=True)

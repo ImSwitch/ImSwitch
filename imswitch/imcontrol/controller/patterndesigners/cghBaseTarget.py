@@ -70,7 +70,8 @@ class TargetBase(ABC):
         return changed
 
 
-    # feedback related
+    # ----- feedback related ----- *
+
     def analyze_result(self, experimental_result,params=None,show_plot=True):
         """
         Template method:
@@ -152,6 +153,7 @@ class TargetBase(ABC):
             self.analysis_history.clear()
             self.array = self.build()
             self.name = self.create_target_name()
+            self._feedback_reset()
 
     @abstractmethod
     def _adapt_target_impl(self, *args, **kwargs):
@@ -161,4 +163,9 @@ class TargetBase(ABC):
     @abstractmethod
     def _analyze_result_impl(self, *args, **kwargs):
         """Subclasses with feedback support must implement this."""
+        pass
+
+    @abstractmethod
+    def _feedback_reset(self, *args, **kwargs):
+        """Optional method for additional feedback reset features."""
         pass

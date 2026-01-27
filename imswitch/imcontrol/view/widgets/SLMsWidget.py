@@ -524,7 +524,6 @@ class SLMsWidget(Widget):
         computeLayout = QtWidgets.QVBoxLayout(computeBox)
         
         # algorithm parameters
-        paramsLayout = QtWidgets.QHBoxLayout()
         weightedgsCheckbox=QtWidgets.QCheckBox("Weighted-GS")
         weightedgsCheckbox.setChecked(True)
         niterEdit = QtWidgets.QLineEdit("50")
@@ -534,18 +533,38 @@ class SLMsWidget(Widget):
         phaseFixingValue = QtWidgets.QLineEdit("30")
         phaseFixingValue.setFixedWidth(50)
 
+        quadPhaseCheckBox = QtWidgets.QCheckBox("Quad. Init. Phase")
+        quadPhaseCoeff = QtWidgets.QLineEdit("0.004")
+        quadPhaseCoeff.setFixedWidth(50)
+
         setattr(self, f"{slmKey}_{secKey}_{computsubsec}_weighted_gs", weightedgsCheckbox)
         setattr(self, f"{slmKey}_{secKey}_{computsubsec}_n_iterations", niterEdit)
         setattr(self, f"{slmKey}_{secKey}_{computsubsec}_phase_fixing", phaseFixingCheckbox)
         setattr(self, f"{slmKey}_{secKey}_{computsubsec}_phase_fixing_value", phaseFixingValue)
+        setattr(self, f"{slmKey}_{secKey}_{computsubsec}_quad_phase", quadPhaseCheckBox)
+        setattr(self, f"{slmKey}_{secKey}_{computsubsec}_quad_phase_coeff", quadPhaseCoeff)
 
-        paramsLayout.addWidget(weightedgsCheckbox)
-        paramsLayout.addWidget(QtWidgets.QLabel("Iterations:"))
-        paramsLayout.addWidget(niterEdit)
-        paramsLayout.addWidget(phaseFixingCheckbox)
-        paramsLayout.addWidget(QtWidgets.QLabel("Phase:"))
-        paramsLayout.addWidget(phaseFixingValue)
-        paramsLayout.addStretch()
+
+        # params layout
+        paramsLayout = QtWidgets.QVBoxLayout()
+
+        row1 = QtWidgets.QHBoxLayout()
+        row1.addWidget(weightedgsCheckbox)
+        row1.addWidget(QtWidgets.QLabel("Iterations:"))
+        row1.addWidget(niterEdit)
+        row1.addWidget(phaseFixingCheckbox)
+        row1.addWidget(QtWidgets.QLabel("Phase:"))
+        row1.addWidget(phaseFixingValue)
+        row1.addStretch()
+
+        row2 = QtWidgets.QHBoxLayout()
+        row2.addWidget(quadPhaseCheckBox)
+        row2.addWidget(QtWidgets.QLabel("Coeff:"))
+        row2.addWidget(quadPhaseCoeff)
+        row2.addStretch()
+
+        paramsLayout.addLayout(row1)
+        paramsLayout.addLayout(row2)
         computeLayout.addLayout(paramsLayout)
         cghLayout.addWidget(computeBox)
 
@@ -554,6 +573,8 @@ class SLMsWidget(Widget):
             ("lineedit","n_iterations", 20, "n_iterations"),
             ("checkbox","phase_fixing", False, "phase_fixing"),
             ("lineedit","phase_fixing_value", 0, "phase_fixing_value"),
+            ("checkbox","quad_phase", False, "quad_phase"),
+            ("lineedit","quad_phase_coeff", False, "quad_phase_coeff"),
         ]
         )
 
@@ -1161,6 +1182,7 @@ class SLMsWidget(Widget):
             tab_names = slm_params.get("tab_names", {})
             if tab_names:
                 self.update_tab_names(slmKey, tab_names)
+            self.on_update_pattern(slmKey)
 
         except Exception as e:
             self.__logger.error(f"Failed to load config: {e}")
@@ -1172,7 +1194,7 @@ class SLMsWidget(Widget):
         try:
             self.set_params({slmKey: {secKey: {"aberrations": aberr_params}}})
             self.update_label(slmKey,secKey,"load_aberrations_label",f"Loaded: {label_name}")
-
+            self.on_update_pattern(slmKey)
         except Exception as e:
             self.__logger.error(f"Failed to load aberrations: {e}")
             if msg_box:

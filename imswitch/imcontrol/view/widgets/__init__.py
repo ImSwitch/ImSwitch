@@ -18,6 +18,7 @@ from .SLMsWidget import SLMsWidget
 from .ScanWidgetBase import ScanWidgetBase
 from .ScanWidgetMoNaLISA import ScanWidgetMoNaLISA
 from .ScanWidgetPointScan import ScanWidgetPointScan
+from .ScanWidgetAdvanced import ScanWidgetAdvanced
 from .RotationScanWidget import RotationScanWidget
 from .RotatorWidget import RotatorWidget
 from .SettingsWidget import SettingsWidget

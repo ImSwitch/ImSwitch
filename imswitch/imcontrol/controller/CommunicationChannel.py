@@ -47,7 +47,7 @@ class CommunicationChannel(SignalInterface):
     )  # (name, image, filePath, savedToDisk)
 
     sigRunScan = Signal(bool, bool)  # (recalculateSignals, isNonFinalPartOfSequence)
-
+    
     sigAbortScan = Signal()
 
     sigScanStarting = Signal()
@@ -97,7 +97,7 @@ class CommunicationChannel(SignalInterface):
     sigInitiateEtMonalisa = Signal(bool)
 
     sigQueryCenterCoord = Signal(str) # (search mode)
-
+    
     sigCenterCoordPipelineFinished = Signal(object) #(center coordinates or None)
 
     sigUpdateBeadRecCenter = Signal(int,int) # y,x coordinates
@@ -128,7 +128,7 @@ class CommunicationChannel(SignalInterface):
         self.__logger = initLogger(self)
         self._scriptExecution = False
         self.__main._moduleCommChannel.sigExecutionFinished.connect(self.executionFinished)
-
+    
     def isScanRunning(self) -> bool:
         """
         Returns wether a scan is ongoing or not.
@@ -137,7 +137,7 @@ class CommunicationChannel(SignalInterface):
             return self.__main.controllers['Scan'].isRunning
         else:
             raise RuntimeError('Required scan widget not available')
-
+        
     def getCenterViewbox(self):
         """ Returns the center point of the viewbox, as an (x, y) tuple. """
         if 'Image' in self.__main.controllers:
@@ -156,7 +156,7 @@ class CommunicationChannel(SignalInterface):
             return self.__main.controllers['Scan'].getDimsScan()
         else:
             raise RuntimeError('Required scan widget not available')
-
+    
     def getScanStepSizes(self):
         if 'Scan' in self.__main.controllers:
             return self.__main.controllers['Scan'].getScanStepSizes()
@@ -175,6 +175,7 @@ class CommunicationChannel(SignalInterface):
         else:
             raise RuntimeError('Required scan widget not available')
 
+    
     def getNextAxial(self):
         if 'Scan' in self.__main.controllers:
             return self.__main.controllers['Scan'].getNextAxial()

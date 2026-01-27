@@ -82,6 +82,29 @@ class SuperScanManager(ABC):
                 'scan field is not defined in hardware configuration; cannot proceed'
             )
 
+    def getTTLCyclePreviewStepBoundaries(self):
+        """
+        Optional helper for UI: returns x positions (sample indices) where
+        linestep boundaries occur in the stationary TTL preview.
+
+        TTL designers that don't support this should return None.
+        """
+        self._checkScanDefined()
+        d = self._TTLCycleDesigner
+
+        # Prefer a documented attribute/property if present
+        if hasattr(d, "last_preview_step_boundaries"):
+            try:
+                return d.last_preview_step_boundaries
+            except Exception:
+                return None
+
+        # Fallback to the internal attribute used by our new designer
+        if hasattr(d, "_last_preview_step_boundaries"):
+            return getattr(d, "_last_preview_step_boundaries")
+
+        return None
+
 class ScanManagerBase(SuperScanManager):
     """ ScanManager helps with generating signals for scanning. """
 

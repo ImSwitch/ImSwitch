@@ -26,6 +26,8 @@ class BetaScanDesigner(ScanDesigner):
         return True  # TODO
 
     def make_signal(self, parameterDict, setupInfo):
+        n_linesteps = int(parameterDict.get("n_linesteps", 1))
+        n_linesteps = max(1, n_linesteps)
 
         if not self.parameterCompatibility(parameterDict):
             self._logger.error([*parameterDict])
@@ -104,21 +106,31 @@ class BetaScanDesigner(ScanDesigner):
         returnRamp = self.__smoothRamp(fast_axis_size+fast_axis_start, fast_axis_start, returnSamples)
         fullLineSignal = np.concatenate((rampSignal, returnRamp))
 
-        fastAxisSignal = np.tile(fullLineSignal, middle_axis_positions * slow_axis_positions)
-        # Make middle axis signal
-        colSamples = middle_axis_positions * lineSamples
-        colValues = self.__makeRamp(middle_axis_start, middle_axis_size, middle_axis_positions)
-        fullSquareSignal = np.zeros(colSamples)
-        print(colValues)
-        for s in range(middle_axis_positions):
-            fullSquareSignal[s * lineSamples: s * lineSamples + rampSamples] = colValues[s]
+        fastAxisSignal = np.tile(fullLineSignal, middle_axis_positions * n_linesteps * slow_axis_positions)
 
-            try:
-                fullSquareSignal[s * lineSamples + rampSamples:(s + 1) * lineSamples] = \
-                    self.__smoothRamp(colValues[s], colValues[s + 1], returnSamples)
-            except IndexError:
-                fullSquareSignal[s * lineSamples + rampSamples:(s + 1) * lineSamples] = \
-                    self.__smoothRamp(colValues[s], middle_axis_start, returnSamples)
+        # Make middle axis signal
+        colValues = self.__makeRamp(middle_axis_start, middle_axis_size, middle_axis_positions)
+
+        colSamples = middle_axis_positions * n_linesteps * lineSamples
+        fullSquareSignal = np.zeros(colSamples)
+
+        for s in range(middle_axis_positions):
+            for r in range(n_linesteps):
+                block0 = (s * n_linesteps + r) * lineSamples
+                block1 = block0 + lineSamples
+
+                # hold during the pixel ramp portion
+                fullSquareSignal[block0: block0 + rampSamples] = colValues[s]
+
+                # return portion:
+                if r < n_linesteps - 1:
+                    # stay at same middle position for repeats
+                    fullSquareSignal[block0 + rampSamples: block1] = colValues[s]
+                else:
+                    # only on the last repeat: ramp to next middle position (or wrap)
+                    next_val = colValues[s + 1] if (s + 1) < middle_axis_positions else middle_axis_start
+                    fullSquareSignal[block0 + rampSamples: block1] = self.__smoothRamp(colValues[s], next_val,
+                                                                                       returnSamples)
 
         middleAxisSignal = np.tile(fullSquareSignal, slow_axis_positions)
 
@@ -150,10 +162,7 @@ class BetaScanDesigner(ScanDesigner):
 
         # scanInfoDict, for parameters that are important to relay to TTLCycleDesigner and/or image
         # acquisition managers
-        scanInfoDict = {
-            'positions': positions,
-            'return_time': parameterDict['return_time']
-        }
+        scanInfoDict = {'positions': positions, 'return_time': parameterDict['return_time'], 'n_linesteps': n_linesteps}
 
         self.__plot_curves(plot=False, signals=[fastAxisSignal, middleAxisSignal, slowAxisSignal])
 

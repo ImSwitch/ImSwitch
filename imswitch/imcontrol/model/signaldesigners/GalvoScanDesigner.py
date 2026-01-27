@@ -79,6 +79,9 @@ class GalvoScanDesigner(ScanDesigner):
         self._samples_settling = 0
         self._samples_startacc = 0
 
+        n_linesteps = int(parameterDict.get("n_linesteps", 1))
+        n_linesteps = max(1, n_linesteps)
+
         positioners = [positioner for positioner in setupInfo.positioners.values()
                        if positioner.forScanning]
         positionerNames = [positioner for positioner in setupInfo.positioners
@@ -149,11 +152,15 @@ class GalvoScanDesigner(ScanDesigner):
         if self.__smooth_axis[axis]:
             # calculate settling time to add to smooth axis
             self.__settlingtime = self.__calc_settling_time(self.axis_length, self.axis_centerpos, self.axis_vel_max, self.axis_acc_max)
-            pos_temp, samples_d2_period = self.__generate_smooth_scan(parameterDict, self.axis_vel_max[axis], self.axis_acc_max[axis], n_steps_dx[axis+1])
+            n_d2 = n_steps_dx[axis + 1] if axis_count_scan > 1 else 1
+            n_d2_eff = n_d2 * n_linesteps
+            pos_temp, samples_d2_period = self.__generate_smooth_scan(
+                parameterDict, self.axis_vel_max[axis], self.axis_acc_max[axis], n_d2_eff
+            )
             samples_d2_period_read = samples_d2_period - 1
         else:
             pos_temp, _ = self.__generate_step_scan(axis, n_scan_samples_dx[axis], n_steps_dx[axis], self.__smooth_axis, v_max=self.axis_vel_max[axis], a_max=self.axis_acc_max[axis])
-            pos_temp = self.__generate_tiledstep_multid2(pos_temp, n_steps_dx[axis+1])
+            pos_temp = self.__generate_tiledstep_multid2(pos_temp, n_steps_dx[axis+1] * n_linesteps)
             samples_d2_period = n_scan_samples_dx[axis+1]
             samples_d2_period_read = samples_d2_period
         pos.append(pos_temp)
@@ -165,7 +172,7 @@ class GalvoScanDesigner(ScanDesigner):
         if axis_count_scan > 1:
             axis = 1
             axis_reps = self.__get_axis_reps(pos[0], samples_d2_period, n_steps_dx[1], self.__smooth_axis[axis-1])
-            pos_temp, pad_prev_axis = self.__generate_step_scan(axis, n_scan_samples_dx[axis], n_steps_dx[axis], self.__smooth_axis, v_max=self.axis_vel_max[axis], a_max=self.axis_acc_max[axis], axis_reps=axis_reps)
+            pos_temp, pad_prev_axis = self.__generate_step_scan(axis, n_scan_samples_dx[axis], n_steps_dx[axis], self.__smooth_axis, v_max=self.axis_vel_max[axis], a_max=self.axis_acc_max[axis], axis_reps=axis_reps, n_linesteps=n_linesteps)
             if pad_prev_axis:
                 pos, _ = self.__zero_padding(pos, padlen_base=pad_prev_axis)
                 #pad_prev_axes.append(pad_prev_axis)
@@ -198,24 +205,22 @@ class GalvoScanDesigner(ScanDesigner):
         # with parameters that are important to relay to TTLCycleDesigner
         # and/or image acquisition managers (such as APDManager)
         tot_scan_time = n_scan_samples_dx[-1] * self.__timestep * 1e-6
-        scanInfoDict = {
-            'axis_names': self.axis_devs_order,
-            'img_dims': n_steps_dx,
-            'scan_samples': n_scan_samples_dx,
-            'pixel_sizes': pixel_sizes,
-            'minmaxes': [[min(axis_signals[i]), max(axis_signals[i])] for i in range(axis_count_scan)],
-            'scan_samples_total': len(axis_signals[0]),
-            'scan_throw_startzero': int(round(self.__paddingtime_full / self.__timestep)),
-            'scan_pads_initpos': self._samples_initpos,
-            'scan_throw_settling': self._samples_settling,
-            'scan_throw_startacc': self._samples_startacc,
-            'scan_time_step': round(self.__timestep * 1e-6, ndigits=10),
-            'dwell_time': parameterDict['sequence_time'],
-            'phase_delay': parameterDict['phase_delay'],
-            'scan_samples_d2_period': samples_d2_period_read,
-            'tot_scan_time_s': tot_scan_time,
-            'smooth_axes': self.__smooth_axis
-        }
+        scanInfoDict = {'axis_names': self.axis_devs_order,
+                        'img_dims': list(n_steps_dx) + ([n_linesteps] if n_linesteps > 1 else []),
+                        'scan_samples': n_scan_samples_dx,
+                        'pixel_sizes': pixel_sizes,
+                        'minmaxes': [[min(axis_signals[i]), max(axis_signals[i])] for i in range(axis_count_scan)],
+                        'scan_samples_total': len(axis_signals[0]),
+                        'scan_throw_startzero': int(round(self.__paddingtime_full / self.__timestep)),
+                        'scan_pads_initpos': self._samples_initpos, 'scan_throw_settling': self._samples_settling,
+                        'scan_throw_startacc': self._samples_startacc,
+                        'scan_time_step': round(self.__timestep * 1e-6, ndigits=10),
+                        'dwell_time': parameterDict['sequence_time'], 'phase_delay': parameterDict['phase_delay'],
+                        'scan_samples_d2_period': samples_d2_period_read, 'tot_scan_time_s': tot_scan_time,
+                        'smooth_axes': self.__smooth_axis, "n_linesteps": n_linesteps,
+                        "img_axes_phys": ["x", "y", "z"][:len(n_steps_dx)]}
+        scanInfoDict["img_axes_with_linesteps"] = scanInfoDict["img_axes_phys"] + (
+            ["linestep"] if n_linesteps > 1 else [])
 
         if self._debug_mode:
             self._logger.debug(scanInfoDict)
@@ -243,48 +248,93 @@ class GalvoScanDesigner(ScanDesigner):
         pos_ret = self.__add_start_end(pos, pos_fix, v_max, a_max)
         return pos_ret, n_eval
 
-    def __generate_step_scan(self, dim, len_axis, n_axis, smooth_axis, v_max=0, a_max=0, axis_reps=[0,0]):
-        """ Generate a step-function scanning curve, with smooth initial positioning or not. """
+    def __generate_step_scan(self, dim, len_axis, n_axis, smooth_axis,
+                             v_max=0, a_max=0, axis_reps=[0, 0], n_linesteps=1):
+        """Generate a step-function scanning curve, with optional smooth init/final positioning.
+
+        Contract:
+          - for dim==1 (Y): n_axis is the PHYSICAL number of Y positions (ny_phys)
+          - axis_reps is computed for ny_phys (NOT expanded)
+          - n_linesteps expands Y blocks internally
+        """
         l_scan = self.axis_length[dim]
         c_scan = self.axis_centerpos[dim]
         pad_prev_axis = False
-        # create linspace for axis positions
-        positions = (np.linspace(l_scan / n_axis, l_scan, n_axis) -
-                     l_scan / (n_axis * 2) - l_scan / 2 + c_scan)
-        
+
+        n_linesteps = max(1, int(n_linesteps))
+        n_axis = int(n_axis)
+
+        # --- physical positions (do NOT bake linesteps into spacing) ---
+        positions_phys = (np.linspace(l_scan / n_axis, l_scan, n_axis) -
+                          l_scan / (n_axis * 2) - l_scan / 2 + c_scan)
+
+        # Expand Y positions into linestep blocks if dim==1
+        if dim == 1 and n_linesteps > 1:
+            positions = np.repeat(positions_phys, n_linesteps)
+        else:
+            positions = positions_phys
+
         if smooth_axis[dim]:
-            # generate the initial smooth positioning curve
+            # smooth init/final positioning
             pos_init = self.__init_positioning(positions[0], v_max, a_max)
             self._samples_initpos.append(len(pos_init))
-            # generate the final smooth positioning curve
+
             pos_final = self.__final_positioning(positions[-1], v_max, a_max)
             self._samples_finalpos.append(len(pos_final))
-            
-            if dim==1:
-                if smooth_axis[0] and self._samples_initpos[-1]==np.max(self._samples_initpos):
-                    axis_reps[0] = axis_reps[0] - np.max(self._samples_initpos[:-1])
-                pos_ret = np.repeat(positions, axis_reps)
+
+            if dim == 1:
+                # axis_reps is provided for physical ny -> expand to match expanded positions
+                axis_reps = np.asarray(axis_reps, dtype=int)
+
+                if axis_reps.size != positions_phys.size:
+                    raise ValueError(
+                        f"axis_reps length ({axis_reps.size}) must match physical ny ({positions_phys.size})"
+                    )
+
+                if n_linesteps > 1:
+                    axis_reps_exp = np.repeat(axis_reps, n_linesteps)
+                else:
+                    axis_reps_exp = axis_reps
+
+                # IMPORTANT: apply the 'first-step' correction only once overall (first expanded block)
+                if smooth_axis[0] and self._samples_initpos[-1] == np.max(self._samples_initpos):
+                    if self._samples_initpos[:-1]:
+                        corr = int(np.max(self._samples_initpos[:-1]))
+                        axis_reps_exp[0] = int(axis_reps_exp[0] - corr)
+
+                pos_ret = np.repeat(positions, axis_reps_exp)
+
             else:
-                reps = np.ones(len(positions))*len_axis
-                if True in smooth_axis[:dim] and self._samples_initpos[-1]==np.max(self._samples_initpos):
-                    reps[0] = reps[0] - np.max(self._samples_initpos[:-1])
+                reps = np.ones(len(positions)) * len_axis
+                if True in smooth_axis[:dim] and self._samples_initpos[-1] == np.max(self._samples_initpos):
+                    if self._samples_initpos[:-1]:
+                        reps[0] = reps[0] - np.max(self._samples_initpos[:-1])
                 reps = [int(rep) for rep in reps]
                 pos_ret = np.repeat(positions, reps)
+
             pos_ret = np.concatenate((pos_init, pos_ret, pos_final))
 
-            padlen_init = (len(pos_init)-np.max(self._samples_initpos[:-1])) if self._samples_initpos[:-1] else len(pos_init)
-            padlen_final = (len(pos_final)-np.max(self._samples_finalpos[:-1])) if self._samples_finalpos[:-1] else len(pos_final)
+            padlen_init = (len(pos_init) - np.max(self._samples_initpos[:-1])) if self._samples_initpos[:-1] else len(
+                pos_init)
+            padlen_final = (len(pos_final) - np.max(self._samples_finalpos[:-1])) if self._samples_finalpos[
+                                                                                     :-1] else len(pos_final)
             if padlen_init > 0 or padlen_final > 0:
-                pad_prev_axis = [np.max([0,padlen_init]), np.max([0,padlen_final])]
+                pad_prev_axis = [max(0, padlen_init), max(0, padlen_final)]
+
         else:
-            # realign positions for non-smooth (mock) axes
+            # non-smooth (mock) axis: realign positions
             positions = positions - positions[0]
-            if dim==1:
-                pos_ret = np.repeat(positions, axis_reps)
+            if dim == 1:
+                axis_reps = np.asarray(axis_reps, dtype=int)
+                if axis_reps.size != positions_phys.size:
+                    raise ValueError(
+                        f"axis_reps length ({axis_reps.size}) must match physical ny ({positions_phys.size})"
+                    )
+                axis_reps_exp = np.repeat(axis_reps, n_linesteps) if n_linesteps > 1 else axis_reps
+                pos_ret = np.repeat(positions, axis_reps_exp)
             else:
                 pos_ret = np.repeat(positions, len_axis)
 
-        pos_ret 
         return pos_ret, pad_prev_axis
 
     def __repeat_dlower(self, pos, n_steps_axis):

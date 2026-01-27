@@ -41,6 +41,17 @@ class ScanControllerAdvanced(SuperScanController):
             self.TTLDevices.keys(),
         )
 
+        # Tell the widget which TTL devices support per-linestep analog power (AO channel present)
+        try:
+            power_capable = []
+            for name, info in getattr(self._setupInfo, "lasers", {}).items():
+                ao = getattr(info, "analogChannel", None)
+                if ao not in (None, "None"):
+                    power_capable.append(name)
+            self._widget.setLinestepPowerCapableDevices(power_capable)
+        except Exception:
+            pass
+
         # ---- initial state ----
         self.updatePixels()
         self.updateScanStageAttrs()
@@ -116,6 +127,12 @@ class ScanControllerAdvanced(SuperScanController):
         ttl_param.update(TTLParameters)
 
         TTLCycleSignalsDict = ttl_des.make_signal(ttl_param, self._setupInfo, scanInfoDict)
+        # Inject per-linestep analog power waveforms for AO-capable lasers (constant within each line)
+        try:
+            self._inject_linestep_power_ao(scanSignalsDict, TTLCycleSignalsDict, scanInfoDict, TTLParameters)
+        except Exception:
+            self._logger.debug("[ScanControllerAdvanced] inject linestep power failed:\n%s", traceback.format_exc())
+
 
         signalDict = {
             "scanSignalsDict": scanSignalsDict,
@@ -266,6 +283,16 @@ class ScanControllerAdvanced(SuperScanController):
                 pulse_starts_s[deviceName] = starts_steps
                 pulse_ends_s[deviceName] = ends_steps
 
+        # Per-device per-linestep power (%) for AO-capable lasers
+        linestep_power_percent = {}
+        for deviceName in self.TTLDevices.keys():
+            try:
+                vec = [float(self._widget.getLineStepPowerPercent(deviceName, s)) for s in range(S)]
+                vec = [max(0.0, min(100.0, v)) for v in vec]
+                linestep_power_percent[deviceName] = vec
+            except Exception:
+                pass
+
         self._digitalParameterDict = {
             "target_device": included_devices,
             "n_linesteps": S,
@@ -276,6 +303,7 @@ class ScanControllerAdvanced(SuperScanController):
             "pulse_ends_s": pulse_ends_s,
             "sequence_time": seq_time,
             "advanced_mode": advanced_mode,
+            "linestep_power_percent": linestep_power_percent,
         }
 
     # ---------------------------------------------------------------------
@@ -325,6 +353,14 @@ class ScanControllerAdvanced(SuperScanController):
             linestep_enable = dig.get("linestep_enable", {}) or {}
             pulse_starts_s = dig.get("pulse_starts_s", {}) or {}
             pulse_ends_s = dig.get("pulse_ends_s", {}) or {}
+
+            linestep_power_percent = dig.get("linestep_power_percent", {}) or {}
+            for dev, vec in linestep_power_percent.items():
+                try:
+                    for s in range(min(S, len(vec))):
+                        self._widget.setLineStepPowerPercent(dev, s, float(vec[s]))
+                except Exception:
+                    pass
 
             for dev in self.TTLDevices.keys():
                 enable_vec = linestep_enable.get(dev, None)
@@ -501,6 +537,75 @@ class ScanControllerAdvanced(SuperScanController):
                 "[ScanControllerAdvanced] plotSignalGraph failed:\n%s",
                 traceback.format_exc(),
             )
+
+    def _inject_linestep_power_ao(self, scanSignalsDict, TTLCycleSignalsDict, scanInfoDict, TTLParameters):
+        """
+        For AO-capable lasers, generate a float AO waveform that is constant within each line's
+        active acquisition region, with value depending on linestep index.
+        """
+        powers = (TTLParameters or {}).get("linestep_power_percent", {}) or {}
+        if not powers:
+            return
+
+        S = int((TTLParameters or {}).get("n_linesteps", 1))
+        S = max(S, 1)
+
+        total = int(scanInfoDict.get("scan_samples_total", 0))
+        if total <= 0:
+            return
+
+        initpad = int(scanInfoDict.get("scan_samples_initpos", 0))
+        line_period = int(scanInfoDict.get("scan_samples_d2_period", 0))
+        if line_period <= 0:
+            return
+
+        n_scan_samples_dx = scanInfoDict.get("n_scan_samples_dx", None)
+        if isinstance(n_scan_samples_dx, (list, tuple)) and len(n_scan_samples_dx) > 1:
+            active = int(n_scan_samples_dx[1])
+        else:
+            active = line_period
+        active = max(0, min(active, line_period))
+
+        n_lines = 0
+        if total > initpad:
+            n_lines = int((total - initpad) // line_period)
+
+        for laserName, vec in powers.items():
+            laserInfo = getattr(self._setupInfo, "lasers", {}).get(laserName, None)
+            if laserInfo is None:
+                continue
+
+            ao_chan = getattr(laserInfo, "analogChannel", None)
+            if ao_chan in (None, "None"):
+                continue  # not AO-capable
+
+            vec = list(vec) if vec is not None else [100.0] * S
+            if len(vec) < S:
+                vec = vec + [vec[-1] if vec else 100.0] * (S - len(vec))
+            vec = [max(0.0, min(100.0, float(v))) for v in vec[:S]]
+
+            vmin = float(getattr(laserInfo, "valueRangeMin", 0.0))
+            vmax = float(getattr(laserInfo, "valueRangeMax", 10.0))
+
+            ao = np.zeros(total, dtype=np.float64)
+
+            for L in range(n_lines):
+                s = L % S
+                pct = vec[s]
+                volts = vmin + (pct / 100.0) * (vmax - vmin)
+
+                i0 = initpad + L * line_period
+                i1 = min(total, i0 + active)
+                if i1 > i0:
+                    ao[i0:i1] = volts
+
+            # Strongly recommended: mask with TTL gate if present (keeps AO at 0 when laser is OFF)
+            mask = TTLCycleSignalsDict.get(laserName, None)
+            if mask is not None:
+                ao *= np.asarray(mask, dtype=np.float64)
+
+            scanSignalsDict[laserName] = ao
+
 
     # ---------------------------------------------------------------------
     # Save / Load

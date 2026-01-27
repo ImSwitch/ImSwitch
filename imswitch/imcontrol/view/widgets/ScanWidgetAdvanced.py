@@ -42,6 +42,7 @@ class ScanWidgetAdvanced(SuperScanWidget):
         self.ttl_line_steps = {}   # device -> ScanLineWidget (checkbox row)
         self.ttl_pulses = {}       # device -> list[PulseEditor] (len = n_linesteps)
         self._ttl_axis = {}        # optional: device -> axis combo, kept for future; not used now
+        self.ttl_line_powers = {}
 
         # --- Line-step count ---
         self.linestep_counter = QSpinBox()
@@ -91,6 +92,8 @@ class ScanWidgetAdvanced(SuperScanWidget):
 
         # Internal: track when we are programmatically updating the pulse edits
         self._updatingPulseEdits = False
+        # Devices (laser lines) that support per-linestep analog power programming
+        self._linestep_power_capable_devices = set()
 
     # -----------------------------
     # UI layout
@@ -260,7 +263,9 @@ class ScanWidgetAdvanced(SuperScanWidget):
         advLayout.addWidget(QtWidgets.QLabel("End(s) (ms, comma-separated):"), 2, 0, 1, 2)
         advLayout.addWidget(self._pulseEndEdit, 2, 2, 1, 2)
 
-        advLayout.addWidget(QtWidgets.QLabel("Power Level (%)"), 3, 0, 1, 2)
+        self._analogLevelLabel = QtWidgets.QLabel("Power Level (%)")
+        advLayout.addWidget(self._analogLevelLabel, 3, 0, 1, 2)
+        advLayout.addWidget(self._analogLevelEdit, 3, 2, 1, 2)
         advLayout.addWidget(self._analogLevelEdit, 3, 2, 1, 2)
 
         advLayout.addWidget(self._applyAdvancedOptionsButton, 4, 0, 1, 4)
@@ -315,6 +320,15 @@ class ScanWidgetAdvanced(SuperScanWidget):
         pe = self._getPulseEditor(deviceName, stepIdx)
         return pe.ends_s
 
+    def getLineStepPowerPercent(self, deviceName: str, stepIdx: int) -> float:
+        pe = self._getPulseEditor(deviceName, stepIdx)
+        return float(getattr(pe, "power_percent", 100.0))
+
+    def setLineStepPowerPercent(self, deviceName: str, stepIdx: int, value: float) -> None:
+        pe = self._getPulseEditor(deviceName, stepIdx)
+        pe.power_percent = float(value)
+
+
     def getLineEnableVectorExpanded(self, deviceName: str, Ny: int, S: int):
         """
         Returns a boolean vector of length Ny*S telling whether the device should be enabled
@@ -360,6 +374,12 @@ class ScanWidgetAdvanced(SuperScanWidget):
 
     def setAdvancedTTLMode(self, enabled: bool) -> None:
         return self.setadvancedOptionsMode(enabled)
+
+    def setLinestepPowerCapableDevices(self, deviceNames):
+        self._linestep_power_capable_devices = set(deviceNames or [])
+        # refresh visibility + value when device changes
+        self._syncPulseEditsFromModel()
+
 
     # -----------------------------
     # Existing scan param getters used by controller
@@ -564,11 +584,20 @@ class ScanWidgetAdvanced(SuperScanWidget):
         step0 = int(self._pulseSelectStep.value()) - 1  # UI is 1-based
         pe = self._getPulseEditor(dev, step0)
 
+        # Show/hide power editor depending on capability of selected device
+        power_ok = dev in self._linestep_power_capable_devices
+        self._analogLevelEdit.setVisible(power_ok)
+        if hasattr(self, "_analogLevelLabel"):
+            self._analogLevelLabel.setVisible(power_ok)
+
         self._updatingPulseEdits = True
         try:
             # show in ms
             self._pulseStartEdit.setText(", ".join([str(round(s * 1000.0, 4)) for s in pe.starts_s]))
             self._pulseEndEdit.setText(", ".join([str(round(s * 1000.0, 4)) for s in pe.ends_s]))
+
+            # per-linestep power (percent)
+            self._analogLevelEdit.setValue(int(round(float(getattr(pe, "power_percent", 100.0)))))
         finally:
             self._updatingPulseEdits = False
 
@@ -592,6 +621,7 @@ class ScanWidgetAdvanced(SuperScanWidget):
             pe.starts_s = [v / 1000.0 for v in starts_ms]
             pe.ends_s = [v / 1000.0 for v in ends_ms]
 
+        pe.power_percent = float(self._analogLevelEdit.value())
         self.sigSignalParChanged.emit()
 
     def getTTLIncluded(self, deviceName):
@@ -650,6 +680,7 @@ class PulseEditor:
     def __init__(self):
         self.starts_s = []
         self.ends_s = []
+        self.power_percent = 100.0  # constant within line, used for AO-capable lasers
 
 
 class ScanLineWidget(QWidget):

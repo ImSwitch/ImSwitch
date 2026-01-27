@@ -303,10 +303,11 @@ class SLMsController(ImConWidgetController):
         self._widget.set_available_configs(slmKey, configs)
 
 
-    def on_save_config(self, slmKey, msg_box=True,overwrite=False):
-        """Save full SLM configuration, enforce saving to an HDF5 file."""
+    def on_save_config(self, slmKey, config_name,overwrite=False, msg_box=True):
+        """Save full SLM configuration, enforce saving to an HDF5 file in the right slm directory."""
         try:
-            # Enforce HDF5 extension saving
+            cfg_dir = self._get_slm_config_dir(slmKey)
+            path = os.path.join(cfg_dir, config_name)
             if not path.endswith(".h5"):
                 path = path + ".h5"
             self.save_hdf5_config(slmKey, path,overwrite)
@@ -437,7 +438,7 @@ class SLMsController(ImConWidgetController):
     def load_hdf5_config(self, slmKey, path):
         slmInfo = self._slmInfos[slmKey]
         engine = self._patternEngines[slmKey]
-        manager = self._slmManagers[self._slmNames[slmKey]]
+        manager = self._master.slmsManager[self._slmNames[slmKey]]
 
         with h5py.File(path, "r") as f:
             if f.attrs["slm_id"] != slmInfo.serial_number:
@@ -466,7 +467,7 @@ class SLMsController(ImConWidgetController):
                     }
 
         # restore parameters, cached sections, final image, CGH, and pushing image to SLM
-        self._widget.restore_params({slmKey: params})
+        self._widget.set_params({slmKey: params})
         if getattr(manager, "connected", False):
             manager.upload_pattern(final_image)
         for secKey, comps in sections.items():
@@ -478,7 +479,7 @@ class SLMsController(ImConWidgetController):
     def write_params_to_hdf5(self, grp, data):
         for k, v in data.items():
             if isinstance(v, dict):
-                self._write_params_to_hdf5(grp.create_group(k), v)
+                self.write_params_to_hdf5(grp.create_group(k), v)
             else:
                 grp.attrs[k] = json.dumps(v)
 

@@ -76,6 +76,129 @@ class AdvancedScanTTLCycleDesigner(TTLCycleDesigner):
         return self._make_full_scan(parameterDict, setupInfo, scanInfoDict, Fs)
 
     # -----------------
+    # ScanInfo normalization (adapter layer)
+    # -----------------
+    def _normalize_scaninfo(self, p, setupInfo, scanInfoDict, Fs):
+        """Normalize scanInfoDict to the contract expected by this TTL designer.
+
+        Supports:
+          - Galvo/PointScan-style scanInfoDict (already contains scan_samples*, img_dims, etc.)
+          - Beta-style scanInfoDict that only provides: positions, return_time, n_linesteps
+
+        Returns a *new dict* (does not mutate the input).
+        """
+        si_in = {} if scanInfoDict is None else dict(scanInfoDict)
+
+        # If it already looks like the full PointScan contract, just ensure defaults.
+        looks_full = (
+            "img_dims" in si_in
+            and "scan_samples" in si_in
+            and "scan_samples_total" in si_in
+            and "scan_samples_d2_period" in si_in
+        )
+        if looks_full:
+            si = dict(si_in)
+
+            # This TTL designer assumes index [2] exists in img_dims/scan_samples,
+            # so ensure minimum length 3 internally (append dummy 1 / d3 length).
+            img_dims = list(si.get("img_dims", []))
+            if len(img_dims) < 3:
+                img_dims = img_dims + [1] * (3 - len(img_dims))
+            si["img_dims"] = img_dims
+
+            scan_samples = list(si.get("scan_samples", []))
+            if len(scan_samples) < 3:
+                d3 = int(si.get("scan_samples_total", 0))
+                scan_samples = scan_samples + [d3] * (3 - len(scan_samples))
+            si["scan_samples"] = scan_samples
+
+            axis_names = list(si.get("axis_names", []))
+            if len(axis_names) < len(img_dims):
+                axis_names = axis_names + [f"axis{j}" for j in range(len(axis_names), len(img_dims))]
+            si["axis_names"] = axis_names
+
+            smooth_axes = list(si.get("smooth_axes", []))
+            if len(smooth_axes) < len(img_dims):
+                smooth_axes = smooth_axes + [False] * (len(img_dims) - len(smooth_axes))
+            si["smooth_axes"] = smooth_axes
+
+            # Safe defaults for optional keys
+            si.setdefault("scan_throw_settling", 0)
+            si.setdefault("scan_throw_startzero", 0)
+            si.setdefault("scan_throw_startacc", 0)
+            si.setdefault("scan_pads_initpos", [0])
+
+            return si
+
+        # ---- Beta-style minimal contract adapter ----
+        if "positions" not in si_in:
+            raise KeyError("scanInfoDict must contain 'positions' for Beta-style normalization.")
+
+        positions = list(si_in["positions"])
+        if len(positions) < 1:
+            raise ValueError("scanInfoDict['positions'] must have at least one element (Nx).")
+
+        Nx = int(positions[0])
+        Ny = int(positions[1]) if len(positions) >= 2 else 1
+        Nz = int(positions[2]) if len(positions) >= 3 else 1
+
+        # Linesteps come from TTL parameters; fall back to scanInfoDict if present
+        S = int(p.get("n_linesteps", si_in.get("n_linesteps", 1)))
+        S = max(1, S)
+
+        dwell_s = float(p.get("sequence_time", 0.0))
+        if dwell_s <= 0:
+            raise ValueError("TTL parameter 'sequence_time' must be > 0 for Beta-style scans.")
+
+        return_time = float(si_in.get("return_time", 0.0))
+        if return_time < 0:
+            return_time = 0.0
+
+        samples_per_pixel = max(1, int(round(dwell_s * Fs)))
+        line_len = int(Nx * samples_per_pixel)
+        flyback = int(round(return_time * Fs))
+        if flyback < 0:
+            flyback = 0
+        period_len = int(line_len + flyback)
+
+        # Define linestep as: repeat the fast-axis line S times per middle-axis position.
+        n_line_periods_total = max(1, Ny) * S
+
+        # One 2D frame worth of samples (with flyback between lines, except last)
+        d3_len = (n_line_periods_total - 1) * period_len + line_len
+
+        # Total samples includes Z by repeating the d3 block
+        samples_total = d3_len * max(1, Nz)
+
+        si = dict(si_in)
+        # Internal dims: [x, expanded_y, z] so this TTL code can always index [2]
+        si["img_dims"] = [Nx, n_line_periods_total, max(1, Nz)]
+        si["axis_names"] = ["x", "y", "z"]
+
+        # scan_samples convention used by this TTL file:
+        #   scan_samples[1] == line_len (no flyback)
+        #   scan_samples[2] == d3_len (one frame)
+        si["scan_samples"] = [samples_per_pixel, line_len, d3_len]
+        si["scan_samples_total"] = int(samples_total)
+        si["scan_samples_d2_period"] = int(period_len)
+
+        # No explicit throw/settling sections for Beta by default
+        si["scan_throw_settling"] = 0
+        si["scan_throw_startzero"] = 0
+        si["scan_throw_startacc"] = 0
+        si["scan_pads_initpos"] = [0]
+
+        # No smoothing pads for Beta by default
+        si["smooth_axes"] = [False, False, False]
+
+        # Provide the intra-pixel pulse helpers explicitly
+        si["n_pixels_fast"] = Nx
+        si["samples_per_pixel"] = samples_per_pixel
+
+        return si
+
+
+    # -----------------
     # Preview (graph)
     # -----------------
 
@@ -136,30 +259,31 @@ class AdvancedScanTTLCycleDesigner(TTLCycleDesigner):
         S = int(p["n_linesteps"])
         dwell_s = float(p["sequence_time"])
         advanced = bool(p["advanced_mode"])
+        scanInfo = self._normalize_scaninfo(p, setupInfo, scanInfoDict, Fs)
 
-        # Existing scan structure variables (kept close to your PointScan)
-        n_steps_dx = scanInfoDict["img_dims"]
+        # Existing scan structure variables
+        n_steps_dx = scanInfo["img_dims"]
         axis_count = len(n_steps_dx)
-        n_scan_samples_dx = scanInfoDict["scan_samples"]
-        samples_total = scanInfoDict["scan_samples_total"]
-        scan_axes_order = scanInfoDict["axis_names"]
-        self.smooth_axes = scanInfoDict["smooth_axes"]
+        n_scan_samples_dx = scanInfo["scan_samples"]
+        samples_total = scanInfo["scan_samples_total"]
+        scan_axes_order = scanInfo["axis_names"]
+        self.smooth_axes = scanInfo["smooth_axes"]
 
-        zeropad_d2flyback = scanInfoDict["scan_samples_d2_period"] - n_scan_samples_dx[1]
+        zeropad_d2flyback = scanInfo["scan_samples_d2_period"] - n_scan_samples_dx[1]
         if zeropad_d2flyback < 0:
-            zeropad_d2flyback = max(0, scanInfoDict["scan_samples_d2_period"] - n_scan_samples_dx[1])
+            zeropad_d2flyback = max(0, scanInfo["scan_samples_d2_period"] - n_scan_samples_dx[1])
 
-        zeropad_settling = scanInfoDict["scan_throw_settling"]
-        zeropad_start = scanInfoDict["scan_throw_startzero"]
-        zeropad_startacc = scanInfoDict["scan_throw_startacc"]
-        scan_pads_initpos = scanInfoDict["scan_pads_initpos"]
+        zeropad_settling = scanInfo["scan_throw_settling"]
+        zeropad_start = scanInfo["scan_throw_startzero"]
+        zeropad_startacc = scanInfo["scan_throw_startacc"]
+        scan_pads_initpos = scanInfo["scan_pads_initpos"]
 
         pad_initpos = scan_pads_initpos[0] if len(scan_pads_initpos) > 0 else 0
         self.__initpad = np.zeros(zeropad_startacc + zeropad_settling + pad_initpos, dtype="bool")
 
         # New required pieces for intra-pixel pulses
-        n_pixels_fast = int(scanInfoDict.get("n_pixels_fast", n_steps_dx[0]))
-        samples_per_pixel = int(scanInfoDict.get("samples_per_pixel", 0))
+        n_pixels_fast = int(scanInfo.get("n_pixels_fast", n_steps_dx[0]))
+        samples_per_pixel = int(scanInfo.get("samples_per_pixel", 0))
         if samples_per_pixel <= 0:
             # Fall back to uniform division if not provided
             if n_pixels_fast <= 0:
@@ -172,7 +296,7 @@ class AdvancedScanTTLCycleDesigner(TTLCycleDesigner):
 
         Ny = int(n_steps_dx[1])
         line_len = int(n_scan_samples_dx[1])
-        period_len = int(scanInfoDict["scan_samples_d2_period"])  # includes flyback
+        period_len = int(scanInfo["scan_samples_d2_period"])  # includes flyback
 
         # Expected d3 length if there are Ny line periods (last has no flyback)
         cand_Ny = (Ny - 1) * period_len + line_len

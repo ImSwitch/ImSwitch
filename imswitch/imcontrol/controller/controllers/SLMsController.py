@@ -3,11 +3,14 @@ import json
 import os
 import numpy as np
 from PIL import Image
-from PyQt5 import QtCore
 import traceback
+import h5py
+import datetime
+
 from ..basecontrollers import ImConWidgetController
 from imswitch.imcommon.model import initLogger
 from imswitch.imcontrol.view.guitools import askForFilePath, JsonEditorDialog
+from imswitch.imcommon.view.guitools.dialogtools import askYesNoQuestion
 from imswitch.imcommon.framework import Signal, Thread, Worker, Mutex
 from imswitch.imcommon.model import dirtools, signaltools
 
@@ -68,6 +71,8 @@ class SLMsController(ImConWidgetController):
                     else:
                         self.__logger.warning(f"Initial SLM config file {config_path} not found.")
 
+            self.refresh_available_configs(slmKey)
+
         # widget signals connections
         self._widget.sigConnectSLMusb.connect(self.on_connect)
         self._widget.sigUpdatePattern.connect(self.on_update_pattern)
@@ -103,6 +108,7 @@ class SLMsController(ImConWidgetController):
         if hasattr(self,"_cghThread"):
             self._cghThread.quit()
             self._cghThread.wait()
+    
 
     def on_update_pattern(self, slmKey, params):
         
@@ -276,36 +282,83 @@ class SLMsController(ImConWidgetController):
                 self._wavelengths.setdefault(slmKey,{})[secKey] = wl
 
 
+    
+    # --------- Saving/loading related -------- #
+    
+    def _get_slm_config_dir(self, slmKey):
+        slm_id = self._slmInfos[slmKey].serial_number
+        path = os.path.join(self.configsDir, f"SLM_{slm_id}")
+        os.makedirs(path, exist_ok=True)
+        return path
+    
+    def refresh_available_configs(self, slmKey):
+        cfg_dir = self._get_slm_config_dir(slmKey)
 
-    # --------- saving/loading related -------- #
+        configs = []
+        for fn in sorted(os.listdir(cfg_dir)):
+            if fn.endswith((".json", ".h5", ".hdf5")):
+                full = os.path.join(cfg_dir, fn)
+                configs.append((fn, full))
 
-    def on_save_config(self, slmKey,slm_params, msg_box=True):
-        """Save `slm_params` to a user-defined JSON file."""
+        self._widget.set_available_configs(slmKey, configs)
+
+
+    def on_save_config(self, slmKey, msg_box=True,overwrite=False):
+        """Save full SLM configuration, enforce saving to an HDF5 file."""
         try:
-            suggested = os.path.join(self.configsDir,slmKey+"_config")
-            path = askForFilePath(self._widget, "Select file to save configuration", defaultFolder=suggested,isSaving=True)
-            if not path:
-                return
-            path = path + ".json"
-            with open(path, "w", encoding="utf-8") as f:
-                json.dump(slm_params, f, indent=2)
-                
+            # Enforce HDF5 extension saving
+            if not path.endswith(".h5"):
+                path = path + ".h5"
+            self.save_hdf5_config(slmKey, path,overwrite)
+            self.refresh_available_configs(slmKey)
+
         except Exception as e:
             self.__logger.error(traceback.format_exc())
             if msg_box:
-                self._widget.show_message_box(title="Error Saving Configuration",msg_type="error",
-                                      message=f"Could not save configuration:\n{e}")
-
+                self._widget.show_message_box(
+                    title="Error Saving Configuration",
+                    msg_type="error",
+                    message=f"Could not save configuration:\n{e}"
+                )
 
     def on_load_config(self, slmKey, path=None):
-        """Load SLM configuration from a JSON file and send to widget"""
-        if path is None:
-            path = askForFilePath(self._widget, "Select configuration file to load", defaultFolder=self.configsDir,isSaving=False)
-            if not path or not os.path.exists(path):
+        """Load SLM configuration from JSON (legacy) or HDF5."""
+        try:
+            if path is None: # NOTE: this shouldn't be needed anymore with the combobox config selection, kept for now just in case
+                path = askForFilePath(
+                    self._widget,
+                    "Select configuration file to load",
+                    defaultFolder=self.configsDir,
+                    isSaving=False
+                )
+                if not path or not os.path.exists(path):
+                    return
+            ext = os.path.splitext(path)[1].lower()
+
+            # LEGACY: loading JSON config (should disappear in the future)
+            if ext == ".json":
+                msg = "JSON configuration files are legacy format and may not support all features.\n Do you want to proceed?"
+                ok = askYesNoQuestion(self._widget,"Load JSON Configuration",msg)
+                if ok:
+                    with open(path, "r", encoding="utf-8") as f:
+                        slm_params = json.load(f)
+                    self._widget.on_config_loaded(slmKey,slm_params,msg_box=True)
                 return
-        with open(path, "r", encoding="utf-8") as f:
-            slm_params = json.load(f)
-        self._widget.on_config_loaded(slmKey,slm_params,msg_box=True)
+            
+            # HDF5 loading
+            if ext in (".h5", ".hdf5"):
+                self.load_hdf5_config(slmKey, path)
+                return
+
+            raise ValueError(f"Unsupported config file type: {ext}")
+
+        except Exception as e:
+            self.__logger.error(traceback.format_exc())
+            self._widget.show_message_box(
+                title="Error Loading Configuration",
+                msg_type="error",
+                message=f"Could not load configuration:\n{e}"
+            )
 
 
     def on_save_aberr(self, slmKey,secKey,aberr_params, msg_box=True):
@@ -337,6 +390,104 @@ class SLMsController(ImConWidgetController):
         label_name = os.path.basename(path)
         self._widget.on_aberr_loaded(slmKey,secKey,aberr_params,label_name,msg_box=True)
     
+
+    
+    # HDF5 saving/loading
+    def save_hdf5_config(self, slmKey, path, overwrite=False):
+        engine = self._patternEngines[slmKey]
+        params = self._widget.get_params()[slmKey]
+        mode = "w" if overwrite else "x"
+        with h5py.File(path, mode) as f:
+
+            # general metadata
+            f.attrs["schema_version"] = "1.0"
+            f.attrs["slm_id"] = self._slmInfos[slmKey].serial_number
+            f.attrs["created_at"] = datetime.datetime.now().isoformat()
+
+            # parameters
+            self.write_params_to_hdf5(f.create_group("parameters"), params)
+
+            # final displayed image
+            final_img = engine.get_cached_final_image()
+            if final_img is None:
+                raise RuntimeError("No cached final image")
+
+            f.create_dataset(
+                "images/final/full_slm",
+                data=final_img,
+                compression="gzip"
+            )
+
+            # individual cached sections
+            for secKey, cache in engine._cachedSections.items():
+                grp = f.create_group(f"sections/{secKey}/components")
+                for name, arr in cache.items():
+                    if arr is not None:
+                        grp.create_dataset(name, data=arr, compression="gzip")
+
+            # CGH
+            if self._cghResults.get(slmKey):
+                for secKey, res in self._cghResults[slmKey].items():
+                    grp = f.create_group(f"cgh/{secKey}")
+                    grp.create_dataset("final_pattern", data=res["cgh_pattern"])
+                    grp.attrs["comput_params"] = json.dumps(
+                        res.get("comput_params", {})
+                    )
+    
+    def load_hdf5_config(self, slmKey, path):
+        slmInfo = self._slmInfos[slmKey]
+        engine = self._patternEngines[slmKey]
+        manager = self._slmManagers[self._slmNames[slmKey]]
+
+        with h5py.File(path, "r") as f:
+            if f.attrs["slm_id"] != slmInfo.serial_number:
+                raise RuntimeError("Wrong SLM config")
+
+            params = self.read_params_from_hdf5(f["parameters"])
+            final_image = f["images/final/full_slm"][()]
+
+            sections = {}
+            if "sections" in f:
+                for secKey in f["sections"]:
+                    sections[secKey] = {}
+                    comp = f[f"sections/{secKey}/components"]
+                    for k in comp:
+                        sections[secKey][k] = comp[k][()]
+
+            cgh = {}
+            if "cgh" in f:
+                for secKey in f["cgh"]:
+                    grp = f[f"cgh/{secKey}"]
+                    cgh[secKey] = {
+                        "cgh_pattern": grp["final_pattern"][()],
+                        "comput_params": json.loads(
+                            grp.attrs.get("comput_params", "{}")
+                        )
+                    }
+
+        # restore parameters, cached sections, final image, CGH, and pushing image to SLM
+        self._widget.restore_params({slmKey: params})
+        if getattr(manager, "connected", False):
+            manager.upload_pattern(final_image)
+        for secKey, comps in sections.items():
+            engine._cachedSections[secKey].update(comps)
+        engine._cachedFinalImage = final_image
+        self._cghResults[slmKey] = cgh
+
+
+    def write_params_to_hdf5(self, grp, data):
+        for k, v in data.items():
+            if isinstance(v, dict):
+                self._write_params_to_hdf5(grp.create_group(k), v)
+            else:
+                grp.attrs[k] = json.dumps(v)
+
+    def read_params_from_hdf5(self, grp):
+        out = {k: json.loads(v) for k, v in grp.attrs.items()}
+        for k in grp:
+            out[k] = self.read_params_from_hdf5(grp[k])
+        return out
+
 
 
     # ----- CGH related methods ----- #

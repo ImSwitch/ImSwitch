@@ -1,6 +1,6 @@
 from qtpy import QtCore, QtWidgets, QtGui
 from imswitch.imcontrol.view.guitools import CollapsibleSection, BetterPushButton
-from imswitch.imcommon.view.guitools import JsonEditorDialog
+from imswitch.imcommon.view.guitools.dialogtools import askForTextInput,askYesNoQuestion
 import pyqtgraph as pg
 from .basewidgets import Widget
 from imswitch.imcommon.model import initLogger
@@ -8,6 +8,9 @@ import re
 import json
 import numpy as np
 import matplotlib.pyplot as plt
+from functools import partial
+import os
+
 
 class SLMsWidget(Widget):
     """Widget containing SLM interface, patterns, and CGH controls."""
@@ -23,7 +26,7 @@ class SLMsWidget(Widget):
     sigLoadConfig = QtCore.Signal(str)                      # slmKey
     sigLoadAberr = QtCore.Signal(str,str)                   # slmKey, secKey
     sigLoadCgh = QtCore.Signal(str, str)                    # slmKey, secKey
-    sigSaveConfig = QtCore.Signal(str,dict)                 # slmKey, parameters
+    sigSaveConfig = QtCore.Signal(str,dict,bool)            # slmKey, config name, overwrite
     sigSaveAberr = QtCore.Signal(str,str,dict)              # slmKey, secKey, aberr_params
     sigSaveCgh = QtCore.Signal(str, str)                    # slmKey, secKey
 
@@ -59,6 +62,20 @@ class SLMsWidget(Widget):
         self._slmSectionList = {}       # list of sections per slmKey {slmKey: [secKey1, secKey2,...]}
         self._param_definitions = {}    # list of parameters stored by slmKey[secKey][sectionName]
 
+        # update timers
+        self._slmUpdateTimers = {}      # { slmKey: QTimer }
+
+    def _get_slm_timer(self,slmKey):
+        if slmKey not in self._slmUpdateTimers:
+            timer = QtCore.QTimer(self)
+            timer.setSingleShot(True)
+            timer.timeout.connect(partial(self.on_update_pattern, slmKey))
+            self._slmUpdateTimers[slmKey] = timer
+        return self._slmUpdateTimers[slmKey]
+
+    def _schedulePatternUpdate(self,slmKey):
+        timer = self._get_slm_timer(slmKey)
+        timer.start(500)  # 500ms debounce
 
     def add_slm(self,slmName,slmInfo,full_registry,*args,**kwargs):
         
@@ -129,7 +146,8 @@ class SLMsWidget(Widget):
             secKey = f"sec_{i}" #NOTE: sec_*number* is also used in patternEngine to reference sections
             sectionsList.append(secKey)
             self._tab_names_dict[slmKey][secKey] = name
-            section_widget = self.create_slm_section(slmKey,secKey,options,full_registry)
+            section_options = options[secKey] if secKey in options else options # allows per section options, or common options for all sections 
+            section_widget = self.create_slm_section(slmKey,section_options,options,full_registry)
             subTabs.addTab(section_widget, name)
         
         self._slmSectionList[slmKey] = sectionsList
@@ -182,10 +200,11 @@ class SLMsWidget(Widget):
     #  Connection, Image Display, Update Pattern   #
     # -------------------------------------------- #
         
-    # --- 1. Top Controls (Connect, Save/Load Config) ----
+    # --- 1. Top Controls (Connect, Config management) ----
     def create_top_controls(self, parent_layout, slmKey="slm"):
         """
-        Create the top control row for a single SLM: Connect button + Save/Load buttons.
+        Create the top control row for a single SLM:
+        Connect button + Config selector + Load / Save buttons.
         """
         layout = QtWidgets.QHBoxLayout()
 
@@ -197,20 +216,38 @@ class SLMsWidget(Widget):
         layout.addWidget(connectBtn)
 
         layout.addStretch()
-        # Save / Load buttons
-        saveConfigBtn = BetterPushButton("Save Config")
-        loadConfigBtn = BetterPushButton("Load Config")
-        setattr(self, f"{slmKey}_saveConfigBtn", saveConfigBtn)
-        setattr(self, f"{slmKey}_loadConfigBtn", loadConfigBtn)
-        layout.addWidget(saveConfigBtn)
-        layout.addWidget(loadConfigBtn)
+        # Save / Load configs
+        configLabel = QtWidgets.QLabel("Config:")
+        layout.addWidget(configLabel)
+
+        configCombo = QtWidgets.QComboBox()
+        configCombo.setMinimumWidth(180)
+        configCombo.setSizePolicy(
+            QtWidgets.QSizePolicy.Expanding,
+            QtWidgets.QSizePolicy.Fixed
+        )
+        setattr(self, f"{slmKey}_configCombo", configCombo)
+        layout.addWidget(configCombo)
+
+        loadBtn = BetterPushButton("Load")
+        setattr(self, f"{slmKey}_loadConfigBtn", loadBtn)
+        layout.addWidget(loadBtn)
+
+        saveCurrentBtn = BetterPushButton("Save as current")
+        setattr(self, f"{slmKey}_saveCurrentConfigBtn", saveCurrentBtn)
+        layout.addWidget(saveCurrentBtn)
+
+        saveNewBtn = BetterPushButton("Save as new")
+        setattr(self, f"{slmKey}_saveNewConfigBtn", saveNewBtn)
+        layout.addWidget(saveNewBtn)
 
         parent_layout.addLayout(layout)
 
         # signal connections
         connectBtn.toggled.connect(lambda state, p=slmKey: self.sigConnectSLMusb.emit(p, state))
-        saveConfigBtn.clicked.connect(lambda: self.on_save_config(slmKey))
-        loadConfigBtn.clicked.connect(lambda: self.sigLoadConfig.emit(slmKey))
+        loadBtn.clicked.connect(self.on_load_config_clicked(slmKey))
+        saveNewBtn.clicked.connect(self.on_save_new_config_clicked(slmKey))
+        saveCurrentBtn.clicked.connect(self.on_update_current_config_clicked(slmKey))
 
 
     # ---- 2. Image Display (Collapsible) ----
@@ -280,11 +317,13 @@ class SLMsWidget(Widget):
         # Correction pattern checkbox
         applyCorrectionCheck = QtWidgets.QCheckBox("Correction pattern")
         applyCorrectionCheck.setChecked(True)
+        applyCorrectionCheck.stateChanged.connect(self._slmUpdateTimers(slmKey))
         setattr(self, f"{slmKey}_applyCorrectionCheck", applyCorrectionCheck)
 
         # Max value correction checkbox
         twopiCheck = QtWidgets.QCheckBox("2Pi value correction")
         twopiCheck.setChecked(True)
+        twopiCheck.stateChanged.connect(self._slmUpdateTimers(slmKey))
         setattr(self, f"{slmKey}_twopiCheck", twopiCheck)
 
         # Update button
@@ -500,7 +539,7 @@ class SLMsWidget(Widget):
             _widget = QtWidgets.QWidget()
             layout = QtWidgets.QGridLayout(_widget)
             row = self.add_generic_pattern(layout, 0, slmKey, secKey, "cgh",target_name,infos["params"],
-                                    add_checkbox=False, per_row=2)
+                                    add_checkbox=False, per_row=2,auto_update=False)
             if infos.get("feedback",False):
                 spacer = QtWidgets.QSpacerItem(0, 10, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Fixed)
                 layout.addItem(spacer, row, 0)
@@ -672,10 +711,11 @@ class SLMsWidget(Widget):
 
 
     def add_param_grid(self, slmKey, secKey,section_name, params, start_row, layout,sub_section=None,
-                       per_row="all", width=60):
+                       per_row="all", width=60,auto_update=True):
         """
         Add parameters to a QGridLayout, set the corresponding attributes on self, and update self._param_definitions.
-        
+        Also connects signals to update pattern automatically when changed, unless arg:`auto_update` is set to False.
+
         IMPORTANT NOTES:
         ----------------
         1/ `params` is a list of tuples defining each parameter with 3 or 4 elements:
@@ -708,6 +748,7 @@ class SLMsWidget(Widget):
             sub_section: optional sub-section name for grouping parameters.
             per_row: number of parameters per row, or "all" for single column layout.
             width: fixed width for line edit widgets.
+            auto_update: wether to connect param to on_update_pattern when parameter changed
 
 
         Returns:
@@ -746,6 +787,8 @@ class SLMsWidget(Widget):
             elif ptype == "checkbox":
                 widget = QtWidgets.QCheckBox(label)
                 layout.addWidget(widget, row, col, 1, 1)
+                if auto_update:
+                    widget.stateChanged.connect(self._schedulePatternUpdate(slmKey))
                 col += 1
 
             # LineEdit
@@ -755,6 +798,8 @@ class SLMsWidget(Widget):
                 widget.setFixedWidth(width)
                 layout.addWidget(lbl, row, col,1,1)
                 layout.addWidget(widget, row, col + 1,1,1)
+                if auto_update:
+                    widget.editingFinished.connect(self._schedulePatternUpdate(slmKey))
                 col += 2
 
             # ComboBox
@@ -764,6 +809,8 @@ class SLMsWidget(Widget):
                 widget.addItems(default_or_items)
                 layout.addWidget(lbl, row, col,1,1)
                 layout.addWidget(widget, row, col + 1,1,1)
+                if auto_update:
+                    widget.currentIndexChanged.connect(self._schedulePatternUpdate(slmKey))
                 col += 2
 
             else:   
@@ -809,7 +856,8 @@ class SLMsWidget(Widget):
 
 
     def add_generic_pattern(self, layout, row, slmKey, secKey, section_name, pattern_name, param_defs,
-                          add_checkbox=True, single_param_mode = False, use_subsection=True,per_row="all"):
+                          add_checkbox=True, single_param_mode = False, use_subsection=True,per_row="all",
+                          auto_update=True):
         
         """
         Auto-generate UI for a pattern using its registered param metadata, such as ("period_x", 0, "int"), 
@@ -867,7 +915,7 @@ class SLMsWidget(Widget):
         # Add grid to layout, set attribute and update param definitions with add_param_grid
         row = self.add_param_grid(
             slmKey, secKey, section_name, params, row, layout,
-            per_row=per_row, sub_section=sub_section
+            per_row=per_row, sub_section=sub_section,auto_update=auto_update
         )
 
         return row
@@ -1128,7 +1176,7 @@ class SLMsWidget(Widget):
         
     
     def on_cgh_computation_result(self, slmKey,secKey, success, msg=None,cgh_name=None):
-        """ Unblocks all compute buttons, update cgh label and optional msg display"""
+        """ Unblocks all compute buttons, update cgh label, updates slm pattern and optional msg display"""
 
         for slm,sectionsList in self._slmSectionList.items():
             for section in sectionsList:
@@ -1140,6 +1188,7 @@ class SLMsWidget(Widget):
         if success:
             cgh_name = "last computed" if cgh_name is None else cgh_name
             self.update_label(slmKey,secKey,"cgh_in_use_label",f"{cgh_name} (computed)")
+            self.on_update_pattern(slmKey)
             if msg is not None:
                 self.show_message_box(title=f"CGH computation warning",
                                       message=msg,msg_type="warning")
@@ -1161,12 +1210,45 @@ class SLMsWidget(Widget):
     
     # --------- saving/loading related -------- #
 
-    def on_save_config(self, slmKey):
-        """ Get all parameters and send signal to controller"""
-        all_params = self.get_params()
-        slm_params = all_params.get(slmKey, {})
-        slm_params["tab_names"] = self._tab_names_dict.get(slmKey, {})
-        self.sigSaveConfig.emit(slmKey,slm_params)
+    def set_available_configs(self, slmKey, configs):
+        """
+        configs: list of (display_name, full_path)
+        """
+        combo = self._slmTabs[slmKey].configCombo
+        combo.clear()
+        for name, path in configs:
+            combo.addItem(name, path)
+
+    def on_load_config_clicked(self, slmKey):
+        combo = self._slmTabs[slmKey].configCombo
+        path = combo.currentData()
+        if path:
+            self.sigLoadConfig.emit(slmKey, path)
+
+    def on_save_new_config_clicked(self, slmKey):
+        name = askForTextInput(self, "Save new config", "Config name:")
+        if not name:
+            return
+        combo = self._slmTabs[slmKey].configCombo
+        if name in [combo.itemText(i) for i in range(combo.count())]: 
+            self.show_message_box(f"A configuration named '{name}' already exists.",
+                                    title="Save Config Error", msg_type="error")
+            return
+        self.sigSaveConfig.emit(slmKey, name, overwrite=False)
+
+    def on_update_current_config_clicked(self, slmKey):
+        combo = self._slmTabs[slmKey].configCombo
+        path = combo.currentData()
+        if not path:
+            return
+        name = os.path.basename(path)
+        ok = askYesNoQuestion(self,"Update current config",
+            f"This will overwrite the configuration '{name}'.\nAre you sure?"
+        )
+        if not ok:
+            return
+        self.sigSaveConfig.emit(slmKey, path,overwrite=True)
+
     
     def on_save_aberr(self,slmKey,secKey):
         # Get aberrations parameters
@@ -1190,6 +1272,7 @@ class SLMsWidget(Widget):
                 self.show_message_box(title="Error Loading Configuration",
                                       message=f"Could not load configuration:\n{e}",
                                       msg_type="error")   
+                
     def on_aberr_loaded(self,slmKey,secKey,aberr_params,label_name,msg_box=False):
         try:
             self.set_params({slmKey: {secKey: {"aberrations": aberr_params}}})

@@ -151,7 +151,16 @@ class PatternEngine(QObject):
         frame = np.zeros((self.height, self.width), dtype=np.uint8)
         for sec_key, sl in self._sectionSlices.items():
             frame[sl] = self._cachedSections[sec_key]["eightbits"]
+        self._cachedFinalImage = frame
         return frame
+    
+    def get_cached_final_image(self):
+        """
+        Returns the last composed full-SLM 8-bit image if available.
+        """
+        if hasattr(self, "_cachedFinalImage"):
+            return self._cachedFinalImage
+        return None
     
     def phase_to_eightbits(self,apply_twopi_value = True, apply_correction_pattern=True):
         """" Convert phase patterns to 8bits for all sections with corrections. """

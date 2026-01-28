@@ -73,6 +73,7 @@ class PatternEngine(QObject):
             sec_param = params.get(sec_key)
             if sec_param is not None:
                 self.compute_section(sec_key=sec_key,params=sec_param)
+                self.phase_to_eightbits(sec_key,**sec_param.get("correction_options",{}))
             else:
                 print(f"tab{n}'s parameters not found")
 
@@ -162,29 +163,28 @@ class PatternEngine(QObject):
             return self._cachedFinalImage
         return None
     
-    def phase_to_eightbits(self,apply_twopi_value = True, apply_correction_pattern=True):
-        """" Convert phase patterns to 8bits for all sections with corrections. """
+    def phase_to_eightbits(self,sec_key,apply_twopi_value = True, apply_correction_pattern=True):
+        """" Convert phase patterns to 8bits of one section with given correction options. """
         
-        for sec_key in self.sectionKeys:
-            if apply_twopi_value and self.twoPieValues.get(sec_key) is not None:
-                twopiValue = self.twoPieValues.get(sec_key)
-            else:
-                twopiValue = 255
-            phase = np.angle(self._cachedSections[sec_key]["combined"]) # [-π, π]
-            phase = phase + 2 * np.pi * (np.sign(phase) < 0)            # [0, 2π]  (negative values mapped to [π,2π])
-            img = phase * twopiValue / (2 * np.pi)                      # gray levels [0, 2π-value]
-            img = img.astype(np.uint16)
+        if apply_twopi_value and self.twoPieValues.get(sec_key) is not None:
+            twopiValue = self.twoPieValues.get(sec_key)
+        else:
+            twopiValue = 255
+        phase = np.angle(self._cachedSections[sec_key]["combined"]) # [-π, π]
+        phase = phase + 2 * np.pi * (np.sign(phase) < 0)            # [0, 2π]  (negative values mapped to [π,2π])
+        img = phase * twopiValue / (2 * np.pi)                      # gray levels [0, 2π-value]
+        img = img.astype(np.uint16)
 
-            if apply_correction_pattern:
-                correctionPattern = self.correctionPatterns.get(sec_key)
-                if correctionPattern is not None:
-                    slice = self._sectionSlices.get(sec_key)
-                    correctionPattern = correctionPattern[slice].astype(np.float64)
-                    correctionPattern = (correctionPattern * twopiValue/255).astype(np.uint16)
-                    img = (img + correctionPattern) % 255
-            
-            img = img.astype(np.uint8)
-            self._cachedSections[sec_key]["eightbits"] = img
+        if apply_correction_pattern:
+            correctionPattern = self.correctionPatterns.get(sec_key)
+            if correctionPattern is not None:
+                slice = self._sectionSlices.get(sec_key)
+                correctionPattern = correctionPattern[slice].astype(np.float64)
+                correctionPattern = (correctionPattern * twopiValue/255).astype(np.uint16)
+                img = (img + correctionPattern) % 255
+        
+        img = img.astype(np.uint8)
+        self._cachedSections[sec_key]["eightbits"] = img
 
     def apply_transform(self, sec_key, transform_type, **kwargs):
         """Incremental transforms like translation."""

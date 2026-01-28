@@ -141,7 +141,7 @@ class SLMsController(ImConWidgetController):
         
         # compute pattern
         engine.compute_pattern(params)
-        engine.phase_to_eightbits(**params.get("correction_options",{}))
+        # engine.phase_to_eightbits(**params.get("correction_options",{}))
         full_frame = engine.compose_full_frame()
 
         # send pattern to manager + widget
@@ -398,6 +398,12 @@ class SLMsController(ImConWidgetController):
     def save_hdf5_config(self, slmKey, path, overwrite=False):
         engine = self._patternEngines[slmKey]
         params = self._widget.get_params()[slmKey]
+        
+        # add tab names to params for restoration upon loading
+        tab_names = self._widget.get_tab_names(slmKey)
+        if tab_names:
+            params["tab_names"] = tab_names
+
         mode = "w" if overwrite else "x"
         with h5py.File(path, mode) as f:
 
@@ -466,8 +472,10 @@ class SLMsController(ImConWidgetController):
                         )
                     }
 
-        # restore parameters, pushes image to SLM and widget, without recomputation
+        # restore parameters and tab names, pushes image to SLM and widget, without recomputation
         self._widget.set_params({slmKey: params})
+        if "tab_names" in params:
+            self._widget.update_tab_names(slmKey, params.get("tab_names", {}))
         self._widget.update_display(slmKey,final_image)
         self._master.slmsManager.execOn(slmName, lambda l: l.upload_pattern(final_image))
         

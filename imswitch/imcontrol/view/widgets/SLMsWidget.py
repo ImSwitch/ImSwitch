@@ -1,3 +1,63 @@
+"""
+SLMsWidget Notes
+================
+- One tab per SLM, multiple tabs for each section of the SLM (if applicable)
+- SLM are referenced by their 'slmKey' (cleaned slmName)
+- Section are referenced by 'secKey' (sec_0, sec_1, ...)
+- Attributes and parameters are dynamically set based on slmKey and secKey, allowing a variable number of SLM and sections.
+- A parameter registration system is used to keep track of all parameters exposed by the widget (see details below)
+- New patterns can be added automatically via the pattern registry (imcontrol/controller/patterndesigners), or by creating custom builders.
+
+------------------------------------------------------------
+IMPORTANT: Parameter registration system (_param_definitions)
+------------------------------------------------------------
+
+All parameters exposed by the widget are registered in:
+    self._param_definitions[slmKey][secKey]
+
+NOTE: It is crucial to correctly register parameters in the `_param_definitions` structure.
+It is used to loop over all parameters for saving/loading configurations, and for pattern updates.
+
+The structure is:
+    _param_definitions = {
+        slmKey: {
+            secKey: {
+                groupName: {
+                    subsection:
+                        [(widget_type, attr_name), (widget_type, attr_name),... ] # list of parameters
+                }
+            }
+        }
+    }
+
+Where:
+- groupName : parameter group (e.g. "pattern", "aberrations", "output")
+- subsection : optional further subdivision inside group (e.g. pattern name, "cgh_general", "cgh_computation")
+- each parameter is defined by a tuple:
+    * widget_type : one of ("checkbox", "combobox", "lineedit", ...)
+    * attr_name : used to reference parameter
+        ==> we expect to find it as self.[slmKey]_[secKey]_[subsection]_[attr_name]
+
+        NOTE: the groupName is not used in the attribute name. This choice was made because it is redudant with
+        the subsection name or the attribute name (e.g. self._slmKey_sec_key_general_wavelength ==> "general" not needed)
+
+There are two ways of registering parameters:
+    1. Automatic registration via add_param_grid(), which:
+            * creates standard UI elements
+            * register them  in self_param_definitions
+            * create corresponding attributes
+
+    2. Manual registration - for custom UI elements.
+    In that case, you need to make sure that the param_definitions entries match the created attributes!
+    e.g., for a checkbox named "use_correction", in the "correction_options" section:
+            - create attribute: 
+                    self.slmKey_secKey_use_correction
+            - register param: 
+                    self._param_definitions[slmKey][secKey]["correction_options"] = ("checkbox", "use_correction")
+"""
+
+
+
 from qtpy import QtCore, QtWidgets, QtGui
 from imswitch.imcontrol.view.guitools import CollapsibleSection, BetterPushButton
 from imswitch.imcommon.view.guitools.dialogtools import askForTextInput,askYesNoQuestion
@@ -110,12 +170,8 @@ class SLMsWidget(Widget):
         # image preview and tabs => added to middlelayout (scroll area)
         self.create_image_display(middlelayout,slmKey=slmKey)
         self.build_tab_section(middlelayout,slmKey=slmKey,n_tabs=slmInfo.nSections,
-                            tab_names=slmInfo.sectionsNames,options=slmInfo.widgetOptions,
-                            full_registry=full_registry)
+                            options=slmInfo.widgetOptions,full_registry=full_registry)
         slmLayout.addWidget(scrollArea)
-        
-        # bottom controls added to slmLayout
-        self.create_update_section(slmLayout,slmKey=slmKey)
 
         # finally: add to slmTabs
         slmContainer.setLayout(slmLayout)
@@ -128,7 +184,7 @@ class SLMsWidget(Widget):
     #           SLM SECTION TABS BUILDERS          #
     # -------------------------------------------- #
 
-    def build_tab_section(self, parent_layout, slmKey="slm", n_tabs=1, tab_names=None,
+    def build_tab_section(self, parent_layout, slmKey="slm", n_tabs=1,
                           options={}, full_registry={}):
         """
         Create N sub-tabs (e.g. for double-pass left/right).
@@ -138,7 +194,7 @@ class SLMsWidget(Widget):
             n_tabs = 1
             tab_names = ["Full SLM"]
 
-        elif not tab_names:
+        else:
             tab_names = [f"Section {i+1}" for i in range(n_tabs)]
         
         subTabs = QtWidgets.QTabWidget()
@@ -192,6 +248,10 @@ class SLMsWidget(Widget):
         if options.get("cgh",True):
             self._param_definitions[slmKey][secKey]["cgh"]={}
             vbox.addWidget(self.create_cgh_group(slmKey,secKey,full_registry.get("cgh_targets")))
+
+        # final correction options
+        self._param_definitions[slmKey][secKey]["correction_options"]=[]
+        vbox.addWidget(self.create_correction_options_group(slmKey,secKey))
 
         vbox.addStretch()
         return container
@@ -307,50 +367,22 @@ class SLMsWidget(Widget):
         setattr(self, f"{slmKey}_currentPattern", None)
 
 
-
-    # ---- 3. Update SLM Pattern section (bottom) ----
-    def create_update_section(self, parent_layout, slmKey="slm"):
-        """
-        Create the "Update SLM Pattern" section with per-slm controls.
-        """
-        layout = QtWidgets.QHBoxLayout()
-
-        # Correction pattern checkbox
-        applyCorrectionCheck = QtWidgets.QCheckBox("Correction pattern")
-        applyCorrectionCheck.setChecked(True)
-        applyCorrectionCheck.stateChanged.connect(lambda state, key=slmKey: self._schedulePatternUpdate(key))
-        setattr(self, f"{slmKey}_applyCorrectionCheck", applyCorrectionCheck)
-
-        # Max value correction checkbox
-        twopiCheck = QtWidgets.QCheckBox("2Pi value correction")
-        twopiCheck.setChecked(True)
-        twopiCheck.stateChanged.connect(lambda state, key=slmKey: self._schedulePatternUpdate(key))
-        setattr(self, f"{slmKey}_twopiCheck", twopiCheck)
-
-        # Update button
-        updatePatternBtn = BetterPushButton("Update SLM Pattern")
-        updatePatternBtn.setMinimumHeight(32)
-        updatePatternBtn.setStyleSheet("font-weight: bold;")
-        setattr(self, f"{slmKey}_updatePatternBtn", updatePatternBtn)
-
-        # Add widgets to layout
-        layout.addWidget(applyCorrectionCheck)
-        layout.addWidget(twopiCheck)
-        layout.addStretch()
-        layout.addWidget(updatePatternBtn)
-
-        # Add the layout to the parent layout
-        parent_layout.addLayout(layout)
-
-        # signal connection
-        updatePatternBtn.clicked.connect(lambda: self.on_update_pattern(slmKey))
-
-
-
     # -------------------------------------------- #
     #           SPECIFIC GROUP BUILDERS:           #   
     #      General, Patterns, Aberrations, CGH     #
     # -------------------------------------------- #
+
+    # Correction options
+    def create_correction_options_group(self, slmKey="slm",secKey="sec_0"):
+        group = CollapsibleSection("Correction")
+        layout = QtWidgets.QGridLayout()
+        params = [
+            ('checkbox', 'Apply correction pattern', True),
+            ('checkbox', 'Apply 2π value correction', True, "apply_twopi_value"),
+        ]
+        self.add_param_grid(slmKey, secKey,"correction_options",params, 0, layout, per_row=0)
+        group.setContentLayout(layout)
+        return group
 
     # General section
     def create_general_group(self,slmKey="slm",secKey="sec_0"):
@@ -366,8 +398,6 @@ class SLMsWidget(Widget):
         group.setContentLayout(layout)
         return group
     
-
-
     # Patterns section
     def create_patterns_group(self, slmKey="slm",secKey="sec_0", options=None, pattern_registry={}):
         """
@@ -414,7 +444,7 @@ class SLMsWidget(Widget):
         group.addHeaderWidget(use_aberr)
         setattr(self, f"{slmKey}_{secKey}_aberrations_active", use_aberr)
         self._param_definitions[slmKey][secKey]["aberrations"].append(
-            ("checkbox","aberrations_active",False, "aberrations_active")
+            ("checkbox","aberrations_active")
         )
 
         # Save/Load buttons
@@ -506,7 +536,7 @@ class SLMsWidget(Widget):
         cghLayout.addLayout(generalLayout)
 
         self._param_definitions[slmKey][secKey]["cgh"][generalsubsec].append(
-            ("checkbox","active",False, "active")
+            ("checkbox","active")
         )
 
         # --- 2. Target Definition Area ---
@@ -523,7 +553,7 @@ class SLMsWidget(Widget):
         typeLayout.addWidget(combo)
 
         self._param_definitions[slmKey][secKey]["cgh"][generalsubsec].append(
-            ("combo","target_type", targets_list, "target_type"),
+            ("combo","target_type"),
         )
 
         visualizeTargetBtn = BetterPushButton("Visualize Target")
@@ -609,12 +639,12 @@ class SLMsWidget(Widget):
         cghLayout.addWidget(computeBox)
 
         self._param_definitions[slmKey][secKey]["cgh"][computsubsec].extend([
-            ("checkbox","weighted_gs", False, "weighted_gs"),
-            ("lineedit","n_iterations", 20, "n_iterations"),
-            ("checkbox","phase_fixing", False, "phase_fixing"),
-            ("lineedit","phase_fixing_value", 0, "phase_fixing_value"),
-            ("checkbox","quad_phase", False, "quad_phase"),
-            ("lineedit","quad_phase_coeff", False, "quad_phase_coeff"),
+            ("checkbox","weighted_gs"),
+            ("lineedit","n_iterations"),
+            ("checkbox","phase_fixing"),
+            ("lineedit","phase_fixing_value"),
+            ("checkbox","quad_phase"),
+            ("lineedit","quad_phase_coeff"),
         ]
         )
 
@@ -721,28 +751,34 @@ class SLMsWidget(Widget):
 
         IMPORTANT NOTES:
         ----------------
-        1/ `params` is a list of tuples defining each parameter with 3 or 4 elements:
+        1/ arg:`params` is a list of tuples defining each parameter with 3 or 4 elements:
             - (ptype, label, default_or_items, attrname), or:
             - (ptype, label, default_or_items) ==> attrname will be derived from label.
-            where ptype is one of: "label", "checkbox", "lineedit", "combo".
+
+            where:
+                - ptype is one of: "label", "checkbox", "lineedit", "combo".
+                - label is the display name shown in the UI.
+                - default_or_items is either the default value (for lineedit/checkbox) or list of items (for combo).
+                - attrname is the attribute name to be set on self
 
         2/ attribute naming convention: 
                 slmkey_secKey_[sub_section]_attrname
                 e.g. "slm1_sec_0_binary_period_x"
 
-        3/ the parameter is stored in self._param_definitions at:
-                self._param_definitions[slmKey][secKey][section_name][sub_section] (sub_section optional)
+        3/ the parameter is stored in self._param_definitions:
+                self._param_definitions[slmKey][secKey][section_name][sub_section*] = (ptype, attrname) 
+                *sub_section is optional
 
-            with paramName being the cleaned attrname without slmKey, secKey, section or sub_section prefixes.
-
-            e.g.: self._param_definitions["slm1"]["sec_0"]["patterns"]["binary"] = "period_x"
+            e.g.: 
+                self._param_definitions["slm1"]["sec_0"]["patterns"]["binary"] = ("lineedit", "period_x")
+                NOTE: we keep only (ptype, attrname), the only one needed to reference the attribute later.
 
         Parameters:
         ----------
         Mandatory:
             slmKey: identifier for the SLM.
             secKey: identifier for the tab section.
-            section_name: name of the section (e.g. "patterns", "cgh", etc.)
+            section_name: name of the section (e.g. "patterns", "cgh", etc.). Can be set to None to skip param_definitions update.
             params: list of parameter definitions.
             start_row: row index to start adding parameters.
             layout: QGridLayout instance where parameters will be added.
@@ -790,6 +826,8 @@ class SLMsWidget(Widget):
             elif ptype == "checkbox":
                 widget = QtWidgets.QCheckBox(label)
                 layout.addWidget(widget, row, col, 1, 1)
+                if isinstance(default_or_items, bool):
+                    widget.setChecked(default_or_items)
                 if auto_update:
                     widget.stateChanged.connect(lambda state, 
                                                 key=slmKey: self._schedulePatternUpdate(key))
@@ -848,9 +886,7 @@ class SLMsWidget(Widget):
                 if sub_section:
                     target_dict = target_dict.setdefault(sub_section, [])
 
-                target_dict.append(
-                    (ptype,label,default_or_items,paramName)
-                )
+                target_dict.append((ptype,paramName))
 
         # Return the next free row
         if col>0:
@@ -869,7 +905,6 @@ class SLMsWidget(Widget):
         
         IMPORTANT NOTES:
         ----------------
-
         1/ `single_param_mode` is used for patterns that have a single coefficient parameter only, e.g. Zernike modes:
             Horizontal Coma: [   ]
             Vertical Coma: [   ]
@@ -886,6 +921,9 @@ class SLMsWidget(Widget):
         4/ if `use_subsection` is True, the pattern_name is used as sub-section name in the param_definitions structure.
         e.g.: ["slm1"]["sec_0"]["patterns"]["lens_phase"] 
 
+        5/ param_defs is a list of tuples defining each parameter with 3 elements:
+            - (param_name, default_value, ptype)
+
         """
 
         
@@ -901,18 +939,18 @@ class SLMsWidget(Widget):
 
             if param_name in _ignore:
                 continue
-
-            if single_param_mode:
-                param_name = pattern_name
+            
+            # define attribute name
+            attr_name = pattern_name if single_param_mode else param_name
 
             if ptype in ("float", "int",float, int):
-                params.append(("lineedit", param_name, default, param_name))
+                params.append(("lineedit", attr_name, default, attr_name))
             elif ptype == "choice":
                 # Expect default to be a list of options
-                params.append(("combo", param_name, default, param_name))
+                params.append(("combo", attr_name, default, attr_name))
             else:
                 # Fallback to string line edit
-                params.append(("lineedit", param_name, str(default), param_name))
+                params.append(("lineedit", attr_name, str(default), attr_name))
 
         sub_section = pattern_name if use_subsection else None
 
@@ -948,7 +986,7 @@ class SLMsWidget(Widget):
                         sub_section_dict = param_list
                         for sub_section_name, sub_section_param_list in sub_section_dict.items():
                             sub_section_values = {}
-                            for ptype, _, _, attrname in sub_section_param_list:
+                            for ptype, attrname in sub_section_param_list:
                                 val = self.get_widget_value(slmKey, secKey, f"{sub_section_name}_{attrname}", ptype)
                                 if val is None:
                                     continue
@@ -957,9 +995,12 @@ class SLMsWidget(Widget):
                             section_values[sub_section_name] = sub_section_values
 
                     else: # regular section
-                        for ptype, _, _, attrname in param_list:
+                        for ptype, attrname in param_list:
                             val = self.get_widget_value(slmKey, secKey, attrname, ptype)
                             if val is None:
+                                self.__logger.warning(
+                                    f"Failed to get value for {slmKey}_{secKey}_{attrname} ({ptype}), skipping..."
+                                )
                                 continue
 
                             section_values[attrname] = val
@@ -992,7 +1033,7 @@ class SLMsWidget(Widget):
                         for sub_section_name, sub_section_param_values in sub_section_dict.items():
                             if sub_section_name not in self._param_definitions[slmKey][secKey][section_name]:
                                 continue
-                            for ptype, _, _, attrname in self._param_definitions[slmKey][secKey][section_name][sub_section_name]:
+                            for ptype, attrname in self._param_definitions[slmKey][secKey][section_name][sub_section_name]:
                                 if attrname not in sub_section_param_values:
                                     continue
                                 
@@ -1000,7 +1041,7 @@ class SLMsWidget(Widget):
                                                     sub_section_param_values.get(attrname))
 
                     else: # regular section
-                       for ptype, _, _, attrname in self._param_definitions[slmKey][secKey][section_name]:
+                       for ptype, attrname in self._param_definitions[slmKey][secKey][section_name]:
                             if attrname not in param_values:
                                 continue
                             self.set_widget_value(slmKey, secKey, attrname, ptype, param_values.get(attrname))
@@ -1117,6 +1158,10 @@ class SLMsWidget(Widget):
                 subtabs_widget.setTabText(i, new_name)
                 self._tab_names_dict[slmKey][key] = new_name
 
+    def get_tab_names(self, slmKey):
+        """Return the current tab names as a dictionary."""
+        return self._tab_names_dict.get(slmKey, {}).copy()
+
 
     # --------- connection/disconnection --------
     def on_connection_result(self, slmKey: str, success: bool, serial: str):
@@ -1150,13 +1195,6 @@ class SLMsWidget(Widget):
         """Gather pattern parameters and emit signal to update pattern on SLM."""
         all_params = self.get_params()
         params = all_params.get(slmKey, {})
-        # add correction options
-        apply_corr = getattr(self, f"{slmKey}_applyCorrectionCheck").isChecked()
-        twopi_val_corr = getattr(self, f"{slmKey}_twopiCheck").isChecked()
-        params["correction_options"] = {
-            "apply_correction_pattern": apply_corr,
-            "apply_twopi_value": twopi_val_corr
-        }
         self.sigUpdatePattern.emit(slmKey, params)
 
     def on_compute_cgh(self,slmKey,secKey):

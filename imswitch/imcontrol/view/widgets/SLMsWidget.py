@@ -653,6 +653,8 @@ class SLMsWidget(Widget):
         loadPatternBtn.clicked.connect(lambda: self.sigLoadCgh.emit(slmKey, secKey))
         saveCghBtn.clicked.connect(lambda: self.sigSaveCgh.emit(slmKey, secKey))
 
+        use_cgh_checkbox.stateChanged.connect(lambda state, key=slmKey: self._schedulePatternUpdate(key))
+
         return group
 
     def add_feedback_buttons(self, layout, row, slmKey, secKey, target_name):
@@ -1013,20 +1015,21 @@ class SLMsWidget(Widget):
 
         # --- Restore according to widget type ---
         try:
-            if ptype == "lineedit":
-                widget.setText(str(val))
+            with QtCore.QSignalBlocker(widget): # block signals to avoid triggering updates
+                if ptype == "lineedit":
+                    widget.setText(str(val))
 
-            elif ptype == "checkbox":
-                widget.setChecked(bool(val))
+                elif ptype == "checkbox":
+                    widget.setChecked(bool(val))
 
-            elif ptype == "combo":
-                # try to set by text if available
-                idx = widget.findText(str(val))
-                if idx >= 0:
-                    widget.setCurrentIndex(idx)
+                elif ptype == "combo":
+                    # try to set by text if available
+                    idx = widget.findText(str(val))
+                    if idx >= 0:
+                        widget.setCurrentIndex(idx)
 
-            elif ptype == "radio":
-                widget.setChecked(bool(val))
+                elif ptype == "radio":
+                    widget.setChecked(bool(val))
 
         except Exception as e:
             self.__logger.warning(

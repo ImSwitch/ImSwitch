@@ -64,7 +64,8 @@ class SLMsController(ImConWidgetController):
             if slmInfo is not None:
                 if slmInfo.managerProperties.get("startConfig") is not None:
                     start_config = slmInfo.managerProperties.get("startConfig")
-                    config_path = os.path.join(self.configsDir, start_config)
+                    config_dir = self._get_slm_config_dir(slmKey)
+                    config_path = os.path.join(config_dir, start_config)
                     if os.path.isfile(config_path):
                         self.on_load_config(slmKey, path=config_path)
                         self.__logger.info(f"Successfully loaded startup config for {slmName}")
@@ -287,7 +288,7 @@ class SLMsController(ImConWidgetController):
     
     def _get_slm_config_dir(self, slmKey):
         slm_id = self._slmInfos[slmKey].serial_number
-        path = os.path.join(self.configsDir, f"SLM_{slm_id}")
+        path = os.path.join(self.configsDir, slm_id)
         os.makedirs(path, exist_ok=True)
         return path
     
@@ -437,8 +438,7 @@ class SLMsController(ImConWidgetController):
     
     def load_hdf5_config(self, slmKey, path):
         slmInfo = self._slmInfos[slmKey]
-        engine = self._patternEngines[slmKey]
-        manager = self._master.slmsManager[self._slmNames[slmKey]]
+        slmName = self._slmNames[slmKey]
 
         with h5py.File(path, "r") as f:
             if f.attrs["slm_id"] != slmInfo.serial_number:
@@ -466,10 +466,13 @@ class SLMsController(ImConWidgetController):
                         )
                     }
 
-        # restore parameters, cached sections, final image, CGH, and pushing image to SLM
+        # restore parameters, pushes image to SLM and widget, without recomputation
         self._widget.set_params({slmKey: params})
-        if getattr(manager, "connected", False):
-            manager.upload_pattern(final_image)
+        self._widget.update_display(slmKey,final_image)
+        self._master.slmsManager.execOn(slmName, lambda l: l.upload_pattern(final_image))
+        
+        # restore cached sections and cgh results
+        engine = self._patternEngines[slmKey]
         for secKey, comps in sections.items():
             engine._cachedSections[secKey].update(comps)
         engine._cachedFinalImage = final_image

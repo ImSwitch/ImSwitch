@@ -519,8 +519,18 @@ class AdvancedScanTTLCycleDesigner(TTLCycleDesigner):
         # Advanced: build one pixel waveform, then tile across pixels
         starts_s = [] if starts_s is None else list(starts_s)
         ends_s = [] if ends_s is None else list(ends_s)
+
+
         if len(starts_s) != len(ends_s):
-            raise ValueError("pulse_starts_s and pulse_ends_s must have same length per device per linestep.")
+            min_len = min(len(starts_s), len(ends_s))
+            starts_s = starts_s[:min_len]
+            ends_s = ends_s[:min_len]
+            print("pulse_starts_s and pulse_ends_s do not have same length per device per linestep. Dropping extra!")
+
+        # If the device is enabled for this linestep but the user did not specify any pulse windows,
+        # treat this as "full on" (advanced program is an override, not a requirement).
+        if len(starts_s) == 0 and len(ends_s) == 0:
+            return np.ones(total, dtype="bool")
 
         # Validate
         for a, b in zip(starts_s, ends_s):

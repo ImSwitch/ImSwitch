@@ -99,7 +99,7 @@ class ScanWidgetAdvanced(SuperScanWidget):
     # UI layout
     # -----------------------------
 
-    def initControls(self, positionerNames, TTLDeviceNames):
+    def initControls(self, positionerNames, TTLDeviceNames,TTLTimeunit):
         currentRow = 0
         self.scanDims = list(positionerNames)
         self.scanDims.append("None")
@@ -468,7 +468,7 @@ class ScanWidgetAdvanced(SuperScanWidget):
                     continue
 
                 pe = self._getPulseEditor(dev, step)
-                if pe.starts_s and pe.ends_s:
+                if pe.starts_s and pe.ends_s and pe.power_percent:
                     seg = np.zeros(spp, dtype=np.uint8)
                     for t0, t1 in zip(pe.starts_s, pe.ends_s):
                         i0 = int(round(float(t0) * sampleRate))
@@ -476,9 +476,9 @@ class ScanWidgetAdvanced(SuperScanWidget):
                         i0 = max(0, min(spp, i0))
                         i1 = max(0, min(spp, i1))
                         if i1 > i0:
-                            seg[i0:i1] = 1
+                            seg[i0:i1] = pe.power_percent
                 else:
-                    seg = np.ones(spp, dtype=np.uint8)
+                    seg = np.ones(spp, dtype=np.uint8)*100
 
                 y[start:end] = seg
 
@@ -486,12 +486,12 @@ class ScanWidgetAdvanced(SuperScanWidget):
             yy = y.astype(float) - 0.15 * dev_idx
             plot.plot(x, yy, pen=pg.mkPen(colors[dev_idx]), name=dev)
 
-        plot.setYRange(-0.15 * len(labels) - 0.2, 1.2)
-        plot.setLabel("bottom", "samples within linestep blocks")
-        plot.setLabel("left", "TTL (per pixel)")
+        plot.setYRange(-0.15 * len(labels) - 0.2, 110)
+        plot.setLabel("bottom", "Samples within single dwell time")
+        plot.setLabel("left", "Power [%]")
 
 
-    def _plotLineStepScatter(self, *,  signals, colors,  labels, vlines=None):
+    def _plotLineStepScatter(self, signals, colors,  labels, vlines=None):
 
         plot = self.graph_steps.plot
         plot.clear()
@@ -685,8 +685,7 @@ class PulseEditor:
 
 class ScanLineWidget(QWidget):
     """
-    Same concept as your existing ScanLineWidget:
-    N checkboxes representing N line steps for a single device.
+    N checkboxes representing if a device is on during which of the N line steps.
     """
     line_steps_changed = Signal()
 

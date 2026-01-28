@@ -39,6 +39,7 @@ class ScanControllerAdvanced(SuperScanController):
         self._widget.initControls(
             self.positioners.keys(),
             self.TTLDevices.keys(),
+            "ms"
         )
 
         # Tell the widget which TTL devices support per-linestep analog power (AO channel present)

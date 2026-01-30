@@ -64,7 +64,7 @@ class SLMsController(ImConWidgetController):
             if slmInfo is not None:
                 if slmInfo.managerProperties.get("startConfig") is not None:
                     start_config = slmInfo.managerProperties.get("startConfig")
-                    config_dir = self._get_slm_config_dir(slmKey)
+                    config_dir = self.get_slm_config_dir(slmKey)
                     config_path = os.path.join(config_dir, start_config)
                     if os.path.isfile(config_path):
                         self.on_load_config(slmKey, path=config_path)
@@ -88,6 +88,8 @@ class SLMsController(ImConWidgetController):
         self._widget.sigSaveConfig.connect(self.on_save_config)
         self._widget.sigSaveAberr.connect(self.on_save_aberr)
         self._widget.sigSaveCgh.connect(self.on_save_cgh)
+        self._widget.sigDeleteConfig.connect(self.on_delete_config)
+        self._widget.sigRenameConfig.connect(self.on_rename_config)
 
         self._widget.sigSnapFeedback.connect(self.on_feedback_snap)
         self._widget.sigAnalysisFeedback.connect(self.on_feedback_analysis)
@@ -286,14 +288,15 @@ class SLMsController(ImConWidgetController):
     
     # --------- Saving/loading related -------- #
     
-    def _get_slm_config_dir(self, slmKey):
+    def get_slm_config_dir(self, slmKey):
         slm_id = self._slmInfos[slmKey].serial_number
         path = os.path.join(self.configsDir, slm_id)
         os.makedirs(path, exist_ok=True)
         return path
     
     def refresh_available_configs(self, slmKey):
-        cfg_dir = self._get_slm_config_dir(slmKey)
+        """ Scan config dir for hdf5 or json files and populate widget combo box """
+        cfg_dir = self.get_slm_config_dir(slmKey)
 
         configs = []
         for fn in sorted(os.listdir(cfg_dir)):
@@ -303,18 +306,76 @@ class SLMsController(ImConWidgetController):
 
         self._widget.set_available_configs(slmKey, configs)
 
-
-    def on_save_config(self, slmKey, config_name,overwrite=False, msg_box=True):
-        """Save full SLM configuration, enforce saving to an HDF5 file in the right slm directory."""
+    def on_rename_config(self, slmKey, old_name, new_name):
+        """Rename SLM configuration file."""
         try:
-            cfg_dir = self._get_slm_config_dir(slmKey)
+            config_dir = self.get_slm_config_dir(slmKey)
+            old_path = os.path.join(config_dir, old_name)
+            new_path = os.path.join(config_dir, new_name)
+            if not new_path.endswith(".h5"):
+                new_path = new_path + ".h5"
+            if os.path.isfile(old_path):
+                os.rename(old_path, new_path)
+                self._widget.current_config_renamed(slmKey,new_path)
+                self.refresh_available_configs(slmKey)
+            else:
+                raise FileNotFoundError(f"Configuration file not found: {old_path}")
+
+        except Exception as e:
+            self.__logger.error(traceback.format_exc())
+            self._widget.show_message_box(
+                title="Error Renaming Configuration",
+                msg_type="error",
+                message=f"Could not rename configuration:\n{e}"
+            )
+    
+    def on_delete_config(self, slmKey, path):
+        """Delete SLM configuration file."""
+        try:
+            if os.path.isfile(path):
+                os.remove(path)
+                self._widget.current_config_deleted(slmKey)
+                self.refresh_available_configs(slmKey)
+            else:
+                raise FileNotFoundError(f"Configuration file not found: {path}")
+
+        except Exception as e:
+            self.__logger.error(traceback.format_exc())
+            self._widget.show_message_box(
+                title="Error Deleting Configuration",
+                msg_type="error",
+                message=f"Could not delete configuration:\n{e}"
+            )
+
+
+    def on_save_config(self, slmKey, config_name,info="",overwrite=False, msg_box=True):
+        """Save full SLM configuration (enforcing HDF5 format and in the right slm directory)."""
+        try:
+            cfg_dir = self.get_slm_config_dir(slmKey)
             path = os.path.join(cfg_dir, config_name)
             if not path.endswith(".h5"):
                 path = path + ".h5"
-            self.save_hdf5_config(slmKey, path,overwrite)
+
+            # temporary path
+            tmp_path = path + ".tmp" 
+            creation_date = datetime.datetime.now().isoformat()
+            self.save_hdf5_config(slmKey, tmp_path,creation_date, info, overwrite)
+
+            # if no error, we replace temporary path with final path
+            os.replace(tmp_path, path)
+
+            # update widget
+            config_dict = {
+                "path": path,
+                "date": creation_date,
+                "info": info
+            }
+            self._widget.current_config_changed(slmKey,config_dict)
             self.refresh_available_configs(slmKey)
 
         except Exception as e:
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
             self.__logger.error(traceback.format_exc())
             if msg_box:
                 self._widget.show_message_box(
@@ -335,7 +396,7 @@ class SLMsController(ImConWidgetController):
                 )
                 if not path or not os.path.exists(path):
                     return
-            ext = os.path.splitext(path)[1].lower()
+            ext = os.path.splitext(path)[-1].lower()
 
             # LEGACY: loading JSON config (should disappear in the future)
             if ext == ".json":
@@ -344,12 +405,17 @@ class SLMsController(ImConWidgetController):
                 if ok:
                     with open(path, "r", encoding="utf-8") as f:
                         slm_params = json.load(f)
-                    self._widget.on_config_loaded(slmKey,slm_params,msg_box=True)
+                    config_dict = {"path": path,"date": "","info": ""}
+                    self._widget.on_config_loaded(slmKey, slm_params, update_pattern=True, 
+                                                  config_dict=config_dict, msg_box=True)
                 return
             
             # HDF5 loading
             if ext in (".h5", ".hdf5"):
-                self.load_hdf5_config(slmKey, path)
+                ok, slm_params, config_dict = self.load_hdf5_config(slmKey, path)
+                if ok:
+                    self._widget.on_config_loaded(slmKey, slm_params, update_pattern=False, 
+                                                  config_dict=config_dict, msg_box=True)
                 return
 
             raise ValueError(f"Unsupported config file type: {ext}")
@@ -395,9 +461,10 @@ class SLMsController(ImConWidgetController):
 
     
     # HDF5 saving/loading
-    def save_hdf5_config(self, slmKey, path, overwrite=False):
+    def save_hdf5_config(self, slmKey, path, creation_date, info="", overwrite=False):
         engine = self._patternEngines[slmKey]
         params = self._widget.get_params()[slmKey]
+        info = "No information provided" if info=="" else info
         
         # add tab names to params for restoration upon loading
         tab_names = self._widget.get_tab_names(slmKey)
@@ -405,12 +472,16 @@ class SLMsController(ImConWidgetController):
             params["tab_names"] = tab_names
 
         mode = "w" if overwrite else "x"
+        if not overwrite and os.path.exists(path):
+            raise FileExistsError ("Config with this name already exists")
+
         with h5py.File(path, mode) as f:
 
             # general metadata
             f.attrs["schema_version"] = "1.0"
             f.attrs["slm_id"] = self._slmInfos[slmKey].serial_number
-            f.attrs["created_at"] = datetime.datetime.now().isoformat()
+            f.attrs["date"] = creation_date
+            f.attrs["info"] = info
 
             # parameters
             self.write_params_to_hdf5(f.create_group("parameters"), params)
@@ -438,17 +509,37 @@ class SLMsController(ImConWidgetController):
                 for secKey, res in self._cghResults[slmKey].items():
                     grp = f.create_group(f"cgh/{secKey}")
                     grp.create_dataset("final_pattern", data=res["cgh_pattern"])
+                    cgh_name = res.get("cgh_name")
+                    if cgh_name:
+                        grp.attrs["cgh_name"] = cgh_name
                     grp.attrs["comput_params"] = json.dumps(
                         res.get("comput_params", {})
                     )
-    
+
     def load_hdf5_config(self, slmKey, path):
+        """
+        Extract params, images and config info from hdf5 file, and sync with config state:
+            - final image sent to SLM and widget display
+            - section images are restored in pattern engine
+        
+        Returns:
+            - success (bool)
+            - params: dict of slm_params to be loaded in widget
+            - config_dict: config information to be sent to widget
+        """
         slmInfo = self._slmInfos[slmKey]
         slmName = self._slmNames[slmKey]
 
         with h5py.File(path, "r") as f:
-            if f.attrs["slm_id"] != slmInfo.serial_number:
-                raise RuntimeError("Wrong SLM config")
+            slm_id = f.attrs.get("slm_id", "")
+            creation_date = f.attrs.get("date", "Unknown")
+            info = f.attrs.get("info", "No information provided")
+            
+            if slm_id != slmInfo.serial_number:
+                ok = self._widget.askYesNoQuestion("SLM mismatch",
+                        f"This config was created for another SLM (sn: {slm_id}).\nLoad anyway?")
+                if not ok:
+                    return False, None, None
 
             params = self.read_params_from_hdf5(f["parameters"])
             final_image = f["images/final/full_slm"][()]
@@ -465,17 +556,21 @@ class SLMsController(ImConWidgetController):
             if "cgh" in f:
                 for secKey in f["cgh"]:
                     grp = f[f"cgh/{secKey}"]
+                    cgh_name = grp.attrs.get("cgh_name")
+                    if cgh_name is not None:
+                        self._widget.update_label(slmKey,secKey,"cgh_in_use_label",f"{cgh_name}")
+                    else:
+                        self._widget.update_label(slmKey,secKey,"cgh_in_use_label", "Unnamed")
+
                     cgh[secKey] = {
+                        "cgh_name": cgh_name,
                         "cgh_pattern": grp["final_pattern"][()],
                         "comput_params": json.loads(
                             grp.attrs.get("comput_params", "{}")
                         )
                     }
-
-        # restore parameters and tab names, pushes image to SLM and widget, without recomputation
-        self._widget.set_params({slmKey: params})
-        if "tab_names" in params:
-            self._widget.update_tab_names(slmKey, params.get("tab_names", {}))
+        
+        # pushes image to SLM and widget, without recomputation
         self._widget.update_display(slmKey,final_image)
         self._master.slmsManager.execOn(slmName, lambda l: l.upload_pattern(final_image))
         
@@ -486,7 +581,14 @@ class SLMsController(ImConWidgetController):
         engine._cachedFinalImage = final_image
         self._cghResults[slmKey] = cgh
 
-
+        config_dict = {
+            "path": path,
+            "date": creation_date,
+            "info": info
+        }
+        return True, params, config_dict 
+        
+    # --- hdf5 helpers --- #
     def write_params_to_hdf5(self, grp, data):
         for k, v in data.items():
             if isinstance(v, dict):
@@ -556,6 +658,7 @@ class SLMsController(ImConWidgetController):
                 return
             array = np.load(path,allow_pickle=True)
             result_dict = { 
+                "cgh_name": name,
                 "cgh_pattern": array
             }
             
@@ -583,9 +686,7 @@ class SLMsController(ImConWidgetController):
             return
         
         try:
-            name = None
-            if self._targets.get(slmKey, {}).get(secKey) is not None:
-                name =  self._targets.get(slmKey).get(secKey).name
+            name = self._cghResults.get(slmKey,{}).get(secKey,{}).get("cgh_name","cgh_pattern") 
             name = "cgh_pattern" if name is None else name
 
             suggested = os.path.join(self.cghPatternsDir,name)
@@ -618,6 +719,7 @@ class SLMsController(ImConWidgetController):
             self.sync_target(slmKey, secKey)
             target_array =  self._targets.get(slmKey).get(secKey).array
             feedback_count = self._targets.get(slmKey).get(secKey).feedback_count
+            cgh_name = self._targets.get(slmKey).get(secKey).name
         except Exception as e:
             self._widget.on_cgh_computation_result(slmKey, secKey,success=False, msg=e)
             self.__logger.error(traceback.format_exc())
@@ -630,7 +732,7 @@ class SLMsController(ImConWidgetController):
 
         # dispatch computation to CGH worker
         comput_params = cgh_params.get("cgh_computation",{})
-        self._cghWorker.prepareForNewComputation(slmKey, secKey, target_array, comput_params, target_params,previous_pattern)
+        self._cghWorker.prepareForNewComputation(slmKey, secKey, target_array,cgh_name, comput_params, target_params,previous_pattern)
         self._cghWorker.sigStartComputation.emit()
     
 
@@ -649,10 +751,7 @@ class SLMsController(ImConWidgetController):
             self._widget.on_cgh_computation_result(slmKey,secKey,success=False,msg=m)
             raise
 
-        if self._targets.get(slmKey,{}).get(secKey) is not None:
-            cgh_name = self._targets.get(slmKey).get(secKey).name
-        else:
-            cgh_name = None
+        cgh_name = result_dict.get("cgh_name")
         
         # format msg
         full_msg = None
@@ -837,11 +936,12 @@ class SLMsController(ImConWidgetController):
             self.is_running = False
             self.__logger = initLogger(self)
 
-        def prepareForNewComputation(self, slmKey, secKey, target, comput_params, target_params,
+        def prepareForNewComputation(self, slmKey, secKey, target, cgh_name, comput_params, target_params,
                                      previous_pattern=None, quad_initial_phase=None):
             self._skmKey = slmKey
             self._secKey = secKey
             self._target = target
+            self._cgh_name = cgh_name
             self._previous_pattern = previous_pattern
             self._comput_params = comput_params
             self._target_params = target_params
@@ -863,6 +963,7 @@ class SLMsController(ImConWidgetController):
                         self.__logger.error(traceback.format_exc())
                 else:
                     result_dict = {
+                        "cgh_name": self._cgh_name,
                         "cgh_pattern": pattern,
                         "performances": performances,
                         "comput_params": self._comput_params,

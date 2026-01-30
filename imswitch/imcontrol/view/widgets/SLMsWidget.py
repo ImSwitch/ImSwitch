@@ -44,23 +44,27 @@ Where:
 There are two ways of registering parameters:
     1. Automatic registration via add_param_grid(), which:
             * creates standard UI elements
-            * register them  in self_param_definitions
+            * register them in self_param_definitions
             * create corresponding attributes
+            * connect widget changes to automatic pattern update scheduling (unless auto_update=False is given)
+            * if lineedit, can also set validator based on valtype (int or float for now)
 
     2. Manual registration - for custom UI elements.
-    In that case, you need to make sure that the param_definitions entries match the created attributes!
+    In that case, you need to make sure that the param_definitions entries match the created attributes.
     e.g., for a checkbox named "use_correction", in the "correction_options" section:
             - create attribute: 
                     self.slmKey_secKey_use_correction
             - register param: 
                     self._param_definitions[slmKey][secKey]["correction_options"] = ("checkbox", "use_correction")
+
+        /!\ Don't forget to connect the widget changes to self._schedulePatternUpdate(slmKey) to trigger pattern updates.
 """
 
 
 
 from qtpy import QtCore, QtWidgets, QtGui
-from imswitch.imcontrol.view.guitools import CollapsibleSection, BetterPushButton
-from imswitch.imcommon.view.guitools.dialogtools import askForTextInput,askYesNoQuestion
+from imswitch.imcontrol.view.guitools import CollapsibleSection, BetterPushButton, InfoButton
+from imswitch.imcommon.view.guitools.dialogtools import askForTextInput,askYesNoQuestion,askForTwoTextInputs
 import pyqtgraph as pg
 from .basewidgets import Widget
 from imswitch.imcommon.model import initLogger
@@ -70,6 +74,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 from functools import partial
 import os
+import datetime
+
+
+_collaps_section_format = {
+    "button_height": 20,
+    "fontsize": 9,
+}
 
 
 class SLMsWidget(Widget):
@@ -83,10 +94,12 @@ class SLMsWidget(Widget):
     sigVisualizeTarget = QtCore.Signal(str,str)             # slmKey, secKey, target_type, target_params
     sigShowCghResult = QtCore.Signal(str, str, int)         # slmKey, secKey, pad_size
 
+    sigDeleteConfig = QtCore.Signal(str,str)                # slmKey, config path
+    sigRenameConfig = QtCore.Signal(str,str,str)            # slmKey, old name, new name
     sigLoadConfig = QtCore.Signal(str,str)                  # slmKey, config path
     sigLoadAberr = QtCore.Signal(str,str)                   # slmKey, secKey
     sigLoadCgh = QtCore.Signal(str, str)                    # slmKey, secKey
-    sigSaveConfig = QtCore.Signal(str,str,bool)             # slmKey, config name, overwrite
+    sigSaveConfig = QtCore.Signal(str,str,str,bool)         # slmKey, config name, info, overwrite
     sigSaveAberr = QtCore.Signal(str,str,dict)              # slmKey, secKey, aberr_params
     sigSaveCgh = QtCore.Signal(str, str)                    # slmKey, secKey
 
@@ -121,21 +134,10 @@ class SLMsWidget(Widget):
         self._tab_names_dict={}         # {slmKey: {secKey: tab_name}} 
         self._slmSectionList = {}       # list of sections per slmKey {slmKey: [secKey1, secKey2,...]}
         self._param_definitions = {}    # list of parameters stored by slmKey[secKey][sectionName]
+        self._currentConfigs = {}       # {slmKey: {"path": currentConfigPath, "date": date, "info": info}}
 
         # update timers
         self._slmUpdateTimers = {}      # { slmKey: QTimer }
-
-    def _get_slm_timer(self,slmKey):
-        if slmKey not in self._slmUpdateTimers:
-            timer = QtCore.QTimer(self)
-            timer.setSingleShot(True)
-            timer.timeout.connect(partial(self.on_update_pattern, slmKey))
-            self._slmUpdateTimers[slmKey] = timer
-        return self._slmUpdateTimers[slmKey]
-
-    def _schedulePatternUpdate(self,slmKey):
-        timer = self._get_slm_timer(slmKey)
-        timer.start(500)  # 500ms debounce
 
 
     def add_slm(self,slmName,slmInfo,full_registry,*args,**kwargs):
@@ -151,12 +153,13 @@ class SLMsWidget(Widget):
         # slm container
         slmContainer = QtWidgets.QWidget()
         slmLayout = QtWidgets.QVBoxLayout(slmContainer)
-        slmLayout.setSpacing(10)
+        slmLayout.setSpacing(3)
         slmLayout.setContentsMargins(0, 0, 0, 0)
 
         # middle container (scroll area)
         middlecontainer = QtWidgets.QWidget()
         middlelayout = QtWidgets.QVBoxLayout(middlecontainer)
+        middlelayout.setContentsMargins(3, 3, 3, 3)
 
         scrollArea = QtWidgets.QScrollArea()
         scrollArea.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
@@ -273,11 +276,11 @@ class SLMsWidget(Widget):
         # Connect button
         connectBtn = BetterPushButton("Connect to SLM")
         connectBtn.setCheckable(True)
-        connectBtn.setMinimumHeight(28)
+        connectBtn.setFixedHeight(20)
         setattr(self, f"{slmKey}_connectBtn", connectBtn)
         layout.addWidget(connectBtn)
-
         layout.addStretch()
+
         # Save / Load configs
         configLabel = QtWidgets.QLabel("Config:")
         layout.addWidget(configLabel)
@@ -288,28 +291,39 @@ class SLMsWidget(Widget):
             QtWidgets.QSizePolicy.Expanding,
             QtWidgets.QSizePolicy.Fixed
         )
+        configCombo.wheelEvent = lambda event: None  # disable wheel event
         setattr(self, f"{slmKey}_configCombo", configCombo)
         layout.addWidget(configCombo)
 
-        loadBtn = BetterPushButton("Load")
-        setattr(self, f"{slmKey}_loadConfigBtn", loadBtn)
-        layout.addWidget(loadBtn)
+        # Info button
+        infoBtn = InfoButton()
+        setattr(self, f"{slmKey}_infoBtn", infoBtn)
+        layout.addWidget(infoBtn)
 
-        saveCurrentBtn = BetterPushButton("Save as current")
-        setattr(self, f"{slmKey}_saveCurrentConfigBtn", saveCurrentBtn)
-        layout.addWidget(saveCurrentBtn)
+        # "More..." menu
+        moreBtn = QtWidgets.QToolButton()
+        moreBtn.setText("More…  ")
+        moreBtn.setFixedHeight(18)
+        moreBtn.setPopupMode(QtWidgets.QToolButton.InstantPopup)
+        setattr(self, f"{slmKey}_moreBtn", moreBtn)
+        layout.addWidget(moreBtn)
 
-        saveNewBtn = BetterPushButton("Save as new")
-        setattr(self, f"{slmKey}_saveNewConfigBtn", saveNewBtn)
-        layout.addWidget(saveNewBtn)
+        menu = QtWidgets.QMenu(moreBtn)
+        menu.addAction("Save as current", lambda p=slmKey: self.on_update_current_config_clicked(p))
+        menu.addAction("Save as new", lambda p=slmKey: self.on_save_new_config_clicked(p))
+        menu.addAction("Rename config", lambda p=slmKey: self.on_rename_config(p))
+        menu.addAction("Delete config", lambda p=slmKey: self.on_delete_config(p))
+        menu.addAction("Set as startup config", lambda p=slmKey: self.on_set_startup_config(p))
+        moreBtn.setMenu(menu)
+        moreBtn.setPopupMode(QtWidgets.QToolButton.InstantPopup)
 
         parent_layout.addLayout(layout)
 
         # signal connections
-        connectBtn.toggled.connect(lambda state, key=slmKey: self.sigConnectSLMusb.emit(key, state))
-        loadBtn.clicked.connect(lambda state, key=slmKey: self.on_load_config_clicked(key))
-        saveNewBtn.clicked.connect(lambda state, key=slmKey: self.on_save_new_config_clicked(key))
-        saveCurrentBtn.clicked.connect(lambda state, key=slmKey: self.on_update_current_config_clicked(key))
+        connectBtn.toggled.connect(lambda state, p=slmKey: self.sigConnectSLMusb.emit(p, state))
+        configCombo.currentIndexChanged.connect(lambda _, p=slmKey: self.on_config_selection_changed(p))
+
+
 
     # ---- 2. Image Display (Collapsible) ----
     def create_image_display(self, parent_layout, slmKey="slm"):
@@ -317,7 +331,7 @@ class SLMsWidget(Widget):
         Create a pyqtgraph-based SLM image display with zoom, LUT, and pixel readout.
         """
         # Collapsible section
-        imageSection = CollapsibleSection("SLM Preview", target_height=200,frame=False)
+        imageSection = CollapsibleSection("SLM Preview", target_height=200,frame=False, **_collaps_section_format)
         imageSection.toggleButton.clicked.connect(
             lambda checked: self.on_image_preview_toggled(slmKey,checked)
         )
@@ -349,7 +363,7 @@ class SLMsWidget(Widget):
         homeBtn = BetterPushButton("Reset View")
         homeBtn.clicked.connect(lambda: self.reset_view(slmKey))
         setattr(self, f"{slmKey}_homeBtn", homeBtn)
-        homeBtn.setFixedHeight(imageSection.toggleButton.sizeHint().height())
+        homeBtn.setFixedHeight(16)
         imageSection.addHeaderWidget(homeBtn,position=-1)
 
         # Layout
@@ -374,7 +388,7 @@ class SLMsWidget(Widget):
 
     # Correction options
     def create_correction_options_group(self, slmKey="slm",secKey="sec_0"):
-        group = CollapsibleSection("Correction")
+        group = CollapsibleSection("Correction",**_collaps_section_format)
         layout = QtWidgets.QGridLayout()
         params = [
             ('checkbox', 'Apply correction pattern', True),
@@ -386,13 +400,13 @@ class SLMsWidget(Widget):
 
     # General section
     def create_general_group(self,slmKey="slm",secKey="sec_0"):
-        group = CollapsibleSection("General")
+        group = CollapsibleSection("General",**_collaps_section_format)
         layout = QtWidgets.QGridLayout()
         params = [
-            ('lineedit','Wavelength (nm)','488'),
-            ('lineedit','Pupil Radius (px)', 0),
-            ('lineedit','Center Offset X (px)', 0),
-            ('lineedit','Center Offset Y (px)', 0),
+            ('lineedit','Wavelength (nm)','488', 'Wavelength (nm)', int),
+            ('lineedit','Pupil Radius (px)', 0, 'Pupil Radius (px)', int),
+            ('lineedit','Center Offset X (px)', 0, 'Center Offset X (px)', int),
+            ('lineedit','Center Offset Y (px)', 0, 'Center Offset Y (px)', int),
         ]
         self.add_param_grid(slmKey, secKey,"general",params, 0, layout, per_row=1)
         group.setContentLayout(layout)
@@ -406,7 +420,7 @@ class SLMsWidget(Widget):
         if options is None:
             self.__logger.warning("No patterns options, using all available patterns from registry.")
 
-        group = CollapsibleSection("Patterns")
+        group = CollapsibleSection("Patterns",**_collaps_section_format)
         layout = QtWidgets.QGridLayout()
         list_patterns = options
 
@@ -435,7 +449,7 @@ class SLMsWidget(Widget):
 
     # Aberrations section
     def create_aberrations_group(self, slmKey="slm",secKey="sec_0",aberrations_registry={}):
-        group = CollapsibleSection("Aberrations")
+        group = CollapsibleSection("Aberrations",**_collaps_section_format)
         layout = QtWidgets.QGridLayout()
         row = 0
 
@@ -501,7 +515,7 @@ class SLMsWidget(Widget):
         # ==> related attributes will be named accordingly:
         # self.{slmKey}_{secKey}_cgh_general_{attrname}
 
-        group = CollapsibleSection("CGH Pattern")
+        group = CollapsibleSection("CGH Pattern",**_collaps_section_format)
         cghLayout = QtWidgets.QVBoxLayout()
         cghLayout.setSpacing(10)
         generalsubsec = "cgh_general"
@@ -692,7 +706,7 @@ class SLMsWidget(Widget):
         Adds feedback controls in 3 rows for targets supporting adaptive feedback,
         grouped in a CollapsibleSection titled 'Feedback'.
         """
-        section = CollapsibleSection("Feedback")
+        section = CollapsibleSection("Feedback",**_collaps_section_format)
         grid = QtWidgets.QGridLayout()
         counter = QtWidgets.QLabel("Feedback Rounds: 0")
         counter.setStyleSheet("color: #888;")
@@ -751,9 +765,11 @@ class SLMsWidget(Widget):
 
         IMPORTANT NOTES:
         ----------------
-        1/ arg:`params` is a list of tuples defining each parameter with 3 or 4 elements:
-            - (ptype, label, default_or_items, attrname), or:
-            - (ptype, label, default_or_items) ==> attrname will be derived from label.
+        1/ arg:`params` is a list of tuples defining each parameter with 3, 4, or 5 elements:
+            - (ptype, label, default_or_items)                      ==> attrname will be derived from label.
+            - (ptype, label, default_or_items, attrname)            ==> attrname is explicitly given.
+            - (ptype, label, default_or_items, attrname, valtype)   ==> valtype is the type to convert the value to, 
+                                                                        only used for lineedit validators if specified.
 
             where:
                 - ptype is one of: "label", "checkbox", "lineedit", "combo".
@@ -807,9 +823,13 @@ class SLMsWidget(Widget):
             if len(p)==3:
                 ptype, label, default_or_items = p
                 attrname = label # attribute will be set based on label
+                valtype = None
 
             elif len(p)==4:
                 ptype, label, default_or_items, attrname = p
+                valtype = None
+            elif len(p)==5:
+                ptype, label, default_or_items, attrname, valtype = p
             else:
                 raise ValueError(f"Invalid parameter definition: {p}")
 
@@ -838,10 +858,18 @@ class SLMsWidget(Widget):
                 lbl = QtWidgets.QLabel(label + ":")
                 widget = QtWidgets.QLineEdit(str(default_or_items))
                 widget.setFixedWidth(width)
+
+                validator = self._make_validator(valtype, widget) if valtype is not None else None
+                if validator is not None:
+                    widget.setValidator(validator)
+                    widget.setProperty("valtype", valtype)
+
                 layout.addWidget(lbl, row, col,1,1)
                 layout.addWidget(widget, row, col + 1,1,1)
                 if auto_update:
-                    widget.editingFinished.connect(lambda key=slmKey: self._schedulePatternUpdate(key))
+                    widget.textChanged.connect(
+                        lambda text, slmKey=slmKey: self._lineEditUpdate(text, slmKey)
+                        )
                 col += 2
 
             # ComboBox
@@ -921,8 +949,8 @@ class SLMsWidget(Widget):
         4/ if `use_subsection` is True, the pattern_name is used as sub-section name in the param_definitions structure.
         e.g.: ["slm1"]["sec_0"]["patterns"]["lens_phase"] 
 
-        5/ param_defs is a list of tuples defining each parameter with 3 elements:
-            - (param_name, default_value, ptype)
+        5/ param_defs is a list of tuples defining each parameter with 3 or 4 elements:
+            - (param_name, default_value, ptype).
 
         """
 
@@ -944,7 +972,8 @@ class SLMsWidget(Widget):
             attr_name = pattern_name if single_param_mode else param_name
 
             if ptype in ("float", "int",float, int):
-                params.append(("lineedit", attr_name, default, attr_name))
+                clean_type = resolve_type(ptype) # ensure type is correct
+                params.append(("lineedit", attr_name, default, attr_name, clean_type))
             elif ptype == "choice":
                 # Expect default to be a list of options
                 params.append(("combo", attr_name, default, attr_name))
@@ -1088,10 +1117,14 @@ class SLMsWidget(Widget):
 
         # Read the value according to widget type
         if ptype == "lineedit":
-            val = widget.text()
+            text = widget.text()
+            normalized_text = self._normalize_numeric_text(text)
+            if normalized_text != text:
+                with QtCore.QSignalBlocker(widget):
+                    widget.setText(normalized_text)
             # try to convert to numeric
             try:
-                val = json.loads(val)  
+                val = json.loads(normalized_text)  
             except Exception:
                 pass
             
@@ -1251,33 +1284,125 @@ class SLMsWidget(Widget):
             lbl.setText(f"Feedback Rounds: {feedback_count}")
     
     
-    # --------- saving/loading related -------- #
+    # --------- Config related -------- #
 
     def set_available_configs(self, slmKey, configs):
         """
+        Populate config combo box (called from controller)
         configs: list of (display_name, full_path)
         """
         combo = getattr(self, f"{slmKey}_configCombo")
+        current = self._currentConfigs.get(slmKey,{}).get("path", "")
+        combo.blockSignals(True)
         combo.clear()
-        for name, path in configs:
+        current_index = -1
+        for i, (name, path) in enumerate(configs):
             combo.addItem(name, path)
+            if current is not None and path == current:
+                current_index = i
+        if current_index >= 0:
+            combo.setCurrentIndex(current_index)
+        else:
+            combo.setCurrentIndex(-1)
+        combo.blockSignals(False)
+    
+    def on_config_loaded(self, slmKey, slm_params, update_pattern = False, 
+                         config_dict={}, msg_box=False):
+        """ Should be called every time a new config is loaded """
+        try:
+            self.set_params({slmKey: slm_params})
+            tab_names = slm_params.get("tab_names", {})
+            if tab_names:
+                self.update_tab_names(slmKey, tab_names)
+            if update_pattern:
+                self.on_update_pattern(slmKey)
+            self.current_config_changed(slmKey,config_dict)
 
-    def on_load_config_clicked(self, slmKey):
+        except Exception as e:
+            self.__logger.error(f"Failed to load config: {e}")
+            if msg_box:
+                self.show_message_box(title="Error Loading Configuration",
+                                      message=f"Could not load configuration:\n{e}",
+                                      msg_type="error")   
+    
+
+    def current_config_changed(self,slmKey,config_dict):
+        """ updates self._currentConfigs """
+        self._currentConfigs[slmKey] = config_dict
+        self.update_config_info(slmKey)
+    
+    def current_config_renamed(self,slmKey,new_path):
+        """ updates current config path """
+        self._currentConfigs[slmKey]["path"] = new_path
+
+    def current_config_deleted(self,slmKey):
+        self._currentConfigs[slmKey] = {}
+
+    def update_config_info(self,slmKey):
+        """ updates the infoBtn with the right current config info """
+        config = self._currentConfigs.get(slmKey,{})
+        if config.get("path") is None:
+            text = "No configuration is loaded"
+        else:
+            info = config.get("info", "No information provided")
+            info = info.replace("\n", "<br>") #html formatting
+            date = format_creation_date(config.get("date", "Unknown"))
+            text = f"<b>Creation date:</b><br>{date}<br><br><b>Info:</b><br>{info}"
+        infoBtn = getattr(self, f"{slmKey}_infoBtn")
+        infoBtn.setTextInfo(text)
+
+    # config buttons logic
+    def on_config_selection_changed(self, slmKey):
         combo = getattr(self, f"{slmKey}_configCombo")
         path = combo.currentData()
         if path:
             self.sigLoadConfig.emit(slmKey, path)
 
     def on_save_new_config_clicked(self, slmKey):
-        name = askForTextInput(self, "Save new config", "Config name:")
-        if not name:
-            return
         combo = getattr(self, f"{slmKey}_configCombo")
-        if name in [combo.itemText(i) for i in range(combo.count())]: 
-            self.show_message_box(f"A configuration named '{name}' already exists.",
-                                    title="Save Config Error", msg_type="error")
+        
+        while True:
+            name, info = askForTwoTextInputs("Save new config", "Config name:", "Config info:")
+            if not name:
+                return
+            # Check for duplicate
+            existing_names = [combo.itemText(i).split('.')[0] for i in range(combo.count())]
+            if name.split('.')[0] in existing_names:
+                self.show_message_box(
+                    f"A configuration named '{name}' already exists.",
+                    title="Save Config Error",
+                    msg_type="error"
+                )
+                # loop again to give the user another chance
+                continue
+
+            self.sigSaveConfig.emit(slmKey, name, info, False)
             return
-        self.sigSaveConfig.emit(slmKey, name, False)
+
+    def on_rename_config(self, slmKey):
+        combo = getattr(self, f"{slmKey}_configCombo")
+        path = combo.currentData()
+        if not path:
+            return
+        old_name = combo.currentText()
+        new_name = askForTextInput(self, f"Rename config {old_name}", "New name:")
+        if not new_name or new_name == old_name:
+            return
+        self.sigRenameConfig.emit(slmKey, path, new_name)
+
+    def on_delete_config(self, slmKey):
+        combo = getattr(self, f"{slmKey}_configCombo")
+        path = combo.currentData()
+        if not path:
+            return
+        name = combo.currentText()
+        ok = askYesNoQuestion(self, "Delete config",
+            f"Are you sure you want to delete the configuration '{name}'?"
+        )
+        if not ok:
+            return
+        self.sigDeleteConfig.emit(slmKey, path)
+
 
     def on_update_current_config_clicked(self, slmKey):
         combo = getattr(self, f"{slmKey}_configCombo")
@@ -1285,13 +1410,30 @@ class SLMsWidget(Widget):
         if not path:
             return
         name = os.path.basename(path)
+        ext = os.path.splitext(path)[-1].lower()
+        if ext == ".json":
+            msg = "JSON configuration files are legacy format, saving is not supported. Choose 'save as new' to save as hdf5."
+            self.show_message_box(msg,"error", title="Saving error")
+            return
         ok = askYesNoQuestion(self,"Update current config",
             f"This will overwrite the configuration '{name}'.\nAre you sure?"
         )
         if not ok:
             return
-        self.sigSaveConfig.emit(slmKey, path, True)
+        current_info = self._currentConfigs.get(slmKey,{}).get("info")
+        _,new_info = askForTwoTextInputs("Update config info", "Config name:", "Config info:",
+                                       default1=name,default2=current_info,readonly1=True)
+        self.sigSaveConfig.emit(slmKey, path, new_info, True)
 
+        
+    def on_set_startup_config(self, slmKey):
+        #TODO
+        self.show_message_box(title="Not implemented",
+                            message=f"This functionnality has not been implemented yet",
+                            msg_type="error")
+        return
+
+    # --------- aberration saving/loading -------- #
     
     def on_save_aberr(self,slmKey,secKey):
         # Get aberrations parameters
@@ -1301,20 +1443,6 @@ class SLMsWidget(Widget):
         aberr_params = sec_params.get("aberrations", {})
         self.sigSaveAberr.emit(slmKey,secKey,aberr_params)
     
-    def on_config_loaded(self, slmKey, slm_params, msg_box=False):
-        try:
-            self.set_params({slmKey: slm_params})
-            tab_names = slm_params.get("tab_names", {})
-            if tab_names:
-                self.update_tab_names(slmKey, tab_names)
-            self.on_update_pattern(slmKey)
-
-        except Exception as e:
-            self.__logger.error(f"Failed to load config: {e}")
-            if msg_box:
-                self.show_message_box(title="Error Loading Configuration",
-                                      message=f"Could not load configuration:\n{e}",
-                                      msg_type="error")   
                 
     def on_aberr_loaded(self,slmKey,secKey,aberr_params,label_name,msg_box=False):
         try:
@@ -1329,6 +1457,7 @@ class SLMsWidget(Widget):
                                       msg_type="error")
 
     def update_label(self,slmKey,secKey,attr_suffix,label):
+        """ Helper function to change label names"""
         label_widget = getattr(self,f"{slmKey}_{secKey}_{attr_suffix}",None)
         if label_widget:
             label_widget.setText(label)
@@ -1476,9 +1605,62 @@ class SLMsWidget(Widget):
         else:
             QtWidgets.QMessageBox.information(self, title, message)
 
-# ------------------------------------------------------------------ #
-#       Helper functions to clean displayed/attributes names         # 
-# ------------------------------------------------------------------ #
+
+    # --------- typing validators/formatting and auto-update -------- #
+
+    def _get_slm_timer(self,slmKey):
+        if slmKey not in self._slmUpdateTimers:
+            timer = QtCore.QTimer(self)
+            timer.setSingleShot(True)
+            timer.timeout.connect(partial(self.on_update_pattern, slmKey))
+            self._slmUpdateTimers[slmKey] = timer
+        return self._slmUpdateTimers[slmKey]
+
+    def _schedulePatternUpdate(self,slmKey):
+        timer = self._get_slm_timer(slmKey)
+        timer.start(500)  # 500ms debounce
+
+    def _lineEditUpdate(self, text, slmKey):
+        """
+        To avoid updating empty text.
+        """
+        if text.strip() == "":
+            return  # skip empty input
+        self._schedulePatternUpdate(slmKey)
+    
+    def _normalize_numeric_text(self, text):
+        """
+        Normalize numeric input for float fields. Doesn't change anything for int.
+        """
+        if not text:
+            return None
+
+        # user-friendly fixes
+        text = text.strip()
+        text = text.replace(",", ".")   # 0,3 -> 0.3
+        if text.startswith("."):
+            text = "0" + text           # .3 -> 0.3
+        if text.endswith("."):
+            text = text+'0'             # 3. -> 3.0
+       
+        return text
+
+
+    def _make_validator(self, pythontype, widget):
+        if pythontype is int:
+            return QtGui.QIntValidator(widget)
+
+        if pythontype is float:
+            v = QtGui.QDoubleValidator(widget)
+            v.setNotation(QtGui.QDoubleValidator.StandardNotation)
+            v.setLocale(QtCore.QLocale(QtCore.QLocale.C))
+            return v
+
+        return None
+
+# -------------------------------#
+#       Helper functions         # 
+# -------------------------------#
  
 def clean_attr_name(label: str) -> str:
     """
@@ -1521,3 +1703,31 @@ def make_display_name(param_name: str) -> str:
         for p in parts if p
     ]
     return " ".join(display_parts)
+
+
+# Function to format the date nicely
+def format_creation_date(iso_date_str):
+    try:
+        dt = datetime.datetime.fromisoformat(iso_date_str)
+        # Format: Jan 29, 2026 03:23 PM
+        return dt.strftime("%b %d, %Y %I:%M %p")
+    except Exception:
+        return "Unknown date"
+
+def resolve_type(ptype):
+    """
+    Convert str ("int", "float") or python type to actual Python type.
+    Return None if unknown.
+    """
+    if ptype is None:
+        return None
+    if isinstance(ptype, type):  # already int/float
+        return ptype
+    if isinstance(ptype, str):
+        ptype_lower = ptype.lower()
+        if ptype_lower == "int":
+            return int
+        if ptype_lower == "float":
+            return float
+    return None
+

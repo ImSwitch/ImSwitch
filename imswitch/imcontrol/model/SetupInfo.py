@@ -162,9 +162,6 @@ class SLMsInfo(DeviceInfo):
     """ Numbers of sections the SLM is divided into (e.g. 2 for double-pass).
     If none, considered as single section. """
 
-    sectionsNames: Optional[List]
-    """ Names to be displayed on the section tabs (only if nSections>1)"""
-
     widgetOptions: Optional[Dict[str,Any]]
     """ Widget options just as which patterns to display """
 

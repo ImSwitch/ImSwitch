@@ -1,18 +1,25 @@
 from qtpy import QtCore, QtWidgets
 
 class CollapsibleSection(QtWidgets.QWidget):
-    def __init__(self, title="", parent=None,target_height=None,frame=True):
+    def __init__(self, title="", parent=None,target_height=None,frame=True,
+                 button_height = None, button_width = None, fontsize = 10):
         super().__init__(parent)
 
         # Toggle button
         self.toggleButton = QtWidgets.QToolButton(text=title, checkable=True, checked=False)
-        self.toggleButton.setStyleSheet("""
-            QToolButton {
-                border: none;
-                font-size: 9px;
-                padding: 2px 2px;
-            }
-        """)
+
+        if button_height:
+            self.toggleButton.setFixedHeight(button_height)
+        if button_width:
+            self.toggleButton.setFixedWidth(button_width)
+
+        self.toggleButton.setStyleSheet(f"""
+                QToolButton {{
+                    border: none;
+                    font-size: {fontsize}px;
+                    padding: 1px 1px;
+                }}
+            """)
         self.toggleButton.setToolButtonStyle(QtCore.Qt.ToolButtonTextBesideIcon)
         self.toggleButton.setArrowType(QtCore.Qt.RightArrow)
         self.toggleButton.clicked.connect(self._on_pressed)

@@ -1,4 +1,5 @@
 import enum
+import json
 import os
 import time
 from io import BytesIO
@@ -70,13 +71,13 @@ class HDF5Storer(Storer):
         for channel, image in images.items():
             with AsTemporayFile(f'{self.filepath}_{channel}.h5') as path:
                 file = h5py.File(path, 'w')
-                shape = self.detectorManager[channel].shape
-                dataset = file.create_dataset('data', tuple(reversed(shape)), dtype='i2')
+                #image.sh = self.detectorManager[channel].shape # why not take image shape directly? LR
+                dataset = file.create_dataset('data', tuple(reversed(image.shape)), dtype='i2')
                 for key, value in attrs[channel].items():
                     try:
                         dataset.attrs[key] = value
-                    except:
-                        logger.debug(f'Could not put key:value pair {key}:{value} in hdf5 metadata.')
+                    except Exception as e:
+                        logger.debug(f'Snap Error caught: Could not put key:value pair {key}:{value} in hdf5 metadata. Because of {e}')
 
                 dataset.attrs['detector_name'] = channel
 
@@ -352,8 +353,13 @@ class RecordingWorker(Worker):
                 )
 
                 for key, value in self.attrs[detectorName].items():
-                    datasets[detectorName].attrs[key] = value
-
+                    try:
+                        if isinstance(value, dict):
+                            datasets[detectorName].attrs[key] = json.dumps(value)
+                        else:
+                            datasets[detectorName].attrs[key] = value
+                    except Exception as e:
+                        print(f"Error saving {key} {value} to Hdf5.")
                 datasets[detectorName].attrs['detector_name'] = detectorName
 
                 # For ImageJ compatibility

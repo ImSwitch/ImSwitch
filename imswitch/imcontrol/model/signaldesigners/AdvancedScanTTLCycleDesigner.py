@@ -99,18 +99,7 @@ class AdvancedScanTTLCycleDesigner(TTLCycleDesigner):
         if looks_full:
             si = dict(si_in)
 
-            # This TTL designer assumes index [2] exists in img_dims/scan_samples,
-            # so ensure minimum length 3 internally (append dummy 1 / d3 length).
             img_dims = list(si.get("img_dims", []))
-            if len(img_dims) < 3:
-                img_dims = img_dims + [1] * (3 - len(img_dims))
-            si["img_dims"] = img_dims
-
-            scan_samples = list(si.get("scan_samples", []))
-            if len(scan_samples) < 3:
-                d3 = int(si.get("scan_samples_total", 0))
-                scan_samples = scan_samples + [d3] * (3 - len(scan_samples))
-            si["scan_samples"] = scan_samples
 
             axis_names = list(si.get("axis_names", []))
             if len(axis_names) < len(img_dims):
@@ -130,7 +119,7 @@ class AdvancedScanTTLCycleDesigner(TTLCycleDesigner):
 
             return si
 
-        # ---- Beta-style minimal contract adapter ----
+        # ---- Beta-style minimal contract adapter ---- if more options come later make this a switch than a hard fail
         if "positions" not in si_in:
             raise KeyError("scanInfoDict must contain 'positions' for Beta-style normalization.")
 
@@ -168,7 +157,7 @@ class AdvancedScanTTLCycleDesigner(TTLCycleDesigner):
         d3_len = (n_line_periods_total - 1) * period_len + line_len
 
         # Total samples includes Z by repeating the d3 block
-        samples_total = d3_len * max(1, Nz)
+        samples_total = d3_len * max(1, Nz) + flyback
 
         si = dict(si_in)
         # Internal dims: [x, expanded_y, z] so this TTL code can always index [2]
@@ -205,7 +194,7 @@ class AdvancedScanTTLCycleDesigner(TTLCycleDesigner):
     def _make_preview(self, p, Fs):
         """
         Return per-target boolean arrays for plotting.
-        We generate 1 line worth of TTL *for each linestep* and concatenate them.
+        We generate 1 pixel worth of TTL *for each linestep* and concatenate them.
         """
         targets = p["target_device"]
         S = int(p["n_linesteps"])
@@ -264,9 +253,18 @@ class AdvancedScanTTLCycleDesigner(TTLCycleDesigner):
         # Existing scan structure variables
         n_steps_dx = scanInfo["img_dims"]
         axis_count = len(n_steps_dx)
+
+        # --- Use controller-provided axis/period model if available ---
+        adv = (scanInfo.get("advanced_scan", None) or {})
+        if adv:
+            n_line_periods_total = int(adv["n_line_periods_total"])
+        else:
+            # Fallback to legacy assumptions (keeps older behavior)
+            n_lines_phys = int(n_steps_dx[1]) if len(n_steps_dx) > 1 else 1
+            n_line_periods_total = n_lines_phys * S
+
         n_scan_samples_dx = scanInfo["scan_samples"]
         samples_total = scanInfo["scan_samples_total"]
-        scan_axes_order = scanInfo["axis_names"]
         self.smooth_axes = scanInfo["smooth_axes"]
 
         zeropad_d2flyback = scanInfo["scan_samples_d2_period"] - n_scan_samples_dx[1]
@@ -294,38 +292,7 @@ class AdvancedScanTTLCycleDesigner(TTLCycleDesigner):
                 )
             samples_per_pixel = n_scan_samples_dx[1] // n_pixels_fast
 
-        Ny = int(n_steps_dx[1])
-        line_len = int(n_scan_samples_dx[1])
-        period_len = int(scanInfo["scan_samples_d2_period"])  # includes flyback
-
-        # Expected d3 length if there are Ny line periods (last has no flyback)
-        cand_Ny = (Ny - 1) * period_len + line_len
-        # Expected d3 length if there are Ny*S line periods
-        cand_NyS = (Ny * S - 1) * period_len + line_len
-
-        d3_len_reported = int(n_scan_samples_dx[2])
-
-        # If smoothing pads are used, d3_len_reported includes initpad sometimes; compensate roughly
-        initpad_len = len(self.__initpad) if any(self.smooth_axes[:2]) else 0
-
-        # Compare against reported length (minus initpad if present)
-        d3_core = d3_len_reported - initpad_len
-
-        # Choose whichever candidate is closer
-        if abs(d3_core - cand_NyS) < abs(d3_core - cand_Ny):
-            n_line_periods_total = Ny * S
-        else:
-            n_line_periods_total = Ny
-
-        # Sanity
-        if n_line_periods_total < 1:
-            n_line_periods_total = Ny
-        # Validate linestep expansion assumption
-        # Here we assume the scan designer already expanded the line axis by S, i.e.
-        # n_steps_dx[1] == n_lines_original * S OR equivalently we can map expanded_line_idx % S.
-        # If that's not true in your scan designer, we can adjust later.
-        if n_steps_dx[1] < S:
-            raise ValueError("img_dims[1] (lines) must be >= n_linesteps.")
+        has_d3 = len(n_scan_samples_dx) > 2
 
         for dev in targets:
             enable_vec_raw = list(map(bool, p["linestep_enable"].get(dev, [False] * S)))
@@ -374,7 +341,8 @@ class AdvancedScanTTLCycleDesigner(TTLCycleDesigner):
             # Build the full frame/stack by iterating expanded lines
             # expanded_line_idx runs 0..n_steps_dx[1]-1, linestep = idx % S
             # Note: last line period is special (no flyback) just like original code.
-            signal_d3_base = np.array([], dtype="bool")
+            chunks = []
+
             for expanded_line_idx in range(n_line_periods_total - 1):
                 s = expanded_line_idx % S
 
@@ -383,11 +351,8 @@ class AdvancedScanTTLCycleDesigner(TTLCycleDesigner):
                 else:
                     # If you use per_expanded_line, it must match THIS loop length.
                     enabled_here = bool(enable_vec_raw[expanded_line_idx])
+                chunks.append(cached_period_on[s] if enabled_here else cached_period_off)
 
-                signal_d3_base = np.append(
-                    signal_d3_base,
-                    cached_period_on[s] if enabled_here else cached_period_off
-                )
 
             # last line without flyback
             last_idx = n_line_periods_total - 1
@@ -398,11 +363,8 @@ class AdvancedScanTTLCycleDesigner(TTLCycleDesigner):
             else:
                 enabled_last = bool(enable_vec_raw[last_idx])
 
-            signal_d3_base = np.append(
-                signal_d3_base,
-                cached_line_on[s_last] if enabled_last else cached_line_off
-            )
-
+            chunks.append(cached_line_on[s_last] if enabled_last else cached_line_off)
+            signal_d3_base = np.concatenate(chunks).astype(bool)
             # Pad extra bits for smooth axes (kept)
             if any(self.smooth_axes[:2]):
                 signal_d3 = np.append(self.__initpad, signal_d3_base)
@@ -413,11 +375,12 @@ class AdvancedScanTTLCycleDesigner(TTLCycleDesigner):
 
             # Adjust to d3 step length when smoothing
             if any(self.smooth_axes[:2]):
-                zeropad_to_axislen = n_scan_samples_dx[2] - len(signal_d3)
-                if zeropad_to_axislen > 0:
-                    signal_d3 = np.append(signal_d3, np.zeros(zeropad_to_axislen, dtype="bool"))
-                elif zeropad_to_axislen < 0:
-                    signal_d3 = signal_d3[:zeropad_to_axislen]
+                if has_d3:
+                    zeropad_to_axislen = n_scan_samples_dx[2] - len(signal_d3)
+                    if zeropad_to_axislen > 0:
+                        signal_d3 = np.append(signal_d3, np.zeros(zeropad_to_axislen, dtype="bool"))
+                    elif zeropad_to_axislen < 0:
+                        signal_d3 = signal_d3[:zeropad_to_axislen]
 
             # Repeat higher axes (reuse your existing helper, with init pad behavior)
             signal = self.__repeat_remaining_axes(signal=signal_d3,
@@ -447,13 +410,17 @@ class AdvancedScanTTLCycleDesigner(TTLCycleDesigner):
 
         clock_len = 10  # PointScan inherited default;
         n_steps_dx_clock = list(n_steps_dx)
-        n_steps_dx_clock[1] = n_line_periods_total
+        if len(n_steps_dx_clock) < 2:
+            n_steps_dx_clock.append(n_line_periods_total)
+        else:
+            n_steps_dx_clock[1] = n_line_periods_total
+        axis_count_clock = len(n_steps_dx_clock)
 
         signal_dict["line_clock"] = self.__generate_frame_line_clock(
             n_scan_samples_dx=n_scan_samples_dx,
             n_steps_dx=n_steps_dx_clock,
             samples_total=samples_total,
-            axis_count=axis_count,
+            axis_count=axis_count_clock,
             scan_pads_initpos=scan_pads_initpos,
             zeropad_start=zeropad_start,
             zeropad_d2flyback=zeropad_d2flyback,
@@ -465,7 +432,7 @@ class AdvancedScanTTLCycleDesigner(TTLCycleDesigner):
             n_scan_samples_dx=n_scan_samples_dx,
             n_steps_dx=n_steps_dx_clock,
             samples_total=samples_total,
-            axis_count=axis_count,
+            axis_count=axis_count_clock,
             scan_pads_initpos=scan_pads_initpos,
             zeropad_start=zeropad_start,
             zeropad_d2flyback=zeropad_d2flyback,
@@ -477,7 +444,7 @@ class AdvancedScanTTLCycleDesigner(TTLCycleDesigner):
             n_scan_samples_dx=n_scan_samples_dx,
             n_steps_dx=n_steps_dx_clock,
             samples_total=samples_total,
-            axis_count=axis_count,
+            axis_count=axis_count_clock,
             scan_pads_initpos=scan_pads_initpos,
             zeropad_start=zeropad_start,
             zeropad_d2flyback=zeropad_d2flyback,
@@ -485,7 +452,7 @@ class AdvancedScanTTLCycleDesigner(TTLCycleDesigner):
             clock_len=clock_len,
         )
 
-        return signal_dict
+        return signal_dict, scanInfo
 
     # -----------------
     # Line builder (core new piece)
@@ -560,7 +527,7 @@ class AdvancedScanTTLCycleDesigner(TTLCycleDesigner):
 
     def __repeat_remaining_axes(self, signal, n_steps_dx, n_scan_samples_dx, axis_start, axis_end, init_added: bool):
         for axis in range(axis_start, axis_end):
-            if axis > 2:
+            if axis >= 2:
                 zeropad_to_axislen = n_scan_samples_dx[axis] - len(signal)
                 if zeropad_to_axislen > 0:
                     signal = np.append(signal, np.zeros(zeropad_to_axislen, dtype="bool"))
@@ -578,7 +545,7 @@ class AdvancedScanTTLCycleDesigner(TTLCycleDesigner):
     def __repeat_remaining_axes_clock(self, signal, n_steps_dx, n_scan_samples_dx, axis_start, axis_end):
         """Repeat a created clock signal for remaining axes."""
         for axis in range(axis_start, axis_end):
-            if axis > 2:
+            if axis >= 2:
                 zeropad_to_axislen = n_scan_samples_dx[axis] - len(signal)
                 if zeropad_to_axislen > 0:
                     signal = np.append(signal, np.zeros(zeropad_to_axislen, dtype='bool'))
@@ -637,11 +604,15 @@ class AdvancedScanTTLCycleDesigner(TTLCycleDesigner):
             self.__init_added = True
 
         # adjust to axis length (d3)
-        zeropad_to_axislen = n_scan_samples_dx[2] - len(signal_d2)
-        if zeropad_to_axislen > 0:
-            signal_d2 = np.append(signal_d2, np.zeros(zeropad_to_axislen, dtype='bool'))
-        elif zeropad_to_axislen < 0:
-            signal_d2 = signal_d2[:zeropad_to_axislen]
+        has_d3 = len(n_scan_samples_dx) > 2
+        if has_d3:
+            zeropad_to_axislen = n_scan_samples_dx[2] - len(signal_d2)
+            if zeropad_to_axislen > 0:
+                signal_d2 = np.append(signal_d2, np.zeros(zeropad_to_axislen, dtype='bool'))
+            elif zeropad_to_axislen < 0:
+                signal_d2 = signal_d2[:zeropad_to_axislen]
+        else:
+            signal_d2 = signal_d2
 
         # repeat for remaining axes
         signal = self.__repeat_remaining_axes_clock(

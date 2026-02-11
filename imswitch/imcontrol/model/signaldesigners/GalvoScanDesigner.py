@@ -132,7 +132,7 @@ class GalvoScanDesigner(ScanDesigner):
         # get list of number of axis steps
         n_steps_dx = [int(self.axis_length[i] / self.axis_step_size[i]) for i in range(axis_count_scan)]
         # get list of number of axis scan samples, for first two axes initially
-        n_scan_samples_dx = [int(parameterDict['sequence_time'] * 1e6 / self.__timestep)]
+        n_scan_samples_dx = [int(round(parameterDict['sequence_time'] * 1e6 / self.__timestep))]
         n_scan_samples_dx.append(int(round(n_steps_dx[0] * parameterDict['sequence_time'] * 1e6 / self.__timestep)))
         pixel_sizes = [parameterDict['axis_step_size'][i] for i in range(axis_count_scan)]
 
@@ -226,7 +226,7 @@ class GalvoScanDesigner(ScanDesigner):
             self._logger.debug(scanInfoDict)
             self.__plot_curves(plot=True, signals=axis_signals)  # for debugging
 
-        self._logger.info(f'Scanning curves generated, third dimension step time: {round(self.__timestep * 1e-6 * n_scan_samples_dx[2], ndigits=5)} s, total scan time: {tot_scan_time} s.')
+        #self._logger.info(f'Scanning curves generated, third dimension step time: {round(self.__timestep * 1e-6 * n_scan_samples_dx[2], ndigits=5)} s, total scan time: {tot_scan_time} s.')
         return sig_dict, axis_positions, scanInfoDict
 
     def __calc_settling_time(self, axis_length, axis_centerpos, vel_max, acc_max):
@@ -452,7 +452,7 @@ class GalvoScanDesigner(ScanDesigner):
         # concatenate for number of d2 steps in scan
         pos_ret = np.tile(x_bpoly[:-1], n_d2 - 1)
         return pos_ret
-    
+
     def __generate_tiledstep_multid2(self, pos, n_d2):
         pos_ret = np.tile(pos, n_d2)
         return pos_ret

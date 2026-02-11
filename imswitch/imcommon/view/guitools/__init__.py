@@ -9,3 +9,4 @@ from .texttools import ordinalSuffix
 from .FileWatcher import FileWatcher
 from .CollapsibleSection import CollapsibleSection
 from .JsonEditorDialog import JsonEditorDialog
+from .InfoButton import InfoButton

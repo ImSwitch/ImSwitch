@@ -1,3 +1,5 @@
+import time
+
 from .PositionerManager import PositionerManager
 
 
@@ -24,19 +26,20 @@ class PiezoconceptZManager(PositionerManager):
         ]
 
     def move(self, value, _):
-        if value == 0:
-            return
-        elif float(value) > 0:
-            cmd = 'MOVRX +' + str(round(float(value), 3))[0:6] + 'u'
+        if float(value) > 0:
+            cmd = 'MOVRZ +' + str(round(float(value), 3))[0:6] + 'u'
         elif float(value) < 0:
-            cmd = 'MOVRX -' + str(round(float(value), 3))[1:7] + 'u'
-        self._rs232Manager.query(cmd)
+            cmd = 'MOVRZ -' + str(round(float(value), 3))[1:7] + 'u'
+        else:
+            return
+        _ = self._rs232Manager.query(cmd)
 
         self._position[self.axes[0]] = self._position[self.axes[0]] + value
 
     def setPosition(self, value, _):
-        cmd = 'MOVEX ' + str(round(float(value), 3)) + 'u'
-        self._rs232Manager.query(cmd)
+        print(f"Set position to: {value}")
+        cmd = 'MOVEZ ' + str(round(float(value), 3)) + 'u'
+        _ = self._rs232Manager.query(cmd)
 
         self._position[self.axes[0]] = value
 
@@ -46,12 +49,16 @@ class PiezoconceptZManager(PositionerManager):
         return self._position
 
     def get_abs(self):
-        cmd = 'GET_X'
+        cmd = 'GET_Z'
         reply = self._rs232Manager.query(cmd)
         if reply is None:
             reply = self._position[self.axes[0]]
         else:
-            reply = float(reply.split(' ')[0])
+            try:
+                reply = float(reply.split(' ')[0])
+            except Exception as e:
+                print(f"PiezoZManager get abs error: {e}")
+                return  self._position[self.axes[0]]
         self._position[self.axes[0]] = reply
         return reply
 

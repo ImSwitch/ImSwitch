@@ -39,6 +39,7 @@ class ScanControllerAdvanced(SuperScanController):
         self._widget.initControls(
             self.positioners.keys(),
             self.TTLDevices.keys(),
+            "ms"
         )
 
         # Tell the widget which TTL devices support per-linestep analog power (AO channel present)
@@ -91,8 +92,7 @@ class ScanControllerAdvanced(SuperScanController):
 
     def _make_full_scan(self, scanParameters, TTLParameters):
         """
-        Replacement for ScanManager.makeFullScan() in branches where master.scanManager is absent.
-
+        Constructs the full scan from scan parameters using the set parameters in the ScanWidgetAdvanced
         Returns:
           signalDict = {'scanSignalsDict': ..., 'TTLCycleSignalsDict': ...}
           scanInfoDict
@@ -115,23 +115,85 @@ class ScanControllerAdvanced(SuperScanController):
 
         scanSignalsDict, positions, scanInfoDict = scan_des.make_signal(stage_param, self._setupInfo)
 
-        if hasattr(scan_des, "checkSignalComp"):
-            if not scan_des.checkSignalComp(scanParameters, self._setupInfo, scanInfoDict):
-                self._logger.error(
-                    "Signal voltages outside scanner ranges: try scanning a smaller ROI or a slower scan."
-                )
-                return None, None
+
+
+        # ----------------------------
+        # Normalize scanInfo for Advanced TTL (axis roles + line period model)
+        # ----------------------------
+        try:
+            S = int(stage_param.get("n_linesteps", TTLParameters.get("n_linesteps", 1)))
+            S = max(1, S)
+
+            img_dims = list(scanInfoDict.get("img_dims", []))              # physical dims from scan designer
+            scan_samples = list(scanInfoDict.get("scan_samples", []))      # [samples_per_pixel, line_len, d3_len, ...]
+
+            # Fast axis is always "axis 0" in the scan designer ordering (whatever the user picked)
+            n_pixels_fast = int(img_dims[0]) if len(img_dims) > 0 else 1
+            samples_per_pixel = int(scan_samples[0]) if len(scan_samples) > 0 else 0
+
+            # The active acquisition part of one fast sweep ("line")
+            line_active_len = int(scan_samples[1]) if len(scan_samples) > 1 else int(n_pixels_fast * max(1, samples_per_pixel))
+
+            if samples_per_pixel <= 0 and n_pixels_fast > 0:
+                if line_active_len % n_pixels_fast == 0:
+                    samples_per_pixel = line_active_len // n_pixels_fast
+
+            # How many physical "lines" exist? (if only 1D, it's 1)
+            n_lines_phys = int(img_dims[1]) if len(img_dims) > 1 else 1
+
+            # Effective number of repeated line periods when linesteps are enabled
+            n_line_periods_total = n_lines_phys * S
+
+            # Period length (active + flyback). For 1D scans GalvoScanDesigner still provides scan_samples_d2_period.
+            line_period_len = int(scanInfoDict.get("scan_samples_d2_period", 0)) or line_active_len
+            flyback_len = max(0, line_period_len - line_active_len)
+
+            # d3 length may not exist for 1D scans -> compute expected core length
+            expected_d3_core = (n_line_periods_total - 1) * line_period_len + line_active_len
+
+            scanInfoDict["advanced_scan"] = {
+                "n_linesteps": S,
+                "fast_axis_idx": 0,
+                "line_axis_phys_idx": 1 if len(img_dims) > 1 else None,   # None means "virtual line axis = linesteps only"
+                "n_pixels_fast": n_pixels_fast,
+                "samples_per_pixel": samples_per_pixel,
+                "line_active_len": line_active_len,
+                "line_period_len": line_period_len,
+                "flyback_len": flyback_len,
+                "n_lines_phys": n_lines_phys,
+                "n_line_periods_total": n_line_periods_total,
+                "expected_d3_core_len": expected_d3_core,
+            }
+
+            # keep the keys your TTL designer already looks for (backwards compatibility)
+            scanInfoDict["n_pixels_fast"] = n_pixels_fast
+            scanInfoDict["samples_per_pixel"] = samples_per_pixel
+
+            print("expected line:", n_pixels_fast * samples_per_pixel,
+                  "period:", scanInfoDict["scan_samples_d2_period"],
+                  "overhead:", scanInfoDict["scan_samples_d2_period"] - n_pixels_fast * samples_per_pixel)
+
+
+        except Exception:
+            self._logger.debug("[ScanControllerAdvanced] scanInfo normalization failed:\n%s", traceback.format_exc())
+
 
         # --- TTL / digital ---
         ttl_param = copy.deepcopy(getattr(self._setupInfo.scan, "TTLCycleDesignerParams", {}))
         ttl_param.update(TTLParameters)
 
-        TTLCycleSignalsDict = ttl_des.make_signal(ttl_param, self._setupInfo, scanInfoDict)
+        TTLCycleSignalsDict, scanInfoDict = ttl_des.make_signal(ttl_param, self._setupInfo, scanInfoDict)
         # Inject per-linestep analog power waveforms for AO-capable lasers (constant within each line)
-        try:
-            self._inject_linestep_power_ao(scanSignalsDict, TTLCycleSignalsDict, scanInfoDict, TTLParameters)
-        except Exception:
-            self._logger.debug("[ScanControllerAdvanced] inject linestep power failed:\n%s", traceback.format_exc())
+        if TTLParameters.get("advanced_mode", False):
+            try:
+                self._inject_linestep_power_ao(
+                    scanSignalsDict, TTLCycleSignalsDict, scanInfoDict, TTLParameters
+                )
+            except Exception:
+                self._logger.debug(
+                    "[ScanControllerAdvanced] inject linestep power failed:\n%s",
+                    traceback.format_exc()
+                )
 
 
         signalDict = {
@@ -540,35 +602,44 @@ class ScanControllerAdvanced(SuperScanController):
 
     def _inject_linestep_power_ao(self, scanSignalsDict, TTLCycleSignalsDict, scanInfoDict, TTLParameters):
         """
-        For AO-capable lasers, generate a float AO waveform that is constant within each line's
-        active acquisition region, with value depending on linestep index.
+        Create AO waveforms for AO-capable lasers:
+        - constant voltage during each line's active part
+        - line index -> linestep index via (line_idx % S)
+        - aligned using the generated line_clock (most robust across axis configs)
         """
         powers = (TTLParameters or {}).get("linestep_power_percent", {}) or {}
         if not powers:
             return
 
         S = int((TTLParameters or {}).get("n_linesteps", 1))
-        S = max(S, 1)
+        S = max(1, S)
 
         total = int(scanInfoDict.get("scan_samples_total", 0))
         if total <= 0:
             return
 
-        initpad = int(scanInfoDict.get("scan_samples_initpos", 0))
-        line_period = int(scanInfoDict.get("scan_samples_d2_period", 0))
-        if line_period <= 0:
+        # line geometry from scanInfo
+        scan_samples = scanInfoDict.get("scan_samples", None)
+        if not isinstance(scan_samples, (list, tuple)) or len(scan_samples) < 2:
             return
 
-        n_scan_samples_dx = scanInfoDict.get("n_scan_samples_dx", None)
-        if isinstance(n_scan_samples_dx, (list, tuple)) and len(n_scan_samples_dx) > 1:
-            active = int(n_scan_samples_dx[1])
-        else:
-            active = line_period
-        active = max(0, min(active, line_period))
+        line_len = int(scan_samples[1])
+        period_len = int(scanInfoDict.get("scan_samples_d2_period", 0)) or line_len
+        flyback = max(0, period_len - line_len)
 
-        n_lines = 0
-        if total > initpad:
-            n_lines = int((total - initpad) // line_period)
+        # Use line_clock to find line starts (best alignment)
+        line_clock = TTLCycleSignalsDict.get("line_clock", None)
+        if line_clock is None:
+            # fallback: assume starts every period_len from 0
+            line_starts = np.arange(0, total, period_len, dtype=int)
+        else:
+            lc = np.asarray(line_clock, dtype=bool)
+            # rising edges mark new line
+            rises = np.flatnonzero(np.logical_and(lc[1:], ~lc[:-1])) + 1
+            # if clock starts high at index 0
+            if lc.size and lc[0]:
+                rises = np.concatenate(([0], rises))
+            line_starts = rises.astype(int)
 
         for laserName, vec in powers.items():
             laserInfo = getattr(self._setupInfo, "lasers", {}).get(laserName, None)
@@ -577,7 +648,7 @@ class ScanControllerAdvanced(SuperScanController):
 
             ao_chan = getattr(laserInfo, "analogChannel", None)
             if ao_chan in (None, "None"):
-                continue  # not AO-capable
+                continue
 
             vec = list(vec) if vec is not None else [100.0] * S
             if len(vec) < S:
@@ -589,23 +660,23 @@ class ScanControllerAdvanced(SuperScanController):
 
             ao = np.zeros(total, dtype=np.float64)
 
-            for L in range(n_lines):
-                s = L % S
+            for line_idx, i0 in enumerate(line_starts):
+                s = line_idx % S
                 pct = vec[s]
                 volts = vmin + (pct / 100.0) * (vmax - vmin)
 
-                i0 = initpad + L * line_period
-                i1 = min(total, i0 + active)
-                if i1 > i0:
-                    ao[i0:i1] = volts
+                j0 = int(i0)
+                j1 = min(total, j0 + line_len)
+                if j1 > j0:
+                    ao[j0:j1] = volts
+                # flyback remains 0 by default
 
-            # Strongly recommended: mask with TTL gate if present (keeps AO at 0 when laser is OFF)
+            # Mask by TTL if present (keeps AO at 0 when laser is off)
             mask = TTLCycleSignalsDict.get(laserName, None)
             if mask is not None:
                 ao *= np.asarray(mask, dtype=np.float64)
 
             scanSignalsDict[laserName] = ao
-
 
     # ---------------------------------------------------------------------
     # Save / Load

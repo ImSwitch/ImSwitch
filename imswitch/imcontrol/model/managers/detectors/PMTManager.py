@@ -150,61 +150,79 @@ class PMTManager(DetectorManager):
     def initiateImage(self, img_dims):
         """
         img_dims comes from ScanWorker._output_image_dims:
-          - if S == 1 : (Nx, Ny, [Z...])
-          - if S > 1  : (Nx, Ny, [Z...], S)   (linestep is appended at the end by worker)
-        We allocate raw buffer as reversed + leading 1:
-          - S == 1: (1, Ny, Nx)                (+ higher dims if any)
-          - S > 1:  (1, S, Ny, Nx)             (+ higher dims if any, placed before Ny/Nx by reversal)
+          - 2D, S==1: (Nx, Ny)
+          - 2D, S>1 : (Nx, Ny, S)
+          - 3D Z    : (Nx, Ny, Nz)   (S==1)
+          - 3D Z + S: (Nx, Ny, Nz, S)
+        Raw buffer is allocated as reversed + leading 1.
+        Display buffer is always (1, Ny, Nx).
         """
         img_dims = tuple(int(x) for x in img_dims)
-        img_dims_extra = tuple(reversed((*img_dims, 1)))
 
+        img_dims_extra = tuple(reversed((*img_dims, 1)))
         if np.shape(self._image) != img_dims_extra:
             self._image = np.zeros(img_dims_extra, dtype=float)
             self.setShape(img_dims_extra)
 
-        # Always allocate a 2D display buffer (1, Ny, Nx)
-        # Determine Nx, Ny from img_dims (convention: img_dims begins with (Nx, Ny, ...))
+        # Always allocate display as 2D (1, Ny, Nx)
         Nx = int(img_dims[0]) if len(img_dims) >= 1 else 1
         Ny = int(img_dims[1]) if len(img_dims) >= 2 else 1
-        self._image_display = np.zeros((1, Ny, Nx), dtype=float)
+        Nz = int(img_dims[2]) if len(img_dims) >= 3 else 1
+        self._image_display = np.zeros((1, Nz, Ny, Nx), dtype=float)
 
     def updateImage(self, pixels, pos: tuple):
         """
-        pos is emitted like APD: tuple(np.flip(self._pos[1:]))
-        For 2D scan (x,y): pos == (y_expanded,)
-        For >2D: pos contains higher dims too; last entry corresponds to y_expanded.
-        We only need to place the line into the raw buffer.
+        pos is emitted as tuple(np.flip(self._pos[1:])) from ScanWorker.
+        For XY:           pos == (y_expanded,)
+        For Z stacks:     pos == (z, y_expanded)
+        For higher dims:  pos == (..., z, y_expanded)  (last element is always y_expanded)
         """
         S = int(getattr(self, "_linestep", 1))
-        line_index = int(pos[-1])
+        y_expanded = int(pos[-1])
 
-        # pixels may be shorter sometimes; clip safely
-        Nx = self._image_display.shape[2] if self._image_display.size else len(pixels)
+        # clip pixel write length to Nx
+        Nx = self._image.shape[-1] if self._image.size else len(pixels)
         n = min(len(pixels), Nx)
+        if n <= 0:
+            return
 
         if S > 1:
-            # raw buffer (most common) in this refactor: (1, S, Ny, Nx) for 2D scans
-            # If later >2D scans appear, extra dims are in front due to reversal.
-            y = line_index // S
-            s = line_index % S
-
-            # find Ny in current raw layout robustly:
-            # For 2D: _image[0] is (S, Ny, Nx)
-            # We'll assume Ny is axis -2 of _image[0] when S>1
+            # raw buffer for 2D+linestep is typically: (1, S, Ny, Nx)
+            y = y_expanded // S
+            s = y_expanded % S
             Ny = self._image[0].shape[-2]
             if y >= Ny:
                 return
-
-            # index: [0, s, y, :n] for 2D case; if there are higher dims, they'd be in between,
-            # but for now you said you're running XY only — this keeps it minimal and correct for current use.
             self._image[0, s, y, :n] = pixels[:n]
-        else:
-            # raw buffer: (1, Ny, Nx)
-            Ny = self._image[0].shape[-2] if self._image.ndim >= 3 else self._image.shape[0]
-            if line_index >= Ny:
+            self.__currSlice = (s, y)
+            return
+
+        # ---- S == 1: could be 2D (1, Ny, Nx) OR 3D (1, Nz, Ny, Nx) (or higher) ----
+        if self._image.ndim == 3:
+            # (1, Ny, Nx)
+            Ny = self._image.shape[-2]
+            if y_expanded >= Ny:
                 return
-            self._image[0, line_index, :n] = pixels[:n]
+            self._image[0, y_expanded, :n] = pixels[:n]
+            self.__currSlice = (y_expanded,)
+            return
+
+        if self._image.ndim >= 4:
+            # (1, Nz, Ny, Nx) for Z stacks (and potentially more dims in front of Ny,Nx)
+            # pos[:-1] contains all outer indices (e.g. z), last is y
+            outer = tuple(int(v) for v in pos[:-1])  # e.g. (z,) or (t,z,...) depending on scan
+            # Build index into raw buffer:
+            # raw layout is (1, ...outer..., y, x)
+            # where y is always the second-to-last axis
+            y = y_expanded
+            Ny = self._image.shape[-2]
+            if y >= Ny:
+                return
+
+            idx = (0,) + outer + (y, slice(0, n))
+            self._image[idx] = pixels[:n]
+            self.__currSlice = outer + (y,)
+            return
 
     def _compute_display_frame(self):
         """
@@ -227,17 +245,36 @@ class PMTManager(DetectorManager):
 
     def _onFrameBoundary(self):
         """
-        Called by ScanWorker.d3Step at the end of a full frame.
+        Called at the end of a full frame (one complete XY image) for each higher-d step (e.g. each Z).
         Updates display buffer and triggers GUI redraw once per frame.
         """
         if self._image_display.size == 0:
             return
 
         S = int(getattr(self, "_linestep", 1))
+
         if S > 1:
-            self._image_display[0] = self._compute_display_frame()
+            # Your existing logic: compute the “combined” display frame across linesteps
+            frame2d = self._compute_display_frame()
         else:
-            self._image_display[0] = self._image[0]
+            im = np.asarray(self._image)
+
+            # raw buffer layout from initiateImage is reversed + leading 1
+            # Common cases:
+            # 2D: (1, Ny, Nx)
+            # 3D: (1, Nz, Ny, Nx)
+            if im.ndim == 3:
+                # (1, Ny, Nx)
+                frame2d = im[0]
+            elif im.ndim == 4:
+                # (1, Nz, Ny, Nx) -> max project over Z
+                frame2d = im[0]  # axis 0 is Z here
+            else:
+                # fallback: take last two dims
+                frame2d = im.reshape((-1,) + im.shape[-2:])[-1]
+
+        # Write into display buffer (expected shape: (1, Y, X))
+        self._image_display[0] = frame2d
 
         self.updateLatestFrame(True)
         self.__newFrameReady = True

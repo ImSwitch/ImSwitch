@@ -100,7 +100,7 @@ class FocusLockController(ImConWidgetController):
     def toggleFocus(self):
         self.aboutToLock = False
         if self._widget.lockButton.isChecked():
-            zpos = self._master.positionersManager[self.positioner].get_abs("Z")
+            zpos = self._master.positionersManager[self.positioner].get_abs()
             self.lockFocus(zpos)
             self._widget.lockButton.setText('Unlock')
         else:
@@ -132,6 +132,7 @@ class FocusLockController(ImConWidgetController):
         # get data
         img = self.__processDataThread.grabCameraFrame()
         self.setPointSignal = self.__processDataThread.update(self.twoFociVar)
+        self._widget.center.setValue(self.setPointSignal)
         # move
         if self.locked:
             value_move = self.updatePI()
@@ -153,7 +154,7 @@ class FocusLockController(ImConWidgetController):
         self.aboutToLockDataPoints[0] = self.setPointSignal
         averageDiff = np.std(self.aboutToLockDataPoints)
         if averageDiff < self.aboutToLockDiffMax:
-            zpos = self._master.positionersManager[self.positioner].get_abs("Z")
+            zpos = self._master.positionersManager[self.positioner].get_abs()
             self.lockFocus(zpos)
             self.aboutToLock = False
 
@@ -171,14 +172,14 @@ class FocusLockController(ImConWidgetController):
     def updatePI(self):
         if not self.noStepVar:
             self.noStepVar = True
-        self.currentPosition = self._master.positionersManager[self.positioner].get_abs("Z")
-        self.stepDistance = np.abs(self.currentPosition - self.lastPosition)
-        distance = self.currentPosition - self.lockPosition
+        #self.currentPosition = self._master.positionersManager[self.positioner].get_abs()
+        #self.stepDistance = np.abs(self.currentPosition - self.lastPosition)
+        #distance = self.currentPosition - self.lockPosition
         move = self.pi.update(self.setPointSignal)
         self.lastPosition = self.currentPosition
 
-        if abs(distance) > 5 or abs(move) > 3:
-            self._logger.warning(f'Safety unlocking! Distance to lock: {distance:.3f}, current move step: {move:.3f}.')
+        if abs(move) > 3:
+            self._logger.warning(f'Safety unlocking! Current move step: {move:.3f}.')
             self.unlockFocus()
         elif self.zStackVar:
             if self.stepDistance > self.zStepLimLo:
@@ -261,7 +262,7 @@ class ProcessDataThread(Thread):
         massCenter = np.array(ndi.measurements.center_of_mass(imagearraygfsub))
         # add the information about where the center of the subarray is
         massCenterGlobal = massCenter[0] + centercoords2[0]  # - subsizey - self.sensorSize[1] / 2
-        self._controller._widget.center.setValue(massCenterGlobal)
+        #self._controller._widget.center.setValue(massCenterGlobal)
         #print(massCenterGlobal)
         return massCenterGlobal
 
@@ -279,11 +280,12 @@ class FocusCalibThread(Thread):
         self.toVal = float(self._controller._widget.calibToEdit.text())
         self.scan_list = np.round(np.linspace(self.fromVal, self.toVal, 20), 2)
         for z in self.scan_list:
-            self._controller._master.positionersManager[self._controller.positioner].setPosition(z, 0)
+            self._controller._master.positionersManager[self._controller.positioner].move(z, 0)
             time.sleep(0.5)
             self.focusCalibSignal = self._controller.setPointSignal
             self.signalData.append(self.focusCalibSignal)
-            self.positionData.append(self._controller._master.positionersManager[self._controller.positioner].get_abs("Z"))
+            self.positionData.append(
+                    self._controller._master.positionersManager[self._controller.positioner].get_abs())
         self.poly = np.polyfit(self.positionData, self.signalData, 1)
         self.calibrationResult = np.around(self.poly, 4)
         self.show()

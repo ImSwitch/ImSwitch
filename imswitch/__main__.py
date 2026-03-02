@@ -1,3 +1,22 @@
+# ===== Patch for pyqtgraph DockLabel missing pressPos bug =====
+try:
+    from pyqtgraph.dockarea.Dock import DockLabel
+    from PyQt5.QtCore import QPointF
+
+    _original_init = DockLabel.__init__
+
+    def _patched_init(self, *args, **kwargs):
+        _original_init(self, *args, **kwargs)
+        if not hasattr(self, 'pressPos'):
+            self.pressPos = QPointF(0, 0)
+
+    DockLabel.__init__ = _patched_init
+except Exception as e:
+    # Just in case pyqtgraph is not available yet
+    print("Could not apply DockLabel pressPos patch:", e)
+# ===============================================================
+
+
 import importlib
 import traceback
 

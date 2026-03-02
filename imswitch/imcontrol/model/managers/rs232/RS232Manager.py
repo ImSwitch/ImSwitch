@@ -39,6 +39,10 @@ class RS232Manager:
         """ Sends the specified command to the RS232 device. """
         return self._rs232port.write(arg)
 
+    def read(self, arg: str = None) -> str:
+        """ Read from RS232 device and returns as string"""
+        return self._rs232port.read(arg, recv_args=(self._settings["recv_termination"], None))
+
     def finalize(self):
         self._rs232port.close()
 

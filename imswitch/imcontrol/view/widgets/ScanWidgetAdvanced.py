@@ -141,12 +141,20 @@ class ScanWidgetAdvanced(SuperScanWidget):
         currentRow += 1
 
         for index, positionerName in enumerate(positionerNames):
-            sizePar = QtWidgets.QLineEdit("5")
+            sizePar = QtWidgets.QDoubleSpinBox()
+            sizePar.setValue(5)
+            sizePar.setDecimals(2)
+            sizePar.setSingleStep(1)
+            sizePar.setMinimum(0)
             self.scanPar["size" + positionerName] = sizePar
 
-            stepSizePar = QtWidgets.QLineEdit("0.1")
+            stepSizePar = QtWidgets.QDoubleSpinBox()
+            stepSizePar.setDecimals(3)
+            stepSizePar.setValue(.1)
+            stepSizePar.setSingleStep(.1)
+            stepSizePar.setMinimum(0)
             if "mock" in positionerName.lower():
-                stepSizePar.setText("-")
+                stepSizePar.setValue(1)
                 stepSizePar.setEnabled(False)
             self.scanPar["stepSize" + positionerName] = stepSizePar
 
@@ -154,10 +162,12 @@ class ScanWidgetAdvanced(SuperScanWidget):
             numPixelsPar.setEnabled(False)
             self.scanPar["pixels" + positionerName] = numPixelsPar
 
-            centerPar = QtWidgets.QLineEdit("0")
+            centerPar = QtWidgets.QDoubleSpinBox()
+            centerPar.setDecimals(2)
+            centerPar.setValue(0)
+            centerPar.setSingleStep(.1)
             self.scanPar["center" + positionerName] = centerPar
             if "mock" in positionerName.lower():
-                centerPar.setText("-")
                 centerPar.setEnabled(False)
 
             self.grid.addWidget(QtWidgets.QLabel(positionerName), currentRow, 0)
@@ -387,17 +397,17 @@ class ScanWidgetAdvanced(SuperScanWidget):
 
     def getScanStepSize(self, positionerName):
         if self.scanPar["stepSize" + positionerName].isEnabled():
-            return float(self.scanPar["stepSize" + positionerName].text())
+            return float(self.scanPar["stepSize" + positionerName].value())
         return float(1)
 
     def getScanCenterPos(self, positionerName):
         if self.scanPar["center" + positionerName].isEnabled():
-            return float(self.scanPar["center" + positionerName].text())
+            return float(self.scanPar["center" + positionerName].value())
         return float(0)
 
     def getScanSize(self, positionerName):
         if self.scanPar["size" + positionerName].isEnabled():
-            return float(self.scanPar["size" + positionerName].text())
+            return float(self.scanPar["size" + positionerName].value())
         return float(0)
 
     def getScanDim(self, i: int) -> str:

@@ -68,11 +68,11 @@ class BetaScanDesigner(ScanDesigner):
         slow_axis_start = slow_axis_start - slow_axis_center
 
         fast_axis_positions = 1 if fast_axis_size == 0 or fast_axis_step_size == 0 else \
-            1 + int(np.ceil(fast_axis_size / fast_axis_step_size))
+            int(np.ceil(fast_axis_size / fast_axis_step_size)) # Removed 1 + to make it compatible with new scan designer, to be checked!
         middle_axis_positions = 1 if middle_axis_size == 0 or middle_axis_step_size == 0 else \
-            1 + int(np.ceil(middle_axis_size / middle_axis_step_size))
+            int(np.ceil(middle_axis_size / middle_axis_step_size))
         slow_axis_positions = 1 if slow_axis_size == 0 or slow_axis_step_size == 0 else \
-            1 + int(np.ceil(slow_axis_size / slow_axis_step_size))
+            int(np.ceil(slow_axis_size / slow_axis_step_size))
 
         sampleRate = setupInfo.scan.sampleRate
         sequenceSamples = parameterDict['sequence_time'] * sampleRate

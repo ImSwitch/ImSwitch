@@ -319,6 +319,7 @@ class ScanWorker(Worker):
         self._frac_scan_det_rate = round(self._manager._detection_samplerate * scanInfoDict['scan_time_step'])
 
         # extract APD signals from signalDict
+        self._seq_signal = None  # set only if ttlmultiplying AND this device found in signalDict
         if self._manager._ttlmultiplying:
             for target in signalDict['TTLCycleSignalsDict'].keys():
                 if self._name == target:
@@ -377,15 +378,15 @@ class ScanWorker(Worker):
         self._samples_total = round(scanInfoDict['scan_samples_total'] * self._frac_scan_det_rate)
         # samples to throw due to:
         self._throw_startzero = round(
-            scanInfoDict['scan_throw_startzero'] * self._frac_scan_det_rate)  # starting zero-padding
+            scanInfoDict.get('scan_throw_startzero', 0) * self._frac_scan_det_rate)  # starting zero-padding
         self._scan_pads_initpos = [round(initpos) * self._frac_scan_det_rate for initpos in
-                                   scanInfoDict['scan_pads_initpos']]  # smooth inital positioning times
-        self._throw_settling = round(scanInfoDict['scan_throw_settling'] * self._frac_scan_det_rate)  # settling time
+                                   scanInfoDict.get('scan_pads_initpos', [])]  # smooth inital positioning times
+        self._throw_settling = round(scanInfoDict.get('scan_throw_settling', 0) * self._frac_scan_det_rate)  # settling time
         self._throw_startacc = round(
-            scanInfoDict['scan_throw_startacc'] * self._frac_scan_det_rate)  # starting acceleration
+            scanInfoDict.get('scan_throw_startacc', 0) * self._frac_scan_det_rate)  # starting acceleration
 
-        self._phase_delay = int(scanInfoDict['phase_delay'])  # phase delay samples - galvo response time
-        self._smooth_axes = scanInfoDict['smooth_axes']
+        self._phase_delay = int(scanInfoDict.get('phase_delay', 0))  # phase delay samples - galvo response time
+        self._smooth_axes = scanInfoDict.get('smooth_axes', [False, False, False])
 
         # samples to throw due to smooth between d>2 step transitioning
         pad_initpos = self._scan_pads_initpos[0] if len(self._scan_pads_initpos) > 0 else 0
@@ -541,7 +542,7 @@ class ScanWorker(Worker):
             self._last_value = data[-1]
             # only take the first samples that corresponds to the samples during the line
             line_samples = data_cnts[:self._samples_d_scanstep[1]]
-            if self._manager._ttlmultiplying:
+            if self._manager._ttlmultiplying and self._seq_signal is not None:
                 ttl_seq = ttl_seq[:self._samples_d_scanstep[1]]
                 # mask with TTL sequence from ScanWidget, to say if detector should be on or not
                 line_samples = np.multiply(line_samples, 1 * ttl_seq)

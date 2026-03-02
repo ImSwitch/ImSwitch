@@ -115,11 +115,16 @@ class ScanControllerAdvanced(SuperScanController):
 
         scanSignalsDict, positions, scanInfoDict = scan_des.make_signal(stage_param, self._setupInfo)
 
+        # --- TTL / digital ---
+        ttl_param = copy.deepcopy(getattr(self._setupInfo.scan, "TTLCycleDesignerParams", {}))
+        ttl_param.update(TTLParameters)
 
+        TTLCycleSignalsDict, scanInfoDict = ttl_des.make_signal(ttl_param, self._setupInfo, scanInfoDict)
 
         # ----------------------------
         # Normalize scanInfo for Advanced TTL (axis roles + line period model)
         # ----------------------------
+
         try:
             S = int(stage_param.get("n_linesteps", TTLParameters.get("n_linesteps", 1)))
             S = max(1, S)
@@ -169,20 +174,11 @@ class ScanControllerAdvanced(SuperScanController):
             scanInfoDict["n_pixels_fast"] = n_pixels_fast
             scanInfoDict["samples_per_pixel"] = samples_per_pixel
 
-            print("expected line:", n_pixels_fast * samples_per_pixel,
-                  "period:", scanInfoDict["scan_samples_d2_period"],
-                  "overhead:", scanInfoDict["scan_samples_d2_period"] - n_pixels_fast * samples_per_pixel)
-
-
         except Exception:
             self._logger.debug("[ScanControllerAdvanced] scanInfo normalization failed:\n%s", traceback.format_exc())
 
 
-        # --- TTL / digital ---
-        ttl_param = copy.deepcopy(getattr(self._setupInfo.scan, "TTLCycleDesignerParams", {}))
-        ttl_param.update(TTLParameters)
 
-        TTLCycleSignalsDict, scanInfoDict = ttl_des.make_signal(ttl_param, self._setupInfo, scanInfoDict)
         # Inject per-linestep analog power waveforms for AO-capable lasers (constant within each line)
         if TTLParameters.get("advanced_mode", False):
             try:
@@ -200,6 +196,12 @@ class ScanControllerAdvanced(SuperScanController):
             "scanSignalsDict": scanSignalsDict,
             "TTLCycleSignalsDict": TTLCycleSignalsDict,
         }
+
+        self._lastScanInfoDict = scanInfoDict
+        self._lastSignalDict = signalDict
+        self._lastTTLCycleSignalsDict = signalDict.get("TTLCycleSignalsDict", None)
+        self._lastTTLParameters = copy.deepcopy(TTLParameters)
+
         return signalDict, scanInfoDict
 
     # ---------------------------------------------------------------------
@@ -474,9 +476,19 @@ class ScanControllerAdvanced(SuperScanController):
 
             if recalculateSignals or self.signalDict is None or self.scanInfoDict is None:
                 self.getParameters()
-                self.signalDict, self.scanInfoDict = self._make_full_scan(
-                    self._analogParameterDict, self._digitalParameterDict
-                )
+                sm = getattr(self._master, "scanManager", None)
+                if False:#sm is not None:
+                    out = sm.makeFullScan(self._analogParameterDict, self._digitalParameterDict, staticPositioner=False)
+                    if out is None:
+                        self.isRunning = False
+                        self.abortScan()
+                        return
+                    self.signalDict, self.scanInfoDict = out
+                else:
+                    self.signalDict, self.scanInfoDict = self._make_full_scan(
+                        self._analogParameterDict, self._digitalParameterDict
+                    )
+
                 if self.signalDict is None:
                     self.isRunning = False
                     self.abortScan()
@@ -591,7 +603,9 @@ class ScanControllerAdvanced(SuperScanController):
                     if isLaser else "#ffffff"
                 )
 
-            # call the widget with its NEW signature
+            # Let the widget render BOTH plots:
+            #  - graph_steps uses "signals" (length S)
+            #  - graph_pixel uses the pulse editor / UI state internally
             self._widget.plotSignalGraph(signals, colors, sampleRate, labels=labels)
 
         except Exception:

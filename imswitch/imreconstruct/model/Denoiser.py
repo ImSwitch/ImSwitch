@@ -1,25 +1,32 @@
 import json
 import pydoc
-import torch
-from torchvision import transforms
 import numpy as np
 from pathlib import Path
 import os
 from imswitch.imcommon.model.dirtools import getSystemUserDir
 from imswitch.imcommon.model.logging import initLogger
-from imswitch.imreconstruct.model.UNet import UNet_PosEncod
-from imswitch.imreconstruct.model.UNetRCAN import UNetRCAN
 
 class Denoiser:
     def __init__(self) -> None:
         self.models_dir = os.path.join(getSystemUserDir(), 'ImSwitchConfig\denoising_models')
         self.__logger = initLogger(self, tryInheritParent=False)
-        if torch.cuda.is_available():
-            self.device = torch.device("cuda")
-            self.__logger.info("Denoising with GPU.")
-        else:
-            self.device = torch.device("cpu")
-            self.__logger.warning("Denoising with cpu, can be slow.")
+        try:
+            import torch
+            from torchvision import transforms
+            from imswitch.imreconstruct.model.UNet import UNet_PosEncod
+            from imswitch.imreconstruct.model.UNetRCAN import UNetRCAN
+            
+            if torch.cuda.is_available():
+                self.device = torch.device("cuda")
+                self.__logger.info("Denoising with GPU.")
+            else:
+                self.device = torch.device("cpu")
+                self.__logger.warning("Denoising with cpu, can be slow.")
+            self.denoising_available=True
+        except:
+            self.__logger.warning("Pytorch not found, no denoising available.")
+            self.denoising_available=False
+
         self.model = None
 
 
@@ -27,6 +34,9 @@ class Denoiser:
         """
         Instantiate model with parameters found in config file of 'model_name'.
         """
+        if not self.denoising_available:
+            return
+        
         cfg_path = os.path.join(self.models_dir,model_name,"config_train.json")
         try:
             with open(str(cfg_path)) as f:

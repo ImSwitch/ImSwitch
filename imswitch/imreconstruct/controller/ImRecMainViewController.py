@@ -90,6 +90,9 @@ class ImRecMainViewController(ImRecWidgetController):
         self.updateScanParams()
     
     def denoiseCurrent(self) -> None:
+        if not self._denoiser.denoising_available:
+            self._logger.error("Denoising not available")
+            return
         reconObj = self.reconstructionController.getActiveReconObj()
         if reconObj  is None:
             return

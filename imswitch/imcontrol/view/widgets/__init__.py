@@ -28,4 +28,4 @@ from .ULensesWidget import ULensesWidget
 from .ViewWidget import ViewWidget
 from .WatcherWidget import WatcherWidget
 from .BFTimelapseWidget import BFTimelapseWidget
-from .EtWidget import EtWidget
+# from .EtWidget import EtWidget # Current prototype on old Monalisa machine needs rework, hardcoded paths, not tracked, etc. for now commented!

@@ -21,8 +21,10 @@ from .ScanControllerAdvanced import ScanControllerAdvanced
 from .RotationScanController import RotationScanController
 from .RotatorController import RotatorController
 from .SettingsController import SettingsController
+from .SLMController import SLMController
 from .TilingController import TilingController
 from .ULensesController import ULensesController
 from .ViewController import ViewController
 from .WatcherController import WatcherController
 from .BFTimelapseController import BFTimelapseController
+from .EtController import EtController

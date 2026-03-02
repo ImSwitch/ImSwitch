@@ -97,8 +97,10 @@ class ScanParamsDialog(QtWidgets.QDialog):
             self.dim0Changed()
 
             self.dim0DirEdit.setCurrentIndex(self.dim0DirEdit.findText(parDict['directions'][0]))
-            self.dim1DirEdit.setCurrentIndex(self.dim1DirEdit.findText(parDict['directions'][1]))
-            self.dim2DirEdit.setCurrentIndex(self.dim2DirEdit.findText(parDict['directions'][2]))
+            self.dim1DirEdit.setCurrentIndex(self.dim1DirEdit.findText(parDict['directions'][0]))
+            self.dim2DirEdit.setCurrentIndex(self.dim2DirEdit.findText(parDict['directions'][0]))
+
+
 
             self.dim0SizeEdit.setText(parDict['steps'][0])
             self.dim1SizeEdit.setText(parDict['steps'][1])

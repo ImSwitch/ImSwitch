@@ -108,6 +108,9 @@ class CommunicationChannel(SignalInterface):
 
     sigNewAxialListBuffer = Signal(list) # list of auto axial scans to do e.g. ["XZ","YZ"]
 
+    sigInitiateEt = Signal(bool)
+    sigClockWidefield = Signal()
+
     # useq-schema related signals
     sigSetXYPosition = Signal(float, float)
     sigSetZPosition = Signal(float)
@@ -165,6 +168,13 @@ class CommunicationChannel(SignalInterface):
             return self.__main.controllers['Scan'].getNumScanPositions()
         else:
             raise RuntimeError('Required scan widget not available')
+
+    def getNumCamTTL(self):
+        if 'Scan' in self.__main.controllers:
+            return self.__main.controllers['Scan'].getNumCamTTL()
+        else:
+            raise RuntimeError('Required scan widget not available')
+
     
     def getNextAxial(self):
         if 'Scan' in self.__main.controllers:

@@ -61,18 +61,9 @@ class AdvancedScanTTLCycleDesigner(TTLCycleDesigner):
     # -----------------
 
     def make_signal(self, parameterDict, setupInfo, scanInfoDict=None):
-        if not self.parameterCompatibility(parameterDict):
-            self._logger.error(
-                "TTL parameters incompatible with LineStepPointScanTTLCycleDesigner."
-            )
-            return None
-
         Fs = setupInfo.scan.sampleRate
-
-        # Graph preview (no scanInfo)
-        if not scanInfoDict:
+        if scanInfoDict is None:
             return self._make_preview(parameterDict, Fs)
-
         return self._make_full_scan(parameterDict, setupInfo, scanInfoDict, Fs)
 
     # -----------------
@@ -237,6 +228,78 @@ class AdvancedScanTTLCycleDesigner(TTLCycleDesigner):
 
         return signal_dict
 
+
+    def make_single_pixel_signal(self, parameterDict, setupInfo):
+        """
+        Return per-target boolean arrays for exactly ONE pixel worth of samples,
+        concatenated across all linesteps.
+
+        This is intended for legacy code paths (e.g. getNumCamTTL) that assume the
+        TTL waveform represents a single pixel, not the full scan.
+        """
+        Fs = setupInfo.scan.sampleRate
+
+        targets = parameterDict["target_device"]
+        S = int(parameterDict["n_linesteps"])
+        dwell_s = float(parameterDict["sequence_time"])
+        advanced = bool(parameterDict["advanced_mode"])
+
+        samples_per_pixel = max(1, int(round(dwell_s * Fs)))
+
+        signal_dict = {}
+        for dev in targets:
+            enable_vec = list(map(bool, parameterDict["linestep_enable"].get(dev, [False] * S)))
+            starts_steps = parameterDict["pulse_starts_s"].get(dev, [[] for _ in range(S)])
+            ends_steps = parameterDict["pulse_ends_s"].get(dev, [[] for _ in range(S)])
+
+            parts = []
+            for s in range(S):
+                enabled_here = enable_vec[s] if s < len(enable_vec) else False
+
+                if not enabled_here:
+                    pixel = np.zeros(samples_per_pixel, dtype="bool")
+                elif not advanced:
+                    pixel = np.ones(samples_per_pixel, dtype="bool")
+                else:
+                    starts_s = starts_steps[s] if s < len(starts_steps) else []
+                    ends_s = ends_steps[s] if s < len(ends_steps) else []
+
+                    # Match _build_one_line behavior:
+                    # if enabled + advanced but no pulses defined -> full on
+                    if (starts_s is None or len(starts_s) == 0) and (ends_s is None or len(ends_s) == 0):
+                        pixel = np.ones(samples_per_pixel, dtype="bool")
+                    else:
+                        # Build pixel window(s)
+                        starts_s = [] if starts_s is None else list(starts_s)
+                        ends_s = [] if ends_s is None else list(ends_s)
+
+                        if len(starts_s) != len(ends_s):
+                            min_len = min(len(starts_s), len(ends_s))
+                            starts_s = starts_s[:min_len]
+                            ends_s = ends_s[:min_len]
+
+                        pixel = np.zeros(samples_per_pixel, dtype="bool")
+                        for a, b in zip(starts_s, ends_s):
+                            if a is None or b is None:
+                                continue
+                            if a < 0 or b < 0 or a >= b:
+                                raise ValueError(f"Invalid pulse window: start={a}, end={b}")
+                            if b > dwell_s + 1e-12:
+                                raise ValueError(f"Pulse end {b}s exceeds dwell time {dwell_s}s")
+
+                            i0 = int(round(a * Fs))
+                            i1 = int(round(b * Fs))
+                            i0 = max(0, min(samples_per_pixel, i0))
+                            i1 = max(0, min(samples_per_pixel, i1))
+                            if i1 > i0:
+                                pixel[i0:i1] = True
+
+                parts.append(pixel)
+
+            signal_dict[dev] = np.concatenate(parts).astype(bool)
+
+        return signal_dict
+
     # -----------------
     # Full scan
     # -----------------
@@ -249,6 +312,8 @@ class AdvancedScanTTLCycleDesigner(TTLCycleDesigner):
         dwell_s = float(p["sequence_time"])
         advanced = bool(p["advanced_mode"])
         scanInfo = self._normalize_scaninfo(p, setupInfo, scanInfoDict, Fs)
+        for key in scanInfo.keys():
+            scanInfoDict[key] = scanInfo[key]
 
         # Existing scan structure variables
         n_steps_dx = scanInfo["img_dims"]
@@ -452,7 +517,7 @@ class AdvancedScanTTLCycleDesigner(TTLCycleDesigner):
             clock_len=clock_len,
         )
 
-        return signal_dict, scanInfo
+        return signal_dict, scanInfoDict
 
     # -----------------
     # Line builder (core new piece)

@@ -55,13 +55,19 @@ class SLMsController(ImConWidgetController):
 
         # initiate each slm widget and engine
         for slmName, slmManager in self._master.slmsManager:
+            device_connection = slmManager.requires_device_connection
             slmInfo = slmManager.slmInfo
-            slmKey = self._widget.add_slm(slmName,slmInfo,full_registry)
+            slmKey = self._widget.add_slm(slmName,slmInfo,full_registry, 
+                                          device_connection = device_connection)
             engine = PatternEngine(slmManager.slmInfo)
             self._patternEngines[slmKey] = engine
             self._slmNames[slmKey]=slmName
             self._slmKeys[slmName]=slmKey
             self._slmInfos[slmKey] = slmInfo
+
+            # auto-connect for manager that needs device to connection
+            if device_connection:
+                self._startup_connection(slmKey)
 
             # correction pattern folder: user-specified in config file or fallback to canonical
             correctionPatternsDir = None
@@ -131,8 +137,13 @@ class SLMsController(ImConWidgetController):
         if hasattr(self,"_cghThread"):
             self._cghThread.quit()
             self._cghThread.wait()
-    
 
+    def _startup_connection(self, slmKey):
+        success = self.on_connect(slmKey,state=True,display_msg=False)
+        if not success:
+            slmName=self._slmNames.get(slmKey)
+            self._logger.warning(f"Attempt to connect to SLM {slmName} at start-up failed.")
+        
     def on_update_pattern(self, slmKey, params):
         
         engine = self._patternEngines[slmKey]
@@ -173,19 +184,22 @@ class SLMsController(ImConWidgetController):
             self._widget.update_display(slmKey,full_frame)
 
 
-    def on_connect(self, slmKey: str, state: bool):
+    def on_connect(self, slmKey: str, state: bool, display_msg:bool=True):
         """Handle connection/disconnection requests."""
         slmName = self._slmNames[slmKey]
         if state:
             success, serial = self._master.slmsManager.execOn(
                 slmName, lambda l: l.connect_to_device()
             )
-            self._widget.on_connection_result(slmKey, success, serial)
+            self._widget.on_connection_result(slmKey, success, serial, display_msg)
         else:
             success, msg = self._master.slmsManager.execOn(
                 slmName, lambda l: l.close_device()
             )
-            self._widget.on_disconnection_result(slmKey, success, msg)
+            self._widget.on_disconnection_result(slmKey, success, msg, display_msg)
+
+        return success
+
 
     def update_correction_patterns(self, slmKey, secKey, wl):
         """

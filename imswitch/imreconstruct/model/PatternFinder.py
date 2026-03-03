@@ -1,11 +1,45 @@
 import numpy as np
+import json
 from scipy.optimize import curve_fit
 from scipy.signal import find_peaks
 
+# --- new start (0) ---
+try:
+    from .karl_model_code.localizer import localizer
+    NANORECON_AVAILABLE = True
+except ImportError as e:
+    print(f"Could not load nanorecon localizer: {e}")
+    NANORECON_AVAILABLE = False
+# --- new end (0) ---
+
 
 class PatternFinder:
-    def findPattern(self, image):
+    
+    def findPattern(self, image, image_stack=None):
         """ Finds the offsets and periods of the pattern in the image. """
+        # --- new code (1) ---
+        if NANORECON_AVAILABLE:
+            try:
+                if image_stack is None:
+                    print("ERROR: We should always have a stack here!")
+                
+                loc_res = localizer(image_stack, plot=False) # type: ignore
+                with open("loc_parms.json", 'w') as f: 
+                    f.write(json.dumps(loc_res))
+                print("DEBUG: New localizer successfully run")
+
+                return [
+                    loc_res["yo"], 
+                    loc_res["xo"], 
+                    loc_res["yp"], 
+                    loc_res["xp"]
+                ] 
+            
+            except Exception as e:
+                print(f"Error: Custom localizer failed, falling back to ImSwitch Localizer {e}")
+        # --- new code end (1) ---
+
+        # --- ORIGINAL IMSWITCH CODE ---
         image = image - image.min()
         thresh = image.max() / 3
         image[image < thresh] = 0
@@ -98,6 +132,8 @@ class PatternFinder:
             bestPeak = bestTwoPeaks[0]
 
         return bestPeak
+            
+
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

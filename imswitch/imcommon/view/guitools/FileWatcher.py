@@ -9,7 +9,7 @@ import socket
 
 
 class FileWatcher(QtCore.QThread):
-    sigNewFiles = QtCore.Signal(list)
+    sigNewFiles = QtCore.Signal(list) # type: ignore
 
     def __init__(self, path, extension, pollTime):
         super().__init__()
@@ -23,8 +23,39 @@ class FileWatcher(QtCore.QThread):
         self.startLog()
 
     def filesInDirectory(self):
-        return [f for f in listdir(self.path) if ((isfile(join(self.path, f)) or isdir(join(self.path, f))) and f.endswith('.' + self.extension))]
+        """
+        Returns a list of files/folders in the directory that match the 
+        supported image extensions.
+        """
+        target_ext = self.extension.lower().lstrip('.')
 
+        # valid_exts = [target_ext, 'tif', 'tiff', 'zarr', 'hdf5', 'h5']
+        # But usually, we want to follow what the user selected in the UI.
+        all_items = listdir(self.path)
+        matches = []
+
+        for f in all_items:
+            full_path = join(self.path, f)
+            f_lower = f.lower()
+
+            # TODO: The .hdf5 reading is not working as it should right now FIX this later
+
+            # check if it matches our target extension 
+            # note: .zarr is a directory; .tif AND .hdf5 are files 
+            if f_lower.endswith('.' + target_ext) and (isfile(full_path) or isdir(full_path)):
+                matches.append(f)
+
+            # special case: people use .tif and .tiff interchangeably 
+            elif target_ext in ["tif", "tiff"]: 
+                matches.append(f)  
+            
+            # special case: hdf5 variations
+            elif target_ext in ["h5", "hdf5"] and f_lower.endswith((".h5", ".hdf5")):
+                matches.append(f) 
+
+        # print(f"DEBUG: Polling {self.path}... Found {len(matches)} matches for '{target_ext}'")        
+        return matches
+    
     def updateList(self, newList):
         differencesList = [x for x in newList if
                            x not in self.list]  # Note if files get deleted, this will not highlight them
@@ -33,6 +64,7 @@ class FileWatcher(QtCore.QThread):
 
     def run(self):
         self.active = True
+        print("DEBUG: FileWatcher loop started")
         while self.active:
             if not self.watching:  # Check if this is the first time the function has run
                 self.list = self.filesInDirectory()

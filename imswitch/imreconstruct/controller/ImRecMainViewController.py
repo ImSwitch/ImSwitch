@@ -1,12 +1,14 @@
 import copy
 import os
+import json
 
 import numpy as np
 import tifffile as tiff
 
 import imswitch.imreconstruct.view.guitools as guitools
 from imswitch.imcommon.controller import PickDatasetsController
-from imswitch.imreconstruct.model import DataObj, ReconObj, PatternFinder, SignalExtractor,Denoiser
+from imswitch.imreconstruct.model import DataObj, ReconObj, PatternFinder, SignalExtractor
+from imswitch.imreconstruct.model.karl_model_code import GaussProcessorCPU
 from .DataFrameController import DataFrameController
 from .MultiDataFrameController import MultiDataFrameController
 from .WatcherFrameController import WatcherFrameController
@@ -14,8 +16,21 @@ from .ReconstructionViewController import ReconstructionViewController
 from .ScanParamsController import ScanParamsController
 from .basecontrollers import ImRecWidgetController
 
+try: 
+    import cupy as cp
+    cupy_available = True
+    from imswitch.imreconstruct.model.karl_model_code import GaussProcessorGPU
+    print("DEBUG: CuPy available -> Defaulting to CuPy")
+except:
+    cupy_available = False
+    print("DEBUG: CuPy NOT available -> Defaulting to NumPy")
+
+
+REFRESH_INTERVAL = 1
+
 
 class ImRecMainViewController(ImRecWidgetController):
+    
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._commChannel.extension = self._widget.extension
@@ -41,9 +56,13 @@ class ImRecMainViewController(ImRecWidgetController):
 
         self._signalExtractor = SignalExtractor()
         self._patternFinder = PatternFinder()
-        self._denoiser = Denoiser()
 
         self._currentDataObj = None
+
+        # --- new start () ---
+        self._localizerParams = None
+        # --- new end () ---
+
         self._pattern = self._widget.getPatternParams()
         self._settingPatternParams = False
         self._scanParDict = {
@@ -57,11 +76,23 @@ class ImRecMainViewController(ImRecWidgetController):
         self._dataFolder = None
         self._saveFolder = None
 
+
+        # --- new start (0) --- 
+        self._liveProcessor = None 
+        self._liveReconObj = None
+        # --- new end (0) ---
+
+
         self._commChannel.sigDataFolderChanged.connect(self.dataFolderChanged)
         self._commChannel.sigSaveFolderChanged.connect(self.saveFolderChanged)
         self._commChannel.sigCurrentDataChanged.connect(self.currentDataChanged)
         self._commChannel.sigScanParamsUpdated.connect(self.scanParamsUpdated)
         self._commChannel.sigReconstruct.connect(self.reconstruct)
+
+
+        # --- new start (1) ---
+        self._commChannel.sigLiveFrameReady.connect(self.onLiveFrameReceived) 
+        # --- new end (1) ---
 
 
         self._widget.sigSaveReconstruction.connect(lambda: self.saveCurrent('reconstruction'))
@@ -85,38 +116,110 @@ class ImRecMainViewController(ImRecWidgetController):
         self._widget.sigFindPattern.connect(self.findPattern)
         self._widget.sigShowScanParamsClicked.connect(self.showScanParamsDialog)
         self._widget.sigPatternParamsChanged.connect(self.updatePattern)
-        self._widget.sigDenoiseCurrent.connect(self.denoiseCurrent)
+
         self.updatePattern()
         self.updateScanParams()
-    
-    def denoiseCurrent(self) -> None:
-        if not self._denoiser.denoising_available:
-            self._logger.error("Denoising not available")
-            return
-        reconObj = self.reconstructionController.getActiveReconObj()
-        if reconObj  is None:
-            return
-        crop_size = int(self._widget.getDenoiseCropSize())
-        pad = self._widget.getDenoiseBoolPad()
-        model_name = self._widget.getDenoiseModelName()
+
+
+
+
+    # --- new start (2) --- 
+    def onLiveFrameReceived(self, frame, frameCounter): 
+        if self._liveProcessor is None: 
+            self._initLiveProcessor()
         
-        if 'RCAN' in model_name:
-            model_type = 'UNetRCAN'
+        if cupy_available:
+            coeffs = self._liveProcessor.process_frame(cp.array(frame)) # type: ignore
         else:
-            model_type = 'UNet'
+            coeffs = self._liveProcessor.process_frame(frame) # type: ignore
 
-        reconstrData = copy.deepcopy(reconObj.getReconstruction())
-        reconstrData = reconstrData[:, 0, 0, 0, :, :]
+        # --- INITIALIZATION ---
+        if self._localizerParams is not None: 
+            nx_c = self._localizerParams["nx_c"]
+            ny_c = self._localizerParams["ny_c"]
+            nx_s = self._localizerParams["nx_s"]
+            ny_s = self._localizerParams["ny_s"]
+        else:
+            print("Error: No parameters from the localizer could be found -> exit program")
+            quit()
+        
+        if self._liveReconObj is None:
+            #TODO: add init live buffer to this part
+            self._liveReconObj = ReconObj(
+                "Live_Stream", 
+                self._scanParDict,
+                self._widget.r_l_text, 
+                self._widget.u_d_text, 
+                self._widget.b_f_text,
+                self._widget.timepoints_text, 
+                self._widget.p_text, 
+                self._widget.n_text,
+                buffer_args={
+                    "nx_c": nx_c, 
+                    "ny_c": ny_c, 
+                    "nx_s": nx_s, 
+                    "ny_s": ny_s
+                }
+            )  
 
-        self._denoiser.init_model(model_name,model_type)
-        self._denoiser.load_model(model_name)
-        predict = self._denoiser.predict(data=reconstrData,crop_size=crop_size,pad=pad).astype('float32')
-        predict = np.expand_dims(predict,axis=(1,2,3))
+            # --- THE FIX: ENFORCE NON-ZERO SPATIAL METADATA ---
+            # Napari needs to see that the image 'starts' at 0 and 'ends' at a real number.
+            # If these are both 0.0, it throws the "monotonically increasing" error.
+            total_rows = ny_c * ny_s
+            total_cols = nx_c * nx_s
 
-        denoiseObj = copy.deepcopy(reconObj)
-        denoiseObj.updateReconstructed(predict)
-        name = reconObj.name + "_denoise"
-        self._widget.addNewData(denoiseObj, name)
+            # Inject dummy ranges if they are missing or zero
+            self._liveReconObj.scanParDict['range'] = [float(total_cols), float(total_rows)]
+            self._liveReconObj.scanParDict['start'] = [0.0, 0.0]
+            self._liveReconObj.scanParDict['stop'] = [float(total_cols), float(total_rows)]
+            
+            # Also ensure the first pixel isn't zero just in case
+            self._liveReconObj.reconstructed[0, 0, 0, 0, 0, 0] = 1e-8 # type: ignore
+            self._liveReconObj.dispLevels = [0.0, 100.0]         
+
+            self._widget.addNewData(self._liveReconObj, "Live_Stream")
+        
+        # --- UPDATE DATA ---
+        self._liveReconObj.addLiveFrame(coeffs, self._liveProcessor.frame_inds[frameCounter]) # type: ignore
+        
+        # --- THROTTLED REFRESH ---
+        # Use the frameCounter to only trigger the UI every 100 frames
+        if frameCounter % REFRESH_INTERVAL == 0:
+            try:
+                recon_widget = self._widget.reconstructionWidget
+                
+                # 1. Simulate the button click that triggers the refresh logic
+                if hasattr(recon_widget, "standardView"):
+                    rb = recon_widget.standardView
+                    if hasattr(rb, "click"):
+                        self._logger.debug(f"Throttled refresh at frame {frameCounter}")
+                        rb.click()
+                
+                # 2. Force the UI to update immediately
+                from qtpy.QtWidgets import QApplication
+                QApplication.processEvents()
+
+            except Exception as e:
+                self._logger.error(f"Throttled auto-refresh failed: {e}")
+
+    def _initLiveProcessor(self): 
+        """ Initializes the best available processor (GPU -> CPU fallback). """
+        if self._localizerParams is not None:
+            params = self._localizerParams
+            print(f"CURRENT LOCALIZED PARAMETERS: {params}")
+        else: 
+            print("Error: No parameters from the localizer could be found -> exit program")
+            quit()
+        
+        if cupy_available:
+            self._liveProcessor = GaussProcessorGPU(params, scan_ori="+x-y")
+            self._logger.info("Live Mode: GPU Processor initialized successfully.")
+        else: 
+            self._liveProcessor = GaussProcessorCPU(params, scan_ori="+x-y")
+     # --- new end (2) ---
+
+
+
 
     def dataFolderChanged(self, dataFolder):
         self._dataFolder = dataFolder
@@ -134,20 +237,38 @@ class ImRecMainViewController(ImRecWidgetController):
         if saveFolder:
             self._commChannel.sigSaveFolderChanged.emit(saveFolder)
 
+
+
     def findPattern(self):
         self._logger.debug('Find pattern clicked')
         if self._currentDataObj is None:
             return
 
         meanData = self._currentDataObj.getMeanData()
+        stackData = self._currentDataObj.data        
         if len(meanData) < 1:
             return
 
         self._logger.debug('Finding pattern')
-        pattern = self._patternFinder.findPattern(meanData)
+        pattern = self._patternFinder.findPattern(meanData, stackData) # type: ignore
+        
+        # --- new start () ---
+        try:
+            # get the localized parameters from .json file, which is created 
+            # after a succesful run of .findPattern()
+            with open("loc_parms.json", "r") as f: 
+                self._localizerParams = json.load(f)
+            self._logger.debug(f"Sucessfully loaded localizer parameters: {self._localizerParams}")
+        except Exception as e:
+            self._logger.error(f"Tried to load localizer data but got {e}")
+        # --- end start() ---
+        
+        
         self._logger.debug(f'Pattern found as: {self._pattern}')
         self.setPatternParams(pattern)
         self.updatePattern()
+
+
 
     def togglePattern(self, enabled):
         self._logger.debug('Toggling pattern')
@@ -156,17 +277,26 @@ class ImRecMainViewController(ImRecWidgetController):
     def updatePattern(self):
         if self._settingPatternParams:
             return
-
         self._logger.debug('Updating pattern')
-        self._pattern = self._widget.getPatternParams()
+        self._pattern = self._widget.getPatternParams() # This returns [yo, xo, yp, xp]
         self._commChannel.sigPatternUpdated.emit(self._pattern)
+
+
+
 
     def setPatternParams(self, pattern):
         try:
             self._settingPatternParams = True
-            self._widget.setPatternParams(*pattern)
+            # Store the full 8-element list
+            self._pattern = pattern 
+            # Only send the first 4 to the UI text boxes
+            self._widget.setPatternParams(*pattern[:4]) 
         finally:
             self._settingPatternParams = False
+
+
+
+
 
     def updateScanParams(self, applyOnCurrentRecon=False):
         self._commChannel.sigScanParamsUpdated.emit(copy.deepcopy(self._scanParDict),
@@ -186,7 +316,7 @@ class ImRecMainViewController(ImRecWidgetController):
         elif extension == 'hdf5':
             dataPath = guitools.askForFilePath(self._widget, defaultFolder=self._dataFolder)
 
-        if dataPath:
+        if dataPath: # type: ignore
             self._logger.debug(f'Loading data at: {dataPath}')
 
             datasetsInFile = DataObj.getDatasetNames(dataPath)
@@ -267,7 +397,8 @@ class ImRecMainViewController(ImRecWidgetController):
 
     def extractData(self, data):
         fwhmNm = self._widget.getFwhmNm()
-        bgModelling = self._widget.getBgModelling()
+        # bgModelling = self._widget.getBgModelling()
+        bgModelling = "Gaussian"
         if bgModelling == 'Constant':
             fwhmNm = np.append(fwhmNm, 9999)  # Code for constant bg
         elif bgModelling == 'No background':
@@ -282,7 +413,8 @@ class ImRecMainViewController(ImRecWidgetController):
 
         sigmas = np.divide(fwhmNm, 2.355 * self._widget.getPixelSizeNm())
 
-        device = self._widget.getComputeDevice()
+        # device = self._widget.getComputeDevice()
+        device = "GPU"
         pattern = self._pattern
         if device == 'CPU' or device == 'GPU':
             coeffs = self._signalExtractor.extractSignal(data, sigmas, pattern, device.lower())
@@ -330,10 +462,10 @@ class ImRecMainViewController(ImRecWidgetController):
                 if not preloaded:
                     dataObj.checkAndUnloadData()
 
-            reconObj.addCoeffsTP(coeffs)
+            reconObj.addCoeffsTP(coeffs) # type: ignore
             if not consolidate:
-                reconObj.updateImages()
-                self._widget.addNewData(reconObj, reconObj.name)
+                reconObj.updateImages() # type: ignore
+                self._widget.addNewData(reconObj, reconObj.name) # type: ignore
 
         if consolidate and reconObj is not None:
             reconObj.updateImages()

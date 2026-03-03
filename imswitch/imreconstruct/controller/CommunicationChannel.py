@@ -7,23 +7,24 @@ class CommunicationChannel(SignalInterface):
     and Widgets, or between Widgets.
     """
 
-    sigDataFolderChanged = Signal(object)  # (dataFolderPath)
+    sigDataFolderChanged = Signal(object)  # type: ignore (dataFolderPath) 
+    sigSaveFolderChanged = Signal(object)  # type: ignore (saveFolderPath)
+    sigCurrentDataChanged = Signal(object)  # type: ignore (dataObj)
+    sigScanParamsUpdated = Signal(object, bool)  # type: ignore (scanParDict, applyOnCurrentRecon)
+    sigPatternUpdated = Signal(object)  # type: ignore (pattern) 
+    sigPatternVisibilityChanged = Signal(bool)  # type: ignore (visible)
+    sigAddToMultiData = Signal(str, str)  # type: ignore (path, datasetName) 
+    sigReconstruct = Signal(object, bool) # type: ignore
+    sigExecutionFinished = Signal(object) # type: ignore
 
-    sigSaveFolderChanged = Signal(object)  # (saveFolderPath)
 
-    sigCurrentDataChanged = Signal(object)  # (dataObj)
 
-    sigScanParamsUpdated = Signal(object, bool)  # (scanParDict, applyOnCurrentRecon)
 
-    sigPatternUpdated = Signal(object)  # (pattern)
+    # --- new start (0) ---
+    sigLiveFrameReady = Signal(object, int) # type: ignore (goes to imreconstruct/controller/ImRecMainViewController.py)
+    # --- new end (0) ---
 
-    sigPatternVisibilityChanged = Signal(bool)  # (visible)
 
-    sigAddToMultiData = Signal(str, str)  # (path, datasetName)
-
-    sigReconstruct = Signal(object, bool)
-
-    sigExecutionFinished = Signal(object)
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

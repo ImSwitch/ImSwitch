@@ -47,9 +47,9 @@ class WatcherController(ImConWidgetController):
 
     def executionFinished(self):
         self.execution = False
-        diff = perf_counter() - self.t0
+        diff = perf_counter() - self.t0 # type: ignore
         self.watcher.addToLog(self.current, [str(self.t0), str(diff)])
-        os.remove(self.current)
+        os.remove(self.current) # type: ignore
         self._widget.updateFileList()
         self.runNextFile()
 

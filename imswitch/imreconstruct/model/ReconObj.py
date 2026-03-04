@@ -27,7 +27,7 @@ class ReconObj:
         self.b_f_text = b_f_text
         self.timepoints_text = timepoints_text
         self.p_text = p_text
-        self.n_tetx = n_text
+        self.n_text = n_text
 
         self.name = name
         self.coeffs = None
@@ -36,54 +36,35 @@ class ReconObj:
 
         self.dispLevels = None
 
-        if buffer_args == None:
-            self.nx_c = None
-            self.ny_c = None
-            self.nx_s = None
-            self.ny_s = None
-        else:
+        if buffer_args is not None:
             self.nx_c = buffer_args["nx_c"]
             self.ny_c = buffer_args["ny_c"]
             self.nx_s = buffer_args["nx_s"]
             self.ny_s = buffer_args["ny_s"]
             self.buffer_rows = self.ny_c * self.ny_s
             self.buffer_cols = self.nx_c * self.nx_s 
+            
+            self.scanParDict["range"] = [float(self.buffer_cols), float(self.buffer_rows)]
+            self.scanParDict["start"] = [0.0, 0.0]
+            self.scanParDict["stop"] = self.scanParDict["range"]
 
-            # Initialize as 6D: [Dataset, Base, Time, Slice, Y, X]
+            # Initialize as 6D: [Dataset, Base, Time, Z, Y, X]
             # This matches the [0, 1, 2, 3, 5, 4] transpose order perfectly
             self.reconstructed = np.zeros((1, 1, 1, 1, self.buffer_rows, self.buffer_cols), dtype=np.float32)
             self._flat_recon_view = self.reconstructed[0, 0, 0, 0].ravel()
+            self.reconstructed[0, 0, 0, 0, 0, 0] = 1e-8 
+            
+            self.dispLevels = [0.0, 100.0]
+            
             self.__logger.info(f"Live Buffer initialized: {self.buffer_rows}x{self.buffer_cols} (6D)")
-
-
-    # --- new start (0) ---
-    def initLiveBuffer(self, nx_c, ny_c, nx_s, ny_s):
-        total_rows = int(ny_c * ny_s)
-        total_cols = int(nx_c * nx_s)
-
-        # Initialize as 6D: [Dataset, Base, Time, Slice, Y, X]
-        # This matches the [0, 1, 2, 3, 5, 4] transpose order perfectly
-        self.reconstructed = np.zeros((1, 1, 1, 1, total_rows, total_cols), dtype=np.float32) 
-        
-        # The flat view points to the last two dimensions [X, Y]
-        self._flat_recon_view = self.reconstructed[0, 0, 0, 0].ravel()
-        
-        self.__logger.info(f"Live Buffer initialized: {total_rows}x{total_cols} (6D)")
     
-    def addLiveFrame(self, coeffs, tagged_frame_inds): 
+    def addLiveFrame(self, flat_coeffs, frame_indices): 
         """
         Directly places focus intensities into the reconstructed image buffer 
         using the pre-calculated 1D indices <frame_inds>.
         """
-        if self.reconstructed is None:
-            # we assume initLiveBuffer was called or we call it here
-            return
-        # assign the intensities via <frame_inds[tag_number]>
-        self._flat_recon_view[tagged_frame_inds] = coeffs.ravel()
-    # --- new end (0) ---
-
-
-
+        self._flat_recon_view[frame_indices] = flat_coeffs
+    
 
     def setDispLevels(self, levels):
         self.dispLevels = levels

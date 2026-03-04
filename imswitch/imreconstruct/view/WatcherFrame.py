@@ -19,14 +19,8 @@ class WatcherFrame(QtWidgets.QFrame):
         self.browseFolderButton = guitools.BetterPushButton('Browse')
         self.watchCheck = QtWidgets.QCheckBox('Watch and run')
 
-
-
-        # --- new start (0) ---
         self.liveModeCheck = QtWidgets.QCheckBox("Live Reconstruction")
         self.liveModeCheck.setToolTip("Stream frames to Python GaussProcessor in real-time")
-        # -- new end (0) --- 
-
-
 
         self.listWidget = QtWidgets.QListWidget()
         #self.updateFileList()
@@ -38,36 +32,22 @@ class WatcherFrame(QtWidgets.QFrame):
         layout.addWidget(self.listWidget, 1, 0, 1, 2)
         layout.addWidget(self.watchCheck, 2, 0)
 
-
-        # --- new code start (1) --- 
         layout.addWidget(self.liveModeCheck, 2, 1)
-        # --- new code end (1) ---
-
 
         self.watchCheck.toggled.connect(self.sigWatchChanged)
 
-
-        # --- new code start (11) ---
         self.liveModeCheck.toggled.connect(self.sigWatchChanged)
-        # -- new code start (11) --
-
 
         self.browseFolderButton.clicked.connect(self.browse)
 
-
-
-    # --- new code start (2) --- 
     def isLiveMode(self):
         return self.liveModeCheck.isChecked()
-    # --- new code start (2) ---
-
-
-
+    
     def updateFileList(self, extension):
         self.path = self.folderEdit.text()
         res = []
         for file in os.listdir(self.path):
-            if file.endswith('.'+extension):
+            if file.endswith('.' + extension):
                 res.append(file)
 
         self.listWidget.clear()

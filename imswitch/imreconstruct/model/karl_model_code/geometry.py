@@ -58,6 +58,7 @@ def get_rectangles(
     """
     all_x = []
     all_y = []
+    
     for i in range(num_rects):
         w = start_w + (i * 2)
         h = start_h + (i * 2)

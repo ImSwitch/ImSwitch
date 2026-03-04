@@ -6,7 +6,7 @@ class CommunicationChannel(SignalInterface):
     Communication Channel is a class that handles the communication between Master Controller
     and Widgets, or between Widgets.
     """
-
+    # --- OLD SIGNALS ---
     sigDataFolderChanged = Signal(object)  # type: ignore (dataFolderPath) 
     sigSaveFolderChanged = Signal(object)  # type: ignore (saveFolderPath)
     sigCurrentDataChanged = Signal(object)  # type: ignore (dataObj)
@@ -17,12 +17,10 @@ class CommunicationChannel(SignalInterface):
     sigReconstruct = Signal(object, bool) # type: ignore
     sigExecutionFinished = Signal(object) # type: ignore
 
-
-
-
-    # --- new start (0) ---
-    sigLiveFrameReady = Signal(object, int) # type: ignore (goes to imreconstruct/controller/ImRecMainViewController.py)
-    # --- new end (0) ---
+    # --- NEW SIGNALS ---
+    sigSetupLiveStream = Signal(object) # type: ignore (params dict)
+    sigBufferInitialized = Signal(object) # type: ignore (np.ndarray buffer)
+    sigLiveFrameReady = Signal(int) # type: ignore (index of the frame in the buffer)
 
 
 

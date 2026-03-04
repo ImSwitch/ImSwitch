@@ -5,6 +5,8 @@ import json
 import numpy as np
 import tifffile as tiff
 
+import time
+
 import imswitch.imreconstruct.view.guitools as guitools
 from imswitch.imcommon.controller import PickDatasetsController
 from imswitch.imreconstruct.model import DataObj, ReconObj, PatternFinder, SignalExtractor
@@ -16,16 +18,17 @@ from .ReconstructionViewController import ReconstructionViewController
 from .ScanParamsController import ScanParamsController
 from .basecontrollers import ImRecWidgetController
 
+from qtpy.QtWidgets import QApplication
+
 try: 
     import cupy as cp
     cupy_available = True
     from imswitch.imreconstruct.model.karl_model_code import GaussProcessorGPU
-    print("DEBUG: CuPy available -> Defaulting to CuPy")
 except:
     cupy_available = False
-    print("DEBUG: CuPy NOT available -> Defaulting to NumPy")
 
 
+# --- GLOBAL VARIABLES --- 
 REFRESH_INTERVAL = 1
 
 
@@ -41,9 +44,14 @@ class ImRecMainViewController(ImRecWidgetController):
         self.multiDataFrameController = self._factory.createController(
             MultiDataFrameController, self._widget.multiDataFrame
         )
+        
+        
         self.watcherFrameController = self._factory.createController(
             WatcherFrameController, self._widget.watcherFrame
         )
+        # self.watcherFrameController.sigBufferInitialized.connect(self.setBufferReference)
+        # self.watcherFrameController.sigLiveFrameReady.connect(self.onLiveFrameReceived)
+
         self.reconstructionController = self._factory.createController(
             ReconstructionViewController, self._widget.reconstructionWidget
         )
@@ -58,10 +66,10 @@ class ImRecMainViewController(ImRecWidgetController):
         self._patternFinder = PatternFinder()
 
         self._currentDataObj = None
-
-        # --- new start () ---
+        
+        
         self._localizerParams = None
-        # --- new end () ---
+
 
         self._pattern = self._widget.getPatternParams()
         self._settingPatternParams = False
@@ -77,10 +85,8 @@ class ImRecMainViewController(ImRecWidgetController):
         self._saveFolder = None
 
 
-        # --- new start (0) --- 
         self._liveProcessor = None 
         self._liveReconObj = None
-        # --- new end (0) ---
 
 
         self._commChannel.sigDataFolderChanged.connect(self.dataFolderChanged)
@@ -90,9 +96,10 @@ class ImRecMainViewController(ImRecWidgetController):
         self._commChannel.sigReconstruct.connect(self.reconstruct)
 
 
-        # --- new start (1) ---
+        self._commChannel.sigSetupLiveStream.connect(self.setupLiveStream)
+        self._commChannel.sigBufferInitialized.connect(self.setBufferReference)
         self._commChannel.sigLiveFrameReady.connect(self.onLiveFrameReceived) 
-        # --- new end (1) ---
+
 
 
         self._widget.sigSaveReconstruction.connect(lambda: self.saveCurrent('reconstruction'))
@@ -119,106 +126,98 @@ class ImRecMainViewController(ImRecWidgetController):
 
         self.updatePattern()
         self.updateScanParams()
-
-
-
-
-    # --- new start (2) --- 
-    def onLiveFrameReceived(self, frame, frameCounter): 
-        if self._liveProcessor is None: 
-            self._initLiveProcessor()
         
+        if cupy_available:
+            self._logger.debug("CuPy available -> Defaulting to GPU processing")
+        else: 
+            self._logger.debug("CuPy NOT available -> Defaulting to CPU processing")
+
+        self._last_ui_update = time.perf_counter()
+        self._fps = 30
+        self._refresh_rate_limit = 1 / self._fps # target ~30 fps 
+
+    def setupLiveStream(self, params): 
+        """ Pre-initializes RECON and PROCESSOR instances. """
+        self._localizerParams = params 
+
+        # --- INIT PROCESSOR INSTANCE ---
+        if cupy_available:
+            self._liveProcessor = GaussProcessorGPU(params, scan_ori="+x-y") # type: ignore
+            self._logger.info("Live Mode: GPU Processor initialized successfully.")
+        else: 
+            self._liveProcessor = GaussProcessorCPU(params, scan_ori="+x-y")
+            self._logger.info(
+                "Live Mode: GPU Processor could not be initialized -> Defaulting to CPU processor."
+            )
+
+        # --- INIT RECONSTRUCTION INSTANCE ---
+        self._liveReconObj = ReconObj(
+            "Live_Stream", 
+            self._scanParDict,
+            self._widget.r_l_text, 
+            self._widget.u_d_text, 
+            self._widget.b_f_text,
+            self._widget.timepoints_text, 
+            self._widget.p_text, 
+            self._widget.n_text,
+            buffer_args={
+                "nx_c": params["nx_c"], 
+                "ny_c": params["ny_c"], 
+                "nx_s": params["nx_s"], 
+                "ny_s": params["ny_s"]
+            }
+        )            
+
+        # add to live stream to UI
+        self._widget.addNewData(self._liveReconObj, "Live_Stream")
+        
+        self._liveLayer = None
+        self._logger.info("Live Stream initialized. Layer reference will be linked on first frame.")
+        
+        # # debug loop to find the viewer
+        # self._logger.info(f"Diagnostics for reconstructionWidget: {dir(self._widget.reconstructionWidget)}")
+
+        # # Look for anything that might be the viewer
+        # for attr in dir(self._widget.reconstructionWidget):
+        #     if "view" in attr.lower() or "canvas" in attr.lower():
+        #         self._logger.info(f"Potential viewer candidate: {attr}")
+        # quit()
+
+    def setBufferReference(self, buffer_ref):
+        """ Stores the reference to the Circular buffer from the WatcherFrameController. """
+        self._sharedLiveBuffer = buffer_ref
+        self._logger.info("MainView: Shared buffer reference received.")
+
+    def onLiveFrameReceived(self, frameCounter): 
+        frame = self._sharedLiveBuffer[frameCounter]
+
+        # --- PROCESS FRAME ---
         if cupy_available:
             coeffs = self._liveProcessor.process_frame(cp.array(frame)) # type: ignore
         else:
             coeffs = self._liveProcessor.process_frame(frame) # type: ignore
 
-        # --- INITIALIZATION ---
-        if self._localizerParams is not None: 
-            nx_c = self._localizerParams["nx_c"]
-            ny_c = self._localizerParams["ny_c"]
-            nx_s = self._localizerParams["nx_s"]
-            ny_s = self._localizerParams["ny_s"]
-        else:
-            print("Error: No parameters from the localizer could be found -> exit program")
-            quit()
-        
-        if self._liveReconObj is None:
-            #TODO: add init live buffer to this part
-            self._liveReconObj = ReconObj(
-                "Live_Stream", 
-                self._scanParDict,
-                self._widget.r_l_text, 
-                self._widget.u_d_text, 
-                self._widget.b_f_text,
-                self._widget.timepoints_text, 
-                self._widget.p_text, 
-                self._widget.n_text,
-                buffer_args={
-                    "nx_c": nx_c, 
-                    "ny_c": ny_c, 
-                    "nx_s": nx_s, 
-                    "ny_s": ny_s
-                }
-            )  
-
-            # --- THE FIX: ENFORCE NON-ZERO SPATIAL METADATA ---
-            # Napari needs to see that the image 'starts' at 0 and 'ends' at a real number.
-            # If these are both 0.0, it throws the "monotonically increasing" error.
-            total_rows = ny_c * ny_s
-            total_cols = nx_c * nx_s
-
-            # Inject dummy ranges if they are missing or zero
-            self._liveReconObj.scanParDict['range'] = [float(total_cols), float(total_rows)]
-            self._liveReconObj.scanParDict['start'] = [0.0, 0.0]
-            self._liveReconObj.scanParDict['stop'] = [float(total_cols), float(total_rows)]
-            
-            # Also ensure the first pixel isn't zero just in case
-            self._liveReconObj.reconstructed[0, 0, 0, 0, 0, 0] = 1e-8 # type: ignore
-            self._liveReconObj.dispLevels = [0.0, 100.0]         
-
-            self._widget.addNewData(self._liveReconObj, "Live_Stream")
-        
         # --- UPDATE DATA ---
-        self._liveReconObj.addLiveFrame(coeffs, self._liveProcessor.frame_inds[frameCounter]) # type: ignore
+        internal_indices = self._liveProcessor.frame_inds[frameCounter] # type: ignore
+        self._liveReconObj.addLiveFrame(coeffs, internal_indices) # type: ignore
         
-        # --- THROTTLED REFRESH ---
-        # Use the frameCounter to only trigger the UI every 100 frames
+        # --- THROTTLED UI REFRESH ---
         if frameCounter % REFRESH_INTERVAL == 0:
-            try:
-                recon_widget = self._widget.reconstructionWidget
-                
-                # 1. Simulate the button click that triggers the refresh logic
-                if hasattr(recon_widget, "standardView"):
-                    rb = recon_widget.standardView
-                    if hasattr(rb, "click"):
-                        self._logger.debug(f"Throttled refresh at frame {frameCounter}")
-                        rb.click()
-                
-                # 2. Force the UI to update immediately
-                from qtpy.QtWidgets import QApplication
-                QApplication.processEvents()
-
-            except Exception as e:
-                self._logger.error(f"Throttled auto-refresh failed: {e}")
-
-    def _initLiveProcessor(self): 
-        """ Initializes the best available processor (GPU -> CPU fallback). """
-        if self._localizerParams is not None:
-            params = self._localizerParams
-            print(f"CURRENT LOCALIZED PARAMETERS: {params}")
-        else: 
-            print("Error: No parameters from the localizer could be found -> exit program")
-            quit()
+            self._triggerRefresh(frameCounter) 
+  
+    def _triggerRefresh(self, frameCounter):
+        current_time = time.perf_counter()
+        if (current_time - self._last_ui_update) < self._refresh_rate_limit:
+            return
         
-        if cupy_available:
-            self._liveProcessor = GaussProcessorGPU(params, scan_ori="+x-y")
-            self._logger.info("Live Mode: GPU Processor initialized successfully.")
-        else: 
-            self._liveProcessor = GaussProcessorCPU(params, scan_ori="+x-y")
-     # --- new end (2) ---
-
-
+        try:
+            self._widget.reconstructionWidget.standardView.click()                
+            QApplication.processEvents()
+            self._last_ui_update = current_time
+            self._logger.info(f"Refresh: {frameCounter}")
+                
+        except Exception as e:
+            self._logger.error(f"Throttled button refresh failed: {e}")
 
 
     def dataFolderChanged(self, dataFolder):
@@ -238,7 +237,6 @@ class ImRecMainViewController(ImRecWidgetController):
             self._commChannel.sigSaveFolderChanged.emit(saveFolder)
 
 
-
     def findPattern(self):
         self._logger.debug('Find pattern clicked')
         if self._currentDataObj is None:
@@ -252,22 +250,19 @@ class ImRecMainViewController(ImRecWidgetController):
         self._logger.debug('Finding pattern')
         pattern = self._patternFinder.findPattern(meanData, stackData) # type: ignore
         
-        # --- new start () ---
         try:
             # get the localized parameters from .json file, which is created 
             # after a succesful run of .findPattern()
             with open("loc_parms.json", "r") as f: 
                 self._localizerParams = json.load(f)
-            self._logger.debug(f"Sucessfully loaded localizer parameters: {self._localizerParams}")
+            self._logger.debug(f"Successfully loaded localizer parameters: {self._localizerParams}")
+        
         except Exception as e:
             self._logger.error(f"Tried to load localizer data but got {e}")
-        # --- end start() ---
-        
-        
+                
         self._logger.debug(f'Pattern found as: {self._pattern}')
         self.setPatternParams(pattern)
         self.updatePattern()
-
 
 
     def togglePattern(self, enabled):
@@ -343,7 +338,7 @@ class ImRecMainViewController(ImRecWidgetController):
                     self._widget.raiseMultiDataDock()
                     return
 
-            name = os.path.split(dataPath)[1]
+            name = os.path.split(dataPath)[1] # type: ignore
             if self._currentDataObj is not None:
                 self._currentDataObj.checkAndUnloadData()
             self._currentDataObj = DataObj(name, datasetToLoad, path=dataPath)

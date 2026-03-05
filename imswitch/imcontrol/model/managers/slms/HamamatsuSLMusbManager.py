@@ -54,10 +54,6 @@ class HamamatsuSLMusbManager(SignalInterface):
 
         if self.dll is not None:
             self.define_dll_prototypes()
-    
-    @property
-    def requires_device_connection(self):
-        return True
 
     def finalize(self):
         """Finalize the manager by closing any open connections."""

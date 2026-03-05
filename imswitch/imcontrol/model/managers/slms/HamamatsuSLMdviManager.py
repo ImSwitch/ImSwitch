@@ -44,10 +44,6 @@ class HamamatsuSLMdviManager(SignalInterface):
 
         self.init_slm_window()
 
-    @property
-    def requires_device_connection(self):
-        return False
-
     def init_slm_window(self):
         """Init SLM QLabel as fullscreen wundow and show a random pattern on specified screen"""
 

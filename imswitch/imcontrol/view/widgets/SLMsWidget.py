@@ -84,6 +84,9 @@ _collaps_section_format = {
     "fontsize": 9,
 }
 
+# debounce time for SLM refresh when changing parameter
+_DEBOUNCE_TIME = 800 # 800ms
+
 
 class SLMsWidget(Widget):
     """Widget containing SLM interface, patterns, and CGH controls."""
@@ -1638,7 +1641,7 @@ class SLMsWidget(Widget):
 
     def _schedulePatternUpdate(self,slmKey):
         timer = self._get_slm_timer(slmKey)
-        timer.start(500)  # 500ms debounce
+        timer.start(_DEBOUNCE_TIME)
 
     def _lineEditUpdate(self, text, slmKey):
         """

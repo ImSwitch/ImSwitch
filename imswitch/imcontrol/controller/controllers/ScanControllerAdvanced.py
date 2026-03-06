@@ -5,6 +5,7 @@ import configparser
 from ast import literal_eval
 
 import numpy as np
+from PyQt5.QtCore import QTimer
 from imswitch.imcommon.model import APIExport
 from ..basecontrollers import SuperScanController
 
@@ -75,6 +76,35 @@ class ScanControllerAdvanced(SuperScanController):
             self.plotSignalGraph()
         except Exception:
             self._logger.debug("[ScanControllerAdvanced] initial plotSignalGraph failed:\n%s", traceback.format_exc())
+
+        # ---- BeadRec signal bridge (widget → commChannel) ----
+        # Mirror the pattern from ScanControllerMoNaLISA so BeadRecController works
+        # with the Advanced scan widget without modification.
+        try:
+            self._widget.sigUpdateBeadRecCenter.connect(
+                self._commChannel.sigUpdateBeadRecCenter.emit
+            )
+        except Exception:
+            pass
+        try:
+            self._widget.sigShowBeadRecCenterCross.connect(
+                self._commChannel.sigShowBeadRecCenterCross.emit
+            )
+        except Exception:
+            pass
+        try:
+            self._widget.sigAutoAxialToggled.connect(
+                self._commChannel.sigAutoAxialToggled.emit
+            )
+        except Exception:
+            pass
+
+        # Emit initial (0, 0) bead center so BeadRecController.yCenter/xCenter
+        # are non-None from startup.  Without this the crosshair can never appear
+        # because updateCenterCrossWidget() guards on `yCenter is not None`.
+        # Use singleShot(0) so all other controllers (including BeadRecController)
+        # have finished __init__ before we emit.
+        QTimer.singleShot(0, lambda: self._commChannel.sigUpdateBeadRecCenter.emit(0, 0))
 
     # ---------------------------------------------------------------------
     # Internal helpers: designer instances (no ScanManager in this branch)
@@ -197,12 +227,66 @@ class ScanControllerAdvanced(SuperScanController):
             "TTLCycleSignalsDict": TTLCycleSignalsDict,
         }
 
+        # Guarantee a complete standard contract for downstream consumers (e.g. APDManager),
+        # regardless of which scan designer was used.
+        self._finalize_scanInfoDict(scanInfoDict)
+
         self._lastScanInfoDict = scanInfoDict
         self._lastSignalDict = signalDict
         self._lastTTLCycleSignalsDict = signalDict.get("TTLCycleSignalsDict", None)
         self._lastTTLParameters = copy.deepcopy(TTLParameters)
 
         return signalDict, scanInfoDict
+
+    def _finalize_scanInfoDict(self, scanInfoDict: dict) -> None:
+        """
+        Fill any missing standard scanInfoDict keys with safe defaults.
+
+        Ensures APDManager.ScanWorker (and other consumers) work correctly
+        regardless of which scan designer produced the dict. GalvoScanDesigner
+        already provides all keys; BetaScanDesigner and future designers may not.
+        """
+        defaults = {
+            'phase_delay': 0,
+            'smooth_axes': [False, False, False],
+            'scan_throw_startzero': 0,
+            'scan_throw_settling': 0,
+            'scan_throw_startacc': 0,
+            'scan_pads_initpos': [],
+        }
+        for key, val in defaults.items():
+            scanInfoDict.setdefault(key, val)
+
+    # ---------------------------------------------------------------------
+    # BeadRec interface (mirrors ScanControllerMoNaLISA)
+    # ---------------------------------------------------------------------
+
+    def getDimsScan(self):
+        """Return (x, y, z) pixel counts for each scan axis (0 if axis not active)."""
+        self.getParameters()
+        lengths = self._analogParameterDict.get('axis_length', [])
+        stepSizes = self._analogParameterDict.get('axis_step_size', [])
+        dims = []
+        for i in range(min(3, len(lengths))):
+            step = stepSizes[i] if i < len(stepSizes) else 0
+            dims.append(int(lengths[i] / step) if step != 0 else 0)
+        # pad to 3 elements
+        while len(dims) < 3:
+            dims.append(0)
+        return tuple(dims[:3])
+
+    def getScanStepSizes(self):
+        """Return step sizes for the first 3 scan axes (matching getDimsScan() length).
+
+        BeadRecController indexes into this list with a boolean mask derived from
+        getDimsScan(), so both methods must return the same number of elements (3).
+        Virtual axes beyond index 2 (e.g. timelapse, repeat) are excluded.
+        """
+        stepSizes = self._analogParameterDict.get('axis_step_size', [])
+        result = list(stepSizes[:3])
+        while len(result) < 3:
+            result.append(0.0)
+        return result
 
     # ---------------------------------------------------------------------
     # Parameters: UI -> dicts
@@ -216,7 +300,7 @@ class ScanControllerAdvanced(SuperScanController):
         from widget state.
 
         Analog format kept compatible with GalvoScanDesigner expectedParameters.
-        Digital format expected by AdvancedScanTTLCycleDesigner (your new TTL designer).
+        Digital format expected by AdvancedScanTTLCycleDesigner.
         """
         if getattr(self, "settingParameters", False):
             return

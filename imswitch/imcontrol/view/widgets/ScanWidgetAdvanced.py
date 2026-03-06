@@ -22,6 +22,11 @@ class ScanWidgetAdvanced(SuperScanWidget):
     # sigSeqTimeParChanged, sigStageParChanged, sigSignalParChanged
     # We'll emit sigSignalParChanged when TTL UI changes.
 
+    # BeadRec-compatible signals (same contract as ScanWidgetMoNaLISA)
+    sigUpdateBeadRecCenter = Signal(int, int)   # (y, x) in pixels
+    sigShowBeadRecCenterCross = Signal(bool)    # show/hide crosshair on bead image
+    sigAutoAxialToggled = Signal(bool)          # enable/disable axial scan sequence
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -94,6 +99,20 @@ class ScanWidgetAdvanced(SuperScanWidget):
         self._updatingPulseEdits = False
         # Devices (laser lines) that support per-linestep analog power programming
         self._linestep_power_capable_devices = set()
+
+        # --- BeadRec controls ---
+        self._showBeadCenterBox = QtWidgets.QCheckBox("Show bead center")
+        self._beadCenterXEdit = QtWidgets.QLineEdit("0")
+        self._beadCenterXEdit.setMaximumWidth(55)
+        self._beadCenterYEdit = QtWidgets.QLineEdit("0")
+        self._beadCenterYEdit.setMaximumWidth(55)
+
+        # Connect BeadRec signals
+        self._showBeadCenterBox.stateChanged.connect(
+            lambda state: self.sigShowBeadRecCenterCross.emit(bool(state))
+        )
+        self._beadCenterXEdit.textChanged.connect(self._emitBeadRecCenter)
+        self._beadCenterYEdit.textChanged.connect(self._emitBeadRecCenter)
 
     # -----------------------------
     # UI layout
@@ -276,7 +295,6 @@ class ScanWidgetAdvanced(SuperScanWidget):
         self._analogLevelLabel = QtWidgets.QLabel("Power Level (%)")
         advLayout.addWidget(self._analogLevelLabel, 3, 0, 1, 2)
         advLayout.addWidget(self._analogLevelEdit, 3, 2, 1, 2)
-        advLayout.addWidget(self._analogLevelEdit, 3, 2, 1, 2)
 
         advLayout.addWidget(self._applyAdvancedOptionsButton, 4, 0, 1, 4)
 
@@ -291,6 +309,19 @@ class ScanWidgetAdvanced(SuperScanWidget):
 
         # Initial sync pulse edit panel
         self._syncPulseEditsFromModel()
+
+        # --- BeadRec control row ---
+        beadRecRow = QtWidgets.QHBoxLayout()
+        beadRecRow.addWidget(self._showBeadCenterBox)
+        beadRecRow.addWidget(QtWidgets.QLabel("X:"))
+        beadRecRow.addWidget(self._beadCenterXEdit)
+        beadRecRow.addWidget(QtWidgets.QLabel("Y:"))
+        beadRecRow.addWidget(self._beadCenterYEdit)
+        beadRecRow.addStretch()
+        beadRecContainer = QtWidgets.QWidget()
+        beadRecContainer.setLayout(beadRecRow)
+        self.grid.addWidget(beadRecContainer, currentRow, 0, 1, 8)
+        currentRow += 1
 
         # Column widths
         self.grid.setColumnMinimumWidth(6, 90)
@@ -658,6 +689,17 @@ class ScanWidgetAdvanced(SuperScanWidget):
         # Otherwise, keep as a no-op to satisfy abstract API.
         if hasattr(self, "scanRadio"):
             self.scanRadio.setChecked(True)
+
+    # --- BeadRec helpers ---
+
+    def _emitBeadRecCenter(self):
+        """Emit sigUpdateBeadRecCenter when either coordinate field changes."""
+        try:
+            x = int(self._beadCenterXEdit.text())
+            y = int(self._beadCenterYEdit.text())
+            self.sigUpdateBeadRecCenter.emit(y, x)  # (y, x) matches MoNaLISA convention
+        except ValueError:
+            pass  # non-numeric input, ignore silently
 
     def setLineStepEnabled(self, deviceName: str, stepIdx: int, enabled: bool) -> None:
         row = self.ttl_line_steps.get(deviceName)

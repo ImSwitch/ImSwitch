@@ -67,7 +67,7 @@ class SLMsController(ImConWidgetController):
 
             # auto-connect for manager that needs device to connection
             if device_connection:
-                self._startup_connection(slmKey)
+                success = self._startup_connection(slmKey)
 
             # correction pattern folder: user-specified in config file or fallback to canonical
             correctionPatternsDir = None
@@ -89,14 +89,15 @@ class SLMsController(ImConWidgetController):
             # start config loading
             if slmInfo is not None:
                 if slmInfo.managerProperties.get("startConfig") is not None:
-                    start_config = slmInfo.managerProperties.get("startConfig")
-                    config_dir = self.get_slm_config_dir(slmKey)
-                    config_path = os.path.join(config_dir, start_config)
-                    if os.path.isfile(config_path):
-                        self.on_load_config(slmKey, path=config_path)
-                        self.__logger.info(f"Successfully loaded startup config for {slmName}")
-                    else:
-                        self.__logger.warning(f"Initial SLM config file {config_path} not found.")
+                    if not device_connection or success: # don't load config if not connection failed
+                        start_config = slmInfo.managerProperties.get("startConfig")
+                        config_dir = self.get_slm_config_dir(slmKey)
+                        config_path = os.path.join(config_dir, start_config)
+                        if os.path.isfile(config_path):
+                            self.on_load_config(slmKey, path=config_path)
+                            self.__logger.info(f"Successfully loaded startup config for {slmName}")
+                        else:
+                            self.__logger.warning(f"Initial SLM config file {config_path} not found.")
 
             self.refresh_available_configs(slmKey)
 
@@ -143,6 +144,7 @@ class SLMsController(ImConWidgetController):
         if not success:
             slmName=self._slmNames.get(slmKey)
             self._logger.warning(f"Attempt to connect to SLM {slmName} at start-up failed.")
+        return success
         
     def on_update_pattern(self, slmKey, params):
         

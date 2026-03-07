@@ -3,11 +3,11 @@ from imswitch.imcommon.model import pythontools
 from abc import ABC
 import importlib
 
-
 class StandManager(ABC):
     """ StandManager interface for dealing with microscope stand managers. """
     def __init__(self, deviceInfo, **lowLevelManagers):
         self.__logger = initLogger(self)
+        self.mocker = True
         self._subManager = None
         currentPackage = '.'.join(__name__.split('.')[:-1])
         if deviceInfo:
@@ -17,11 +17,9 @@ class StandManager(ABC):
                         pythontools.joinModulePath(f'{currentPackage}.{"stands"}',deviceInfo.managerName))
                 manager = getattr(package, deviceInfo.managerName)
                 self._subManager = manager(deviceInfo, **lowLevelManagers)
-
-            except:
+                self.mocker=False
+            except Exception as e:
                 self.__logger.error(f'Failed to load LeicaDMIManager (not provided due to NDA). Loading mocker.')
-                print(deviceInfo)
-                print(lowLevelManagers)
                 package = importlib.import_module(
                     pythontools.joinModulePath(f'{currentPackage}.{"stands"}',f'{deviceInfo.managerName}_mock'))
                 manager = getattr(package, f'Mock{deviceInfo.managerName}')

@@ -47,7 +47,7 @@ class PIStageManager(PositionerManager, SignalInterface):
         #   - Able/Disable toggled by X axis button
         self.fastSpeed = 1.0
         self.slowSpeed = 0.2
-        self.buttonPollIntervalMs = 50
+        self.buttonPollIntervalMs = 200
         self.speedButtonPressed = None  # last known state
         self.speedButtonController = 'Y'
         self.enableButtonController = 'X'

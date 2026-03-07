@@ -11,7 +11,7 @@ class PositionerController(ImConWidgetController):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self._liveUpdateIntervalMs = 100
+        self._liveUpdateIntervalMs = 300
         self._liveUpdateTimer = QTimer()
         self._liveUpdateTimer.setInterval(self._liveUpdateIntervalMs)
         self._liveUpdateTimer.timeout.connect(self._refreshLiveUpdatedPositioners)

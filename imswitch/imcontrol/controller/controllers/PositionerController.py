@@ -17,6 +17,7 @@ class PositionerController(ImConWidgetController):
         self._liveUpdateTimer.timeout.connect(self._refreshLiveUpdatedPositioners)
 
         self.settingAttr = False
+        self._previousJoystickState = None
 
         self.__logger = initLogger(self, tryInheritParent=True)
 
@@ -31,7 +32,6 @@ class PositionerController(ImConWidgetController):
 
             if pManager.joystick:
                 self._widget.addJoystick(pName)
-                self._PreviousJoystickState = True
 
             speed = hasattr(pManager, 'speed')
             self._widget.addPositioner(pName, pManager.axes, speed, pManager.joystick)
@@ -46,9 +46,13 @@ class PositionerController(ImConWidgetController):
                 # Set joystick checkbox status for first start
                 self.setJoystickCheckStatus(self._master.positionersManager[pName].joystickStatus)
                 # Connect channels
-                self._commChannel.sigRecordingStarted.connect(lambda: self.requestJoystickStatus(False, pName))
-                self._commChannel.sigRecordingEnded.connect(lambda: self.setJoystickStatusAfterRec(pName))
-                # self._commChannel.sigInitiateEtMonalisa.connect(lambda state: self.setJoystickStatus(not state, pName))
+                self._commChannel.sigRecordingStarted.connect(
+                    lambda pName=pName: self.setJoystickStatusForRec(False, pName)
+                )
+                self._commChannel.sigRecordingEnded.connect(
+                    lambda pName=pName: self.setJoystickStatusAfterRec(pName)
+                )
+                # self._commChannel.sigInitiateEtMonalisa.connect(lambda state, pName=pName: self.setJoystickStatus(not state, pName))
 
                 if hasattr(pManager, "sigJoystickStatusChanged"):
                     pManager.sigJoystickStatusChanged.connect(
@@ -105,9 +109,16 @@ class PositionerController(ImConWidgetController):
             self.updatePosition(pName, 'all')
 
     def setJoystickStatusAfterRec(self, pName):
-        if self._PreviousJoystickState:
+        if self._previousJoystickState:
             # if the joystick was enabled before the scan, enable it again after rec
             self.requestJoystickStatus(True, pName)
+        self._previousJoystickState = None
+
+    def setJoystickStatusForRec(self, enabled, pName):
+        if not enabled and self._previousJoystickState is None:
+            pManager = self._master.positionersManager[pName]
+            self._previousJoystickState = getattr(pManager, "joystickStatus", False)
+        self.requestJoystickStatus(enabled, pName)
 
 
     def requestJoystickStatus(self, enabled, pName):
@@ -116,7 +127,6 @@ class PositionerController(ImConWidgetController):
         if not hasattr(pManager, "setJoystickEnabled"):
             return
 
-        self._PreviousJoystickState = getattr(pManager, "joystickStatus", False)
         pManager.setJoystickEnabled(enabled)
 
     def setJoystickCheckStatus(self, state:bool):

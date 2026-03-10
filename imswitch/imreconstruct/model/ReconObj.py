@@ -1,3 +1,5 @@
+# type: ignore
+
 import numpy as np
 
 from imswitch.imcommon.model import initLogger
@@ -15,11 +17,11 @@ class ReconObj:
             timepoints_text, 
             p_text, 
             n_text, 
-            buffer_args = None,
+            bufferArgs = None,
             *args, 
             **kwargs
     ):
-        super().__init__(*args, **kwargs)
+        # super().__init__(*args, **kwargs)
         self.__logger = initLogger(self, instanceName=name)
 
         self.r_l_text = r_l_text
@@ -30,40 +32,38 @@ class ReconObj:
         self.n_text = n_text
 
         self.name = name
+
         self.coeffs = None
         self.reconstructed = None
+        self.flatReconView = None
+
         self.scanParDict = scanParDict.copy()
+
+        self.bufferRows = None 
+        self.bufferCols = None 
 
         self.dispLevels = None
 
-        if buffer_args is not None:
-            self.nx_c = buffer_args["nx_c"]
-            self.ny_c = buffer_args["ny_c"]
-            self.nx_s = buffer_args["nx_s"]
-            self.ny_s = buffer_args["ny_s"]
-            self.buffer_rows = self.ny_c * self.ny_s
-            self.buffer_cols = self.nx_c * self.nx_s 
+        if bufferArgs is not None:
+            self.bufferRows = bufferArgs["ny_c"] * bufferArgs["ny_s"]
+            self.bufferCols = bufferArgs["nx_c"] * bufferArgs["nx_s"]
             
-            self.scanParDict["range"] = [float(self.buffer_cols), float(self.buffer_rows)]
+            self.scanParDict["range"] = [float(self.bufferCols), float(self.bufferRows)]
             self.scanParDict["start"] = [0.0, 0.0]
             self.scanParDict["stop"] = self.scanParDict["range"]
 
-            # Initialize as 6D: [Dataset, Base, Time, Z, Y, X]
-            # This matches the [0, 1, 2, 3, 5, 4] transpose order perfectly
-            self.reconstructed = np.zeros((1, 1, 1, 1, self.buffer_rows, self.buffer_cols), dtype=np.float32)
-            self._flat_recon_view = self.reconstructed[0, 0, 0, 0].ravel()
+            # 6D: [Dataset, Base, Time, Z, Y, X]; transpose order: [0, 1, 2, 3, 5, 4] 
+            self.reconstructed = np.zeros((1, 1, 1, 1, self.bufferRows, self.bufferCols), dtype=np.float32)
+            self.flatReconView = self.reconstructed[0, 0, 0, 0].reshape(-1)
             self.reconstructed[0, 0, 0, 0, 0, 0] = 1e-8 
             
             self.dispLevels = [0.0, 100.0]
             
-            self.__logger.info(f"Live Buffer initialized: {self.buffer_rows}x{self.buffer_cols} (6D)")
+            self.__logger.info(f"Live Buffer initialized with shape: {self.bufferRows}x{self.bufferCols}")
     
-    def addLiveFrame(self, flat_coeffs, frame_indices): 
-        """
-        Directly places focus intensities into the reconstructed image buffer 
-        using the pre-calculated 1D indices <frame_inds>.
-        """
-        self._flat_recon_view[frame_indices] = flat_coeffs
+
+    def addLiveFrame(self, flatCoeffs, frameIndices): 
+        self.flatReconView[frameIndices] = flatCoeffs
     
 
     def setDispLevels(self, levels):
@@ -73,17 +73,20 @@ class ReconObj:
     def getDispLevels(self):
         return self.dispLevels
 
+
     def getReconstruction(self):
         return self.reconstructed
+
 
     def getCoeffs(self):
         return self.coeffs
 
+
     def getScanParams(self):
         return self.scanParDict
 
+
     def addCoeffsTP(self, inCoeffs):
-        """ Adds a set of coefficients to the existing set of coefficients. """
         if self.coeffs is None:
             # self.__logger.debug(f'In if, shape is: {np.shape(inCoeffs)}')
             # self.__logger.debug(f'Coeffs are: {inCoeffs}')
@@ -95,13 +98,12 @@ class ReconObj:
             inCoeffs = np.expand_dims(inCoeffs, 0)
             self.coeffs = np.vstack((self.coeffs, inCoeffs))
 
+
     def updateScanParams(self, scanParDict):
         self.scanParDict = scanParDict
 
+
     def updateImages(self):
-        """Updates the variable self.reconstructed which contains the final
-        reconstructed and reassigned images of ALL the bases given to the
-        reconstructor"""
         if self.coeffs is not None:
             datasets = np.shape(self.coeffs)[0]
             bases = np.shape(self.coeffs)[1]
@@ -113,6 +115,7 @@ class ReconObj:
         else:
             self.__logger.error('Cannot update images without coefficients')
 
+
     def addGridOfCoeffs(self, im, coeffs, t, s, r0, c0, pr, pc):
         # self.__logger.debug(f'Timepoint: {t}')
         # self.__logger.debug(f'shape if im: {im.shape}')
@@ -122,6 +125,7 @@ class ReconObj:
         # self.__logger.debug(f'pr: {pr}')
         # self.__logger.debug(f'pc: {pc}')
         im[t, s, r0::pr, c0::pc] = coeffs
+
 
     def coeffsToImage(self, coeffs, scanParDict):
         """Takes the 4d matrix of coefficients from the signal extraction and

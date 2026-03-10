@@ -1,9 +1,12 @@
+# type: ignore
+
 import numpy as np
 
 from .basecontrollers import ImRecWidgetController
 
 
 class ReconstructionViewController(ImRecWidgetController):
+    
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -56,7 +59,11 @@ class ReconstructionViewController(ImRecWidgetController):
         self._prevViewId = self.getViewId()
 
     def setImgSlice(self, autoLevels=False, levels=None):
-        data = self._widget.getCurrentItemData().reconstructed
+        reconObj = self._widget.getCurrentItemData()
+        if reconObj is None or reconObj.reconstructed is None:
+            return
+        
+        data = reconObj.reconstructed
 
         if self.getViewId() == 3:
             transposeOrder = [0, 1, 2, 3, 4, 5]
@@ -103,7 +110,7 @@ class ReconstructionViewController(ImRecWidgetController):
         # Find image at current base
         im = self._widget.getImage()
         indexForImage = [slice(None) for _ in range(len(im.shape))]
-        indexForImage[baseAxisIndex] = base
+        indexForImage[baseAxisIndex] = base                          
         imAtBase = im[tuple(indexForImage)]
 
         # Update levels

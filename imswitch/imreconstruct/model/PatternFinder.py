@@ -5,28 +5,28 @@ from scipy.signal import find_peaks
 
 
 try:
-    from .karl_model_code.localizer import localizer
-    NANORECON_AVAILABLE = True
+    from .karl_models.localizer import localizer
+    NEW_LOCALIZER_AVAILABLE = True
 except ImportError as e:
     print(f"Could not load new localizer: {e}")
-    NANORECON_AVAILABLE = False
+    NEW_LOCALIZER_AVAILABLE = False
 
 
 class PatternFinder:
     
-    def findPattern(self, image, image_stack=None):
+    def findPattern(self, image, imageStack=None):
         """ Finds the offsets and periods of the pattern in the image. """
-        if NANORECON_AVAILABLE:
+        if NEW_LOCALIZER_AVAILABLE:
             try:                
-                loc_res = localizer(image_stack, plot=False) # type: ignore
+                locRes = localizer(imageStack, plot=False) # type: ignore
                 with open("loc_parms.json", 'w') as f: 
-                    f.write(json.dumps(loc_res))
+                    f.write(json.dumps(locRes))
 
                 return [
-                    loc_res["yo"], 
-                    loc_res["xo"], 
-                    loc_res["yp"], 
-                    loc_res["xp"]
+                    locRes["yo"], 
+                    locRes["xo"], 
+                    locRes["yp"], 
+                    locRes["xp"]
                 ] 
             
             except Exception as e:

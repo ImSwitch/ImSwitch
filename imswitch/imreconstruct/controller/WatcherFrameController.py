@@ -1,23 +1,34 @@
+# type: ignore
+
 from imswitch.imcommon.view.guitools.FileWatcher import FileWatcher
 from imswitch.imreconstruct.model import DataObj
+from imswitch.imreconstruct.controller.karl_workers.io_workers import FileLoaderWorker
+from imswitch.imcommon.model.logging import initLogger
+from .basecontrollers import ImRecWidgetController
+
+
 import os
 import json
-from .basecontrollers import ImRecWidgetController
-from imswitch.imcommon.model.logging import initLogger
 import zarr
-import numpy as np
 from ome_zarr.io import parse_url
 from ome_zarr.writer import write_image
-from time import perf_counter
 import tifffile as tiff
 import h5py
+
+import numpy as np
+
+from time import perf_counter
 
 from qtpy import QtCore
 
 
 
 class WatcherFrameController(ImRecWidgetController):
+    
     """ Linked to WatcherFrame. """
+
+    sigTriggerRun = QtCore.Signal(str)
+   
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -34,73 +45,81 @@ class WatcherFrameController(ImRecWidgetController):
         self._widget.sigChangeFolder.connect(lambda: self._widget.updateFileList(self._commChannel.extension.value()))
         
         self._commChannel.sigExecutionFinished.connect(self.executionFinished)
+        
         self._commChannel.extension.sigValueChanged.connect(self.extensionChanged)
-        
-        # self._commChannel.sigDataFolderChanged.connect(self.recPath)
-        
+                
         self.execution = False
         self.toExecute = []
+        
         self.current = None
+        
         self.t0 = None
+        
         self.extension = None
+        
+        self.watcher = None
         
 
     def toggleWatch(self, checked):
-        self._logger.debug(f"We've entered the toggleWatch() method, where checked = {checked}")
-        
         self._widget.path = self._widget.folderEdit.text()
-        self._logger.debug(f"File Watcher path: {self._widget.path}")
-
-        if checked and (not self._widget.path or not os.path.isdir(self._widget.path)): 
-            self._logger.error("Select a valid folder")            
-            # silently uncheck buttons
+        if checked and (not self._widget.path or not os.path.isdir(self._widget.path)):
+            self._logger.error("Select a valid folder")
             for button in [self._widget.watchCheck, self._widget.liveModeCheck]:
                 button.blockSignals(True)
                 button.setChecked(False)
-                button.blockSignals(False) 
+                button.blockSignals(False)
             return
         
         if checked:
             try:
                 with open("loc_parms.json", 'r') as f:
                     params = json.load(f)
+                
+                self.numFramesInStack = params.get("nx_s", 60) * params.get("ny_s", 60)
+                numRowsInFrame = params.get("num_rows", 512)
+                numColsInFrame = params.get("num_cols", 512)
 
-                # --- LOAD DIMENSIONS ---
-                self.total_steps = params.get("nx_s", 60) * params.get("ny_s", 60)  
-                frame_x_dim = params.get("num_cols", 512) 
-                frame_y_dim = params.get("num_rows", 512)
-
-                # --- PRE-ALLOC CIRCULAR BUFFER ---
-                self.buffer = np.zeros((self.total_steps, frame_y_dim, frame_x_dim), dtype=np.float32) 
-
-                self._commChannel.sigSetupLiveStream.emit(params)
-
-                # --- SHARE REFERENCE TO BUFFER ---
-                self._commChannel.sigBufferInitialized.emit(self.buffer)
+                self.buffer = np.zeros((self.numFramesInStack, numRowsInFrame, numColsInFrame), dtype=np.float32)
+                self._commChannel.sigSetupLiveStream.emit(params, self.buffer)
                 self._logger.debug(f"Buffer of shape {self.buffer.shape} ready!")
 
             except Exception as e:
                 self._logger.error(f"Could not setup Buffer from .json file: {e}")
                 return
 
-            self._frameCounter = 0 
+            self.frameCounter = 0
+            self.stackCounter = 0
+
             self.extension = self._commChannel.extension.value()
 
+            self.loaderThread = QtCore.QThread()
+            # delete thread object from memory after its event loop is done
+            self.loaderThread.finished.connect(self.loaderThread.deleteLater)
+
+            self.loaderWorker = FileLoaderWorker(None) 
+            self.loaderWorker.moveToThread(self.loaderThread)
+
+            self.loaderWorker.sigFileLoaded.connect(self.onFileLoaded)
+
+            self.sigTriggerRun.connect(self.loaderWorker.run)
+            self.loaderThread.start()
+            
             self.watcher = FileWatcher(self._widget.path, interval=0.1)
             self.watcher.sigNewFiles.connect(self.newFiles) 
             self.watcher.start()
 
-            existing_files = self.watcher.filesInDirectory()
-            self._logger.debug(f"Existing files: {existing_files}")
-        
-            if existing_files:
-                self.newFiles(existing_files)
-        
-        # stop logic
+            existingFiles = self.watcher.filesInDirectory()        
+            if existingFiles:
+                self.newFiles(existingFiles)
+
         else: 
             if hasattr(self, "watcher"):
                 self.watcher.stop()
                 self.watcher.wait() 
+            
+            self.loaderThread.quit()
+            self.loaderThread.wait()
+
             self.toExecute = []
             self.execution = False 
             self._logger.debug("Watcher stopped.")
@@ -112,109 +131,85 @@ class WatcherFrameController(ImRecWidgetController):
 
 
     def newFiles(self, files):
-        self._logger.debug("We've entered newFiles()")
         self.toExecute.extend(files)
-        # uncomment to see an update of the UI list
         self._widget.updateFileList(self.extension) 
+        
         if not self.execution:
             self.runNextFile()
 
 
-    def runNextFile(self): 
-        # self._logger.debug(f"runNextFile has been called. is_live={self._widget.isLiveMode()}, toExecute={len(self.toExecute)}")
+    def runNextFile(self):
         if not self.toExecute or self.execution:
-            return 
+            return
         
-        filename = self.toExecute.pop(0) 
-        full_path = os.path.join(self._widget.path, filename)
-        is_live = self._widget.isLiveMode()
-        total_steps = self.total_steps
+        self.execution = True
 
-        try: 
-            if is_live: 
-                # --- READ DATA ---
-                extension = filename.lower()
-                if extension.endswith((".tif", ".tiff")):
-                    new_data = tiff.imread(full_path)   
-                elif extension.endswith((".h5", ".hdf5")): 
-                    with h5py.File(full_path, 'r') as f:
-                        # assume that "data" is the key
-                        first_key = list(f.keys())[0]
-                        new_data = f[first_key][:] # type: ignore
-                elif extension.endswith(".zarr"):
-                    zarr_file = zarr.open(full_path, mode='r')
-                    new_data = zarr_file[:]
-                
-                else:
-                    self._logger.error("File format not supported!")
-                    return 
+        filename = self.toExecute.pop(0)
+        fullPath = os.path.join(self._widget.path, filename)
 
-                # --- ENSURE 3D SHAPE ---
-                if new_data.ndim == 2: # type: ignore 
-                    new_data = [new_data]
-                        
-                # --- PROCESS FRAMES --- 
-                for frame in new_data: # type: ignore
-                    # load frame into buffer
-                    self.buffer[self._frameCounter] = frame  
-                    # debug:
-                    # print(f"DEBUG: Emitting frame {self._frameCounter}") 
-                    # tell view controller which index is ready
-                    self._commChannel.sigLiveFrameReady.emit(self._frameCounter) 
-                    # increment counter
-                    self._frameCounter = (self._frameCounter + 1) % total_steps
-                
-                # --- RECURSION --- 
-                QtCore.QTimer.singleShot(0, self.runNextFile)
+        self.loaderWorker.fullPath = fullPath
+        self.sigTriggerRun.emit(fullPath)
+
+
+    @QtCore.Slot(np.ndarray, str)                                     
+    def onFileLoaded(self, data, filename):
+        """ 
+        Runs the MAIN THREAD, receives data from I/O worker 
+        and hands it off to the Processor thread/queue.
+        """
+        self._logger.debug(f"File successfully loaded: {filename}")
+
+        if data.ndim == 2: 
+            data = np.expand_dims(data, axis=0) 
+
+        for frame in data:
+            self.buffer[self.frameCounter] = frame 
+            self._commChannel.sigLiveFrameReady.emit(self.frameCounter)
             
-            else: 
-                # --- LEGACY MODE ---
-                self.execution = True
-                datasets = DataObj.getDatasetNames(full_path)
-                dataObjs = []
-                for dataset in datasets: 
-                    file_handle, dataset_name, = DataObj._open(full_path, dataset)   
-                    dataObjs.append(DataObj(filename, dataset_name, path=full_path, file=file_handle))
-
-                self._commChannel.sigReconstruct.emit(dataObjs, True)
+            # self._logger.debug(f"Frames processed: {self.frameCounter + 1}")
+            
+            self.frameCounter = (self.frameCounter + 1) % self.numFramesInStack
         
-        except Exception as e:
-            self._logger.warning(f"File access error (retrying): {filename} - {e}")            
-            self.toExecute.insert(0, filename)  
-            QtCore.QTimer.singleShot(500, self.runNextFile)
+        self.stackCounter += 1
+        self._logger.debug(f"Stack/Chunk Processed: {self.stackCounter} with {self.numFramesInStack} frames")
+        
+        self.execution = False
+
+        self.runNextFile()
 
 
     def executionFinished(self, image):
         if self.execution:
             self.execution = False
             self.saveImage(image)
-            diff = perf_counter() - self.t0 # type: ignore
+            diff = perf_counter() - self.t0 
             self.watcher.addToLog(self.current, [str(self.t0), str(diff)])
             self._widget.updateFileList(self.extension)
             self.runNextFile()
+
 
     def saveImage(self, image):
         image = np.squeeze(image[:, 0, :, :, :, :])
         image = np.reshape(image, (1, *image.shape))
         extension = self._commChannel.extension.value()
-        if not os.path.exists(self.recPath): # type: ignore
+        if not os.path.exists(self.recPath): 
             if extension == 'zarr':
-                store = parse_url(self.recPath + '.tmp', mode="w").store # type: ignore
+                store = parse_url(self.recPath + '.tmp', mode="w").store 
                 root = zarr.group(store=store)
-                root.attrs["ImSwitchData"] = self.attrs["ImSwitchData"] # type: ignore
+                root.attrs["ImSwitchData"] = self.attrs["ImSwitchData"] 
                 write_image(image=image, group=root, axes="zyx")
                 store.close()
-                os.rename(self.recPath + '.tmp', self.recPath) # type: ignore
-                tiff.imwrite(self.recPath.split('.')[0] + ".tiff", image) # type: ignore
+                os.rename(self.recPath + '.tmp', self.recPath) 
+                tiff.imwrite(self.recPath.split('.')[0] + ".tiff", image) 
             if extension == 'hdf5':
-                h = h5py.File(self.recPath + '.tmp', 'w') # type: ignore
+                h = h5py.File(self.recPath + '.tmp', 'w') 
                 dset = h.create_dataset('data', data=image)
                 self._logger.debug(type(self.attrs))
-                for k in self.attrs.keys(): # type: ignore
-                    dset.attrs[k] = self.attrs[k] # type: ignore
+                for k in self.attrs.keys(): 
+                    dset.attrs[k] = self.attrs[k] 
                 h.close()
-                os.rename(self.recPath + '.tmp', self.recPath) # type: ignore
-                tiff.imwrite(self.recPath.split('.')[0] + ".tiff", image) # type: ignore
+                os.rename(self.recPath + '.tmp', self.recPath) 
+                tiff.imwrite(self.recPath.split('.')[0] + ".tiff", image) 
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

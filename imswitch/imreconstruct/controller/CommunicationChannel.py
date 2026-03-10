@@ -1,5 +1,7 @@
-from imswitch.imcommon.framework import Signal, SignalInterface
+# type: ignore
 
+from imswitch.imcommon.framework import Signal, SignalInterface
+import numpy as np
 
 class CommunicationChannel(SignalInterface):
     """
@@ -7,20 +9,19 @@ class CommunicationChannel(SignalInterface):
     and Widgets, or between Widgets.
     """
     # --- OLD SIGNALS ---
-    sigDataFolderChanged = Signal(object)  # type: ignore (dataFolderPath) 
-    sigSaveFolderChanged = Signal(object)  # type: ignore (saveFolderPath)
-    sigCurrentDataChanged = Signal(object)  # type: ignore (dataObj)
-    sigScanParamsUpdated = Signal(object, bool)  # type: ignore (scanParDict, applyOnCurrentRecon)
-    sigPatternUpdated = Signal(object)  # type: ignore (pattern) 
-    sigPatternVisibilityChanged = Signal(bool)  # type: ignore (visible)
-    sigAddToMultiData = Signal(str, str)  # type: ignore (path, datasetName) 
-    sigReconstruct = Signal(object, bool) # type: ignore
-    sigExecutionFinished = Signal(object) # type: ignore
+    sigDataFolderChanged = Signal(object)          # (dataFolderPath) 
+    sigSaveFolderChanged = Signal(object)          # (saveFolderPath)
+    sigCurrentDataChanged = Signal(object)         # (dataObj)
+    sigScanParamsUpdated = Signal(object, bool)    # (scanParDict, applyOnCurrentRecon)
+    sigPatternUpdated = Signal(object)             # (pattern) 
+    sigPatternVisibilityChanged = Signal(bool)     # (visible)
+    sigAddToMultiData = Signal(str, str)           # (path, datasetName) 
+    sigReconstruct = Signal(object, bool)          # 
+    sigExecutionFinished = Signal(object)          # 
 
     # --- NEW SIGNALS ---
-    sigSetupLiveStream = Signal(object) # type: ignore (params dict)
-    sigBufferInitialized = Signal(object) # type: ignore (np.ndarray buffer)
-    sigLiveFrameReady = Signal(int) # type: ignore (index of the frame in the buffer)
+    sigSetupLiveStream = Signal(dict, np.ndarray)  # (params dict, buffer np.ndarray)
+    sigLiveFrameReady = Signal(int)                # (index of the frame in the buffer)
 
 
 

@@ -1,3 +1,11 @@
+# import os 
+# print(f"DEBUG: I am running from: {os.path.abspath(__file__)}")
+# import sys 
+# print("--- PATHS PYTHON IS SEARCHING ---")
+# for p in sys.path:
+#     print(p)
+
+
 from imswitch import imreconstruct
 from imswitch.imcommon import prepareApp, launchApp
 from imswitch.imcommon.controller import ModuleCommunicationChannel

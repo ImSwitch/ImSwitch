@@ -1,3 +1,5 @@
+# type: ignore
+
 import numpy as np
 import json
 from scipy.optimize import curve_fit
@@ -16,11 +18,16 @@ class PatternFinder:
     
     def findPattern(self, image, imageStack=None):
         """ Finds the offsets and periods of the pattern in the image. """
+        
+        print("--- THIS IS DEFINITELY BRANCH <liveRec_dev> ---")
+        
         if NEW_LOCALIZER_AVAILABLE:
             try:                
-                locRes = localizer(imageStack, plot=False) # type: ignore
+                locRes = localizer(imageStack, plot=False) 
                 with open("loc_parms.json", 'w') as f: 
                     f.write(json.dumps(locRes))
+
+                print(f"SUCCESS: Custom localizer succeeded.")
 
                 return [
                     locRes["yo"], 
@@ -30,7 +37,7 @@ class PatternFinder:
                 ] 
             
             except Exception as e:
-                print(f"Error: Custom localizer failed, falling back to ImSwitch Localizer {e}")
+                print(f"ERROR: Custom localizer failed with exception {e}, falling back to ImSwitch Localizer.")
 
         # --- LEGACY CODE ---
         image = image - image.min()

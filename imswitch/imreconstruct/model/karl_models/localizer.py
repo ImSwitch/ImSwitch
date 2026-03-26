@@ -151,7 +151,8 @@ def localizer(
         img_data: np.ndarray,
         xp_guess: float = 10.0,
         yp_guess: float = 10.0,
-        plot: bool = False
+        plot: bool = False,
+        dummy_mode: bool = False
 ) -> Dict[str, Union[int, float]]:
     """
     Finds grid periods and offsets in 2D image data. Handles both single 
@@ -162,12 +163,11 @@ def localizer(
         xp_guess (float): Initial guess for x-period.
         yp_guess (float): Initial guess for y-period.
         plot (bool): If True, displays the grid localization results.
+        dummy_mode (bool): return dummy values for testing.
         
     Returns:
         Dict[str, Union[int, float]]: Mapping of optimized grid parameters and dimensions.
     """
-    nx_s = 0
-    ny_s = 0
     if img_data.ndim == 3: 
         num_frames, num_rows, num_cols = img_data.shape
         img_stack_sum = np.double(img_data.sum(axis=0))

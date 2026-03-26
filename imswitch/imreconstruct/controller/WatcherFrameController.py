@@ -1,24 +1,23 @@
 # type: ignore
 
+from .basecontrollers import ImRecWidgetController
+
 from imswitch.imcommon.view.guitools.FileWatcher import FileWatcher
 from imswitch.imreconstruct.model import DataObj
 from imswitch.imreconstruct.controller.karl_workers.io_workers import FileLoaderWorker
+from imswitch.imreconstruct.controller.karl_workers.zarr_workers import ZarrStreamWorker
 from imswitch.imcommon.model.logging import initLogger
-from .basecontrollers import ImRecWidgetController
-
 
 import os
 import json
+import tifffile as tiff
+import h5py
 import zarr
 from ome_zarr.io import parse_url
 from ome_zarr.writer import write_image
-import tifffile as tiff
-import h5py
 
 import numpy as np
-
 from time import perf_counter
-
 from qtpy import QtCore
 
 
@@ -92,37 +91,74 @@ class WatcherFrameController(ImRecWidgetController):
 
             self.extension = self._commChannel.extension.value()
 
-            self.loaderThread = QtCore.QThread()
-            # delete thread object from memory after its event loop is done
-            self.loaderThread.finished.connect(self.loaderThread.deleteLater)
-
-            self.loaderWorker = FileLoaderWorker(None) 
-            self.loaderWorker.moveToThread(self.loaderThread)
-
-            self.loaderWorker.sigFileLoaded.connect(self.onFileLoaded)
-
-            self.sigTriggerRun.connect(self.loaderWorker.run)
-            self.loaderThread.start()
-            
-            self.watcher = FileWatcher(self._widget.path, interval=0.1)
-            self.watcher.sigNewFiles.connect(self.newFiles) 
-            self.watcher.start()
-
-            existingFiles = self.watcher.filesInDirectory()        
-            if existingFiles:
-                self.newFiles(existingFiles)
-
+            if self._widget.path.lower().endswith(".zarr"):
+                self.startZarrStream(self._widget.path)
+            else:
+                # --- MODE: tiff or hdf5 ---
+                self.startStandardWatcher()
         else: 
-            if hasattr(self, "watcher"):
-                self.watcher.stop()
-                self.watcher.wait() 
+            # --- STOP LOGIC ---
+            self.stopAllWorkers()            
+
+
+    def startZarrStream(self, zarrPath):
+        # prevent duplicate streams
+        if hasattr(self, "zarrWorker") and self.zarrWorker.running:
+            self._logger.debug(f"Zarr stream already running for {self.zarrWorker.path}") 
+            return 
+        
+        self._logger.info(f"Starting Zarr Stream Worker on: {zarrPath}")
+
+        self.zarrThread = QtCore.QThread() 
+        self.zarrWorker = ZarrStreamWorker(zarrPath, int(self.numFramesInStack))
+        self.zarrWorker.moveToThread(self.zarrThread)
+
+        self.zarrThread.started.connect(self.zarrWorker.run)
+        self.zarrWorker.sigChunkLoaded.connect(self.onFileLoaded)
+
+        self.zarrThread.finished.connect(self.zarrThread.quit)
+        self.zarrThread.finished.connect(self.zarrThread.deleteLater)
+        
+        self.zarrThread.start()
+
+
+    def startStandardWatcher(self):
+        self.loaderThread = QtCore.QThread()
+        self.loaderThread.finished.connect(self.loaderThread.deleteLater)
+
+        self.loaderWorker = FileLoaderWorker(None) 
+        self.loaderWorker.moveToThread(self.loaderThread)
+        self.loaderWorker.sigFileLoaded.connect(self.onFileLoaded)
+
+        self.sigTriggerRun.connect(self.loaderWorker.run)
+        self.loaderThread.start()
+        
+        self.watcher = FileWatcher(self._widget.path, interval=0.1)
+        self.watcher.sigNewFiles.connect(self.newFiles) 
+        self.watcher.start()
+
+        existingFiles = self.watcher.filesInDirectory()        
+        if existingFiles:
+            self.newFiles(existingFiles)
+
+
+    def stopAllWorkers(self):
+        if hasattr(self, "zarrWorker"):
+                self.zarrWorker.stop()
+                self.zarrThread.quit()
+                self.zarrThread.wait()
             
+        # if hasattr(self, "watcher"):
+        #     self.watcher.stop()
+        #     self.watcher.wait() 
+        
+        if hasattr(self, "loaderThread"):
             self.loaderThread.quit()
             self.loaderThread.wait()
 
-            self.toExecute = []
-            self.execution = False 
-            self._logger.debug("Watcher stopped.")
+        self.toExecute = []
+        self.execution = False 
+        self._logger.debug("Watcher and Streamers stopped.")
 
 
     def extensionChanged(self):
@@ -142,13 +178,18 @@ class WatcherFrameController(ImRecWidgetController):
         if not self.toExecute or self.execution:
             return
         
-        self.execution = True
-
         filename = self.toExecute.pop(0)
         fullPath = os.path.join(self._widget.path, filename)
 
-        self.loaderWorker.fullPath = fullPath
-        self.sigTriggerRun.emit(fullPath)
+        if filename.lower().endswith(".zarr"): 
+            # check if the dectected file is a zarr store
+            self._logger.info(f"Zarr Store detected: {filename}. Switching to Stream mode.")
+            self.startZarrStream(fullpath)
+        else:
+            # existing tif/hdf5 logic 
+            self.execution = True
+            self.loaderWorker.fullPath = fullPath
+            self.sigTriggerRun.emit(fullPath)
 
 
     @QtCore.Slot(np.ndarray, str)                                     
@@ -164,18 +205,18 @@ class WatcherFrameController(ImRecWidgetController):
 
         for frame in data:
             self.buffer[self.frameCounter] = frame 
-            self._commChannel.sigLiveFrameReady.emit(self.frameCounter)
-            
-            # self._logger.debug(f"Frames processed: {self.frameCounter + 1}")
-            
+            self._commChannel.sigLiveFrameReady.emit(self.frameCounter)            
             self.frameCounter = (self.frameCounter + 1) % self.numFramesInStack
         
         self.stackCounter += 1
         self._logger.debug(f"Stack/Chunk Processed: {self.stackCounter} with {self.numFramesInStack} frames")
         
-        self.execution = False
-
-        self.runNextFile()
+        if self.extension != "zarr":
+            self.execution = False
+            self.runNextFile()
+        else: 
+            # in zarr mode, we wait for the next signal from ZarrStreamWorker
+            pass
 
 
     def executionFinished(self, image):

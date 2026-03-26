@@ -181,10 +181,11 @@ class WatcherFrameController(ImRecWidgetController):
         filename = self.toExecute.pop(0)
         fullPath = os.path.join(self._widget.path, filename)
 
+        # zarr folder:
         if filename.lower().endswith(".zarr"): 
             # check if the dectected file is a zarr store
             self._logger.info(f"Zarr Store detected: {filename}. Switching to Stream mode.")
-            self.startZarrStream(fullpath)
+            self.startZarrStream(fullPath)
         else:
             # existing tif/hdf5 logic 
             self.execution = True

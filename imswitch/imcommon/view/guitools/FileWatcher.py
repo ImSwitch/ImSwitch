@@ -35,11 +35,11 @@ class FileWatcher(QtCore.QThread):
             f_lower = f.lower()
 
             # 1. match for selected extension
-            if f_lower.endswith('.' + target_ext) and (isfile(full_path) or isdir(full_path)):
-                matches.append(f)
+            # if f_lower.endswith('.' + target_ext) and (isfile(full_path) or isdir(full_path)):
+            #     matches.append(f)
 
             # 2. always allow .zarr directories to be detected 
-            elif f_lower.endswith(".zarr") and isdir(full_path):
+            if f_lower.endswith(".zarr") and isdir(full_path):
                 if f not in matches: # avoid duplicates   
                     matches.append(f)
 

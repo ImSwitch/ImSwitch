@@ -28,12 +28,9 @@ class ZarrStreamWorker(QtCore.QObject):
 
     @QtCore.Slot()
     def run(self) -> None: 
-        print("WORKER: Run method started!")
-
         self.running = True
-        print(f"WORKER: self.running is now {self.running}")
-
         last_index = 0
+        print(f"Zarr Worker waiting for data in {self.path}")
 
         if not os.path.exists(self.path):
             print(f"WORKER ERROR: Path {self.path} does not exist.")
@@ -42,6 +39,14 @@ class ZarrStreamWorker(QtCore.QObject):
 
         while self.running: 
             try: 
+                # check if metadata file exists 
+                meta_path = os.path.join(self.path, ".zarray")
+                if not os.path.exists(meta_path):
+                    # folder exists, but zarr hasn't been initialized yet
+                    # TODO: replace with something that is more robust
+                    time.sleep(1)
+                    continue
+
                 # force hard refresh
                 z = zarr.open(self.path, mode='r') 
                 z._refresh_metadata()
@@ -71,7 +76,7 @@ class ZarrStreamWorker(QtCore.QObject):
                 # if we end up here it's typically due to the writer currently locking the 
                 # metadata file 
                 # TODO: replace with something that is more robust
-                time.sleep(0.1)
+                time.sleep(0.5)
         
         self.sigFinished.emit()
     

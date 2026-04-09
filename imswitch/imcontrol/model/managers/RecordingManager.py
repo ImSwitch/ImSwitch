@@ -373,16 +373,47 @@ class RecordingWorker(Worker):
                     f'{self.savename}_{detectorName}.{fileExtension}', False, False)
 
             elif self.saveFormat == SaveFormat.ZARR:
-                datasets[detectorName] = files[detectorName].create_dataset(datasetName, shape=(1, *reversed(shape)),
-                                                                            dtype='i2', chunks=(1, 512, 512)
-                                                                            )
+                
+                logger.debug(f"recFrames = {self.recFrames}")
 
-                datasets[detectorName].attrs['ImSwitchData'] = self.attrs[detectorName]
-                datasets[detectorName].attrs['detector_name'] = detectorName
+
+                # root group 
+                root = files[detectorName]
+                
+                # determine timepoint/scan index
+                scanNum = 0 
+                while f"timepoint_{str(scanNum).zfill(2)}" in root: # zfill(2) pads with zeros to the left 
+                    scanNum += 1
+                
+                groupName = f"timepoint_{str(scanNum).zfill(2)}"
+                
+                # create group for specific scan/timepoint
+                currentGroup = root.create_group(groupName)
+                logger.debug(f"Created Group: {groupName}")   
+                
+                # create zarr array inside the group; use .zeros | .array since we want to append; init shape: (1, Y, X)
+                framesPerChunk = 100
+                datasets[detectorName] = currentGroup.zeros(
+                    name="pixels", 
+                    shape=(1, shape[0], shape[1]), 
+                    chunks=(framesPerChunk, shape[0], shape[1]),
+                    dtype="i2"
+                )
+
+                # set attributes
+                datasets[detectorName].attrs["ImswitchData"] = self.attrs[detectorName]
+                datasets[detectorName].attrs["detector_name"] = detectorName
                 # For ImageJ compatibility
-                datasets[detectorName].attrs['element_size_um'] \
-                    = self.__recordingManager.detectorsManager[detectorName].pixelSizeUm
+                datasets[detectorName].attrs["element_size_um"] = self.__recordingManager.detectorsManager[detectorName].pixelSizeUm
                 datasets[detectorName].attrs['writing'] = True
+                # add metadata to group
+                currentGroup.attrs["type"] = "timepoint_stack"
+                
+                # datasets[detectorName] = files[detectorName].create_dataset(datasetName, shape=(1, *reversed(shape)),
+                #                                                             dtype='i2', chunks=(1, shape[0], shape[1]) # old vals (1, 512, 512)
+                #                                                             )
+
+                
 
         self.__recordingManager.sigRecordingStarted.emit()
         try:
@@ -395,7 +426,7 @@ class RecordingWorker(Worker):
                     raise ValueError('recFrames must be specified in SpecFrames, ScanOnce or'
                                      ' ScanLapse mode')
 
-                # calculate total number offrames for each detector (recFrames * number of TTL)
+                # calculate total number of frames for each detector (recFrames * number of TTL)
                 numCamTTL = self.numCamTTL if self.numCamTTL is not None else {}
                 nFramesPerDetector = {}
                 for detectorName in self.detectorNames:
@@ -436,12 +467,20 @@ class RecordingWorker(Worker):
                                     currentFrame[detectorName] = nFrames
                             elif self.saveFormat == SaveFormat.ZARR:
                                 dataset = datasets[detectorName]
+
+                                logger.debug(f"INIT: dataset[0, :, :] = {dataset[0, :, :]}")
+
                                 if it == 0:
                                     dataset[0, :, :] = newFrames[0, :, :]
+                                    
+                                    logger.debug(f"if it == 0: newFrames = {newFrames[0, :, :]}")
+                                    
                                     if n > 0:
                                         dataset.append(newFrames[1:n, :, :])
                                 else:
                                     dataset.append(newFrames)
+                                    logger.debug(f"else: newFrames = {newFrames}")
+
                                 currentFrame[detectorName] += n
 
                             # Things get a bit weird if we have multiple detectors when we report
@@ -605,6 +644,8 @@ class RecordingWorker(Worker):
                 fileDests[detectorName] = memRecordings[filePaths[detectorName]]
             else:
                 fileDests[detectorName] = filePaths[detectorName]
+
+                logger.debug(f"fileDests[detectorName] = {fileDests[detectorName]}")
 
             if singleMultiDetectorFile and len(files) > 0:
                 files[detectorName] = list(files.values())[0]

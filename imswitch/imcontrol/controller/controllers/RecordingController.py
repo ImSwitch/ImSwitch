@@ -170,6 +170,9 @@ class RecordingController(ImConWidgetController):
                                             self._widget.getMultiDetectorSingleFile())
             }
 
+
+            self._logger.debug(f"numScanPositions = {self._commChannel.getNumScanPositions()}")
+
             if self.recMode == RecMode.SpecFrames:
                 self.recordingArgs['recFrames'] = self._widget.getNumExpositions()
                 self._master.recordingManager.startRecording(**self.recordingArgs)

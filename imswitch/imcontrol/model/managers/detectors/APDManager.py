@@ -329,35 +329,12 @@ class ScanWorker(Worker):
                     self._seq_signal[self._seq_signal == 0] = np.nan
                     break
 
-        # number of steps on each axis in image
-        img_dims_in = list(scanInfoDict["img_dims"])
-        axes = list(scanInfoDict.get("img_axes_with_linesteps", []))  # preferred
+        # img_dims contains physical scan axes only (no linestep); n_linesteps is separate.
+        scan_dims = list(scanInfoDict["img_dims"])
+        scan_axes = list(scanInfoDict.get("img_axes_phys", ["x", "y", "z"][:len(scan_dims)]))
+        self._linestep = max(1, int(scanInfoDict.get("n_linesteps", 1)))
 
-        # Fallback if axes not provided (older designers): assume linestep is last dim iff n_linesteps>1 and len matches
-        if not axes:
-            axes = list(scanInfoDict.get("img_axes_phys", []))
-            n_ls = int(scanInfoDict.get("n_linesteps", 1))
-            if n_ls > 1:
-                axes = axes + ["linestep"]
-
-        # Determine linestep size + index
-        linestep_idx = axes.index("linestep") if "linestep" in axes else None
-        if linestep_idx is not None:
-            self._linestep = int(img_dims_in[linestep_idx])
-        else:
-            self._linestep = int(scanInfoDict.get("n_linesteps", 1))
-        self._linestep = max(1, self._linestep)
-
-        # Build "scan recursion dims" (NO linestep axis here!)
-        if linestep_idx is not None:
-            scan_dims = [d for i, d in enumerate(img_dims_in) if i != linestep_idx]
-            scan_axes = [a for i, a in enumerate(axes) if i != linestep_idx]
-        else:
-            scan_dims = img_dims_in
-            scan_axes = axes
-
-        # We assume X/Y are present and Y is the slow scan axis
-        # (This matches your designer contract: img_axes_phys starts as ["x","y","z"...])
+        # Y is the slow scan axis
         y_idx = scan_axes.index("y") if "y" in scan_axes else 1
 
         # Loop dims: expand Y by linestep (Ny -> Ny*S), keep other dims unchanged

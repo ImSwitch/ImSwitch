@@ -1,6 +1,6 @@
 import numpy as np
 
-from .basesignaldesigners import ScanDesigner
+from .basesignaldesigners import ScanDesigner, ScanInfoContract
 from imswitch.imcommon.model import initLogger
 
 class BetaScanDesigner(ScanDesigner):
@@ -90,14 +90,14 @@ class BetaScanDesigner(ScanDesigner):
         rampSignal = np.zeros(rampSamples)
         self._logger.debug(fast_axis_positions)
         rampValues = self.__makeRamp(fast_axis_start, fast_axis_size, fast_axis_positions)
-        print(rampValues)
+        self._logger.debug(rampValues)
         for s in range(fast_axis_positions):
             start = s * sequenceSamples
             end = s * sequenceSamples + sequenceSamples
             smooth = int(np.ceil(0.002 * sampleRate))
             settling = int(np.ceil(0.002 * sampleRate))
             rampSignal[start: end] = rampValues[s]
-            if s is not fast_axis_positions - 1:
+            if s != fast_axis_positions - 1:
                 if (end - smooth - settling) > 0:
                     rampSignal[end - smooth - settling: end - settling] = self.__smoothRamp(rampValues[s], rampValues[s + 1], smooth)
                     rampSignal[end - settling:end] = rampValues[s + 1]
@@ -137,7 +137,7 @@ class BetaScanDesigner(ScanDesigner):
         # Make slow axis signal
         sliceSamples = slow_axis_positions * colSamples
         sliceValues = self.__makeRamp(slow_axis_start, slow_axis_size, slow_axis_positions)
-        print(sliceValues)
+        self._logger.debug(sliceValues)
         fullCubeSignal = np.zeros(sliceSamples)
         for s in range(slow_axis_positions):
             fullCubeSignal[s * colSamples:(s + 1) * colSamples - returnSamples] = sliceValues[s]
@@ -160,13 +160,35 @@ class BetaScanDesigner(ScanDesigner):
                         parameterDict['target_device'][1]: middleAxisSignal}
             positions = [fast_axis_positions, middle_axis_positions]
 
-        # scanInfoDict, for parameters that are important to relay to TTLCycleDesigner and/or image
-        # acquisition managers
-        scanInfoDict = {'positions': positions, 'return_time': parameterDict['return_time'], 'n_linesteps': n_linesteps}
+        # Build complete scanInfoDict via ScanInfoContract
+        img_dims = list(positions)
+        img_axes_phys = ["x", "y", "z"][:len(img_dims)]
+        pixel_sizes = [parameterDict['axis_step_size'][i] for i in range(len(img_dims))]
+
+        scan_samples = [sequenceSamples, rampSamples]
+        if slow_axis_size > 0:
+            scan_samples.append(colSamples)
+
+        contract = ScanInfoContract(
+            img_dims=img_dims,
+            img_axes_phys=img_axes_phys,
+            pixel_sizes=pixel_sizes,
+            scan_samples=scan_samples,
+            scan_samples_total=len(fastAxisSignal),
+            scan_samples_d2_period=lineSamples,
+            n_pixels_fast=fast_axis_positions,
+            samples_per_pixel=sequenceSamples,
+            dwell_time=parameterDict['sequence_time'],
+            scan_time_step=1.0 / sampleRate,
+            n_linesteps=n_linesteps,
+            positions=positions,
+            return_time=parameterDict['return_time'],
+        )
+        scanInfoDict = contract.to_dict()
 
         self.__plot_curves(plot=False, signals=[fastAxisSignal, middleAxisSignal, slowAxisSignal])
 
-        return sig_dict, scanInfoDict['positions'], scanInfoDict
+        return sig_dict, positions, scanInfoDict
 
     def __makeRamp(self, start, size, samples):
         #return np.linspace(start, end, num=samples)

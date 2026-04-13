@@ -1,5 +1,6 @@
 import importlib
 from abc import ABC, abstractmethod
+from dataclasses import dataclass, field, fields as dataclass_fields
 
 from imswitch.imcommon.model import pythontools, initLogger
 from ..errors import InvalidChildClassError
@@ -89,6 +90,86 @@ class SignalDesignerFactory:
 
         if signalDesigner.isValidSignalDesigner():
             return signalDesigner
+
+
+@dataclass
+class ScanInfoContract:
+    """Complete contract for scan information exchanged between scan designers,
+    TTL cycle designers, and detector managers.
+
+    All ScanDesigner subclasses MUST return ``contract.to_dict()`` so that
+    every downstream consumer receives a consistent, complete dictionary
+    without ad-hoc normalization layers.
+
+    Conventions
+    -----------
+    - ``img_dims`` contains PHYSICAL scan dimensions only (no linestep).
+    - ``n_linesteps`` is always a separate field.
+    - ``img_axes_with_linesteps`` is auto-derived in __post_init__ and
+      appends ``"linestep"`` when ``n_linesteps > 1``.
+    - ``scan_samples`` indices correspond to physical axes, not linestep.
+    """
+
+    # --- Required: image geometry (physical axes only) ---
+    img_dims: list                  # pixel counts per physical axis, e.g. [Nx, Ny] or [Nx, Ny, Nz]
+    img_axes_phys: list             # axis labels, e.g. ["x", "y", "z"]
+    pixel_sizes: list               # physical pixel size per axis (µm)
+
+    # --- Required: sample counts ---
+    scan_samples: list              # samples per axis level: [per_pixel, per_line, per_frame, ...]
+    scan_samples_total: int         # total samples in entire scan signal
+    scan_samples_d2_period: int     # samples per fast-axis period (line active + flyback)
+
+    # --- Required: fast-axis helpers ---
+    n_pixels_fast: int              # == img_dims[0]
+    samples_per_pixel: int          # == scan_samples[0]
+
+    # --- Required: timing ---
+    dwell_time: float               # pixel dwell time (seconds)
+    scan_time_step: float           # time per sample (seconds), i.e. 1 / sampleRate
+
+    # --- Linestep ---
+    n_linesteps: int = 1
+
+    # --- Throw / padding (in scan samples) ---
+    scan_throw_startzero: int = 0
+    scan_throw_settling: int = 0
+    scan_throw_startacc: int = 0
+    scan_pads_initpos: list = field(default_factory=list)
+
+    # --- Phase and smoothing ---
+    phase_delay: int = 0
+    smooth_axes: list = field(default_factory=lambda: [False, False, False])
+
+    # --- Auto-derived (populated in __post_init__) ---
+    img_axes_with_linesteps: list = field(default_factory=list)
+    axis_names: list = field(default_factory=list)
+
+    # --- Optional / informational ---
+    minmaxes: list = field(default_factory=list)
+    tot_scan_time_s: float = 0.0
+
+    # --- Beta-designer compatibility (BetaTTLCycleDesigner reads these) ---
+    positions: list = field(default_factory=list)
+    return_time: float = 0.0
+
+    def __post_init__(self):
+        if not self.img_axes_with_linesteps:
+            self.img_axes_with_linesteps = list(self.img_axes_phys) + (
+                ["linestep"] if self.n_linesteps > 1 else []
+            )
+        if not self.axis_names:
+            self.axis_names = list(self.img_axes_phys)
+        # Ensure smooth_axes covers all physical axes
+        while len(self.smooth_axes) < len(self.img_dims):
+            self.smooth_axes = list(self.smooth_axes) + [False]
+
+    def to_dict(self) -> dict:
+        """Convert to a plain dict for backward compatibility with all consumers."""
+        result = {}
+        for f in dataclass_fields(self):
+            result[f.name] = getattr(self, f.name)
+        return result
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

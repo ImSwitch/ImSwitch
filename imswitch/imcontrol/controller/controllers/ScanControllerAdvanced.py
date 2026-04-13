@@ -52,7 +52,7 @@ class ScanControllerAdvanced(SuperScanController):
                     power_capable.append(name)
             self._widget.setLinestepPowerCapableDevices(power_capable)
         except Exception:
-            pass
+            self._logger.debug("Could not detect power-capable devices:\n%s", traceback.format_exc())
 
         # ---- initial state ----
         self.updatePixels()
@@ -60,16 +60,12 @@ class ScanControllerAdvanced(SuperScanController):
         self.updateScanTTLAttrs()
 
         # ---- plotting hooks (optional, depends on your widget) ----
-        # If your widget emits these, connect them. If not, ignore.
         for sig_name in ("sigSeqTimeParChanged", "sigSignalParChanged"):
-            try:
-                getattr(self._widget, sig_name).connect(self.plotSignalGraph)
-            except Exception:
-                pass
-        try:
+            sig = getattr(self._widget, sig_name, None)
+            if sig is not None:
+                sig.connect(self.plotSignalGraph)
+        if hasattr(self._widget, 'sigStageParChanged'):
             self._widget.sigStageParChanged.connect(self.updatePixels)
-        except Exception:
-            pass
 
         # Try initial plot
         try:
@@ -78,26 +74,15 @@ class ScanControllerAdvanced(SuperScanController):
             self._logger.debug("[ScanControllerAdvanced] initial plotSignalGraph failed:\n%s", traceback.format_exc())
 
         # ---- BeadRec signal bridge (widget → commChannel) ----
-        # Mirror the pattern from ScanControllerMoNaLISA so BeadRecController works
-        # with the Advanced scan widget without modification.
-        try:
-            self._widget.sigUpdateBeadRecCenter.connect(
-                self._commChannel.sigUpdateBeadRecCenter.emit
-            )
-        except Exception:
-            pass
-        try:
-            self._widget.sigShowBeadRecCenterCross.connect(
-                self._commChannel.sigShowBeadRecCenterCross.emit
-            )
-        except Exception:
-            pass
-        try:
-            self._widget.sigAutoAxialToggled.connect(
-                self._commChannel.sigAutoAxialToggled.emit
-            )
-        except Exception:
-            pass
+        for widget_sig, comm_sig in [
+            ("sigUpdateBeadRecCenter", "sigUpdateBeadRecCenter"),
+            ("sigShowBeadRecCenterCross", "sigShowBeadRecCenterCross"),
+            ("sigAutoAxialToggled", "sigAutoAxialToggled"),
+        ]:
+            src = getattr(self._widget, widget_sig, None)
+            dst = getattr(self._commChannel, comm_sig, None)
+            if src is not None and dst is not None:
+                src.connect(dst.emit)
 
         # Emit initial (0, 0) bead center so BeadRecController.yCenter/xCenter
         # are non-None from startup.  Without this the crosshair can never appear
@@ -151,63 +136,8 @@ class ScanControllerAdvanced(SuperScanController):
 
         TTLCycleSignalsDict, scanInfoDict = ttl_des.make_signal(ttl_param, self._setupInfo, scanInfoDict)
 
-        # ----------------------------
-        # Normalize scanInfo for Advanced TTL (axis roles + line period model)
-        # ----------------------------
-
-        try:
-            S = int(stage_param.get("n_linesteps", TTLParameters.get("n_linesteps", 1)))
-            S = max(1, S)
-
-            img_dims = list(scanInfoDict.get("img_dims", []))              # physical dims from scan designer
-            scan_samples = list(scanInfoDict.get("scan_samples", []))      # [samples_per_pixel, line_len, d3_len, ...]
-
-            # Fast axis is always "axis 0" in the scan designer ordering (whatever the user picked)
-            n_pixels_fast = int(img_dims[0]) if len(img_dims) > 0 else 1
-            samples_per_pixel = int(scan_samples[0]) if len(scan_samples) > 0 else 0
-
-            # The active acquisition part of one fast sweep ("line")
-            line_active_len = int(scan_samples[1]) if len(scan_samples) > 1 else int(n_pixels_fast * max(1, samples_per_pixel))
-
-            if samples_per_pixel <= 0 and n_pixels_fast > 0:
-                if line_active_len % n_pixels_fast == 0:
-                    samples_per_pixel = line_active_len // n_pixels_fast
-
-            # How many physical "lines" exist? (if only 1D, it's 1)
-            n_lines_phys = int(img_dims[1]) if len(img_dims) > 1 else 1
-
-            # Effective number of repeated line periods when linesteps are enabled
-            n_line_periods_total = n_lines_phys * S
-
-            # Period length (active + flyback). For 1D scans GalvoScanDesigner still provides scan_samples_d2_period.
-            line_period_len = int(scanInfoDict.get("scan_samples_d2_period", 0)) or line_active_len
-            flyback_len = max(0, line_period_len - line_active_len)
-
-            # d3 length may not exist for 1D scans -> compute expected core length
-            expected_d3_core = (n_line_periods_total - 1) * line_period_len + line_active_len
-
-            scanInfoDict["advanced_scan"] = {
-                "n_linesteps": S,
-                "fast_axis_idx": 0,
-                "line_axis_phys_idx": 1 if len(img_dims) > 1 else None,   # None means "virtual line axis = linesteps only"
-                "n_pixels_fast": n_pixels_fast,
-                "samples_per_pixel": samples_per_pixel,
-                "line_active_len": line_active_len,
-                "line_period_len": line_period_len,
-                "flyback_len": flyback_len,
-                "n_lines_phys": n_lines_phys,
-                "n_line_periods_total": n_line_periods_total,
-                "expected_d3_core_len": expected_d3_core,
-            }
-
-            # keep the keys your TTL designer already looks for (backwards compatibility)
-            scanInfoDict["n_pixels_fast"] = n_pixels_fast
-            scanInfoDict["samples_per_pixel"] = samples_per_pixel
-
-        except Exception:
-            self._logger.debug("[ScanControllerAdvanced] scanInfo normalization failed:\n%s", traceback.format_exc())
-
-
+        # scanInfoDict is already a complete ScanInfoContract dict from the scan designer.
+        # No normalization or finalization needed.
 
         # Inject per-linestep analog power waveforms for AO-capable lasers (constant within each line)
         if TTLParameters.get("advanced_mode", False):
@@ -221,15 +151,10 @@ class ScanControllerAdvanced(SuperScanController):
                     traceback.format_exc()
                 )
 
-
         signalDict = {
             "scanSignalsDict": scanSignalsDict,
             "TTLCycleSignalsDict": TTLCycleSignalsDict,
         }
-
-        # Guarantee a complete standard contract for downstream consumers (e.g. APDManager),
-        # regardless of which scan designer was used.
-        self._finalize_scanInfoDict(scanInfoDict)
 
         self._lastScanInfoDict = scanInfoDict
         self._lastSignalDict = signalDict
@@ -237,25 +162,6 @@ class ScanControllerAdvanced(SuperScanController):
         self._lastTTLParameters = copy.deepcopy(TTLParameters)
 
         return signalDict, scanInfoDict
-
-    def _finalize_scanInfoDict(self, scanInfoDict: dict) -> None:
-        """
-        Fill any missing standard scanInfoDict keys with safe defaults.
-
-        Ensures APDManager.ScanWorker (and other consumers) work correctly
-        regardless of which scan designer produced the dict. GalvoScanDesigner
-        already provides all keys; BetaScanDesigner and future designers may not.
-        """
-        defaults = {
-            'phase_delay': 0,
-            'smooth_axes': [False, False, False],
-            'scan_throw_startzero': 0,
-            'scan_throw_settling': 0,
-            'scan_throw_startacc': 0,
-            'scan_pads_initpos': [],
-        }
-        for key, val in defaults.items():
-            scanInfoDict.setdefault(key, val)
 
     # ---------------------------------------------------------------------
     # BeadRec interface (mirrors ScanControllerMoNaLISA)
@@ -590,7 +496,8 @@ class ScanControllerAdvanced(SuperScanController):
                         position = self._analogParameterDict["axis_centerpos"][index]
                         self._master.positionersManager[positionerName].setPosition(position, 0)
                     except Exception:
-                        pass
+                        self._logger.warning("Failed to set %s to center:\n%s",
+                                             positionerName, traceback.format_exc())
 
             self._master.nidaqManager.runScan(self.signalDict, self.scanInfoDict)
 
@@ -616,7 +523,7 @@ class ScanControllerAdvanced(SuperScanController):
                         position = self._analogParameterDict["axis_centerpos"][index]
                         self._master.positionersManager[positionerName].setPosition(position, 0)
             except Exception:
-                pass
+                self._logger.warning("Failed to reset ND-PiezoZ after scan:\n%s", traceback.format_exc())
         else:
             self.runScanAdvanced(sigScanStartingEmitted=True)
 
@@ -637,7 +544,7 @@ class ScanControllerAdvanced(SuperScanController):
                     pixels = round(length / step)
                     self._widget.setScanPixels(positionerName, pixels)
         except Exception:
-            pass
+            self._logger.debug("updatePixels failed:\n%s", traceback.format_exc())
 
     # ---------------------------------------------------------------------
     # TTL preview plotting

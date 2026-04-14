@@ -34,6 +34,12 @@ class PIStageManager(PositionerManager, SignalInterface):
                 "PIStageManager requires 'device' in managerProperties (for example 'C-663.11')."
             )
         self.usb_description = self._resolve_usb_description(manager_properties)
+        if self.usb_description is None:
+            self.__logger.warning(
+                f"PI stage {self.device!r} not available. Continuing without initializing it."
+            )
+            self.device = None
+            return
 
         self.X = GCSDevice(self.device)
         self.Y = GCSDevice(self.device)
@@ -75,9 +81,10 @@ class PIStageManager(PositionerManager, SignalInterface):
         try:
             usb_devices = finder.EnumerateUSB()
         except Exception as exc:
-            raise RuntimeError(
+            self.__logger.warning(
                 f'Failed to enumerate PI USB devices for {self.device!r}: {exc}'
             )
+            return None
         finally:
             try:
                 finder.CloseConnection()
@@ -89,9 +96,10 @@ class PIStageManager(PositionerManager, SignalInterface):
                 pass
 
         if not usb_devices:
-            raise RuntimeError(
+            self.__logger.warning(
                 f'No PI USB devices found while searching for {self.device!r}.'
             )
+            return None
 
         device_candidates = [self.device]
         if '.' in self.device:
@@ -105,11 +113,12 @@ class PIStageManager(PositionerManager, SignalInterface):
             None
         )
         if selected_device is None:
-            raise RuntimeError(
+            self.__logger.warning(
                 f'No enumerated PI USB device matched {self.device!r} '
                 f'(candidates: {device_candidates}). '
                 f'Found: {usb_devices}'
             )
+            return None
         self.__logger.debug(f'Auto-selected PI USB device: {selected_device}')
         return selected_device
 
@@ -149,12 +158,16 @@ class PIStageManager(PositionerManager, SignalInterface):
             self.__logger.warning(f"Failed to initialize Joystick button allowing variable speed")
 
     def move(self, value, axis):
+        if self.device is None:
+            return
         # value from widget is in um, and we store values in self._position in um
         # We send values in mm to stage, so distance to move = (position + value) / 1000
         dist = self._position[axis] / 1000 + value / 1000
         self.setPosition(dist, axis)
 
     def setPosition(self, position: float, axis: str):
+        if self.device is None:
+            return
         if self.rangeMax >= position >= self.rangeMin:
             self.deactivate_joystick()
             if axis == 'X':
@@ -166,6 +179,8 @@ class PIStageManager(PositionerManager, SignalInterface):
             self.__logger.debug('Out of the stage range')
 
     def updatePosition(self):
+        if self.device is None:
+            return
         # qPOS gives value in mm but we store in um (widget convention)
         self._position["X"] = self.X.qPOS(1)[1] * 1000
         self._position["Y"] = self.Y.qPOS(1)[1] * 1000

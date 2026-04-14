@@ -324,9 +324,9 @@ class RecordingWorker(Worker):
         currentFrame = {}
         datasets = {}
         filenames = {}
+        
         for detectorName in self.detectorNames:
             currentFrame[detectorName] = 0
-
             datasetName = detectorName
             if self.recMode == RecMode.ScanLapse and self.singleLapseFile:
                 # Add scan number to dataset name
@@ -371,55 +371,32 @@ class RecordingWorker(Worker):
                 fileExtension = str(self.saveFormat.name).lower()
                 filenames[detectorName] = self.__recordingManager.getSaveFilePath(
                     f'{self.savename}_{detectorName}.{fileExtension}', False, False)
-
-            elif self.saveFormat == SaveFormat.ZARR:
                 
-                logger.debug(f"recFrames = {self.recFrames}")
-
-
-                # root group 
-                root = files[detectorName]
-                
-                # determine timepoint/scan index
-                scanNum = 0 
-                while f"timepoint_{str(scanNum).zfill(2)}" in root: # zfill(2) pads with zeros to the left 
-                    scanNum += 1
-                
-                groupName = f"timepoint_{str(scanNum).zfill(2)}"
-                
-                # create group for specific scan/timepoint
-                currentGroup = root.create_group(groupName)
-                logger.debug(f"Created Group: {groupName}")   
-                
-                # create zarr array inside the group; use .zeros | .array since we want to append; init shape: (1, Y, X)
-                framesPerChunk = 100
-                datasets[detectorName] = currentGroup.zeros(
-                    name="pixels", 
+            elif self.saveFormat == SaveFormat.ZARR:    
+                root = files[detectorName]     
+                FRAMES_PER_CHUNK = 1
+                datasets[detectorName] = root.zeros(
+                    name="chunks", 
                     shape=(1, shape[0], shape[1]), 
-                    chunks=(framesPerChunk, shape[0], shape[1]),
+                    chunks=(FRAMES_PER_CHUNK, shape[0], shape[1]),
                     dtype="i2"
                 )
 
                 # set attributes
                 datasets[detectorName].attrs["ImswitchData"] = self.attrs[detectorName]
                 datasets[detectorName].attrs["detector_name"] = detectorName
+                
                 # For ImageJ compatibility
-                datasets[detectorName].attrs["element_size_um"] = self.__recordingManager.detectorsManager[detectorName].pixelSizeUm
+                datasets[detectorName].attrs["element_size_um"] = self.__recordingManager.detectorsManager[detectorName].pixelSizeUm 
                 datasets[detectorName].attrs['writing'] = True
-                # add metadata to group
-                currentGroup.attrs["type"] = "timepoint_stack"
-                
-                # datasets[detectorName] = files[detectorName].create_dataset(datasetName, shape=(1, *reversed(shape)),
-                #                                                             dtype='i2', chunks=(1, shape[0], shape[1]) # old vals (1, 512, 512)
-                #                                                             )
-
-                
 
         self.__recordingManager.sigRecordingStarted.emit()
+
         try:
             if len(self.detectorNames) < 1:
                 raise ValueError('No detectors to record specified')
             
+            # timelapse scanning = RecMode.ScanLapse
             if self.recMode in [RecMode.SpecFrames, RecMode.ScanOnce, RecMode.ScanLapse]:
                 recFrames = self.recFrames
                 if recFrames is None:
@@ -431,8 +408,8 @@ class RecordingWorker(Worker):
                 nFramesPerDetector = {}
                 for detectorName in self.detectorNames:
                     nFramesPerDetector[detectorName] = recFrames * numCamTTL.get(detectorName, 1) 
-                maxFrames = max(nFramesPerDetector.values())
-
+                maxFrames = max(nFramesPerDetector.values()) # constant: this value should never change 
+                
                 while (self.__recordingManager.record and
                        any([currentFrame[detectorName] < maxFrames
                             for detectorName in self.detectorNames])):
@@ -465,22 +442,16 @@ class RecordingWorker(Worker):
                                     dataset.resize(nFrames, axis=0)
                                     dataset[it:nFrames, :, :] = newFrames[0:nFrames - it]
                                     currentFrame[detectorName] = nFrames
+                                        
+                            # --- ZARR SAVE ---
                             elif self.saveFormat == SaveFormat.ZARR:
                                 dataset = datasets[detectorName]
-
-                                logger.debug(f"INIT: dataset[0, :, :] = {dataset[0, :, :]}")
-
                                 if it == 0:
-                                    dataset[0, :, :] = newFrames[0, :, :]
-                                    
-                                    logger.debug(f"if it == 0: newFrames = {newFrames[0, :, :]}")
-                                    
+                                    dataset[0, :, :] = newFrames[0, :, :]                                    
                                     if n > 0:
                                         dataset.append(newFrames[1:n, :, :])
                                 else:
                                     dataset.append(newFrames)
-                                    logger.debug(f"else: newFrames = {newFrames}")
-
                                 currentFrame[detectorName] += n
 
                             # Things get a bit weird if we have multiple detectors when we report
@@ -489,9 +460,11 @@ class RecordingWorker(Worker):
                             self.__recordingManager.sigRecordingFrameNumUpdated.emit(
                                 min(list(currentFrame.values()))
                             )
-                    time.sleep(0.0001)  # Prevents freezing for some reason
 
+                    time.sleep(0.0001)  # Prevents freezing for some reason
+                
                 self.__recordingManager.sigRecordingFrameNumUpdated.emit(0)
+
             elif self.recMode == RecMode.SpecTime:
                 recTime = self.recTime
                 if recTime is None:
@@ -645,7 +618,7 @@ class RecordingWorker(Worker):
             else:
                 fileDests[detectorName] = filePaths[detectorName]
 
-                logger.debug(f"fileDests[detectorName] = {fileDests[detectorName]}")
+                logger.debug(f"fileDests[detectorName] () = {fileDests[detectorName]}")
 
             if singleMultiDetectorFile and len(files) > 0:
                 files[detectorName] = list(files.values())[0]
@@ -654,6 +627,7 @@ class RecordingWorker(Worker):
                     files[detectorName] = h5py.File(fileDests[detectorName],
                                                     'a' if singleLapseFile else 'w-')
                 elif self.saveFormat == SaveFormat.ZARR:
+                    logger.debug(f"_getFiles(): elif self.saveFormat == SaveFormat.zarr")
                     self.store = zarr.storage.DirectoryStore(fileDests[detectorName])
                     files[detectorName] = zarr.group(store=self.store, overwrite=True)
 

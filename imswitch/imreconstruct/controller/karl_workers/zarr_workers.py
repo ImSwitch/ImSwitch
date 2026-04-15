@@ -23,7 +23,7 @@ class ZarrStreamWorker(QtCore.QObject):
     ) -> None: 
         super().__init__()
         self.path = zarr_path
-        self.frames_per_chunk = 1
+        self.frames_per_chunk = frames_per_chunk
         self.running = False
 
     @QtCore.Slot()
@@ -31,7 +31,8 @@ class ZarrStreamWorker(QtCore.QObject):
         self.running = True
         last_index = 0
 
-        array_path = os.path.join(self.path, "chunks")
+        # TODO: just open the directory that is in the zarr directory regardless of its name 
+        array_path = os.path.join(self.path, "chunks")  
         
         print(f"Zarr Worker waiting for data in {self.path}")
 
@@ -50,8 +51,6 @@ class ZarrStreamWorker(QtCore.QObject):
             
                 z = zarr.open(array_path, mode='r')
                 z._refresh_metadata()
-    
-                # print(f"DEBUG: Zarr shape: {z.shape}. Target Chunk: {self.frames_per_chunk}")
 
                 current_size = z.shape[0]
                 available = current_size - last_index 
@@ -59,8 +58,7 @@ class ZarrStreamWorker(QtCore.QObject):
                 # if a full chunk is ready, then fetch it
                 if available >= self.frames_per_chunk: 
                     data = z[last_index : last_index + self.frames_per_chunk]
-                    # emit a 'filename' string so WatcherFrameController.onFileLoaded can
-                    # log (display) on which part of the stream we are currently on
+                    # emit a 'filename' string so WatcherFrameController.onFileLoaded can log (display) on which part of the stream we are currently on
                     virtual_name = f"{os.path.basename(self.path)}_index_{last_index}"
                     self.sigChunkLoaded.emit(data, virtual_name)
                     last_index += self.frames_per_chunk
@@ -72,7 +70,6 @@ class ZarrStreamWorker(QtCore.QObject):
                 is_writing = z.attrs.get("writing", True)
                 if not is_writing and last_index >= current_size:
                     self.running = False
-
 
             except Exception as e: 
                 print(f"WORKER Exception: {e}")

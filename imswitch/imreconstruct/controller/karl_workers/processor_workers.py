@@ -1,7 +1,7 @@
 # type: ignore
 
 from qtpy import QtCore
-
+import numpy as np
 
 class ProcessorWorker(QtCore.QObject): 
     
@@ -39,7 +39,9 @@ class ProcessorWorker(QtCore.QObject):
         frame_indices = self.processor.frame_inds[frameIndex]
         self.reconObj.addLiveFrame(coeffs, frame_indices)
     
-        if frameIndex == self.processor.num_frames_in_stack - 1:
+        # TODO: temporary testing of refresh rate should be changed to something robust 
+        refresh_rate = int(np.sqrt(len(frame_indices)))
+        if frameIndex % refresh_rate == 0 or frameIndex == self.processor.num_frames_in_stack - 1: 
             self.sigStackFinished.emit()
             
         self.numFramesProcessed.emit(frameIndex)

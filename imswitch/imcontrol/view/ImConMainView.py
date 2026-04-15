@@ -78,10 +78,11 @@ class ImConMainView(QtWidgets.QMainWindow):
             'Et': _DockInfo(name='Et', yPosition=3)
         }
         leftDockInfos = {
-            'Settings': _DockInfo(name='Detector Settings', yPosition=0),
-            'View': _DockInfo(name='Image Controls', yPosition=1),
-            'Recording': _DockInfo(name='Recording', yPosition=2),
-            'Console': _DockInfo(name='Console', yPosition=3)
+            'LeicaStand': _DockInfo(name='Stand', yPosition=0),
+            'Settings': _DockInfo(name='Detector Settings', yPosition=1),
+            'View': _DockInfo(name='Image Controls', yPosition=2),
+            'Recording': _DockInfo(name='Recording', yPosition=3),
+            'Console': _DockInfo(name='Console', yPosition=4)
         }
         otherDockKeys = ['Image']
         allDockKeys = list(rightDockInfos.keys()) + list(leftDockInfos.keys()) + otherDockKeys

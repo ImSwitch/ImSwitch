@@ -31,6 +31,8 @@ class RecordingController(ImConWidgetController):
         self.lapseCurrent = -1
         self.specLapseCurrent = -1
         self.lapseTotal = 0
+        self.stopRequested = False
+        self.timer = None
 
         self._widget.setsaveFormat(SaveFormat.HDF5.value)
         self._widget.setSnapSaveMode(SaveMode.Disk.value)
@@ -145,6 +147,7 @@ class RecordingController(ImConWidgetController):
     def toggleREC(self, checked):
         """ Start or end recording. """
         if checked and not self.recording:
+            self.stopRequested = False
             self.updateRecAttrs(isSnapping=False)
 
             folder = self._widget.getRecFolder()
@@ -200,10 +203,26 @@ class RecordingController(ImConWidgetController):
             self.endedRecording = False
         else:
             if self.recMode == RecMode.ScanLapse and self.lapseCurrent != -1:
-                self._commChannel.sigAbortScan.emit()
+                # soft stop to finish recording current running scan
+                self.stopRequested = True
+
+                timerWasActive = (
+                    self.timer is not None and hasattr(self.timer, 'isActive') and self.timer.isActive()
+                )
+                if self.timer is not None:
+                    self.timer.stop()
+                    self.timer = None
+
+                if timerWasActive:
+                    self.recordingCycleEnded()
+                return
             self._master.recordingManager.endRecording()
 
     def nextLapse(self):
+        if self.stopRequested or not self._widget.isRecButtonChecked():
+            self.recordingCycleEnded()
+            return
+
         self.endedRecording = False
         self.doneScan = False
 
@@ -233,20 +252,29 @@ class RecordingController(ImConWidgetController):
 
     def recordingCycleEnded(self):
         if (self._widget.isRecButtonChecked() and self.recMode == RecMode.ScanLapse and
-                0 < self.lapseCurrent + 1 < self.lapseTotal):
+                not self.stopRequested and 0 < self.lapseCurrent + 1 < self.lapseTotal):
             self.lapseCurrent += 1
             self._widget.updateRecLapseNum(self.lapseCurrent)
             self.timer = Timer(singleShot=True)
             self.timer.timeout.connect(self.nextLapse)
             self.timer.start(int(self._widget.getTimelapseFreq() * 1000))
         else:
+            emitRecordingEnded = self.recMode == RecMode.ScanLapse and self.stopRequested
             self.recording = False
             self.lapseCurrent = -1
+            self.stopRequested = False
+            if self.timer is not None:
+                self.timer.stop()
+                self.timer = None
             self._widget.updateRecFrameNum(0)
             self._widget.updateRecTime(0)
             self._widget.updateRecLapseNum(0)
             self._widget.setRecButtonChecked(False)
             self._widget.setFieldsEnabled(True)
+            if emitRecordingEnded:
+                # emit signal manually only if soft stop of timelapse, 
+                # because in that case we never call recordingManager.endRecording()
+                self._commChannel.sigRecordingEnded.emit()
 
     def scanDone(self):
         self.doneScan = True

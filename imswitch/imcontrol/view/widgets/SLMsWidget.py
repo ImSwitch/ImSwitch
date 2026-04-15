@@ -75,18 +75,23 @@ import matplotlib.pyplot as plt
 from functools import partial
 import os
 import datetime
-
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from imswitch.imcontrol.model.SetupInfo import SLMInfo
 
 _collaps_section_format = {
     "button_height": 20,
     "fontsize": 9,
 }
 
+# debounce time for SLM refresh when changing parameter
+_DEBOUNCE_TIME = 800 # 800ms
+
 
 class SLMsWidget(Widget):
     """Widget containing SLM interface, patterns, and CGH controls."""
 
-    sigConnectSLMusb = QtCore.Signal(str,bool)              # slmName, state
+    sigConnectSLMusb = QtCore.Signal(str,bool,bool)         # slmName, state, display_msg
     sigUpdatePattern = QtCore.Signal(str, dict)             # slmKey, params
     sigComputeCGH = QtCore.Signal(str, str,dict)            # slmKey, secKey, cgh_params
 
@@ -140,7 +145,8 @@ class SLMsWidget(Widget):
         self._slmUpdateTimers = {}      # { slmKey: QTimer }
 
 
-    def add_slm(self,slmName,slmInfo,full_registry,*args,**kwargs):
+    def add_slm(self,slmName: str,slmInfo: "SLMInfo", full_registry: dict,
+                device_connection: bool = False,*args,**kwargs):
         
         # NOTE: slmKey is the cleaned slmName used for referencing 
         # and setting attributes - slmName is kept for display
@@ -168,7 +174,7 @@ class SLMsWidget(Widget):
         scrollArea.setWidgetResizable(True)
 
         # top control => added to slmLayout
-        self.create_top_controls(slmLayout,slmKey=slmKey)
+        self.create_top_controls(slmLayout,slmKey=slmKey,add_connect_btn=device_connection)
 
         # image preview and tabs => added to middlelayout (scroll area)
         self.create_image_display(middlelayout,slmKey=slmKey)
@@ -266,19 +272,21 @@ class SLMsWidget(Widget):
     # -------------------------------------------- #
         
     # --- 1. Top Controls (Connect, Config management) ----
-    def create_top_controls(self, parent_layout, slmKey="slm"):
+    def create_top_controls(self, parent_layout, slmKey="slm", add_connect_btn=True):
         """
         Create the top control row for a single SLM:
-        Connect button + Config selector + Load / Save buttons.
+        Connect button (if requested) + Config selector + Load / Save buttons.
         """
         layout = QtWidgets.QHBoxLayout()
 
         # Connect button
-        connectBtn = BetterPushButton("Connect to SLM")
-        connectBtn.setCheckable(True)
-        connectBtn.setFixedHeight(20)
-        setattr(self, f"{slmKey}_connectBtn", connectBtn)
-        layout.addWidget(connectBtn)
+        if add_connect_btn:
+            connectBtn = BetterPushButton("Connect to SLM")
+            connectBtn.setCheckable(True)
+            connectBtn.setFixedHeight(20)
+            setattr(self, f"{slmKey}_connectBtn", connectBtn)
+            layout.addWidget(connectBtn)
+        
         layout.addStretch()
 
         # Save / Load configs
@@ -320,7 +328,8 @@ class SLMsWidget(Widget):
         parent_layout.addLayout(layout)
 
         # signal connections
-        connectBtn.toggled.connect(lambda state, p=slmKey: self.sigConnectSLMusb.emit(p, state))
+        if add_connect_btn:
+            connectBtn.toggled.connect(lambda state, p=slmKey: self.sigConnectSLMusb.emit(p, state, True))
         configCombo.currentIndexChanged.connect(lambda _, p=slmKey: self.on_config_selection_changed(p))
 
 
@@ -1197,30 +1206,44 @@ class SLMsWidget(Widget):
 
 
     # --------- connection/disconnection --------
-    def on_connection_result(self, slmKey: str, success: bool, serial: str):
+    def on_connection_result(self, slmKey: str, success: bool, serial: str, 
+                             display_msg: bool = True):
         """Handle the result of a connection attempt."""
+        if not hasattr(self, f"{slmKey}_connectBtn"):
+            raise RuntimeError("Connection button does not exist")
+        
         btn = getattr(self, f"{slmKey}_connectBtn")
         if success:
             btn.setText("Disconnect")
-            QtWidgets.QMessageBox.information(self, "SLM Connection", f"Successfully connected to SLM {serial}")
+            if not btn.isChecked():
+                btn.setChecked(True)
+            if display_msg:
+                QtWidgets.QMessageBox.information(self, "SLM Connection", f"Successfully connected to SLM {serial}")
         else:
             btn.blockSignals(True)  # prevent re-emitting toggled
             btn.setChecked(False)
             btn.blockSignals(False)
             btn.setText("Connect to SLM")
-            QtWidgets.QMessageBox.warning(self, "SLM Connection", f"Connection to {self._slmNames[slmKey]} failed.")
+            if display_msg:
+                QtWidgets.QMessageBox.warning(self, "SLM Connection", f"Connection to {self._slmNames[slmKey]} failed.")
     
-    def on_disconnection_result(self, slmKey: str, success: bool, msg: str):
+    def on_disconnection_result(self, slmKey: str, success: bool, msg: str,
+                                display_msg: bool = True):
         """Handle the result of a disconnection attempt."""
+        if not hasattr(self, f"{slmKey}_connectBtn"):
+            raise RuntimeError("Connection button does not exist")
+        
         btn = getattr(self, f"{slmKey}_connectBtn")
         if success:
             btn.setText("Connect to SLM")
-            QtWidgets.QMessageBox.information(self, "SLM Disconnected", msg)
+            if display_msg:
+                QtWidgets.QMessageBox.information(self, "SLM Disconnected", msg)
         else:
             btn.blockSignals(True)  # prevent re-emitting toggled
             btn.setChecked(True)
             btn.blockSignals(False)
-            QtWidgets.QMessageBox.warning(self, "SLM Disconnection", msg)
+            if display_msg:
+                QtWidgets.QMessageBox.warning(self, "SLM Disconnection", msg)
     
 
     # --------- computing related --------- #
@@ -1618,7 +1641,7 @@ class SLMsWidget(Widget):
 
     def _schedulePatternUpdate(self,slmKey):
         timer = self._get_slm_timer(slmKey)
-        timer.start(500)  # 500ms debounce
+        timer.start(_DEBOUNCE_TIME)
 
     def _lineEditUpdate(self, text, slmKey):
         """

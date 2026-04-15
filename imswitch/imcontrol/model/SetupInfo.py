@@ -291,6 +291,9 @@ class MicroscopeStandInfo:
     rs232device: str
     """ Name of the rs232 device to use. """
 
+    managerProperties: Optional[dict]
+    """ Dict with microscope stand-specific info such as available cubes"""
+
 
 @dataclass(frozen=True)
 class EtSTEDInfo:

@@ -3,14 +3,16 @@ from .PositionerManager import PositionerManager
 from imswitch.imcontrol.model.interfaces.pipython.pidevice import GCSDevice
 from imswitch.imcontrol.model.interfaces.pipython.pidevice.gcs2 import gcs2pitools
 from serial.serialutil import SerialException
+from qtpy.QtCore import QTimer
+from imswitch.imcommon.framework import Signal, SignalInterface
 
-
-class PIStageManager(PositionerManager):
+class PIStageManager(PositionerManager, SignalInterface):
     """ PositionerManager for control of a PI c-663 XY-stage through USB
     communication.
 
     One manager controls the two X and Y axes
     """
+    sigJoystickStatusChanged = Signal(bool)
 
     def __init__(self, positionerInfo, name, *args, **lowLevelManagers):
 
@@ -21,18 +23,43 @@ class PIStageManager(PositionerManager):
             raise RuntimeError(f'{self.__class__.__name__} requires two axes named X and Y'
                                f' respectively, {positionerInfo.axes} provided.')
 
-        super().__init__(positionerInfo, name, initialPosition={
+        PositionerManager.__init__(self, positionerInfo, name, initialPosition={
             axis: 0 for axis in positionerInfo.axes})
+        SignalInterface.__init__(self)
 
-        # TODO: device name and usb description not as hard value but either picked up from the config file or automatically found with the GSCdevice.enumarateUSB() command
-        self.device = 'C-663.11'
-        self.usb_description = '0205500074'
+        manager_properties = positionerInfo.managerProperties or {}
+        self.device = manager_properties.get('device')
+        if not self.device:
+            raise ValueError(
+                "PIStageManager requires 'device' in managerProperties (for example 'C-663.11')."
+            )
+        self.usb_description = self._resolve_usb_description(manager_properties)
+        if self.usb_description is None:
+            self.__logger.warning(
+                f"PI stage {self.device!r} not available. Continuing without initializing it."
+            )
+            self.device = None
+            return
 
         self.X = GCSDevice(self.device)
         self.Y = GCSDevice(self.device)
         self.rangeMin = 0
         self.rangeMax = 25 #in mm
         self.joystickStatus = False
+
+        # Joystick pushbuttons toggles (fast/slow and enable/disable)
+        # NOTE: configured for joystick Analog C-819.20 so that:
+        #   - Fast/slow toggled by Y axis buttons
+        #   - Able/Disable toggled by X axis button
+        self.fastSpeed = 1.0
+        self.slowSpeed = 0.2
+        self.buttonPollIntervalMs = 200
+        self.speedButtonPressed = None  # last known state
+        self.speedButtonController = 'Y'
+        self.enableButtonController = 'X'
+        self.enableButtonPressed = False 
+        self.buttonTimer = QTimer()
+        self.buttonTimer.timeout.connect(self._pollButtons)
 
         try:
             self.connect()
@@ -41,9 +68,66 @@ class PIStageManager(PositionerManager):
             self.__logger.debug('Could not initialize PI motorized stage.')
             self.device = None
 
+    def _resolve_usb_description(self, manager_properties):
+        configured_usb_description = manager_properties.get('usb_description')
+
+        if configured_usb_description:
+            self.__logger.debug(
+                f'Using PI USB description from setup config: {configured_usb_description}'
+            )
+            return configured_usb_description
+
+        finder = GCSDevice(self.device)
+        try:
+            usb_devices = finder.EnumerateUSB()
+        except Exception as exc:
+            self.__logger.warning(
+                f'Failed to enumerate PI USB devices for {self.device!r}: {exc}'
+            )
+            return None
+        finally:
+            try:
+                finder.CloseConnection()
+            except Exception:
+                pass
+            try:
+                finder.CloseDaisyChain()
+            except Exception:
+                pass
+
+        if not usb_devices:
+            self.__logger.warning(
+                f'No PI USB devices found while searching for {self.device!r}.'
+            )
+            return None
+
+        device_candidates = [self.device]
+        if '.' in self.device:
+            device_candidates.append(self.device.split('.', 1)[0])
+
+        selected_device = next(
+            (
+                dev for dev in usb_devices
+                if any(candidate in dev for candidate in device_candidates)
+            ),
+            None
+        )
+        if selected_device is None:
+            self.__logger.warning(
+                f'No enumerated PI USB device matched {self.device!r} '
+                f'(candidates: {device_candidates}). '
+                f'Found: {usb_devices}'
+            )
+            return None
+        self.__logger.debug(f'Auto-selected PI USB device: {selected_device}')
+        return selected_device
+
     def finalize(self) -> None:
         """ Close/cleanup positioner. """
         if self.device is not None:
+            self.buttonTimer.stop()
+            self.X.VEL(1, self.fastSpeed)
+            self.Y.VEL(1, self.fastSpeed)
             self.activate_joystick()
             self.X.CloseDaisyChain()
             self.__logger.debug('PIstage connection closed, joystick activated')
@@ -64,39 +148,55 @@ class PIStageManager(PositionerManager):
         self.__logger.debug('PI stage connected')
         self.__logger.debug('\n{}:\n{}'.format(self.X.GetInterfaceDescription(), self.X.qIDN()))
         self.__logger.debug('\n{}:\n{}'.format(self.Y.GetInterfaceDescription(), self.Y.qIDN()))
+        
+        try:
+            self.X.VEL(1, self.slowSpeed)
+            self.Y.VEL(1, self.slowSpeed)
+            self.buttonTimer.start(self.buttonPollIntervalMs)
+            self._pollButtons()
+        except Exception as e:
+            self.__logger.warning(f"Failed to initialize Joystick button allowing variable speed")
 
     def move(self, value, axis):
-        # value extracted from widget is in um, must be converted to mm to be passed to PI stage controller
-        # self.'axis'.qPOS gives value in mm
-        # Therefore, distance to move = self.'axis'.qPOS + value/1000
-        if axis == "X":
-            dist = self.X.qPOS(1)[1] + value / 1000
-            self.setPosition(dist, axis)
-        elif axis == "Y":
-            dist = self.Y.qPOS(1)[1] + value / 1000
-            self.setPosition(dist, axis)
+        if self.device is None:
+            return
+        # value from widget is in um, and we store values in self._position in um
+        # We send values in mm to stage, so distance to move = (position + value) / 1000
+        dist = self._position[axis] / 1000 + value / 1000
+        self.setPosition(dist, axis)
 
     def setPosition(self, position: float, axis: str):
-
+        if self.device is None:
+            return
         if self.rangeMax >= position >= self.rangeMin:
             self.deactivate_joystick()
             if axis == 'X':
                 self.X.MOV(1, position)
             if axis == 'Y':
                 self.Y.MOV(1, position)
-            #self._position[axis] = position * 1000
+            self._position[axis] = position * 1000
         else:
             self.__logger.debug('Out of the stage range')
 
     def updatePosition(self):
+        if self.device is None:
+            return
+        # qPOS gives value in mm but we store in um (widget convention)
         self._position["X"] = self.X.qPOS(1)[1] * 1000
         self._position["Y"] = self.Y.qPOS(1)[1] * 1000
+
+    def setJoystickEnabled(self, enabled: bool):
+        if enabled:
+            self.activate_joystick()
+        else:
+            self.deactivate_joystick()
 
     def activate_joystick(self):
         if not self.joystickStatus:
             self.X.JON(1, True)
             self.Y.JON(1, True)
             self.joystickStatus = True
+            self.sigJoystickStatusChanged.emit(True)
             self.__logger.debug('Joystick activated')
 
     def deactivate_joystick(self):
@@ -104,8 +204,7 @@ class PIStageManager(PositionerManager):
             self.X.JON(1, False)
             self.Y.JON(1, False)
             self.joystickStatus = False
-            self._position['X'] = self.X.qPOS(1)[1] * 1000
-            self._position['Y'] = self.Y.qPOS(1)[1] * 1000
+            self.sigJoystickStatusChanged.emit(False)
             self.__logger.debug('Joystick deactivated')
 
     def getJoystickEnabledStatus(self):
@@ -113,6 +212,51 @@ class PIStageManager(PositionerManager):
         Status of X axis joystick, assuming status is same for Y axis
         """
         self.joystickStatus = self.X.qJON()[1]
+
+
+    def _getJoystickButtonState(self, which='X'):
+        controller = self.X if which == 'X' else self.Y
+        result = controller.qJBS(1, 1)
+
+        try:
+            return bool(result[1][1])
+        except Exception:
+            self.__logger.debug(f'Unexpected qJBS return format: {result}')
+            return False
+
+    def _setJoystickSpeed(self, speed):
+        self.X.VEL(1, speed)
+        self.Y.VEL(1, speed)
+
+    def _pollButtons(self):
+        if self.device is None:
+            return
+
+        try:
+            # Button 1: fast/slow
+            speed_pressed = self._getJoystickButtonState(self.speedButtonController)
+
+            if speed_pressed != self.speedButtonPressed:
+                if speed_pressed:
+                    self._setJoystickSpeed(self.fastSpeed)
+                    self.__logger.debug('Joystick speed set to FAST')
+                else:
+                    self._setJoystickSpeed(self.slowSpeed)
+                    self.__logger.debug('Joystick speed set to SLOW')
+
+                self.speedButtonPressed = speed_pressed
+
+            # Button 2: toggle joystick on/off
+            enable_pressed = self._getJoystickButtonState(self.enableButtonController)
+
+            # Rising edge only: toggle once when button is pressed
+            if enable_pressed and not self.enableButtonPressed:
+                self.setJoystickEnabled(not self.joystickStatus)
+
+            self.enableButtonPressed = enable_pressed
+
+        except Exception as e:
+            self.__logger.debug(f'Error while polling joystick buttons: {e}')
 
     """
     

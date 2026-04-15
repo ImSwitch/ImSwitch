@@ -11,6 +11,7 @@ from .FFTWidget import FFTWidget
 from .FocusLockWidget import FocusLockWidget
 from .ImageWidget import ImageWidget
 from .LaserWidget import LaserWidget
+from .LeicaStandWidget import LeicaStandWidget
 from .MotCorrWidget import MotCorrWidget
 from .PositionerWidget import PositionerWidget
 from .RecordingWidget import RecordingWidget

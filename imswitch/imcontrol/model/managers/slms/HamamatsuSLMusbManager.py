@@ -15,6 +15,8 @@ _dll_base_directory = os.path.join(cwd,r"imswitch\imcontrol\model\interfaces")
 class HamamatsuSLMusbManager(SignalInterface):
     """Manager for communication with Hamamatsu SLM with USB connection"""
 
+    requires_device_connection: bool = True
+
     def __init__(self,slmInfo,slmName,*args,**kwargs):
         super().__init__(*args, **kwargs)
         self.__logger = initLogger(self)
@@ -57,7 +59,6 @@ class HamamatsuSLMusbManager(SignalInterface):
         """Finalize the manager by closing any open connections."""
         if not self.mockermode:
             self.close_device()
-
 
     def connect_to_device(self):
         """
@@ -121,7 +122,7 @@ class HamamatsuSLMusbManager(SignalInterface):
             self.__logger.info("Mocker mode - not uploading pattern to device.")
             return
 
-        if self.bID is None:
+        if not hasattr(self, "bID") or self.bID is None:
             raise RuntimeError("No device connected. Cannot upload pattern.")
 
         # Flatten to 1D
@@ -171,7 +172,7 @@ class HamamatsuSLMusbManager(SignalInterface):
                 self.connected = False
                 self.__logger.info(f"{self.slmName} connection closed.")
                 success = True
-                msg = "Sucessfully disconnection"
+                msg = "Sucessfully disconnected"
             else:
                 self.__logger.warning(f"{self.slmName}: closing connection failed.")
                 success = False

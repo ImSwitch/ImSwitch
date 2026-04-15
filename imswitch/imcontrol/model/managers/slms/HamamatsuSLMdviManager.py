@@ -14,6 +14,8 @@ from imswitch.imcommon.model import initLogger
 
 class HamamatsuSLMdviManager(SignalInterface):
     """Manager for communication with Hamamatsu SLM with dvi connection"""
+    
+    requires_device_connection: bool = False
 
     def __init__(self, slmInfo, slmName, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -41,7 +43,6 @@ class HamamatsuSLMdviManager(SignalInterface):
         self.imgArr = np.random.randint(1, 250, size=(self.width, self.height), dtype=np.uint8)
 
         self.init_slm_window()
-
 
     def init_slm_window(self):
         """Init SLM QLabel as fullscreen wundow and show a random pattern on specified screen"""

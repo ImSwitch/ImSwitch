@@ -43,34 +43,61 @@ class SLMsController(ImConWidgetController):
         self._wavelengths = {}      # {slmKey: {secKey: wl}}
         self._experimentalResults={}# {slmKey: {secKey: result}
         self._analysisPrms={}       # {target_name: prms}
+        self._corrPatternsDir={}    # {slm_key: path}
 
         # define directories for SLM-related files
         self.slmDir = os.path.join(dirtools.UserFileDirs.Root, r'imcontrol_slm')
         self.configsDir = os.path.join(self.slmDir, 'configs')
         self.cghPatternsDir =  os.path.join(self.slmDir, 'cgh_patterns')
+        self.correctionDir = os.path.join(self.slmDir, 'Corrections')
         os.makedirs(self.configsDir, exist_ok=True)
         os.makedirs(self.cghPatternsDir, exist_ok=True)
 
         # initiate each slm widget and engine
         for slmName, slmManager in self._master.slmsManager:
+            device_connection = slmManager.requires_device_connection
             slmInfo = slmManager.slmInfo
-            slmKey = self._widget.add_slm(slmName,slmInfo,full_registry)
+            slmKey = self._widget.add_slm(slmName,slmInfo,full_registry, 
+                                          device_connection = device_connection)
             engine = PatternEngine(slmManager.slmInfo)
             self._patternEngines[slmKey] = engine
             self._slmNames[slmKey]=slmName
             self._slmKeys[slmName]=slmKey
             self._slmInfos[slmKey] = slmInfo
 
+            # auto-connect for manager that needs device to connection
+            if device_connection:
+                success = self._startup_connection(slmKey)
+
+            # correction pattern folder: user-specified in config file or fallback to canonical
+            correctionPatternsDir = None
+            path_candidates = []
+            if slmInfo is not None and slmInfo.correctionPatternsDir is not None:
+                path_candidates.append(slmInfo.correctionPatternsDir)
+            path_candidates.append(os.path.join(self.correctionDir, slmInfo.serial_number)) #default path
+
+            for path in path_candidates:
+                if not os.path.exists(path):
+                    continue
+                else:
+                    correctionPatternsDir = path
+                    break
+            if correctionPatternsDir is None:        
+                self.__logger.error(f"Correction pattern directory for {slmName} could not be found at any of those locations: {path_candidates}")
+            self._corrPatternsDir[slmKey] = correctionPatternsDir
+
+            # start config loading
             if slmInfo is not None:
                 if slmInfo.managerProperties.get("startConfig") is not None:
-                    start_config = slmInfo.managerProperties.get("startConfig")
-                    config_dir = self.get_slm_config_dir(slmKey)
-                    config_path = os.path.join(config_dir, start_config)
-                    if os.path.isfile(config_path):
-                        self.on_load_config(slmKey, path=config_path)
-                        self.__logger.info(f"Successfully loaded startup config for {slmName}")
-                    else:
-                        self.__logger.warning(f"Initial SLM config file {config_path} not found.")
+                    if not device_connection or success: # don't load config if not connection failed
+                        start_config = slmInfo.managerProperties.get("startConfig")
+                        config_dir = self.get_slm_config_dir(slmKey)
+                        config_path = os.path.join(config_dir, start_config)
+                        if os.path.isfile(config_path):
+                            self.on_load_config(slmKey, path=config_path)
+                            self.__logger.info(f"Successfully loaded startup config for {slmName}")
+                        else:
+                            self.__logger.warning(f"Initial SLM config file {config_path} not found.")
 
             self.refresh_available_configs(slmKey)
 
@@ -111,8 +138,14 @@ class SLMsController(ImConWidgetController):
         if hasattr(self,"_cghThread"):
             self._cghThread.quit()
             self._cghThread.wait()
-    
 
+    def _startup_connection(self, slmKey):
+        success = self.on_connect(slmKey,state=True,display_msg=False)
+        if not success:
+            slmName=self._slmNames.get(slmKey)
+            self._logger.warning(f"Attempt to connect to SLM {slmName} at start-up failed.")
+        return success
+        
     def on_update_pattern(self, slmKey, params):
         
         engine = self._patternEngines[slmKey]
@@ -153,19 +186,22 @@ class SLMsController(ImConWidgetController):
             self._widget.update_display(slmKey,full_frame)
 
 
-    def on_connect(self, slmKey: str, state: bool):
+    def on_connect(self, slmKey: str, state: bool, display_msg:bool=True):
         """Handle connection/disconnection requests."""
         slmName = self._slmNames[slmKey]
         if state:
             success, serial = self._master.slmsManager.execOn(
                 slmName, lambda l: l.connect_to_device()
             )
-            self._widget.on_connection_result(slmKey, success, serial)
+            self._widget.on_connection_result(slmKey, success, serial, display_msg)
         else:
             success, msg = self._master.slmsManager.execOn(
                 slmName, lambda l: l.close_device()
             )
-            self._widget.on_disconnection_result(slmKey, success, msg)
+            self._widget.on_disconnection_result(slmKey, success, msg, display_msg)
+
+        return success
+
 
     def update_correction_patterns(self, slmKey, secKey, wl):
         """
@@ -179,13 +215,10 @@ class SLMsController(ImConWidgetController):
         try:
             if slmInfo is None:
                 raise KeyError(f"slmInfo for {slmName} not found")
-        
-            correctionPatternsDir = slmInfo.correctionPatternsDir
+
+            correctionPatternsDir = self._corrPatternsDir.get(slmKey)
             if correctionPatternsDir is None:
-                raise KeyError(f"Cannot find 'correctionPatternsDir' of {slmName} in config file")
-            
-            elif not os.path.exists(correctionPatternsDir):
-                raise FileNotFoundError(f"CorrectionPatternsDir for {slmName} not found at {correctionPatternsDir}")
+                raise FileNotFoundError(f"Correction Pattern Directory not found for {slmName}.")
             
             serial = slmInfo.serial_number
             if serial is None:
@@ -229,9 +262,9 @@ class SLMsController(ImConWidgetController):
         engine = self._patternEngines.get(slmKey)
 
         try:
-            correctionPatternsDir = slmInfo.correctionPatternsDir
+            correctionPatternsDir = self._corrPatternsDir.get(slmKey)
             if correctionPatternsDir is None:
-                raise KeyError(f"Cannot find 'correctionPatternsDir' of {slmName} in config file")
+                raise FileNotFoundError(f"Correction Pattern Directory not found for {slmName}.")
 
             wavelengthTableFile = slmInfo.wavelengthTableFile
 

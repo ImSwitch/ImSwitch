@@ -7,8 +7,7 @@ from .basewidgets import Widget
 class PositionerWidget(Widget):
     """ Widget in control of the piezo movement. """
 
-    sigJoystick = QtCore.Signal(bool, str)
-    sigSetJoystickCheck = QtCore.Signal(bool)
+    sigJoystickToggled = QtCore.Signal(bool, str)
     sigStepUpClicked = QtCore.Signal(str, str)  # (positionerName, axis)
     sigStepDownClicked = QtCore.Signal(str, str)  # (positionerName, axis)
     sigsetSpeedClicked = QtCore.Signal()  # (speed)
@@ -27,7 +26,7 @@ class PositionerWidget(Widget):
         self.grid.addWidget(self.joystickCheck, 0, 0)
         # connect checkbox signal
         self.joystickCheck.clicked.connect(
-            lambda state: self.sigJoystick.emit(state, pName)
+            lambda state: self.sigJoystickToggled.emit(state, pName)
         )
         self.numPositioners += 1
 
@@ -66,16 +65,6 @@ class PositionerWidget(Widget):
             self.pars['DownButton' + parNameSuffix].clicked.connect(
                 lambda *args, axis=axis: self.sigStepDownClicked.emit(positionerName, axis)
             )
-
-            if joystick:
-                # uncheck joystick when +/- buttons are pressed
-                self.pars['UpButton' + parNameSuffix].clicked.connect(
-                    lambda *args, state=False: self.sigSetJoystickCheck.emit(state)
-                )
-                self.pars['DownButton' + parNameSuffix].clicked.connect(
-                    lambda *args, state=False: self.sigSetJoystickCheck.emit(state)
-                )
-
 
             if speed:
                 self.pars['Speed'] = QtWidgets.QLabel(f'<strong>{0:.2f} µm/s</strong>')

@@ -3,6 +3,7 @@ from typing import Dict, List
 from imswitch.imcommon.model import APIExport
 from ..basecontrollers import ImConWidgetController
 from imswitch.imcommon.model import initLogger
+from qtpy.QtCore import QTimer
 
 class PositionerController(ImConWidgetController):
     """ Linked to PositionerWidget."""
@@ -10,7 +11,13 @@ class PositionerController(ImConWidgetController):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+        self._liveUpdateIntervalMs = 300
+        self._liveUpdateTimer = QTimer()
+        self._liveUpdateTimer.setInterval(self._liveUpdateIntervalMs)
+        self._liveUpdateTimer.timeout.connect(self._refreshLiveUpdatedPositioners)
+
         self.settingAttr = False
+        self._previousJoystickState = None
 
         self.__logger = initLogger(self, tryInheritParent=True)
 
@@ -25,7 +32,6 @@ class PositionerController(ImConWidgetController):
 
             if pManager.joystick:
                 self._widget.addJoystick(pName)
-                self._PreviousJoystickState = True
 
             speed = hasattr(pManager, 'speed')
             self._widget.addPositioner(pName, pManager.axes, speed, pManager.joystick)
@@ -40,18 +46,22 @@ class PositionerController(ImConWidgetController):
                 # Set joystick checkbox status for first start
                 self.setJoystickCheckStatus(self._master.positionersManager[pName].joystickStatus)
                 # Connect channels
-                self._widget.sigJoystick.connect(self.setJoystickStatus)
-                self._widget.sigSetJoystickCheck.connect(self.setJoystickCheckStatus)
-                # self._commChannel.sigRecordingStarted.connect(lambda: self.setJoystickStatus(False, pName))
-                # self._commChannel.sigRecordingEnded.connect(lambda: self.setJoystickStatusAfterRec())
-                # self._commChannel.sigInitiateEtMonalisa.connect(lambda state: self.setJoystickStatus(not state, pName))
+                self._commChannel.sigRecordingStarted.connect(
+                    lambda pName=pName: self.setJoystickStatusForRec(False, pName)
+                )
+                self._commChannel.sigRecordingEnded.connect(
+                    lambda pName=pName: self.setJoystickStatusAfterRec(pName)
+                )
+                # self._commChannel.sigInitiateEtMonalisa.connect(lambda state, pName=pName: self.setJoystickStatus(not state, pName))
 
-            if pName=='Stage':
-                if pManager.liveUpdate:
-                    #TODO: for now live update connected to live detector view, should be made as an independant live worker
-                    self._commChannel.sigUpdateImage.connect(lambda: self.updatePosition('Stage', 'all'))
-                    print('liveupdate activated')
-
+                if hasattr(pManager, "sigJoystickStatusChanged"):
+                    pManager.sigJoystickStatusChanged.connect(
+                        lambda enabled, pName=pName: self._onManagerJoystickStatusChanged(pName, enabled)
+                    )
+        
+        self._widget.sigJoystickToggled.connect(self.requestJoystickStatus)
+        self._updateLiveTimerState()
+        self._refreshLiveUpdatedPositioners()
 
         # Connect CommunicationChannel signals
         self._commChannel.sharedAttrs.sigAttributeSet.connect(self.attrChanged)
@@ -62,33 +72,72 @@ class PositionerController(ImConWidgetController):
         self._widget.sigStepUpClicked.connect(self.stepUp)
         self._widget.sigStepDownClicked.connect(self.stepDown)
         self._widget.sigsetSpeedClicked.connect(self.setSpeedGUI)
+    
 
-
-
-
-    def setJoystickStatusAfterRec(self):
-        if self._PreviousJoystickState:
-            # if the joystick was enabled before the scan, enable it again after rec
-            self.setJoystickStatus(self, True)
-
-
-    def setJoystickStatus(self, enabled, pName):
-        self._PreviousJoystickState = self._master.positionersManager['Stage'].joystickStatus
-        if enabled:
-            self._master.positionersManager['Stage'].activate_joystick()
-        else:
-            self._master.positionersManager['Stage'].deactivate_joystick()
-            self.updatePosition(pName, 'all')
+    def _onManagerJoystickStatusChanged(self, pName, enabled):
         self.setJoystickCheckStatus(enabled)
 
-    def setJoystickCheckStatus(self, state=bool):
+    def _hasLiveUpdatePositioner(self):
+        for _, pManager in self._master.positionersManager:
+            if not pManager.forPositioning:
+                continue
+            if getattr(pManager, 'device', True) is None:
+                continue
+            if getattr(pManager, 'liveUpdate', False):
+                return True
+        return False
+
+
+    def _updateLiveTimerState(self):
+        if self._hasLiveUpdatePositioner():
+            if not self._liveUpdateTimer.isActive():
+                self._liveUpdateTimer.start()
+        else:
+            if self._liveUpdateTimer.isActive():
+                self._liveUpdateTimer.stop()
+
+
+    def _refreshLiveUpdatedPositioners(self):
+        for pName, pManager in self._master.positionersManager:
+            if not pManager.forPositioning:
+                continue
+            if getattr(pManager, 'device', True) is None:
+                continue
+            if not getattr(pManager, 'liveUpdate', False):
+                continue
+
+            self.updatePosition(pName, 'all')
+
+    def setJoystickStatusAfterRec(self, pName):
+        if self._previousJoystickState:
+            # if the joystick was enabled before the scan, enable it again after rec
+            self.requestJoystickStatus(True, pName)
+        self._previousJoystickState = None
+
+    def setJoystickStatusForRec(self, enabled, pName):
+        if not enabled and self._previousJoystickState is None:
+            pManager = self._master.positionersManager[pName]
+            self._previousJoystickState = getattr(pManager, "joystickStatus", False)
+        self.requestJoystickStatus(enabled, pName)
+
+
+    def requestJoystickStatus(self, enabled, pName):
+        pManager = self._master.positionersManager[pName]
+
+        if not hasattr(pManager, "setJoystickEnabled"):
+            return
+
+        pManager.setJoystickEnabled(enabled)
+
+    def setJoystickCheckStatus(self, state:bool):
         if not state and self._widget.joystickCheck.isChecked():
             self._widget.joystickCheck.setChecked(False)
         if state and not self._widget.joystickCheck.isChecked():
             self._widget.joystickCheck.setChecked(True)
 
-
     def closeEvent(self):
+        if hasattr(self, '_liveUpdateTimer') and self._liveUpdateTimer.isActive():
+            self._liveUpdateTimer.stop()
         self._master.positionersManager.execOnAll(
             lambda p: [p.setPosition(0, axis) for axis in p.axes],
             condition = lambda p: p.resetOnClose
@@ -125,8 +174,10 @@ class PositionerController(ImConWidgetController):
         self._master.positionersManager[positionerName].setSpeed(speed)
         
     def updatePosition(self, positionerName, axis):
-        if positionerName == 'Stage':
-            self._master.positionersManager['Stage'].updatePosition()
+        pManager = self._master.positionersManager[positionerName]
+
+        if hasattr(pManager, 'updatePosition'):
+            pManager.updatePosition()
 
         if axis == 'all':
             for axisName in self._master.positionersManager[positionerName].axes:

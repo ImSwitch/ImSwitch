@@ -307,29 +307,10 @@ class SwabianTimeTaggerManager(DetectorManager):
         self._newFrameReady = True
 
     def _infer_dims_from_scanInfo(self, scanInfoDict):
-        img_dims_in = list(scanInfoDict["img_dims"])
-        axes = list(scanInfoDict.get("img_axes_with_linesteps", []))  # preferred (APD does this)
-        if not axes:
-            axes = list(scanInfoDict.get("img_axes_phys", []))
-            n_ls = int(scanInfoDict.get("n_linesteps", 1))
-            if n_ls > 1:
-                axes = axes + ["linestep"]
-
-        # linestep index + size (APD logic)
-        linestep_idx = axes.index("linestep") if "linestep" in axes else None
-        if linestep_idx is not None:
-            S = int(img_dims_in[linestep_idx])
-        else:
-            S = int(scanInfoDict.get("n_linesteps", 1))
-        S = max(1, S)
-
-        # “scan dims” excluding linestep (APD logic)
-        if linestep_idx is not None:
-            scan_dims = [d for i, d in enumerate(img_dims_in) if i != linestep_idx]
-            scan_axes = [a for i, a in enumerate(axes) if i != linestep_idx]
-        else:
-            scan_dims = img_dims_in
-            scan_axes = axes
+        # img_dims contains physical scan axes only (no linestep); n_linesteps is separate.
+        scan_dims = list(scanInfoDict["img_dims"])
+        scan_axes = list(scanInfoDict.get("img_axes_phys", ["x", "y", "z"][:len(scan_dims)]))
+        S = max(1, int(scanInfoDict.get("n_linesteps", 1)))
 
         # Choose Nx, Ny from axes if possible, else fall back to last two dims
         if "x" in scan_axes and "y" in scan_axes:
@@ -339,7 +320,7 @@ class SwabianTimeTaggerManager(DetectorManager):
             Nx = int(scan_dims[-1])
             Ny = int(scan_dims[-2])
 
-        # Any remaining scan dims are “outer” dims (e.g. z, t, etc.)
+        # Any remaining scan dims are "outer" dims (e.g. z, t, etc.)
         outer_axes = [a for a in scan_axes if a not in ("y", "x")]
         outer_dims = [int(scan_dims[scan_axes.index(a)]) for a in outer_axes]
 

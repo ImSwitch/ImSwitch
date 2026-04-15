@@ -170,7 +170,7 @@ class ScanWidgetAdvanced(SuperScanWidget):
             stepSizePar = QtWidgets.QDoubleSpinBox()
             stepSizePar.setDecimals(3)
             stepSizePar.setValue(.1)
-            stepSizePar.setSingleStep(.1)
+            stepSizePar.setSingleStep(.04)
             stepSizePar.setMinimum(0)
             if "mock" in positionerName.lower():
                 stepSizePar.setValue(1)

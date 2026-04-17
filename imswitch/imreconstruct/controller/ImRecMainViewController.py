@@ -188,7 +188,7 @@ class ImRecMainViewController(ImRecWidgetController):
             processedData = self.liveReconObj.reconstructed                             
             self._widget.reconstructionWidget.sigUpdateImage.emit(processedData)
 
-            self._logger.info("Stack reconstruction finished: UI refresh triggered!")
+            # self._logger.info("Stack reconstruction finished: UI refresh triggered!")
 
         except Exception as e:
             self._logger.error(f"UI refresh failed: {e}")

@@ -35,36 +35,27 @@ class WatcherFrameController(ImRecWidgetController):
         self.recPath = None
         self._widget.sigWatchChanged.connect(self.toggleWatch)
         self._logger = initLogger(self, tryInheritParent=False)
-        
         try:
             self._widget.sigLiveReconChanged.connect(self.toggleWatch)
         except AttributeError:
             self._logger.debug(f"DEBUG: Available widget signals: {self._widget.__dict__.keys()}")
-     
         self._widget.sigChangeFolder.connect(lambda: self._widget.updateFileList(self._commChannel.extension.value()))
-        
         self._commChannel.sigExecutionFinished.connect(self.executionFinished)
-        
         self._commChannel.extension.sigValueChanged.connect(self.extensionChanged)
-                
         self.execution = False
         self.toExecute = []
-        
         self.current = None
-        
         self.t0 = None
-        
         self.extension = None
-        
         self.watcher = None
         
 
     def toggleWatch(self, checked):
         self._widget.path = self._widget.folderEdit.text()
-        
         self.extension = self._commChannel.extension.value()
 
-        if checked and (not self._widget.path or not os.path.isdir(self._widget.path)):
+        if checked and (not self._widget.path or 
+                        not os.path.isdir(self._widget.path)):
             self._logger.error("Select a valid folder")
             for button in [self._widget.watchCheck, self._widget.liveModeCheck]:
                 button.blockSignals(True)
@@ -92,37 +83,43 @@ class WatcherFrameController(ImRecWidgetController):
             self.frameCounter = 0
             self.stackCounter = 0
 
-            # 1. initialize zarr directory que
-            self.toExecute = []
-            self.execution = False
-
-            # 2. find and sort existings directories 
-            allEntires = os.listdir(self._widget.path) 
-            existingZarrDirs = sorted([zarrDir for zarrDir in allEntires if zarrDir.endswith(".zarr")])
-            self.toExecute.extend(existingZarrDirs)
-            self._logger.info(f"INIT zarr dir que: {self.toExecute}")
-
-            # 3. start watcher for LIVE scans 
             self.watcher = FileWatcher(self._widget.path, interval=0.5)
             self.watcher.sigNewFiles.connect(self.newFiles)
-            self.watcher.start()
+            self.watcher.start() 
 
+            self.runNextFile()
 
-            # 4. start with small delay in order to not skip the processing of the first directory 
-            kickStartDelay = 100
-            self._logger.info(f"Starting processing que in {kickStartDelay}ms")
-            QtCore.QTimer.singleShot(kickStartDelay, self.runNextFile)
-
-            # self.extension = self._commChannel.extension.value()
-
-            # if self._widget.path.lower().endswith(".zarr"):
-            #     self.startZarrStream(self._widget.path)
-            # else:
-            #     # --- MODE: tiff or hdf5 ---
-            #     self.startStandardWatcher()
         else: 
-            # --- STOP LOGIC ---
             self.stopAllWorkers()            
+
+
+    def newFiles(self, files):
+        newZarrDirs = sorted([zarrDir for zarrDir in files if zarrDir.endswith(".zarr")])
+
+        for zarrDir in newZarrDirs:
+            # avoid duplication
+            if zarrDir not in self.toExecute: 
+                self.toExecute.append(zarrDir)
+        
+        self._widget.updateFileList(self.extension) 
+        
+        if not self.execution:
+            self.runNextFile()
+
+
+    def runNextFile(self):        
+        if not self.toExecute or self.execution:
+            return
+    
+        nextScanDir = self.toExecute.pop(0)
+        fullPath = os.path.join(self._widget.path, nextScanDir)
+        self._logger.info(f"Processing: {nextScanDir}")
+        self.startZarrStream(fullPath)
+    
+        # # existing tif/hdf5 logic 
+        # self.execution = True
+        # self.loaderWorker.fullPath = fullPath
+        # self.sigTriggerRun.emit(fullPath)
 
 
     def startZarrStream(self, zarrPath):
@@ -132,7 +129,7 @@ class WatcherFrameController(ImRecWidgetController):
             return 
         
         self.execution = True # mark stream as busy
-        self._logger.info(f"Starting Zarr Stream Worker on: {zarrPath}")
+        # self._logger.info(f"Starting Zarr Stream Worker on: {zarrPath}")
 
         self.zarrThread = QtCore.QThread() 
         self.zarrWorker = ZarrStreamWorker(zarrPath, int(self.numFramesInStack))
@@ -154,12 +151,10 @@ class WatcherFrameController(ImRecWidgetController):
         self._logger.info("Zarr Worker has processed the current scan folder")
         self.execution = False
 
-        # 1. clean up thread 
         if hasattr(self, "zarrThread"):
             self.zarrThread.quit()
             self.zarrThread.wait()
 
-        # 2. check if there are more .zarr scan directories
         self.runNextFile()
 
 
@@ -207,53 +202,14 @@ class WatcherFrameController(ImRecWidgetController):
         self._widget.watchCheck.setChecked(False)
 
 
-    def newFiles(self, files):
-        # 1. filter for zarr directories and sort incoming batch in the case multiple directories appear at once 
-        newZarrDirs = sorted([zarrDir for zarrDir in files if zarrDir.endswith(".zarr")])
-
-        # 2. append to the end of the list 
-        for zarrDir in newZarrDirs:
-            # avoid duplication
-            if zarrDir not in self.toExecute: 
-                self.toExecute.append(zarrDir)
-        
-        # 3. update the file list
-        self._widget.updateFileList(self.extension) 
-        
-        # 4. if the engine is IDLE, then fire it up!
-        if not self.execution:
-            self.runNextFile()
-
-
-    def runNextFile(self):        
-        if not self.toExecute or self.execution:
-            return
-        
-        # 1. always pop a zarr directory from the beginning of the list
-        nextScanDir = self.toExecute.pop(0)
-        fullPath = os.path.join(self._widget.path, nextScanDir)
-        
-        self._logger.info(f"Processing: {nextScanDir}. Remaining in que: {len(self.toExecute)}")
-        
-        # 2. start zarr processing
-        self.startZarrStream(fullPath)
-    
-        # # existing tif/hdf5 logic 
-        # self.execution = True
-        # self.loaderWorker.fullPath = fullPath
-        # self.sigTriggerRun.emit(fullPath)
-
 
     @QtCore.Slot(np.ndarray, str)                                     
     def onFileLoaded(self, data, filename):
-        """ 
-        Runs the MAIN THREAD, receives data from I/O worker 
-        and hands it off to the Processor thread/queue.
-        """
+        """ Runs the MAIN THREAD, receives data from I/O worker and hands it off to the Processor thread/queue. """
         # self._logger.debug(f"File successfully loaded: {filename}")
 
-        if data.ndim == 2: 
-            data = np.expand_dims(data, axis=0) 
+        # if data.ndim == 2: 
+        #     data = np.expand_dims(data, axis=0) 
 
         for frame in data:
             self.buffer[self.frameCounter] = frame 

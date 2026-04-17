@@ -19,13 +19,10 @@ class FileWatcher(QtCore.QThread):
         
         self.running = True       
         
-        self._last_seen_files = set(self.filesInDirectory())    
+        self.previous_files = set(self.filesInDirectory())    
 
     def filesInDirectory(self):
-        """
-        Returns a list of files/folders in the directory that match the 
-        supported image extensions.
-        """
+        """ Returns a list of files/folders in the directory that match the supported image extensions. """
         target_ext = self.extension.lower().lstrip('.')
         all_items = listdir(self.path)
         matches = []
@@ -34,40 +31,31 @@ class FileWatcher(QtCore.QThread):
             full_path = join(self.path, f)
             f_lower = f.lower()
 
-            # 1. match for selected extension
-            # if f_lower.endswith('.' + target_ext) and (isfile(full_path) or isdir(full_path)):
-            #     matches.append(f)
-
-            # 2. always allow .zarr directories to be detected 
             if f_lower.endswith(".zarr") and isdir(full_path):
                 if f not in matches: # avoid duplicates   
                     matches.append(f)
 
-            # 3. hdf5 variations
             elif target_ext in ["h5", "hdf5"] and f_lower.endswith((".h5", ".hdf5")):
                 matches.append(f) 
 
-            # 4. tiff variations
             elif target_ext in ["tif", "tiff"]: 
                 matches.append(f)  
-            
-        # print(f"DEBUG: Polling {self.path}... Found {len(matches)} matches for '{target_ext}'")        
-        
+         
         return matches
         
     def run(self):
         """ Watches for new files """
         while self.running: 
             current_files = set(self.filesInDirectory())
-            new_files = list(current_files - self._last_seen_files) # set subtraction
+            new_files = list(current_files - self.previous_files) # set subtraction
             
             if new_files:
-                self._last_seen_files.update(new_files)
-                self.sigNewFiles.emit(sorted(new_files)) 
+                self.previous_files.update(new_files)
+                self.sigNewFiles.emit(new_files) 
 
             # files deleted => remove them from memory and allow them to be re-detected
-            if len(self._last_seen_files) > len(current_files): 
-                self._last_seen_files = self._last_seen_files.intersection(current_files)
+            if len(self.previous_files) > len(current_files): 
+                self.previous_files = self.previous_files.intersection(current_files)
 
             # use QtCore.QThread sleep method
             self.msleep(int(self.interval * 1000))

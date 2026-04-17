@@ -34,7 +34,7 @@ class ZarrStreamWorker(QtCore.QObject):
         # TODO: just open the directory that is in the zarr directory regardless of its name 
         array_path = os.path.join(self.path, "chunks")  
         
-        print(f"Zarr Worker waiting for data in {self.path}")
+        # print(f"Zarr Worker waiting for data in {self.path}")
 
         if not os.path.exists(self.path):
             print(f"WORKER ERROR: Path {self.path} does not exist.")

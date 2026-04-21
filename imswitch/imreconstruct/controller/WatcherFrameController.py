@@ -54,7 +54,7 @@ class WatcherFrameController(ImRecWidgetController):
         try: 
             zarrFileList.sort(key=lambda x : int(x.split("__")[1]))
         except Exception as e:
-            self._logger.error(f"[sortZarrFileList] >> Could not sort zarrFileList: {e}.")
+            self._logger.error(f"[sortZarrFileList] >> Could not sort zarrFileList: {e}")
 
 
     def toggleWatch(self, checked):
@@ -78,7 +78,7 @@ class WatcherFrameController(ImRecWidgetController):
                 numColsInFrame = params.get("num_cols", 512)
                 self.recImageBuffer = np.zeros((self.numFramesInStack, numRowsInFrame, numColsInFrame), dtype=np.float32)
                 self._commChannel.sigSetupLiveStream.emit(params, self.recImageBuffer)
-                self._logger.debug(f"[toggleWatch] >> Reconstruction Image Buffer: (numFramesInStack, frameHeight, frameWidth) = {self.recImageBuffer.shape} ready!")
+                self._logger.debug(f"[toggleWatch] >> Reconstruction Image Buffer initialized: (numFramesInStack, frameHeight, frameWidth) = {self.recImageBuffer.shape}")
                 self.frameCounter = 0
                 self.stackCounter = 0
                 
@@ -129,11 +129,11 @@ class WatcherFrameController(ImRecWidgetController):
 
     def runNextFile(self):        
         if self.execution:
-            self._logger.debug("[runNextFile] >> The filewatcher is busy.")
+            self._logger.debug("[runNextFile] >> The filewatcher is busy")
             return
         
         if not self.toExecute:
-            self._logger.debug("[runNextFile] >> There are no files to process.")
+            self._logger.debug("[runNextFile] >> There are no files to process")
             return
     
         self.execution = True
@@ -150,8 +150,8 @@ class WatcherFrameController(ImRecWidgetController):
         self.zarrStreamWorker = ZarrStreamWorker(zarrFilePath, self.numFramesInStack)
         self.zarrStreamWorker.moveToThread(self.zarrStreamWorkerThread) 
         
-        self.zarrStreamWorker.sigChunkLoaded.connect(self.onFileLoaded)
-        self.zarrStreamWorker.sigFinished.connect(self.onZarrStreamFinished)
+        self.zarrStreamWorker.sigChunkLoaded.connect(self.fileLoaded)
+        self.zarrStreamWorker.sigFinished.connect(self.zarrStreamFinished)
         self.zarrStreamWorker.sigFinished.connect(self.zarrStreamWorkerThread.quit) 
         
         self.zarrStreamWorkerThread.finished.connect(self.zarrStreamWorker.deleteLater) 
@@ -162,7 +162,7 @@ class WatcherFrameController(ImRecWidgetController):
         
 
     @QtCore.Slot(np.ndarray, str)                                     
-    def onFileLoaded(self, chunk, zarrFileName):
+    def fileLoaded(self, chunk, zarrFileName):
         """ 
         Slot received from ZarrStreamWorker. 
         The chunk variable consists of 3D np array: (numFramesInChunk, numRows, numCols)
@@ -174,7 +174,7 @@ class WatcherFrameController(ImRecWidgetController):
         # TODO: use <<zarrFileName>> for some DEBUG printing
 
         if endIndex > self.numFramesInStack:
-            self._logger.warning("[onFileLoaded] >> Incoming data exceeds stack size => Clipping chunk")
+            self._logger.warning("[fileLoaded] >> Incoming data exceeds stack size => Clipping chunk")
             chunk = chunk[:self.numFramesInStack - startIndex]
             endIndex = self.numFramesInStack
 
@@ -188,12 +188,12 @@ class WatcherFrameController(ImRecWidgetController):
         #     self._logger.info(f"Streaming {zarrFileName}: {percent:.1f}% complete")
 
 
-    def onZarrStreamFinished(self):
+    def zarrStreamFinished(self):
         if self.frameCounter < self.numFramesInStack - 1 or self.zarrStreamWorker == None:
-            self._logger.warning(f"[onZarrStreamFinished] >> Scan Processing interrupted => Frames processed: {self.frameCounter + 1}/{self.numFramesInStack}")
+            self._logger.warning(f"[zarrStreamFinished] >> Scan Processing interrupted => Frames processed: {self.frameCounter + 1}/{self.numFramesInStack}")
             return
         else:
-            self._logger.debug(f"[onZarrStreamFinished] >> Finished processing: {self.nextZarrFile} => Frames processed: {self.frameCounter + 1}/{self.numFramesInStack}")
+            self._logger.debug(f"[zarrStreamFinished] >> Finished processing: {self.nextZarrFile} => Frames processed: {self.frameCounter + 1}/{self.numFramesInStack}")
 
         
         if hasattr(self, "zarrStreamWorkerThread") and self.zarrStreamWorkerThread.isRunning():

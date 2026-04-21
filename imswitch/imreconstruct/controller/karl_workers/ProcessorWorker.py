@@ -3,10 +3,12 @@
 from qtpy import QtCore
 import numpy as np
 
+
 class ProcessorWorker(QtCore.QObject): 
     
     numFramesProcessed = QtCore.Signal(int)       
     sigTriggerUIRefresh = QtCore.Signal()
+    sigSaveChunk = QtCore.Signal(np.ndarray, np.ndarray, int)
 
     def __init__(
             self,
@@ -58,6 +60,11 @@ class ProcessorWorker(QtCore.QObject):
         self.reconObj.addLiveChunk(chunkCoeffs, chunkIndices)
         numFrames = endChunkIndex 
         self.numFramesProcessed.emit(numFrames)
+
+        # --- SAVING RECONSTRUCTED DATA ---
+        timePointIndex = startChunkIndex // self.processor.num_frames_in_stack 
+        dataToSave = chunkCoeffs
+        self.sigSaveChunk.emit(dataToSave, chunkIndices, timePointIndex)
 
         refreshRate = int(np.sqrt(chunkIndices.shape[1]))
         if numFrames % refreshRate == 0 or numFrames == self.processor.num_frames_in_stack - 1:

@@ -83,3 +83,21 @@ class GaussProcessorCPU:
 
         return np.dot(interp_vals, self.lsq_weights)
         
+    def process_chunk(self, chunk_CPU: np.ndarray) -> np.ndarray:
+        """ Processes an entire 3D chunk (num_frames, Y, X) at once on the CPU. """
+        x0 = np.clip(np.floor(self.x_interp).astype(np.int32), 0, self.num_cols - 1)
+        x1 = np.clip(x0 + 1, 0, self.num_cols - 1)
+        y0 = np.clip(np.floor(self.y_interp).astype(np.int32), 0, self.num_rows - 1)
+        y1 = np.clip(y0 + 1, 0, self.num_rows - 1)
+        
+        dx = self.x_interp - x0 
+        dy = self.y_interp - y0
+    
+        interp_vals = (
+            chunk_CPU[:, y0, x0] * (1 - dx) * (1 - dy) 
+            + chunk_CPU[:, y1, x0] * (1 - dx) * dy
+            + chunk_CPU[:, y0, x1] * dx * (1 - dy)
+            + chunk_CPU[:, y1, x1] * dx * dy
+        ).reshape((chunk_CPU.shape[0], self.num_foci, self.pts_per_focus))
+
+        return np.matmul(interp_vals, self.lsq_weights)

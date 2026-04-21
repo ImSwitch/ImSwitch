@@ -17,54 +17,46 @@ class ReconObj:
             timepoints_text, 
             p_text, 
             n_text, 
-            bufferArgs = None,
+            recImageBufferArgs = None,
             *args, 
             **kwargs
     ):
-        # super().__init__(*args, **kwargs)
         self.__logger = initLogger(self, instanceName=name)
-
         self.r_l_text = r_l_text
         self.u_d_text = u_d_text
         self.b_f_text = b_f_text
         self.timepoints_text = timepoints_text
         self.p_text = p_text
         self.n_text = n_text
-
         self.name = name
-
         self.coeffs = None
         self.reconstructed = None
         self.flatReconView = None
-
         self.scanParDict = scanParDict.copy()
-
-        self.bufferRows = None 
-        self.bufferCols = None 
-
+        self.reconRows = None 
+        self.reconCols = None 
         self.dispLevels = None
-
-        if bufferArgs is not None:
-            self.bufferRows = bufferArgs["ny_c"] * bufferArgs["ny_s"]
-            self.bufferCols = bufferArgs["nx_c"] * bufferArgs["nx_s"]
-            
-            self.scanParDict["range"] = [float(self.bufferCols), float(self.bufferRows)]
+        if recImageBufferArgs is not None:
+            self.reconRows = recImageBufferArgs["ny_c"] * recImageBufferArgs["ny_s"]
+            self.reconCols = recImageBufferArgs["nx_c"] * recImageBufferArgs["nx_s"]
+            self.scanParDict["range"] = [float(self.reconCols), float(self.reconRows)]
             self.scanParDict["start"] = [0.0, 0.0]
             self.scanParDict["stop"] = self.scanParDict["range"]
-
-            # 6D: [Dataset, Base, Time, Z, Y, X]; transpose order: [0, 1, 2, 3, 5, 4] 
-            self.reconstructed = np.zeros((1, 1, 1, 1, self.bufferRows, self.bufferCols), dtype=np.float32)
+            # self.reconstructed.shape = (Dataset, Base, Time, Z, Y, X); transpose_order = [0, 1, 2, 3, 5, 4] 
+            self.reconstructed = np.zeros((1, 1, 1, 1, self.reconRows, self.reconCols), dtype=np.float32)
             self.flatReconView = self.reconstructed[0, 0, 0, 0].reshape(-1)
             self.reconstructed[0, 0, 0, 0, 0, 0] = 1e-8 
-            
             self.dispLevels = [0.0, 100.0]
-            
-            self.__logger.info(f"Live Buffer initialized with shape: {self.bufferRows}x{self.bufferCols}")
+            self.__logger.debug(f"[__init__] >> Reconstructed Image Array initialized: (height, widght) = ({self.reconRows}, {self.reconCols})")
     
 
     def addLiveFrame(self, flatCoeffs, frameIndices): 
         self.flatReconView[frameIndices] = flatCoeffs
-    
+
+
+    def addLiveChunk(self, chunkCoeffs, chunkIndices):
+        self.flatReconView[np.array(chunkIndices).ravel()] = chunkCoeffs.ravel()
+
 
     def setDispLevels(self, levels):
         self.dispLevels = levels
@@ -94,7 +86,7 @@ class ReconObj:
         else:
             # self.__logger.debug(f'In else, shape self.data is: {np.shape(inCoeffs)}')
             # self.__logger.debug(f'In else, shape inCoeffs is: {np.shape(inCoeffs)}')
-            self.__logger.debug(f'Max in coeffs: {inCoeffs.max()}')
+            self.__logger.debug(f"[addCoeffsTP] >> Max in coeffs: {inCoeffs.max()}")
             inCoeffs = np.expand_dims(inCoeffs, 0)
             self.coeffs = np.vstack((self.coeffs, inCoeffs))
 
@@ -111,9 +103,9 @@ class ReconObj:
                 [self.coeffsToImage(self.coeffs[ds][b], self.scanParDict) for b in range(0, bases)]
                 for ds in range(0, datasets)
             ])
-            self.__logger.debug(f'Shape of reconstructed: {np.shape(self.reconstructed)}')
+            self.__logger.debug(f"[updateImages] >> Shape of reconstructed: {np.shape(self.reconstructed)}")
         else:
-            self.__logger.error('Cannot update images without coefficients')
+            self.__logger.error("[updateImages] >> Cannot update images without coefficients")
 
 
     def addGridOfCoeffs(self, im, coeffs, t, s, r0, c0, pr, pc):
@@ -136,7 +128,7 @@ class ReconObj:
         dim2Side = int(scanParDict['steps'][2])
         dim3Side = int(scanParDict['steps'][3])  # Always timepoints
         if not frames == dim0Side * dim1Side * dim2Side * dim3Side:
-            self.__logger.error('Wrong dimensional data')
+            self.__logger.error("[coeffsToImage] >> Wrong dimensional data")
             pass
 
         timepoints = int(

@@ -214,9 +214,8 @@ class RecordingController(ImConWidgetController):
         isFinalLapse = self.lapseCurrent + 1 == self.lapseTotal
 
         if not self.recordingArgs['singleLapseFile']:
-            # lapseCurrentStr = str(self.lapseCurrent).zfill(len(str(self.lapseTotal)))
-            # TODO: changing the zarr folder name to to just add the lapseNumber without any filling (padding)
-            self.recordingArgs['savename'] = f'{self.savename}_scan__{self.lapseCurrent}_'
+            lapseCurrentStr = str(self.lapseCurrent).zfill(len(str(self.lapseTotal)))
+            self.recordingArgs['savename'] = f'{self.savename}_scan__{lapseCurrentStr}_'
 
         if isFirstLapse:
             self._commChannel.sigScanStarting.emit()  # To get updated values from sharedAttrs

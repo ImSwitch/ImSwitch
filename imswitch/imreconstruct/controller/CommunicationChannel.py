@@ -22,8 +22,8 @@ class CommunicationChannel(SignalInterface):
     # --- NEW SIGNALS ---
     sigSetupLiveStream = Signal(dict, np.ndarray)  # (params dict, buffer np.ndarray)
     sigLiveFrameReady = Signal(int)                # (index of the frame in the buffer)
-
-
+    # sigLiveChunkReady = Signal(np.ndarray, int)  # (chunk, index of the chunk in the buffer)
+    sigLiveChunkReady = Signal(int, int)           # (startIndex, endIndex) index for buffer slicing
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

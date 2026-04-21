@@ -449,7 +449,7 @@ class RecordingWorker(Worker):
                                 if it == 0:
                                     dataset[0, :, :] = newFrames[0, :, :]                                    
                                     if n > 0:
-                                        dataset.append(newFrames[1:n, :, :])
+                                        dataset.append(newFrames[1:n, :, :]) # TODO: remove this append?
                                 else:
                                     dataset.append(newFrames)
                                 currentFrame[detectorName] += n

@@ -68,7 +68,7 @@ class DataObj:
             try:
                 self._file, self._datasetName = DataObj._open(self.dataPath, self._datasetName)
                 if self.data is not None:
-                    self.__logger.debug('Data loaded')
+                    self.__logger.debug("[checkAndLoadData] >> Data loaded")
             except Exception:
                 pass
 
@@ -80,7 +80,7 @@ class DataObj:
             try:
                 self._file.close() # type: ignore
             except Exception:
-                self.__logger.error('Error closing file')
+                self.__logger.error("[checkAndUnloadData] >> Error closing file")
 
         self._file = None
         self._data = None

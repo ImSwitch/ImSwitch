@@ -1,25 +1,46 @@
+# type: ignore
+
 from os import listdir
-from os.path import isfile, join, isdir
+from os.path import join, isdir
 from qtpy import QtCore
 import os
 
 
 class FileWatcher(QtCore.QThread): 
 
-    sigNewFiles = QtCore.Signal(list) # type: ignore
+    sigNewFiles = QtCore.Signal(list) 
 
     def __init__(self, path, extension=".tif", interval=1.0): 
         super().__init__()
         self.path = path
         self.target_ext = extension.lower().lstrip('.')
-
         self.extension = extension if extension.startswith('.') else '.' + extension
-        
         self.interval = interval 
-        
         self.running = True       
-        
         self.previous_files = set(self.filesInDirectory())    
+
+
+    def run(self):
+        """ Watches for new files """
+        while self.running: 
+            current_files = set(self.filesInDirectory())
+            new_files = list(current_files - self.previous_files) # set subtraction
+            
+            if new_files:
+                self.previous_files.update(new_files)
+                self.sigNewFiles.emit(new_files) 
+
+            # files deleted => remove them from memory and allow them to be re-detected
+            if len(self.previous_files) > len(current_files): 
+                self.previous_files = self.previous_files.intersection(current_files)
+
+            # QtCore.QThread.msleep() method
+            self.msleep(int(self.interval * 1000))
+    
+
+    def stop(self): 
+        self.running = False
+
 
     def filesInDirectory(self):
         """ Returns a list of files/folders in the directory that match the supported image extensions. """
@@ -42,38 +63,20 @@ class FileWatcher(QtCore.QThread):
                 matches.append(f)  
          
         return matches
-        
-    def run(self):
-        """ Watches for new files """
-        while self.running: 
-            current_files = set(self.filesInDirectory())
-            new_files = list(current_files - self.previous_files) # set subtraction
-            
-            if new_files:
-                self.previous_files.update(new_files)
-                self.sigNewFiles.emit(new_files) 
 
-            # files deleted => remove them from memory and allow them to be re-detected
-            if len(self.previous_files) > len(current_files): 
-                self.previous_files = self.previous_files.intersection(current_files)
 
-            # use QtCore.QThread sleep method
-            self.msleep(int(self.interval * 1000))
-    
-    def stop(self): 
-        self.running = False
-    
     def addToLog(self, filename, info_list): 
         """ Specifically kept for WatcherController's script logging. """
         log_path = os.path.join(self.path, "watcher_log.txt")
         try:
             with open(log_path, 'a') as f:
                 # append line at the end of the log file
-                line = f"{filename} | " + " | ".join(info_list) + "\n"
+                line = f"{filename} >> " + " >> ".join(info_list) + "\n"
                 f.write(line)
         except Exception as e:
-            print(f"ERROR: Can't add to log: {e}")
+            print(f"ERROR [FileWatcher] [addToLog] >> Can't add to log: {e}")
         
+
 # Adapted from https://towardsdatascience.com/implementing-a-file-watcher-in-python-73f8356a425d
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

@@ -86,3 +86,21 @@ class GaussProcessorGPU:
 
         return cp.asnumpy(cp.dot(interp_vals, self.lsq_weights))
     
+    def process_chunk(self, chunk_GPU: cp.ndarray) -> np.ndarray:
+        """ Processes an entire 3D chunk (num_frames, Y, X) at once on the GPU. """
+        x0 = cp.clip(cp.floor(self.x_interp).astype(cp.int32), 0, self.num_cols - 1)
+        x1 = cp.clip(x0 + 1, 0, self.num_cols - 1)
+        y0 = cp.clip(cp.floor(self.y_interp).astype(cp.int32), 0, self.num_rows - 1)
+        y1 = cp.clip(y0 + 1, 0, self.num_rows - 1)
+        
+        dx = self.x_interp - x0 
+        dy = self.y_interp - y0
+    
+        interp_vals = (
+            chunk_GPU[:, y0, x0] * (1 - dx) * (1 - dy) 
+            + chunk_GPU[:, y1, x0] * (1 - dx) * dy
+            + chunk_GPU[:, y0, x1] * dx * (1 - dy)
+            + chunk_GPU[:, y1, x1] * dx * dy
+        ).reshape((chunk_GPU.shape[0], self.num_foci, self.pts_per_focus))
+
+        return cp.asnumpy(cp.matmul(interp_vals, self.lsq_weights))

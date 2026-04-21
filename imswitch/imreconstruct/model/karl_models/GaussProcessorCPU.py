@@ -25,11 +25,8 @@ class GaussProcessorCPU:
         self.num_rows = args["num_rows"]
         self.num_cols = args["num_cols"]
         self.num_foci = args["nx_c"] * args["ny_c"]
-        
         self.x_interp, self.y_interp = get_interp_coords(args)
-        
         self.lsq_weights, self.pts_per_focus = self._calculate_weights()
-
         self.frame_inds = get_1d_indices(args, scan_ori)
         self.num_frames_in_stack = args["nx_s"] * args["ny_s"]
 

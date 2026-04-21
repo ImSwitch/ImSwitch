@@ -56,7 +56,7 @@ class ProcessorWorker(QtCore.QObject):
         chunkIndices = self.processor.frame_inds[startChunkIndex:endChunkIndex]
         
         self.reconObj.addLiveChunk(chunkCoeffs, chunkIndices)
-        numFrames = endChunkIndex - 1
+        numFrames = endChunkIndex 
         self.numFramesProcessed.emit(numFrames)
 
         refreshRate = int(np.sqrt(chunkIndices.shape[1]))

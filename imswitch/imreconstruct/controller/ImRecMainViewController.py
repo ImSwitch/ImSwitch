@@ -201,7 +201,7 @@ class ImRecMainViewController(ImRecWidgetController):
         except Exception as e:
             self._logger.error(f"[findPattern] >> Tried to load localizer data but got {e}")
                 
-        self._logger.debug(f"[findPattern] >> Pattern found as <<{self._pattern}>>")
+        self._logger.debug(f"[findPattern] >> Pattern found as: {self._pattern}")
         
         self.setPatternParams(pattern)
         self.updatePattern()

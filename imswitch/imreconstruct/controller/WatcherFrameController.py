@@ -161,31 +161,24 @@ class WatcherFrameController(ImRecWidgetController):
         self.zarrStreamWorkerThread.start()
         
 
-    @QtCore.Slot(np.ndarray, str)                                     
-    def fileLoaded(self, chunk, zarrFileName):
+    @QtCore.Slot(np.ndarray)                                     
+    def fileLoaded(self, chunk):
         """ 
-        Slot received from ZarrStreamWorker. 
-        The chunk variable consists of 3D np array: (numFramesInChunk, numRows, numCols)
+        Slot received from ZarrStreamWorker, where the <<chunk>> variable consists of 
+        3D np.array: (numFramesInChunk, numRows, numCols)
         """
         numFramesInChunk = chunk.shape[0]        
-        startIndex = self.frameCounter
-        endIndex = startIndex + numFramesInChunk
+        startChunkIndex = self.frameCounter
+        endChunkIndex = startChunkIndex + numFramesInChunk
 
-        # TODO: use <<zarrFileName>> for some DEBUG printing
-
-        if endIndex > self.numFramesInStack:
+        if endChunkIndex > self.numFramesInStack:
             self._logger.warning("[fileLoaded] >> Incoming data exceeds stack size => Clipping chunk")
-            chunk = chunk[:self.numFramesInStack - startIndex]
-            endIndex = self.numFramesInStack
+            chunk = chunk[:self.numFramesInStack - startChunkIndex]
+            endChunkIndex = self.numFramesInStack
 
-        self.recImageBuffer[startIndex:endIndex, :, :] = chunk
+        self.recImageBuffer[startChunkIndex:endChunkIndex, :, :] = chunk
         self.frameCounter += numFramesInChunk
-        # self._commChannel.sigLiveChunkReady.emit(chunk, endIndex)
-        self._commChannel.sigLiveChunkReady.emit(startIndex, endIndex)
-
-        # if self.frameCounter % (numFramesInChunk * 5) == 0:
-        #     percent = (self.frameCounter / self.numFramesInStack) * 100
-        #     self._logger.info(f"Streaming {zarrFileName}: {percent:.1f}% complete")
+        self._commChannel.sigLiveChunkReady.emit(startChunkIndex, endChunkIndex)
 
 
     def zarrStreamFinished(self):
@@ -195,7 +188,6 @@ class WatcherFrameController(ImRecWidgetController):
         else:
             self._logger.debug(f"[zarrStreamFinished] >> Finished processing: {self.nextZarrFile} => Frames processed: {self.frameCounter + 1}/{self.numFramesInStack}")
 
-        
         if hasattr(self, "zarrStreamWorkerThread") and self.zarrStreamWorkerThread.isRunning():
             self.zarrStreamWorkerThread.quit()
             self.zarrStreamWorkerThread.wait()
@@ -207,39 +199,50 @@ class WatcherFrameController(ImRecWidgetController):
 
 
     def stopAllWorkers(self):
-        if self.zarrStreamWorker and self.zarrStreamWorkerThread:
-            try:
-                self.zarrStreamWorker.stop()
-                self.zarrStreamWorkerThread.quit()
-                if not self.zarrStreamWorkerThread.wait(2000):
-                    self._logger.warning("[stopAllWorkers] >> Thread timed out during stop => forcing termination")
-                    self.zarrStreamWorkerThread.terminate()
-
-            except RuntimeWarning as e:
-                self._logger.error(f"[stopAllWorkers] >> Shutdown warning: {e}")
-
-            except Exception as e:
-                self._logger.error(f"[stopAllWorkers] >> Error during zarrStreamWorker shutdown: {e}")        
-
-            finally:
-                self.zarrStreamWorker = None
-                self.zarrStreamWorkerThread = None
+        zarrStreamWorker = getattr(self, "zarrStreamWorker", None)
+        zarrStreamWorkerThread = getattr(self, "zarrStreamWorkerThread", None)
+        if ZarrStreamWorker is None or zarrStreamWorkerThread is None: 
+            # the worker or the thread has aldready been deleted by <<self.zarrStreamWorker.deleteLater>> or <<self.zarrStreamWorkerThread.deleteLater>>
+            return
         
-        if self.watcher: 
+        try:
+            zarrStreamWorker.stop()
+            # disconnect all signals from the worker => stops worker from triggering <<self.zarrStreamWorker.deleteLater>>
+            try:
+                zarrStreamWorker.sigChunkLoaded.disconnect() 
+                zarrStreamWorker.sigFinished.disconnect()
+            except:
+                pass
+
+            # check if the thread is still valid beforing doing anything with it 
+            try: 
+                if zarrStreamWorkerThread.isRunning():
+                    zarrStreamWorkerThread.quit()
+                    # use a short wait of 500 ms
+                    zarrStreamWorkerThread.wait(500) 
+            except RuntimeError: 
+                # thread is already deleted => do nothing 
+                pass
+        
+        finally:
+            # clear references to zarrWorker/Thread => controller should not use them again 
+            self.zarrStreamWorker = None
+            self.zarrStreamWorkerThread = None
+    
+        # delete watcher
+        if self.watcher:     
             try: 
                 self.watcher.stop()
                 self.watcher.wait()
-            
             except Exception as e:
                 self._logger.error(f"[stopAllWorkers] >> Error during file watcher shutdown: {e}")
-            
             finally:
                 self.watcher = None   
 
         self.toExecute = []
         self.execution = False 
         
-        self._logger.debug("[stopAllWorkers] >> Watcher and Streamers stopped")
+        self._logger.debug("[stopAllWorkers] >> Watcher and Zarr Stream stopped")
 
 
     def extensionChanged(self):

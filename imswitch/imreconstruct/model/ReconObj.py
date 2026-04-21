@@ -55,7 +55,7 @@ class ReconObj:
 
 
     def addLiveChunk(self, chunkCoeffs, chunkIndices):
-        self.flatReconView[np.array(chunkIndices).ravel()] = chunkCoeffs.ravel()
+        self.flatReconView[chunkIndices.ravel()] = chunkCoeffs.ravel()
 
 
     def setDispLevels(self, levels):

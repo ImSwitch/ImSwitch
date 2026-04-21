@@ -12,7 +12,7 @@ class ZarrStreamWorker(QtCore.QObject):
     An instance of this class should mimic the FileLoaderWorker's output to stay 
     compatible with the existing reconstruction pipeline.
     """
-    sigChunkLoaded = QtCore.Signal(np.ndarray, str) # (chunk, fileNameToWhichChunkBelong)
+    sigChunkLoaded = QtCore.Signal(np.ndarray) # (chunk)
     sigFinished = QtCore.Signal()
 
     def __init__(
@@ -49,49 +49,66 @@ class ZarrStreamWorker(QtCore.QObject):
     @QtCore.Slot()
     def run(self) -> None: 
         self.running = True
-        
         while self.running and self.zarrArrayPath is None:
             self.zarrArrayPath = self._findArrayPath()
             if self.zarrArrayPath is None: 
-                QtCore.QThread.msleep(50) # qt 50 ms sleep (prevent CPU spike)
+                QtCore.QThread.msleep(50) 
 
         if not self.running:
             self.sigFinished.emit()
             return
 
         try: 
-            zarrArray = zarr.open(self.zarrArrayPath, mode='r')
+            # --- INITAL LOOP ---
+            zarrArray = None
+            while self.running and zarrArray is None: 
+                try:
+                    zarrArray = zarr.open(self.zarrArrayPath, mode='r')
+                except Exception as e:
+                    print(f"[ZarrStreamWorker] [run] >> {e}") 
+                    QtCore.QThread.msleep(100)
+            
+            if not self.running:
+                return
+
+            # --- MAIN LOOP --- 
             while self.running:
                 if self.numFramesProcessed >= self.numFramesInStack - 1:
                     # all frames in the stack have been processed => break loop
                     break
+                
+                try: 
+                    zarrArray.store.close()
+                    zarrArray = zarr.open(self.zarrArrayPath, mode='r')
+                    isWriting = zarrArray.attrs.get("writing", False)
+                    currentNumFrames = zarrArray.shape[0] - 1     
+                    while not isWriting and self.numFramesInChunk <= currentNumFrames - self.numFramesProcessed:                
+                        startIndex = self.numFramesProcessed
+                        endIndex = startIndex + self.numFramesInChunk
+                        
+                        dataToProcess = zarrArray[startIndex:endIndex]
+                        if dataToProcess.size > 0: 
+                            self.sigChunkLoaded.emit(dataToProcess)
+                            self.numFramesProcessed += self.numFramesInChunk
 
-                zarrArray.store.close()
-                zarrArray = zarr.open(self.zarrArrayPath, mode='r')
-                
-                currentNumFrames = zarrArray.shape[0] - 1     
-                if currentNumFrames >= self.numFramesProcessed + self.numFramesInChunk:
-                    startIndex = self.numFramesProcessed
-                    endIndex = startIndex + self.numFramesInChunk
-                    dataToProcess = zarrArray[startIndex:endIndex]
-                
-                    if dataToProcess.size > 0: 
-                        self.sigChunkLoaded.emit(dataToProcess, self.zarrFilePath)
-                        self.numFramesProcessed += self.numFramesInChunk
-                
-                else:
-                    # no data => sleep
-                    QtCore.QThread.msleep(1) # qt 1 ms sleep (prevent CPU spike)
-                
-                # QtCore.QThread.msleep(1) # uncomment if CPU issues arise
-                    
+                        if not self.running: 
+                            break
 
+                except Exception as e:
+                    # if we get [Errno13] Permission denied loop again
+                    pass
+                     
         except Exception as e:
             print(f"ERROR [ZarrStreamWorker] [run] >> {e}")
         
         finally:
             self.running = False
-            self.sigFinished.emit()
+            try: 
+                # check if zarrSteamWorker/Thread-object in WatcherFrameController is alive before emitting 
+                self.sigFinished.emit()
+            except RuntimeError:
+                # object has already been deleted => nothing to emit a signal to
+                pass
 
 
     def stop(self): 

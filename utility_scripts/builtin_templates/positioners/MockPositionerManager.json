@@ -1,0 +1,18 @@
+{
+  "display": "Mock Positioner (Simulation)",
+  "category": "positioners",
+  "top": [
+    {"key": "analogChannel",  "label": "Analog Channel",   "type": "text",  "default": "null", "req": false, "grp": "Basic", "tip": "", "opts": []},
+    {"key": "digitalLine",    "label": "Digital Line",     "type": "text",  "default": "null", "req": false, "grp": "Basic", "tip": "", "opts": []},
+    {"key": "axes",           "label": "Axes (comma-sep)", "type": "text",  "default": "X",    "req": true,  "grp": "Basic", "tip": "e.g. X  or  M-TM", "opts": []},
+    {"key": "forPositioning", "label": "For Positioning",  "type": "bool",  "default": true,   "req": true,  "grp": "Basic", "tip": "", "opts": []},
+    {"key": "forScanning",    "label": "For Scanning",     "type": "bool",  "default": false,  "req": true,  "grp": "Basic", "tip": "", "opts": []}
+  ],
+  "props": [
+    {"key": "conversionFactor", "label": "Conversion Factor", "type": "float", "default": 1.0,   "req": false, "grp": "Basic",    "tip": "um/V", "opts": []},
+    {"key": "minVolt",          "label": "Min Voltage (V)",   "type": "float", "default": -10.0, "req": false, "grp": "Basic",    "tip": "",     "opts": []},
+    {"key": "maxVolt",          "label": "Max Voltage (V)",   "type": "float", "default": 10.0,  "req": false, "grp": "Basic",    "tip": "",     "opts": []},
+    {"key": "vel_max",          "label": "Max Velocity",      "type": "float", "default": 0.5,   "req": false, "grp": "Advanced", "tip": "",     "opts": []},
+    {"key": "acc_max",          "label": "Max Acceleration",  "type": "float", "default": 0.1,   "req": false, "grp": "Advanced", "tip": "",     "opts": []}
+  ]
+}

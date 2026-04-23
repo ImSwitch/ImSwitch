@@ -1,0 +1,15 @@
+{
+  "display": "NIDAQ Laser / LED",
+  "category": "lasers",
+  "top": [
+    {"key": "analogChannel",  "label": "Analog Channel",    "type": "text",  "default": "Dev1/ao0",           "req": false, "grp": "DAQ",   "tip": "", "opts": []},
+    {"key": "digitalLine",    "label": "Digital Line",      "type": "text",  "default": "Dev1/port0/line0",   "req": false, "grp": "DAQ",   "tip": "", "opts": []},
+    {"key": "wavelength",     "label": "Wavelength (nm)",   "type": "int",   "default": 488,  "req": true,  "grp": "Basic", "tip": "", "opts": []},
+    {"key": "valueRangeMin",  "label": "Min Value",         "type": "float", "default": 0.0,  "req": true,  "grp": "Basic", "tip": "", "opts": []},
+    {"key": "valueRangeMax",  "label": "Max Value",         "type": "float", "default": 100.0,"req": true,  "grp": "Basic", "tip": "", "opts": []},
+    {"key": "valueRangeStep", "label": "Step",              "type": "float", "default": 1.0,  "req": true,  "grp": "Basic", "tip": "", "opts": []}
+  ],
+  "props": [
+    {"key": "calibCsvPath", "label": "Calibration CSV", "type": "path", "default": "", "req": false, "grp": "Advanced", "tip": "", "opts": []}
+  ]
+}

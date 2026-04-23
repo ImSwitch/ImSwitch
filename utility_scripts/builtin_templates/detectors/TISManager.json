@@ -1,0 +1,22 @@
+{
+  "display": "TIS Camera",
+  "category": "detectors",
+  "top": [
+    {"key": "analogChannel",  "label": "Analog Channel",  "type": "text", "default": "null", "req": false, "grp": "Basic", "tip": "", "opts": []},
+    {"key": "digitalLine",    "label": "Digital Line",    "type": "text", "default": "null", "req": false, "grp": "Basic", "tip": "", "opts": []},
+    {"key": "forAcquisition", "label": "For Acquisition", "type": "bool", "default": true,   "req": true,  "grp": "Basic", "tip": "", "opts": []},
+    {"key": "forFocusLock",   "label": "For Focus Lock",  "type": "bool", "default": false,  "req": false, "grp": "Basic", "tip": "", "opts": []}
+  ],
+  "props": [
+    {"key": "cameraListIndex", "label": "Camera List Index", "type": "int", "default": 0, "req": true, "grp": "Basic", "tip": "", "opts": []}
+  ],
+  "nested": {
+    "tis": [
+      {"key": "exposure",     "label": "Exposure (ms)", "type": "float", "default": 10.0, "req": true,  "grp": "Camera", "tip": "", "opts": []},
+      {"key": "gain",         "label": "Gain",          "type": "float", "default": 0.0,  "req": false, "grp": "Camera", "tip": "", "opts": []},
+      {"key": "brightness",   "label": "Brightness",    "type": "float", "default": 0.5,  "req": false, "grp": "Camera", "tip": "", "opts": []},
+      {"key": "image_width",  "label": "Width (px)",    "type": "int",   "default": 1920, "req": true,  "grp": "Camera", "tip": "", "opts": []},
+      {"key": "image_height", "label": "Height (px)",   "type": "int",   "default": 1080, "req": true,  "grp": "Camera", "tip": "", "opts": []}
+    ]
+  }
+}

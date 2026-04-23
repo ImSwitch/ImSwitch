@@ -1,0 +1,14 @@
+{
+  "display": "Marzhauser XY Stage",
+  "category": "positioners",
+  "top": [
+    {"key": "analogChannel",  "label": "Analog Channel",  "type": "text", "default": "null", "req": false, "grp": "Basic", "tip": "", "opts": []},
+    {"key": "digitalLine",    "label": "Digital Line",    "type": "text", "default": "null", "req": false, "grp": "Basic", "tip": "", "opts": []},
+    {"key": "axes",           "label": "Axes",            "type": "text", "default": "X,Y",  "req": true,  "grp": "Basic", "tip": "", "opts": []},
+    {"key": "forPositioning", "label": "For Positioning", "type": "bool", "default": true,   "req": true,  "grp": "Basic", "tip": "", "opts": []},
+    {"key": "forScanning",    "label": "For Scanning",    "type": "bool", "default": false,  "req": true,  "grp": "Basic", "tip": "", "opts": []}
+  ],
+  "props": [
+    {"key": "rs232device", "label": "RS232 Device", "type": "text", "default": "mhxystage", "req": true, "grp": "Basic", "tip": "", "opts": []}
+  ]
+}

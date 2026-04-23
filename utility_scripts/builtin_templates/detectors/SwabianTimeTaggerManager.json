@@ -1,0 +1,22 @@
+{
+  "display": "Swabian Time Tagger (FLIM)",
+  "category": "detectors",
+  "top": [
+    {"key": "analogChannel",  "label": "Analog Channel",  "type": "text", "default": "null", "req": false, "grp": "Basic", "tip": "", "opts": []},
+    {"key": "digitalLine",    "label": "Digital Line",    "type": "text", "default": "null", "req": false, "grp": "Basic", "tip": "", "opts": []},
+    {"key": "forAcquisition", "label": "For Acquisition", "type": "bool", "default": true,   "req": true,  "grp": "Basic", "tip": "", "opts": []},
+    {"key": "forFocusLock",   "label": "For Focus Lock",  "type": "bool", "default": false,  "req": false, "grp": "Basic", "tip": "", "opts": []}
+  ],
+  "props": [
+    {"key": "click_channel",        "label": "Click Channel",    "type": "int",    "default": 1,       "req": true,  "grp": "Channels",       "tip": "Single-photon input",       "opts": []},
+    {"key": "start_channel",        "label": "Start Channel",    "type": "int",    "default": 2,       "req": true,  "grp": "Channels",       "tip": "Laser SYNC / start pulse",  "opts": []},
+    {"key": "line_channel",         "label": "Line Channel",     "type": "int",    "default": 3,       "req": true,  "grp": "Channels",       "tip": "Line clock from scanner",   "opts": []},
+    {"key": "click_trigger",        "label": "Click Trigger (V)","type": "float",  "default": 0.5,     "req": false, "grp": "Trigger Levels", "tip": "Discriminator voltage",     "opts": []},
+    {"key": "start_trigger",        "label": "Start Trigger (V)","type": "float",  "default": 0.5,     "req": false, "grp": "Trigger Levels", "tip": "Discriminator voltage",     "opts": []},
+    {"key": "line_trigger",         "label": "Line Trigger (V)", "type": "float",  "default": -0.5,    "req": false, "grp": "Trigger Levels", "tip": "Discriminator voltage",     "opts": []},
+    {"key": "n_bins",               "label": "N Bins",           "type": "int",    "default": 64,      "req": false, "grp": "TCSPC",          "tip": "",                          "opts": []},
+    {"key": "binwidth_ps",          "label": "Bin Width (ps)",   "type": "int",    "default": 32,      "req": false, "grp": "TCSPC",          "tip": "",                          "opts": []},
+    {"key": "min_counts_per_pixel", "label": "Min Counts/Pixel", "type": "int",    "default": 20,      "req": false, "grp": "TCSPC",          "tip": "",                          "opts": []},
+    {"key": "fit_method",           "label": "Fit Method",       "type": "select", "default": "moment","req": false, "grp": "TCSPC",          "tip": "",                          "opts": ["moment","phasor","exp1"]}
+  ]
+}

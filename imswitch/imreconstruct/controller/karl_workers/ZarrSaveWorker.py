@@ -3,16 +3,16 @@ import zarr
 import numpy as np
 
 
-class ZarrSaveWorker(QtCore.QtObject):
+class ZarrSaveWorker(QtCore.QObject):
     
     sigFinished = QtCore.Signal()
 
     def __init__(
             self, 
-            savePath, 
-            numTimepoints, 
-            numRows, 
-            numCols
+            savePath: str,  
+            numRows: int, 
+            numCols: int,
+            numTimepoints: int = 1
     ):
         super().__init__()
         self.savePath = savePath 
@@ -24,11 +24,8 @@ class ZarrSaveWorker(QtCore.QtObject):
     
     @QtCore.Slot()
     def run(self): 
-        # (T, Z, Y, X) = (numTimepoints, 1, numRows, numCols)
         shape = (self.numTimepoints, 1, self.numRows, self.numCols)
-        # 1 timepoint = 1 chunk => chunk.shape = (T, Z, Y, X)
-        chunks = (1, 1, self.numRows, self.numCols)
-        
+        chunks = (1, 1, self.numRows, self.numCols)        
         try:
             zarrStore = zarr.DirectoryStore(self.savePath)
             self.zarrArray = zarr.open(
@@ -38,21 +35,22 @@ class ZarrSaveWorker(QtCore.QtObject):
                 chunks=chunks,
                 dtype=np.float32
             )
-        
             self.zarrArray.attrs["description"] = "Reconstructed stacks (timepoints) from Zarr Live Stream"
-        
         except Exception as e:
             print(f"[ZarrSaveWorker] [run] >> Error initializing zarrSaveWorker {e}")
 
-    @QtCore.Slot(np.ndarray, np.ndarray, int)
-    def processedChunk(
+
+    @QtCore.Slot(np.ndarray, int)
+    def saveRecImage(
             self, 
-            procChunkCoeffs, 
-            chunkIndices, 
-            timePointIndex
+            recImage: np.ndarray, 
+            timePointIndex: int
     ):
         """ ... """
+        print("DEBUG [ZarrSaveWorker] [saveRecImage] >> We've enterd the saveRecImage method")
         if self.zarrArray is not None: 
             # C pointer arithmetic under the hood: *timePointView = procChunksCoeffs => RAM[addressTozarrArray] = procChunkCoeffs
-            timePointView = self.zarrArray[timePointIndex, 0].view().reshape(-1)
-            timePointView[chunkIndices.ravel()] = procChunkCoeffs.ravel()
+            if timePointIndex >= self.zarrArray.shape[0]:
+                newShape = (timePointIndex + 1, 1, self.numRows, self.numCols)
+                self.zarrArray.resize(newShape)
+            self.zarrArray[timePointIndex, 0] = recImage

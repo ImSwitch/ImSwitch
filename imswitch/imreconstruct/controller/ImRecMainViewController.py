@@ -141,7 +141,7 @@ class ImRecMainViewController(ImRecWidgetController):
 
         self.processorThread = QtCore.QThread()
         self.processorThread.finished.connect(self.processorThread.deleteLater)
-        self.processorWorker = ProcessorWorker(self.liveProcessor, self.liveReconObj, buffer, cupyAvailable) 
+        self.processorWorker = ProcessorWorker(self.liveProcessor, self.liveReconObj, buffer, cupyAvailable, self._commChannel) 
         self.processorWorker.moveToThread(self.processorThread)
         self._commChannel.sigLiveChunkReady.connect(self.processorWorker.process_chunk)
         self.processorWorker.sigTriggerUIRefresh.connect(self.triggerUIRefresh)

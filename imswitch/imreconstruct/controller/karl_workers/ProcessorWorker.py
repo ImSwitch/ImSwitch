@@ -15,12 +15,15 @@ class ProcessorWorker(QtCore.QObject):
             processor, 
             reconObj, 
             buffer,
-            cupyAvailable = False
+            cupyAvailable = False,
+            _commChannel = None
     ):
         super().__init__()
+        self._commChannel = _commChannel
         self.processor = processor
         self.reconObj = reconObj
         self.recImageBuffer = buffer
+        self.timePointIndex = 0
         self.cupyAvailable = cupyAvailable
         self.cp = None
         if self.cupyAvailable:
@@ -40,7 +43,7 @@ class ProcessorWorker(QtCore.QObject):
         coeffs = self.processor.process_frame(frame)
         frame_indices = self.processor.frame_inds[frameIndex]
         self.reconObj.addLiveFrame(coeffs, frame_indices)
-    
+        
         refreshRate = int(np.sqrt(len(frame_indices)))
         if frameIndex % refreshRate == 0 or frameIndex == self.processor.num_frames_in_stack - 1: 
             self.sigTriggerUIRefresh.emit()
@@ -61,11 +64,13 @@ class ProcessorWorker(QtCore.QObject):
         numFrames = endChunkIndex 
         self.numFramesProcessed.emit(numFrames)
 
-        # --- SAVING RECONSTRUCTED DATA ---
-        timePointIndex = startChunkIndex // self.processor.num_frames_in_stack 
-        dataToSave = chunkCoeffs
-        self.sigSaveChunk.emit(dataToSave, chunkIndices, timePointIndex)
-
         refreshRate = int(np.sqrt(chunkIndices.shape[1]))
-        if numFrames % refreshRate == 0 or numFrames == self.processor.num_frames_in_stack - 1:
+        if numFrames % refreshRate == 0:
             self.sigTriggerUIRefresh.emit()
+
+        if numFrames == self.processor.num_frames_in_stack - 1: 
+            self.sigTriggerUIRefresh.emit()
+            # --- SAVING RECONSTRUCTED DATA ---
+            data = self.reconObj.reconstructed[0, 0, 0, 0]
+            self._commChannel.sigSaveRecImage.emit(data, self.timePointIndex)
+            self.timePointIndex += 1 

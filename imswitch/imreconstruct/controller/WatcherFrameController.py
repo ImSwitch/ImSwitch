@@ -4,6 +4,8 @@ from .basecontrollers import ImRecWidgetController
 
 from imswitch.imcommon.view.guitools.FileWatcher import FileWatcher
 from imswitch.imreconstruct.controller.karl_workers.ZarrStreamWorker import ZarrStreamWorker
+from imswitch.imreconstruct.controller.karl_workers.ZarrSaveWorker import ZarrSaveWorker
+
 from imswitch.imcommon.model.logging import initLogger
 
 import os
@@ -73,15 +75,29 @@ class WatcherFrameController(ImRecWidgetController):
             try:
                 with open("loc_parms.json", 'r') as f:
                     params = json.load(f)
-                self.numFramesInStack = int(params.get("nx_s", 60) * params.get("ny_s", 60))
-                numRowsInFrame = params.get("num_rows", 512)
-                numColsInFrame = params.get("num_cols", 512)
-                self.recImageBuffer = np.zeros((self.numFramesInStack, numRowsInFrame, numColsInFrame), dtype=np.float32)
-                self._commChannel.sigSetupLiveStream.emit(params, self.recImageBuffer)
-                self._logger.debug(f"[toggleWatch] >> Reconstruction Image Buffer initialized: (numFramesInStack, frameHeight, frameWidth) = {self.recImageBuffer.shape}")
                 self.frameCounter = 0
                 self.stackCounter = 0
+                self.numFramesInStack = int(params.get("nx_s", 60) * params.get("ny_s", 60))
+                self.recImageBuffer = np.zeros((self.numFramesInStack, params.get("num_rows", 512), params.get("num_cols", 512)), dtype=np.float32)
+                self._commChannel.sigSetupLiveStream.emit(params, self.recImageBuffer)
+                self._logger.debug(f"[toggleWatch] >> Reconstruction Image Buffer initialized: (numFramesInStack, frameHeight, frameWidth) = {self.recImageBuffer.shape}")
                 
+                self.zarrSavePath = os.path.join(os.path.dirname(self._widget.path), "timepoint_recons.zarr")
+                self._logger.debug(f"[toggleWatch] >> zarrSavePath = {self.zarrSavePath}")
+
+                recImageNumRows = params["ny_c"] * params["ny_s"]
+                recImageNumCols = params["nx_c"] * params["nx_s"]
+                self.zarrSaveWorker = ZarrSaveWorker(
+                    savePath=self.zarrSavePath, 
+                    numRows=recImageNumRows, 
+                    numCols=recImageNumCols
+                )
+                self.zarrSaveWorkerThread = QtCore.QThread()
+                self.zarrSaveWorker.moveToThread(self.zarrSaveWorkerThread)
+                self._commChannel.sigSaveRecImage.connect(self.zarrSaveWorker.saveRecImage)
+                self.zarrSaveWorkerThread.started.connect(self.zarrSaveWorker.run)
+                self.zarrSaveWorkerThread.start()
+
                 self.toExecute = []
                 existingZarrFiles = []
                 for file in os.listdir(self._widget.path):

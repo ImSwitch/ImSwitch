@@ -96,17 +96,17 @@ class WatcherFrameController(ImRecWidgetController):
                 self.zarrStreamWorker.sigZarrFileFinished.connect(self.zarrStreamFinished)
                 self.zarrStreamWorkerThread.start()
 
-                self.zarrSavePath = os.path.join(os.path.dirname(self._widget.path), "Timepoint_RECON.zarr")
-                self.zarrSaveWorker = ZarrSaveWorker(
-                    savePath=self.zarrSavePath, 
-                    numRows=params["ny_c"] * params["ny_s"], 
-                    numCols=params["nx_c"] * params["nx_s"]
-                )
-                self.zarrSaveWorkerThread = QtCore.QThread()
-                self.zarrSaveWorker.moveToThread(self.zarrSaveWorkerThread)
-                self._commChannel.sigSaveRecImage.connect(self.zarrSaveWorker.saveRecImage)
-                self.zarrSaveWorkerThread.started.connect(self.zarrSaveWorker.run)
-                self.zarrSaveWorkerThread.start()
+                # self.zarrSavePath = os.path.join(os.path.dirname(self._widget.path), "Timepoint_RECON.zarr")
+                # self.zarrSaveWorker = ZarrSaveWorker(
+                #     savePath=self.zarrSavePath, 
+                #     numRows=params["ny_c"] * params["ny_s"], 
+                #     numCols=params["nx_c"] * params["nx_s"]
+                # )
+                # self.zarrSaveWorkerThread = QtCore.QThread()
+                # self.zarrSaveWorker.moveToThread(self.zarrSaveWorkerThread)
+                # self._commChannel.sigSaveRecImage.connect(self.zarrSaveWorker.saveRecImage)
+                # self.zarrSaveWorkerThread.started.connect(self.zarrSaveWorker.run)
+                # self.zarrSaveWorkerThread.start()
 
                 self.toExecute = []
                 existingZarrFiles = [file for file in os.listdir(self._widget.path) if file.endswith(".zarr")]
@@ -148,51 +148,57 @@ class WatcherFrameController(ImRecWidgetController):
 
     def runNextFile(self):        
         if self.execution:
-            # self._logger.debug(f"[runNextFile] >> Zarr Streamer is currently working on {zarrFilePath}")
+            self._logger.debug(f"[runNextFile] >> Zarr Streamer is currently working on {zarrFilePath}")
             return
     
         if not self.toExecute:
-            # self._logger.debug("[runNextFile] >> No files to process")
+            self._logger.debug("[runNextFile] >> No files to process")
             return
         
         self.execution = True
         self.zarrFileToProcess = self.toExecute.pop(0)
-        # self._logger.debug(
-        #     f"[runNextFile] >> Streaming: {self.zarrFileToProcess} => Frames to Process: {self.numFramesInStack}"
-        # )
+        self._logger.debug(
+            f"[runNextFile] >> Streaming: {self.zarrFileToProcess} => Frames to Process: {self.numFramesInStack}"
+        )
         zarrFilePath = os.path.join(self._widget.path, self.zarrFileToProcess)
         self.sigTriggerZarrStream.emit(zarrFilePath)
 
 
     def zarrStreamFinished(self):
-        # self._logger.debug(f"[zarrStreamFinished] Finished processing: {self.zarrFileToProcess}")
+        self._logger.debug(f"[zarrStreamFinished] Finished processing: {self.zarrFileToProcess}")
         self.execution = False
         self.runNextFile()
 
 
     def stopAllWorkers(self):
-        """ Shuts down all of the workers and their threads. """
-        threadWaitTime = 1000
-        
+        """ Shuts down all of the workers and their threads. """        
         self._commChannel.sigStopLiveStream.emit()
+        self._commChannel.blockSignals(True)
         
-        if self.zarrStreamWorker:
+        if self.zarrStreamWorkerThread.isRunning():
             self.zarrStreamWorker.stop()
             self.zarrStreamWorkerThread.quit()
-            self.zarrStreamWorkerThread.wait(threadWaitTime) 
+            self.zarrStreamWorkerThread.terminate()
+            self.zarrStreamWorkerThread.wait()
+            # if not self.zarrStreamWorkerThread.wait(500):
+            #     self._logger("[stopAllWorkers] >> zarrStreamWorker Timed out => Forcing termination")
+            #     self.zarrStreamWorkerThread.terminate()
+            #     self.zarrStreamWorkerThread.wait()
 
-        if self.zarrSaveWorker:
-            self.zarrSaveWorkerThread.quit()
-            self.zarrSaveWorkerThread.wait(threadWaitTime)
+        # if self.zarrSaveWorker:
+        #     self.zarrSaveWorkerThread.quit()
+        #     self.zarrSaveWorkerThread.wait(threadWaitTime)
+        #     self.zarrSaveWorker = None 
 
         if self.watcher: 
             self.watcher.stop()
+            self.watcher.quit()
+            self.watcher.terminate()
             self.watcher.wait()
         
-       
+        self._commChannel.blockSignals(False)
         self.execution = False
         self.toExecute = []
-        self.rawDataBuffer = None
         self._logger.debug(f"[stopAllWorkers] >> All Live Watcher Threads have been shutdown")
 
 

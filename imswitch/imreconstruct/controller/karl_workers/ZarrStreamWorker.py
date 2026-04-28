@@ -51,8 +51,13 @@ class ZarrStreamWorker(QtCore.QObject):
         zarrArrayPath = None
         zarrArray = None
 
-        while self.running and zarrArrayPath is None: 
-            zarrArrayPath = self._findArrayPath(zarrFilePath)
+        while self.running and zarrArrayPath is None and zarrArray is None: 
+            try:
+                zarrArrayPath = self._findArrayPath(zarrFilePath)
+                zarrArray = zarr.open(zarrArrayPath, mode='r')
+            except Exception as e: 
+                # print(f"[ZarrStreamWorker] [run] Error when trying to open first Zarr file {e}")
+                QtCore.QThread.msleep(100)
 
         while self.running: 
             if numFramesProcessed >= self.numFramesInStack - 1:
@@ -62,14 +67,17 @@ class ZarrStreamWorker(QtCore.QObject):
             try: 
                 if zarrArray is not None:
                     zarrArray.store.close()
+                
                 zarrArray = zarr.open(zarrArrayPath, mode='r')
-                isWriting = zarrArray.attrs.get("writing", False)        
+                isWriting = zarrArray.attrs.get("writing", False)
                 currentNumFrames = zarrArray.shape[0] - 1
                 numFramesInChunk = zarrArray.chunks[0]     
+                
                 while not isWriting and numFramesInChunk <= currentNumFrames - numFramesProcessed:                
                     startChunkIndex = numFramesProcessed
                     endChunkIndex = startChunkIndex + numFramesInChunk
                     chunkToProcess = zarrArray[startChunkIndex:endChunkIndex]
+                    
                     if chunkToProcess.size > 0: 
                         self.rawDataBuffer[startChunkIndex:endChunkIndex, :, :] = chunkToProcess
                         self._commChannel.sigLiveChunkReady.emit(startChunkIndex, endChunkIndex)
@@ -80,6 +88,10 @@ class ZarrStreamWorker(QtCore.QObject):
 
             except RuntimeError:
                 # [Errno13] Permission Denied => loop again
+                pass
+                
+            except Exception as e:
+                # print(f"[ZarrStreamWorker] [run] Error in streaming loop: {e}")
                 pass
                              
                              

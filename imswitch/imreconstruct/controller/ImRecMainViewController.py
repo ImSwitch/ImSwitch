@@ -154,10 +154,6 @@ class ImRecMainViewController(ImRecWidgetController):
 
     def triggerUIRefresh(self):
         """ Triggers napari UI update. """
-        liveReconObj = self.liveReconObj
-        if liveReconObj is None:
-            # middle of shutting down thread => exist method
-            return
         try:
             self._widget.reconstructionWidget.sigUpdateImage.emit(self.liveReconObj.reconstructed)
         except Exception as e:
@@ -169,18 +165,12 @@ class ImRecMainViewController(ImRecWidgetController):
         if self.processorThread is None or not self.processorThread.isRunning():
             self._logger.debug("[stopLiveStream] >> Shutdown already complete or in progress. Skipping.")
             return
-
         self._logger.debug(f"[stopLiveStream] >> Initiating shutdown...")
-
         self.processorThread.quit()
-        if not self.processorThread.wait(1000):
-            self.processorThread.terminate() 
-
-        self.processorThread = None
-        self.processorWorker = None
-        self.liveReconObj = None
-
+        self.processorThread.wait()
+        self.processorThread.terminate() 
         self._logger.debug("[stopLiveStream] >> Processor Thread has been fully cleared.")
+
 
     def dataFolderChanged(self, dataFolder):
         self._dataFolder = dataFolder

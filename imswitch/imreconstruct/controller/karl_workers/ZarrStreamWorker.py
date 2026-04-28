@@ -13,103 +13,75 @@ class ZarrStreamWorker(QtCore.QObject):
     compatible with the existing reconstruction pipeline.
     """
     sigChunkLoaded = QtCore.Signal(np.ndarray) # (chunk)
-    sigFinished = QtCore.Signal()
+    sigZarrFileFinished = QtCore.Signal()
 
     def __init__(
             self, 
-            zarrFilePath: str,
             numFramesInStack: int,
-            numFramesInChunk: int = 1
-    ) -> None: 
+            rawDataBuffer: np.ndarray,
+            _commChannel: object
+    ): 
         super().__init__()
-        self.zarrFilePath = zarrFilePath
         self.numFramesInStack = numFramesInStack
-        self.numFramesInChunk = numFramesInChunk
-        self.zarrArrayPath = None
-        self.numFramesProcessed = 0
-        self.running = False
+        self.rawDataBuffer = rawDataBuffer
+        self._commChannel = _commChannel
+        self.running = True
 
 
-    def _findArrayPath(self) -> Union[str, None]:
+    def _findArrayPath(self, zarrFilePath: str) -> Union[str, None]:
         """ Find the first subdirectory containing a .zarray file. """
         # check if the root (zarrFilePath) is a .zarray itself
-        if os.path.exists(os.path.join(self.zarrFilePath, ".zarray")):
-            return self.zarrFilePath
+        if os.path.exists(os.path.join(zarrFilePath, ".zarray")):
+            return zarrFilePath
 
         # check if the root (zarrFilePath) contains a directory with a .zarray
-        if os.path.isdir(self.zarrFilePath):
-            for entry in os.listdir(self.zarrFilePath):
-                subPath = os.path.join(self.zarrFilePath, entry)
+        if os.path.isdir(zarrFilePath):
+            for entry in os.listdir(zarrFilePath):
+                subPath = os.path.join(zarrFilePath, entry)
                 if os.path.isdir(subPath) and os.path.exists(os.path.join(subPath, ".zarray")):
                     return subPath
                 
         return None
 
 
-    @QtCore.Slot()
-    def run(self) -> None: 
-        self.running = True
-        while self.running and self.zarrArrayPath is None:
-            self.zarrArrayPath = self._findArrayPath()
-            if self.zarrArrayPath is None: 
-                QtCore.QThread.msleep(50) 
+    @QtCore.Slot(str)
+    def streamZarrFile(self, zarrFilePath: str):
+        """ Called everytime WatcherFrameController.runNextFile pops a file from the queue. """
+        numFramesProcessed = 0 
+        zarrArrayPath = None
+        zarrArray = None
 
-        if not self.running:
-            self.sigFinished.emit()
-            return
+        while self.running and zarrArrayPath is None: 
+            zarrArrayPath = self._findArrayPath(zarrFilePath)
 
-        try: 
-            # --- INITAL LOOP ---
-            zarrArray = None
-            while self.running and zarrArray is None: 
-                try:
-                    zarrArray = zarr.open(self.zarrArrayPath, mode='r')
-                except Exception as e:
-                    print(f"[ZarrStreamWorker] [run] >> {e}") 
-                    QtCore.QThread.msleep(100)
-            
-            if not self.running:
-                return
+        while self.running: 
+            if numFramesProcessed >= self.numFramesInStack - 1:
+                self.sigZarrFileFinished.emit()
+                break
 
-            # --- MAIN LOOP --- 
-            while self.running:
-                if self.numFramesProcessed >= self.numFramesInStack - 1:
-                    # all frames in the stack have been processed => break loop
-                    break
-                
-                try: 
-                    zarrArray.store.close()
-                    zarrArray = zarr.open(self.zarrArrayPath, mode='r')
-                    isWriting = zarrArray.attrs.get("writing", False)
-                    currentNumFrames = zarrArray.shape[0] - 1     
-                    while not isWriting and self.numFramesInChunk <= currentNumFrames - self.numFramesProcessed:                
-                        startIndex = self.numFramesProcessed
-                        endIndex = startIndex + self.numFramesInChunk
-                        
-                        dataToProcess = zarrArray[startIndex:endIndex]
-                        if dataToProcess.size > 0: 
-                            self.sigChunkLoaded.emit(dataToProcess)
-                            self.numFramesProcessed += self.numFramesInChunk
-
-                        if not self.running: 
-                            break
-
-                except Exception as e:
-                    # if we get [Errno13] Permission denied loop again
-                    pass
-                     
-        except Exception as e:
-            print(f"ERROR [ZarrStreamWorker] [run] >> {e}")
-        
-        finally:
-            self.running = False
             try: 
-                # check if zarrSteamWorker/Thread-object in WatcherFrameController is alive before emitting 
-                self.sigFinished.emit()
+                if zarrArray is not None:
+                    zarrArray.store.close()
+                zarrArray = zarr.open(zarrArrayPath, mode='r')
+                isWriting = zarrArray.attrs.get("writing", False)        
+                currentNumFrames = zarrArray.shape[0] - 1
+                numFramesInChunk = zarrArray.chunks[0]     
+                while not isWriting and numFramesInChunk <= currentNumFrames - numFramesProcessed:                
+                    startChunkIndex = numFramesProcessed
+                    endChunkIndex = startChunkIndex + numFramesInChunk
+                    chunkToProcess = zarrArray[startChunkIndex:endChunkIndex]
+                    if chunkToProcess.size > 0: 
+                        self.rawDataBuffer[startChunkIndex:endChunkIndex, :, :] = chunkToProcess
+                        self._commChannel.sigLiveChunkReady.emit(startChunkIndex, endChunkIndex)
+                        numFramesProcessed += numFramesInChunk
+                    
+                    if not self.running: 
+                        break
+
             except RuntimeError:
-                # object has already been deleted => nothing to emit a signal to
+                # [Errno13] Permission Denied => loop again
                 pass
-
-
+                             
+                             
     def stop(self): 
         self.running = False

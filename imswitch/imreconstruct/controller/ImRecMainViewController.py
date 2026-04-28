@@ -103,18 +103,11 @@ class ImRecMainViewController(ImRecWidgetController):
             self._logger.debug("[__init__] >> CuPy NOT available => Defaulting to CPU processing")
  
 
-    def setupLiveStream(self, params, buffer):   
-        if hasattr(self, "processorThread"):
-            if self.processorThread.isRunning():
-                self.processorThread.quit()
-                self.processorThread.wait()
-    
-        if self.liveProcessor: 
-            del self.liveProcessor
-        
-        if self.liveReconObj:
-            del self.liveReconObj
-          
+    def setupLiveStream(
+            self, 
+            params: dict, 
+            rawDataBuffer: np.ndarray
+    ):   
         if cupyAvailable:
             self.liveProcessor = GaussProcessorGPU(params, scan_ori="+x-y")                          
             self._logger.debug("[setupLiveStream] >> GPU Processor initialized")
@@ -131,7 +124,7 @@ class ImRecMainViewController(ImRecWidgetController):
             self._widget.timepoints_text, 
             self._widget.p_text, 
             self._widget.n_text,
-            recImageBufferArgs={
+            recImageArgs={
                 "nx_c": params["nx_c"], 
                 "ny_c": params["ny_c"], 
                 "nx_s": params["nx_s"], 
@@ -139,28 +132,55 @@ class ImRecMainViewController(ImRecWidgetController):
             }
         )            
 
-        self.processorThread = QtCore.QThread()
-        self.processorThread.finished.connect(self.processorThread.deleteLater)
-        self.processorWorker = ProcessorWorker(self.liveProcessor, self.liveReconObj, buffer, cupyAvailable, self._commChannel) 
-        self.processorWorker.moveToThread(self.processorThread)
-        self._commChannel.sigLiveChunkReady.connect(self.processorWorker.process_chunk)
-        self.processorWorker.sigTriggerUIRefresh.connect(self.triggerUIRefresh)
-
         self._widget.addNewData(self.liveReconObj, "Live_Stream") 
         self._liveLayer = None
-        self._logger.debug("[setupLiveStream] >> Live Stream initialized")
         
+        self.processorWorker = ProcessorWorker(
+            processor=self.liveProcessor, 
+            reconObj=self.liveReconObj, 
+            rawDataBuffer=rawDataBuffer, 
+            cupyAvailable=cupyAvailable, 
+            _commChannel=self._commChannel
+        ) 
+        self.processorThread = QtCore.QThread()
+        self.processorWorker.moveToThread(self.processorThread)
+        self.processorWorker.sigTriggerUIRefresh.connect(self.triggerUIRefresh)
+        self._commChannel.sigLiveChunkReady.connect(self.processorWorker.processChunk)
+        self._commChannel.sigStopLiveStream.connect(self.stopLiveStream)
         self.processorThread.start()
-
     
+        self._logger.debug("[setupLiveStream] >> Live Stream initialized")
+
+
     def triggerUIRefresh(self):
         """ Triggers napari UI update. """
+        liveReconObj = self.liveReconObj
+        if liveReconObj is None:
+            # middle of shutting down thread => exist method
+            return
         try:
-            processedData = self.liveReconObj.reconstructed                             
-            self._widget.reconstructionWidget.sigUpdateImage.emit(processedData)
+            self._widget.reconstructionWidget.sigUpdateImage.emit(self.liveReconObj.reconstructed)
         except Exception as e:
             self._logger.error(f"[triggerUIRefresh] >> UI refresh failed: {e}")
 
+
+    def stopLiveStream(self): 
+        """ Shuts down processor thread. """
+        if self.processorThread is None or not self.processorThread.isRunning():
+            self._logger.debug("[stopLiveStream] >> Shutdown already complete or in progress. Skipping.")
+            return
+
+        self._logger.debug(f"[stopLiveStream] >> Initiating shutdown...")
+
+        self.processorThread.quit()
+        if not self.processorThread.wait(1000):
+            self.processorThread.terminate() 
+
+        self.processorThread = None
+        self.processorWorker = None
+        self.liveReconObj = None
+
+        self._logger.debug("[stopLiveStream] >> Processor Thread has been fully cleared.")
 
     def dataFolderChanged(self, dataFolder):
         self._dataFolder = dataFolder

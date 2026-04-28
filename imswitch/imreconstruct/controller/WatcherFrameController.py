@@ -26,7 +26,8 @@ class WatcherFrameController(ImRecWidgetController):
     """ Linked to WatcherFrame. """
 
     sigTriggerRun = QtCore.Signal(str)
-   
+    sigTriggerZarrStream = QtCore.Signal(str)
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.attrs = None
@@ -49,10 +50,7 @@ class WatcherFrameController(ImRecWidgetController):
         
 
     def sortZarrFileList(self, zarrFileList):
-        """ 
-        Helper method that sorts the name of the zarr files in a list based on their scan number.  
-        The naming convention of the zarr files is: (time)_rec_scan__(scanNumber)__(detectorName).zarr.
-        """
+        """ Sorts a list with Zarr files (names) based on their scan number in their name """
         try: 
             zarrFileList.sort(key=lambda x : int(x.split("__")[1]))
         except Exception as e:
@@ -75,22 +73,34 @@ class WatcherFrameController(ImRecWidgetController):
             try:
                 with open("loc_parms.json", 'r') as f:
                     params = json.load(f)
-                self.frameCounter = 0
-                self.stackCounter = 0
                 self.numFramesInStack = int(params.get("nx_s", 60) * params.get("ny_s", 60))
-                self.recImageBuffer = np.zeros((self.numFramesInStack, params.get("num_rows", 512), params.get("num_cols", 512)), dtype=np.float32)
-                self._commChannel.sigSetupLiveStream.emit(params, self.recImageBuffer)
-                self._logger.debug(f"[toggleWatch] >> Reconstruction Image Buffer initialized: (numFramesInStack, frameHeight, frameWidth) = {self.recImageBuffer.shape}")
+                self.rawDataBuffer = np.zeros((
+                    self.numFramesInStack, 
+                    params.get("num_rows", 512), 
+                    params.get("num_cols", 512)
+                )).astype(np.float32)
+                self._commChannel.sigSetupLiveStream.emit(params, self.rawDataBuffer)
+                bufferShape = self.rawDataBuffer.shape
+                self._logger.debug(
+                    f"[toggleWatch] >> Reconstruction Image Buffer initialized: (nFrames, Y, X) = {bufferShape}"
+                )
                 
-                self.zarrSavePath = os.path.join(os.path.dirname(self._widget.path), "timepoint_recons.zarr")
-                self._logger.debug(f"[toggleWatch] >> zarrSavePath = {self.zarrSavePath}")
+                self.zarrStreamWorker = ZarrStreamWorker(
+                    numFramesInStack=self.numFramesInStack,
+                    rawDataBuffer=self.rawDataBuffer,
+                    _commChannel=self._commChannel
+                )
+                self.zarrStreamWorkerThread = QtCore.QThread()
+                self.zarrStreamWorker.moveToThread(self.zarrStreamWorkerThread)
+                self.sigTriggerZarrStream.connect(self.zarrStreamWorker.streamZarrFile)
+                self.zarrStreamWorker.sigZarrFileFinished.connect(self.zarrStreamFinished)
+                self.zarrStreamWorkerThread.start()
 
-                recImageNumRows = params["ny_c"] * params["ny_s"]
-                recImageNumCols = params["nx_c"] * params["nx_s"]
+                self.zarrSavePath = os.path.join(os.path.dirname(self._widget.path), "Timepoint_RECON.zarr")
                 self.zarrSaveWorker = ZarrSaveWorker(
                     savePath=self.zarrSavePath, 
-                    numRows=recImageNumRows, 
-                    numCols=recImageNumCols
+                    numRows=params["ny_c"] * params["ny_s"], 
+                    numCols=params["nx_c"] * params["nx_s"]
                 )
                 self.zarrSaveWorkerThread = QtCore.QThread()
                 self.zarrSaveWorker.moveToThread(self.zarrSaveWorkerThread)
@@ -99,41 +109,34 @@ class WatcherFrameController(ImRecWidgetController):
                 self.zarrSaveWorkerThread.start()
 
                 self.toExecute = []
-                existingZarrFiles = []
-                for file in os.listdir(self._widget.path):
-                    if file.endswith(".zarr"): 
-                        existingZarrFiles.append(file)
+                existingZarrFiles = [file for file in os.listdir(self._widget.path) if file.endswith(".zarr")]
                 if existingZarrFiles:
                     self.sortZarrFileList(existingZarrFiles)
                     self.toExecute.extend(existingZarrFiles)
                     self._logger.debug(f"[toggleWatch] >> Found {len(self.toExecute)} Zarr files in: {self._widget.path}")
+                    
+                self.watcher = FileWatcher(self._widget.path, interval=0.1)
+                self.watcher.sigNewFiles.connect(self.newFiles)
+                self.watcher.start()
+
+                self.runNextFile()
 
             except Exception as e:
-                self._logger.error(f"[toggleWatch] >> Could not setup Buffer from with loc_parms.json file: {e}")
+                self._logger.error(f"[toggleWatch] >> Error occurred during setup: {e}")
                 return
-
-            self.watcher = FileWatcher(self._widget.path, interval=0.5)
-            self.watcher.sigNewFiles.connect(self.newFiles)
-            self.watcher.start() 
-            self.runNextFile()
-
+            
         else: 
             self.stopAllWorkers()            
 
 
     @QtCore.Slot(list)
     def newFiles(self, files):
-        newZarrFiles = []
-        for file in files:
-            if file.endswith(".zarr"): 
-                newZarrFiles.append(file)
-        
+        newZarrFiles = [file for file in files if file.endswith(".zarr")]
         if not newZarrFiles:
             return
 
         self.sortZarrFileList(newZarrFiles)
         for zarrFile in newZarrFiles:
-            # avoid duplication
             if zarrFile not in self.toExecute: 
                 self.toExecute.append(zarrFile)
         
@@ -145,120 +148,52 @@ class WatcherFrameController(ImRecWidgetController):
 
     def runNextFile(self):        
         if self.execution:
-            self._logger.debug("[runNextFile] >> The filewatcher is busy")
-            return
-        
-        if not self.toExecute:
-            self._logger.debug("[runNextFile] >> There are no files to process")
+            # self._logger.debug(f"[runNextFile] >> Zarr Streamer is currently working on {zarrFilePath}")
             return
     
+        if not self.toExecute:
+            # self._logger.debug("[runNextFile] >> No files to process")
+            return
+        
         self.execution = True
-        self.frameCounter = 0 
-
-        self.nextZarrFile = self.toExecute.pop(0)
-        self._logger.debug(f"[runNextFile] >> Starting processing: {self.nextZarrFile} => Frames to Process: {self.numFramesInStack}")
-        fullPathToFile = os.path.join(self._widget.path, self.nextZarrFile)
-        self.startZarrStream(fullPathToFile)
-
-
-    def startZarrStream(self, zarrFilePath):
-        self.zarrStreamWorkerThread = QtCore.QThread()
-        self.zarrStreamWorker = ZarrStreamWorker(zarrFilePath, self.numFramesInStack)
-        self.zarrStreamWorker.moveToThread(self.zarrStreamWorkerThread) 
-        
-        self.zarrStreamWorker.sigChunkLoaded.connect(self.fileLoaded)
-        self.zarrStreamWorker.sigFinished.connect(self.zarrStreamFinished)
-        self.zarrStreamWorker.sigFinished.connect(self.zarrStreamWorkerThread.quit) 
-        
-        self.zarrStreamWorkerThread.finished.connect(self.zarrStreamWorker.deleteLater) 
-        self.zarrStreamWorkerThread.finished.connect(self.zarrStreamWorkerThread.deleteLater) 
-        
-        self.zarrStreamWorkerThread.started.connect(self.zarrStreamWorker.run)
-        self.zarrStreamWorkerThread.start()
-        
-
-    @QtCore.Slot(np.ndarray)                                     
-    def fileLoaded(self, chunk):
-        """ 
-        Slot received from ZarrStreamWorker, where the <<chunk>> variable consists of 
-        3D np.array: (numFramesInChunk, numRows, numCols)
-        """
-        numFramesInChunk = chunk.shape[0]        
-        startChunkIndex = self.frameCounter
-        endChunkIndex = startChunkIndex + numFramesInChunk
-
-        if endChunkIndex > self.numFramesInStack:
-            self._logger.warning("[fileLoaded] >> Incoming data exceeds stack size => Clipping chunk")
-            chunk = chunk[:self.numFramesInStack - startChunkIndex]
-            endChunkIndex = self.numFramesInStack
-
-        self.recImageBuffer[startChunkIndex:endChunkIndex, :, :] = chunk
-        self.frameCounter += numFramesInChunk
-        self._commChannel.sigLiveChunkReady.emit(startChunkIndex, endChunkIndex)
+        self.zarrFileToProcess = self.toExecute.pop(0)
+        # self._logger.debug(
+        #     f"[runNextFile] >> Streaming: {self.zarrFileToProcess} => Frames to Process: {self.numFramesInStack}"
+        # )
+        zarrFilePath = os.path.join(self._widget.path, self.zarrFileToProcess)
+        self.sigTriggerZarrStream.emit(zarrFilePath)
 
 
     def zarrStreamFinished(self):
-        if self.frameCounter < self.numFramesInStack - 1 or self.zarrStreamWorker == None:
-            self._logger.warning(f"[zarrStreamFinished] >> Scan Processing interrupted => Frames processed: {self.frameCounter + 1}/{self.numFramesInStack}")
-            return
-        else:
-            self._logger.debug(f"[zarrStreamFinished] >> Finished processing: {self.nextZarrFile} => Frames processed: {self.frameCounter + 1}/{self.numFramesInStack}")
-
-        if hasattr(self, "zarrStreamWorkerThread") and self.zarrStreamWorkerThread.isRunning():
-            self.zarrStreamWorkerThread.quit()
-            self.zarrStreamWorkerThread.wait()
-        
+        # self._logger.debug(f"[zarrStreamFinished] Finished processing: {self.zarrFileToProcess}")
         self.execution = False
-        self.frameCounter = 0
-        
         self.runNextFile()
 
 
     def stopAllWorkers(self):
-        zarrStreamWorker = getattr(self, "zarrStreamWorker", None)
-        zarrStreamWorkerThread = getattr(self, "zarrStreamWorkerThread", None)
-        if ZarrStreamWorker is None or zarrStreamWorkerThread is None: 
-            # the worker or the thread has aldready been deleted by <<self.zarrStreamWorker.deleteLater>> or <<self.zarrStreamWorkerThread.deleteLater>>
-            return
+        """ Shuts down all of the workers and their threads. """
+        threadWaitTime = 1000
         
-        try:
-            zarrStreamWorker.stop()
-            # disconnect all signals from the worker => stops worker from triggering <<self.zarrStreamWorker.deleteLater>>
-            try:
-                zarrStreamWorker.sigChunkLoaded.disconnect() 
-                zarrStreamWorker.sigFinished.disconnect()
-            except:
-                pass
-
-            # check if the thread is still valid beforing doing anything with it 
-            try: 
-                if zarrStreamWorkerThread.isRunning():
-                    zarrStreamWorkerThread.quit()
-                    # use a short wait of 500 ms
-                    zarrStreamWorkerThread.wait(500) 
-            except RuntimeError: 
-                # thread is already deleted => do nothing 
-                pass
+        self._commChannel.sigStopLiveStream.emit()
         
-        finally:
-            # clear references to zarrWorker/Thread => controller should not use them again 
-            self.zarrStreamWorker = None
-            self.zarrStreamWorkerThread = None
-    
-        # delete watcher
-        if self.watcher:     
-            try: 
-                self.watcher.stop()
-                self.watcher.wait()
-            except Exception as e:
-                self._logger.error(f"[stopAllWorkers] >> Error during file watcher shutdown: {e}")
-            finally:
-                self.watcher = None   
+        if self.zarrStreamWorker:
+            self.zarrStreamWorker.stop()
+            self.zarrStreamWorkerThread.quit()
+            self.zarrStreamWorkerThread.wait(threadWaitTime) 
 
+        if self.zarrSaveWorker:
+            self.zarrSaveWorkerThread.quit()
+            self.zarrSaveWorkerThread.wait(threadWaitTime)
+
+        if self.watcher: 
+            self.watcher.stop()
+            self.watcher.wait()
+        
+       
+        self.execution = False
         self.toExecute = []
-        self.execution = False 
-        
-        self._logger.debug("[stopAllWorkers] >> Watcher and Zarr Stream stopped")
+        self.rawDataBuffer = None
+        self._logger.debug(f"[stopAllWorkers] >> All Live Watcher Threads have been shutdown")
 
 
     def extensionChanged(self):

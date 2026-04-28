@@ -14,7 +14,7 @@ class ProcessorWorker(QtCore.QObject):
             self,
             processor, 
             reconObj, 
-            buffer,
+            rawDataBuffer,
             cupyAvailable = False,
             _commChannel = None
     ):
@@ -22,7 +22,7 @@ class ProcessorWorker(QtCore.QObject):
         self._commChannel = _commChannel
         self.processor = processor
         self.reconObj = reconObj
-        self.recImageBuffer = buffer
+        self.rawDataBuffer = rawDataBuffer
         self.timePointIndex = 0
         self.cupyAvailable = cupyAvailable
         self.cp = None
@@ -35,8 +35,12 @@ class ProcessorWorker(QtCore.QObject):
 
 
     @QtCore.Slot(int)
-    def process_frame(self, frameIndex): 
-        frame = self.recImageBuffer[frameIndex]
+    def processFrame(self, frameIndex): 
+        if QtCore.QThread.currentThread().isInterruptionRequested():
+            # thread closing => no processing
+            return
+        
+        frame = self.rawDataBuffer[frameIndex]
         if self.cupyAvailable and self.cp: 
             frame = self.cp.asarray(frame)             
 
@@ -52,8 +56,12 @@ class ProcessorWorker(QtCore.QObject):
 
 
     @QtCore.Slot(int, int)
-    def process_chunk(self, startChunkIndex, endChunkIndex):        
-        chunk = self.recImageBuffer[startChunkIndex:endChunkIndex]
+    def processChunk(self, startChunkIndex, endChunkIndex):        
+        if QtCore.QThread.currentThread().isInterruptionRequested():
+            # thread closing => no processing
+            return
+        
+        chunk = self.rawDataBuffer[startChunkIndex:endChunkIndex]
         if self.cupyAvailable and self.cp:
             chunk = self.cp.asarray(chunk)
         
@@ -68,9 +76,9 @@ class ProcessorWorker(QtCore.QObject):
         if numFrames % refreshRate == 0:
             self.sigTriggerUIRefresh.emit()
 
-        if numFrames == self.processor.num_frames_in_stack - 1: 
+        if numFrames >= self.processor.num_frames_in_stack - 1: 
             self.sigTriggerUIRefresh.emit()
-            # --- SAVING RECONSTRUCTED DATA ---
-            data = self.reconObj.reconstructed[0, 0, 0, 0]
-            self._commChannel.sigSaveRecImage.emit(data, self.timePointIndex)
-            self.timePointIndex += 1 
+            # # --- SAVING RECONSTRUCTED DATA ---
+            # data = self.reconObj.reconstructed[0, 0, 0, 0]
+            # self._commChannel.sigSaveRecImage.emit(data, self.timePointIndex)
+            # self.timePointIndex += 1 

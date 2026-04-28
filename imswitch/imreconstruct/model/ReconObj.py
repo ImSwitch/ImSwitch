@@ -17,7 +17,7 @@ class ReconObj:
             timepoints_text, 
             p_text, 
             n_text, 
-            recImageBufferArgs = None,
+            recImageArgs = None,
             *args, 
             **kwargs
     ):
@@ -36,9 +36,9 @@ class ReconObj:
         self.reconRows = None 
         self.reconCols = None 
         self.dispLevels = None
-        if recImageBufferArgs is not None:
-            self.reconRows = recImageBufferArgs["ny_c"] * recImageBufferArgs["ny_s"]
-            self.reconCols = recImageBufferArgs["nx_c"] * recImageBufferArgs["nx_s"]
+        if recImageArgs is not None:
+            self.reconRows = recImageArgs["ny_c"] * recImageArgs["ny_s"]
+            self.reconCols = recImageArgs["nx_c"] * recImageArgs["nx_s"]
             self.scanParDict["range"] = [float(self.reconCols), float(self.reconRows)]
             self.scanParDict["start"] = [0.0, 0.0]
             self.scanParDict["stop"] = self.scanParDict["range"]

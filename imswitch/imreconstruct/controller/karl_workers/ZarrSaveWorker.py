@@ -1,3 +1,5 @@
+# type: ignore
+
 from qtpy import QtCore
 import zarr
 import numpy as np
@@ -12,27 +14,23 @@ class ZarrSaveWorker(QtCore.QObject):
             savePath: str,  
             numRows: int, 
             numCols: int,
-            numTimepoints: int = 1
     ):
         super().__init__()
         self.savePath = savePath 
-        self.numTimepoints = numTimepoints
         self.numRows = numRows 
         self.numCols = numCols 
         self.zarrArray = None
 
     
     @QtCore.Slot()
-    def run(self): 
-        shape = (self.numTimepoints, 1, self.numRows, self.numCols)
-        chunks = (1, 1, self.numRows, self.numCols)        
+    def run(self):    
         try:
             zarrStore = zarr.DirectoryStore(self.savePath)
             self.zarrArray = zarr.open(
                 zarrStore, 
                 mode='w',
-                shape=shape, 
-                chunks=chunks,
+                shape=(1, 1, self.numRows, self.numCols), 
+                chunks=(1, 1, self.numRows, self.numCols),
                 dtype=np.float32
             )
             self.zarrArray.attrs["description"] = "Reconstructed stacks (timepoints) from Zarr Live Stream"
@@ -46,11 +44,8 @@ class ZarrSaveWorker(QtCore.QObject):
             recImage: np.ndarray, 
             timePointIndex: int
     ):
-        """ ... """
-        print("DEBUG [ZarrSaveWorker] [saveRecImage] >> We've enterd the saveRecImage method")
+        """ Saves reconstructed timepoints as chunks in a zarr file """
         if self.zarrArray is not None: 
-            # C pointer arithmetic under the hood: *timePointView = procChunksCoeffs => RAM[addressTozarrArray] = procChunkCoeffs
             if timePointIndex >= self.zarrArray.shape[0]:
-                newShape = (timePointIndex + 1, 1, self.numRows, self.numCols)
-                self.zarrArray.resize(newShape)
+                self.zarrArray.resize((timePointIndex + 1, 1, self.numRows, self.numCols))
             self.zarrArray[timePointIndex, 0] = recImage

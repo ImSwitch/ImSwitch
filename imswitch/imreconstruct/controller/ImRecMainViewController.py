@@ -1,25 +1,39 @@
-import copy
-import os
+# type: ignore
 
-import numpy as np
-import tifffile as tiff
-
-import imswitch.imreconstruct.view.guitools as guitools
 from imswitch.imcommon.controller import PickDatasetsController
-from imswitch.imreconstruct.model import DataObj, ReconObj, PatternFinder, SignalExtractor,Denoiser
+from imswitch.imreconstruct.model import DataObj, ReconObj, PatternFinder, SignalExtractor
+from imswitch.imreconstruct.model.karl_models import GaussProcessorCPU
 from .DataFrameController import DataFrameController
 from .MultiDataFrameController import MultiDataFrameController
 from .WatcherFrameController import WatcherFrameController
 from .ReconstructionViewController import ReconstructionViewController
 from .ScanParamsController import ScanParamsController
 from .basecontrollers import ImRecWidgetController
+from imswitch.imreconstruct.controller.karl_workers.ProcessorWorker import ProcessorWorker
+
+import copy
+import os
+import json
+import numpy as np
+import tifffile as tiff
+import imswitch.imreconstruct.view.guitools as guitools
+
+# from qtpy.QtWidgets import QApplication
+from qtpy import QtCore
+
+try: 
+    import cupy as cp
+    cupyAvailable = True
+    from imswitch.imreconstruct.model.karl_models import GaussProcessorGPU
+except:
+    cupyAvailable = False
 
 
 class ImRecMainViewController(ImRecWidgetController):
+    
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._commChannel.extension = self._widget.extension
-        
         self.dataFrameController = self._factory.createController(
             DataFrameController, self._widget.dataFrame
         )
@@ -38,12 +52,10 @@ class ImRecMainViewController(ImRecWidgetController):
         self.pickDatasetsController = self._factory.createController(
             PickDatasetsController, self._widget.pickDatasetsDialog
         )
-
         self._signalExtractor = SignalExtractor()
         self._patternFinder = PatternFinder()
-        self._denoiser = Denoiser()
-
         self._currentDataObj = None
+        self.localizerParams = None
         self._pattern = self._widget.getPatternParams()
         self._settingPatternParams = False
         self._scanParDict = {
@@ -56,21 +68,20 @@ class ImRecMainViewController(ImRecWidgetController):
         }
         self._dataFolder = None
         self._saveFolder = None
-
+        self.liveProcessor = None 
+        self.liveReconObj = None
         self._commChannel.sigDataFolderChanged.connect(self.dataFolderChanged)
         self._commChannel.sigSaveFolderChanged.connect(self.saveFolderChanged)
         self._commChannel.sigCurrentDataChanged.connect(self.currentDataChanged)
         self._commChannel.sigScanParamsUpdated.connect(self.scanParamsUpdated)
         self._commChannel.sigReconstruct.connect(self.reconstruct)
-
-
+        self._commChannel.sigSetupLiveStream.connect(self.setupLiveStream)
         self._widget.sigSaveReconstruction.connect(lambda: self.saveCurrent('reconstruction'))
         self._widget.sigSaveReconstructionAll.connect(lambda: self.saveAll('reconstruction'))
         self._widget.sigSaveCoeffs.connect(lambda: self.saveCurrent('coefficients'))
         self._widget.sigSaveCoeffsAll.connect(lambda: self.saveAll('coefficients'))
         self._widget.sigSetDataFolder.connect(self.setDataFolder)
         self._widget.sigSetSaveFolder.connect(self.setSaveFolder)
-
         self._widget.sigReconstuctCurrent.connect(self.reconstructCurrent)
         self._widget.sigReconstructMultiConsolidated.connect(
             lambda: self.reconstructMulti(consolidate=True)
@@ -80,104 +91,169 @@ class ImRecMainViewController(ImRecWidgetController):
         )
         self._widget.sigQuickLoadData.connect(self.quickLoadData)
         self._widget.sigUpdate.connect(lambda: self.updateScanParams(applyOnCurrentRecon=True))
-
         self._widget.sigShowPatternChanged.connect(self.togglePattern)
         self._widget.sigFindPattern.connect(self.findPattern)
         self._widget.sigShowScanParamsClicked.connect(self.showScanParamsDialog)
         self._widget.sigPatternParamsChanged.connect(self.updatePattern)
-        self._widget.sigDenoiseCurrent.connect(self.denoiseCurrent)
         self.updatePattern()
         self.updateScanParams()
-    
-    def denoiseCurrent(self) -> None:
-        if not self._denoiser.denoising_available:
-            self._logger.error("Denoising not available")
-            return
-        reconObj = self.reconstructionController.getActiveReconObj()
-        if reconObj  is None:
-            return
-        crop_size = int(self._widget.getDenoiseCropSize())
-        pad = self._widget.getDenoiseBoolPad()
-        model_name = self._widget.getDenoiseModelName()
+        if cupyAvailable:
+            self._logger.debug("[__init__] >> CuPy available => Defaulting to GPU processing")
+        else: 
+            self._logger.debug("[__init__] >> CuPy NOT available => Defaulting to CPU processing")
+ 
+
+    def setupLiveStream(
+            self, 
+            params: dict, 
+            rawDataBuffer: np.ndarray
+    ):   
+        if cupyAvailable:
+            self.liveProcessor = GaussProcessorGPU(params, scan_ori="+x-y")                          
+            self._logger.debug("[setupLiveStream] >> GPU Processor initialized")
+        else: 
+            self.liveProcessor = GaussProcessorCPU(params, scan_ori="+x-y")
+            self._logger.debug("[setupLiveStream] >> GPU Processor NOT initialized => Defaulting to CPU processor")
+
+        self.liveReconObj = ReconObj(
+            "Live_Stream", 
+            self._scanParDict,
+            self._widget.r_l_text, 
+            self._widget.u_d_text, 
+            self._widget.b_f_text,
+            self._widget.timepoints_text, 
+            self._widget.p_text, 
+            self._widget.n_text,
+            recImageArgs={
+                "nx_c": params["nx_c"], 
+                "ny_c": params["ny_c"], 
+                "nx_s": params["nx_s"], 
+                "ny_s": params["ny_s"]
+            }
+        )            
+
+        self._widget.addNewData(self.liveReconObj, "Live_Stream") 
+        self._liveLayer = None
         
-        if 'RCAN' in model_name:
-            model_type = 'UNetRCAN'
-        else:
-            model_type = 'UNet'
+        self.processorWorker = ProcessorWorker(
+            processor=self.liveProcessor, 
+            reconObj=self.liveReconObj, 
+            rawDataBuffer=rawDataBuffer, 
+            cupyAvailable=cupyAvailable, 
+            _commChannel=self._commChannel
+        ) 
+        self.processorThread = QtCore.QThread()
+        self.processorWorker.moveToThread(self.processorThread)
+        self.processorWorker.sigTriggerUIRefresh.connect(self.triggerUIRefresh)
+        self._commChannel.sigLiveChunkReady.connect(self.processorWorker.processChunk)
+        self._commChannel.sigStopLiveStream.connect(self.stopLiveStream)
+        self.processorThread.start()
+    
+        self._logger.debug("[setupLiveStream] >> Live Stream initialized")
 
-        reconstrData = copy.deepcopy(reconObj.getReconstruction())
-        reconstrData = reconstrData[:, 0, 0, 0, :, :]
 
-        self._denoiser.init_model(model_name,model_type)
-        self._denoiser.load_model(model_name)
-        predict = self._denoiser.predict(data=reconstrData,crop_size=crop_size,pad=pad).astype('float32')
-        predict = np.expand_dims(predict,axis=(1,2,3))
+    def triggerUIRefresh(self):
+        """ Triggers napari UI update. """
+        try:
+            self._widget.reconstructionWidget.sigUpdateImage.emit(self.liveReconObj.reconstructed)
+        except Exception as e:
+            self._logger.error(f"[triggerUIRefresh] >> UI refresh failed: {e}")
 
-        denoiseObj = copy.deepcopy(reconObj)
-        denoiseObj.updateReconstructed(predict)
-        name = reconObj.name + "_denoise"
-        self._widget.addNewData(denoiseObj, name)
+
+    def stopLiveStream(self): 
+        """ Shuts down processor thread. """
+        if self.processorThread is None or not self.processorThread.isRunning():
+            self._logger.debug("[stopLiveStream] >> Shutdown already complete or in progress. Skipping.")
+            return
+        self._logger.debug(f"[stopLiveStream] >> Initiating shutdown...")
+        self.processorThread.quit()
+        self.processorThread.wait()
+        self.processorThread.terminate() 
+        self._logger.debug("[stopLiveStream] >> Processor Thread has been fully cleared.")
+
 
     def dataFolderChanged(self, dataFolder):
         self._dataFolder = dataFolder
 
+
     def saveFolderChanged(self, saveFolder):
         self._saveFolder = saveFolder
+
 
     def setDataFolder(self):
         dataFolder = guitools.askForFolderPath(self._widget)
         if dataFolder:
             self._commChannel.sigDataFolderChanged.emit(dataFolder)
 
+
     def setSaveFolder(self):
         saveFolder = guitools.askForFolderPath(self._widget)
         if saveFolder:
             self._commChannel.sigSaveFolderChanged.emit(saveFolder)
 
+
     def findPattern(self):
-        self._logger.debug('Find pattern clicked')
+        self._logger.debug("[findPattern] >> Find pattern clicked")
         if self._currentDataObj is None:
             return
 
         meanData = self._currentDataObj.getMeanData()
+        stackData = self._currentDataObj.data        
         if len(meanData) < 1:
             return
 
-        self._logger.debug('Finding pattern')
-        pattern = self._patternFinder.findPattern(meanData)
-        self._logger.debug(f'Pattern found as: {self._pattern}')
+        self._logger.debug("[findPattern] >> Finding pattern")
+        pattern = self._patternFinder.findPattern(meanData, stackData) 
+        try:
+            with open("loc_parms.json", "r") as f: 
+                self.localizerParams = json.load(f)
+            self._logger.debug(f"[findPattern] >> Successfully loaded localizer parameters: {self.localizerParams}")
+        except Exception as e:
+            self._logger.error(f"[findPattern] >> Tried to load localizer data but got {e}")
+                
+        self._logger.debug(f"[findPattern] >> Pattern found as: {self._pattern}")
+        
         self.setPatternParams(pattern)
         self.updatePattern()
 
+
     def togglePattern(self, enabled):
-        self._logger.debug('Toggling pattern')
+        self._logger.debug("[togglePattern] >> Toggling pattern")
         self._commChannel.sigPatternVisibilityChanged.emit(enabled)
+
 
     def updatePattern(self):
         if self._settingPatternParams:
             return
-
-        self._logger.debug('Updating pattern')
-        self._pattern = self._widget.getPatternParams()
+        self._logger.debug("[updatePattern] >> Updating pattern")
+        self._pattern = self._widget.getPatternParams() # This returns [yo, xo, yp, xp]
         self._commChannel.sigPatternUpdated.emit(self._pattern)
+
 
     def setPatternParams(self, pattern):
         try:
             self._settingPatternParams = True
-            self._widget.setPatternParams(*pattern)
+            # Store the full 8-element list
+            self._pattern = pattern 
+            # Only send the first 4 to the UI text boxes
+            self._widget.setPatternParams(*pattern[:4]) 
         finally:
             self._settingPatternParams = False
+
 
     def updateScanParams(self, applyOnCurrentRecon=False):
         self._commChannel.sigScanParamsUpdated.emit(copy.deepcopy(self._scanParDict),
                                                     applyOnCurrentRecon)
 
+
     def scanParamsUpdated(self, scanParDict):
         self._scanParDict = scanParDict
+
 
     def showScanParamsDialog(self):
         self.updateScanParams()
         self._widget.showScanParamsDialog()
+
 
     def quickLoadData(self):
         extension = self._widget.extension.value()
@@ -186,8 +262,8 @@ class ImRecMainViewController(ImRecWidgetController):
         elif extension == 'hdf5':
             dataPath = guitools.askForFilePath(self._widget, defaultFolder=self._dataFolder)
 
-        if dataPath:
-            self._logger.debug(f'Loading data at: {dataPath}')
+        if dataPath: 
+            self._logger.debug(f"[quickLoadData] >> Loading data at: {dataPath}")
 
             datasetsInFile = DataObj.getDatasetNames(dataPath)
             datasetToLoad = None
@@ -213,32 +289,33 @@ class ImRecMainViewController(ImRecWidgetController):
                     self._widget.raiseMultiDataDock()
                     return
 
-            name = os.path.split(dataPath)[1]
+            name = os.path.split(dataPath)[1] 
             if self._currentDataObj is not None:
                 self._currentDataObj.checkAndUnloadData()
             self._currentDataObj = DataObj(name, datasetToLoad, path=dataPath)
             self._currentDataObj.checkAndLoadData()
             if self._currentDataObj.dataLoaded:
                 self._commChannel.sigCurrentDataChanged.emit(self._currentDataObj)
-                self._logger.debug('Data loaded')
+                self._logger.debug("[quickLoadData] >> Data loaded")
                 self._widget.raiseCurrentDataDock()
             else:
                 pass
 
+
     def currentDataChanged(self, dataObj):
         self._currentDataObj = dataObj
 
-        # Update scan params based on new data
-        # TODO: What if the attribute names change in imcontrol?
         dimensionMap = {
             b'X': self._widget.r_l_text,
             b'Y': self._widget.u_d_text,
             b'Z': self._widget.b_f_text
         }
+        
         try:
             targetsAttr = dataObj.attrs['ScanStage:target_device']
             for i in range(0, min(3, len(targetsAttr))):
                 self._scanParDict['dimensions'][i] = dimensionMap[targetsAttr[i]]
+        
         except KeyError:
             pass
 
@@ -259,15 +336,18 @@ class ImRecMainViewController(ImRecWidgetController):
             stepSizesAttr = dataObj.attrs['ScanStage:axis_step_size']
         except KeyError:
             pass
+        
         else:
             for i in range(0, min(4, len(stepSizesAttr))):
                 self._scanParDict['step_sizes'][i] = str(stepSizesAttr[i] * 1000)  # convert um->nm
 
         self.updateScanParams()
 
+
     def extractData(self, data):
         fwhmNm = self._widget.getFwhmNm()
-        bgModelling = self._widget.getBgModelling()
+        # bgModelling = self._widget.getBgModelling()
+        bgModelling = "Gaussian"
         if bgModelling == 'Constant':
             fwhmNm = np.append(fwhmNm, 9999)  # Code for constant bg
         elif bgModelling == 'No background':
@@ -282,7 +362,8 @@ class ImRecMainViewController(ImRecWidgetController):
 
         sigmas = np.divide(fwhmNm, 2.355 * self._widget.getPixelSizeNm())
 
-        device = self._widget.getComputeDevice()
+        # device = self._widget.getComputeDevice()
+        device = "GPU"
         pattern = self._pattern
         if device == 'CPU' or device == 'GPU':
             coeffs = self._signalExtractor.extractSignal(data, sigmas, pattern, device.lower())
@@ -291,14 +372,17 @@ class ImRecMainViewController(ImRecWidgetController):
 
         return coeffs
 
+
     def reconstructCurrent(self):
         if self._currentDataObj is None:
             return
 
         self.reconstruct([self._currentDataObj], consolidate=False)
 
+
     def reconstructMulti(self, consolidate):
         self.reconstruct(self._widget.getMultiDatas(), consolidate)
+
 
     def reconstruct(self, dataObjs, consolidate):
         reconObj = None
@@ -308,7 +392,7 @@ class ImRecMainViewController(ImRecWidgetController):
                 dataObj.checkAndLoadData()
 
                 if np.prod(np.array(self._scanParDict['steps'], dtype=int)) < dataObj.numFrames:
-                    self._logger.error('Too many frames in data')
+                    self._logger.error("[reconstruct] >> Too many frames in data")
                     return
 
                 if not consolidate or index == 0:
@@ -330,15 +414,16 @@ class ImRecMainViewController(ImRecWidgetController):
                 if not preloaded:
                     dataObj.checkAndUnloadData()
 
-            reconObj.addCoeffsTP(coeffs)
+            reconObj.addCoeffsTP(coeffs) 
             if not consolidate:
-                reconObj.updateImages()
-                self._widget.addNewData(reconObj, reconObj.name)
+                reconObj.updateImages() 
+                self._widget.addNewData(reconObj, reconObj.name) 
 
         if consolidate and reconObj is not None:
             reconObj.updateImages()
             self._widget.addNewData(reconObj, f'{reconObj.name}_multi')
             self._commChannel.sigExecutionFinished.emit(self.reconstructionController.getImage())
+
 
     def bleachingCorrection(self, data):
         correctedData = data.copy()
@@ -347,6 +432,7 @@ class ImRecMainViewController(ImRecWidgetController):
             c = (energy[0] / energy[i]) ** 4
             correctedData[i, :, :] = data[i, :, :] * c
         return correctedData
+
 
     def saveCurrent(self, dataType):
         """ Saves the reconstructed image or coefficeints from the current
@@ -365,6 +451,7 @@ class ImRecMainViewController(ImRecWidgetController):
                 self.saveCoefficients(reconObj, filePath)
             else:
                 raise ValueError(f'Invalid save data type "{dataType}"')
+
 
     def saveAll(self, dataType):
         """ Saves the reconstructed image or coefficeints from all available
@@ -394,6 +481,7 @@ class ImRecMainViewController(ImRecWidgetController):
                 else:
                     raise ValueError(f'Invalid save data type "{dataType}"')
 
+
     def saveReconstruction(self, reconObj, filePath):
         scanParDict = reconObj.getScanParams()
         vxsizec = int(float(
@@ -417,8 +505,8 @@ class ImRecMainViewController(ImRecWidgetController):
             )]
         ))
 
-        self._logger.debug(f'Trying to save to: {filePath}, Vx size: {vxsizec, vxsizer, vxsizez},'
-                           f' dt: {dt}')
+        self._logger.debug(f"[saveReconstruction] >> Trying to save to: {filePath}, Vx size: {vxsizec, vxsizer, vxsizez},"
+                           f" dt: {dt}")
         # Reconstructed image
         reconstrData = copy.deepcopy(reconObj.getReconstruction())
         reconstrData = reconstrData[:, 0, :, :, :, :]
@@ -427,9 +515,10 @@ class ImRecMainViewController(ImRecWidgetController):
                      imagej=True, resolution=(1 / vxsizec, 1 / vxsizer),
                      metadata={'spacing': vxsizez, 'unit': 'nm', 'axes': 'TZCYX'})
 
+
     def saveCoefficients(self, reconObj, filePath):
         coeffs = copy.deepcopy(reconObj.getCoeffs())
-        self._logger.debug(f'Shape of coeffs: {coeffs.shape}')
+        self._logger.debug(f"[saveCoefficients] >> Shape of coeffs: {coeffs.shape}")
         coeffs = np.swapaxes(coeffs, 1, 2)
         tiff.imwrite(filePath, coeffs,
                      imagej=True, resolution=(1, 1),

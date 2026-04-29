@@ -1,3 +1,5 @@
+# type: ignore
+
 import numpy as np
 from qtpy import QtCore, QtWidgets
 
@@ -9,14 +11,17 @@ class ReconstructionView(QtWidgets.QFrame):
     """ Frame for showing the reconstructed image"""
 
     # Signals
-    sigItemSelected = QtCore.Signal()
-    sigAxisStepChanged = QtCore.Signal(tuple)
-    sigViewChanged = QtCore.Signal()
+    sigItemSelected = QtCore.Signal()                       
+    sigAxisStepChanged = QtCore.Signal(tuple)                        
+    sigViewChanged = QtCore.Signal()                                      
+    sigUpdateImage = QtCore.Signal(np.ndarray)                     
 
     # Methods
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+        self.sigUpdateImage.connect(self._handleFastUpdate)
+        
         # Image Widget
         naparitools.addNapariGrayclipColormap()
         self.napariViewer = naparitools.EmbeddedNapari()
@@ -50,7 +55,7 @@ class ReconstructionView(QtWidgets.QFrame):
         self.chooseViewBox.setLayout(self.viewLayout)
         self.chooseViewGroup.buttonClicked.connect(self.sigViewChanged)
 
-        # List for storing sevral data sets
+        # List for storing several data sets
         self.reconList = QtWidgets.QListWidget()
         self.reconList.currentItemChanged.connect(self.sigItemSelected)
         self.reconList.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
@@ -77,14 +82,16 @@ class ReconstructionView(QtWidgets.QFrame):
         layout.setColumnStretch(0, 100)
         layout.setColumnStretch(2, 5)
 
+
     def dimsChanged(self, event):
         if event.type == 'current_step':
             self.sigAxisStepChanged.emit(event.value)
 
+
     def addNewData(self, reconObj, name):
         ind = 0
         for i in range(self.reconList.count()):
-            if name + '.' + str(ind) == self.reconList.item(i).data(0):
+            if name + '.' + str(ind) == self.reconList.item(i).data(0):                  
                 ind += 1
         name = name + '.' + str(ind)
 
@@ -93,42 +100,54 @@ class ReconstructionView(QtWidgets.QFrame):
         self.reconList.addItem(listItem)
         self.reconList.setCurrentItem(listItem)
 
+
     def getCurrentItemIndex(self):
         return self.reconList.indexFromItem(self.reconList.currentItem()).row()
 
+
     def getDataAtIndex(self, index):
-        return self.reconList.item(index).data(1)
+        return self.reconList.item(index).data(1)                        
+
 
     def getCurrentItemData(self):
         currentItem = self.reconList.currentItem()
         return currentItem.data(1) if currentItem is not None else None
 
+
     def getAllItemDatas(self):
         for i in range(self.reconList.count()):
             item = self.reconList.item(i)
-            yield item.text(), item.data(1)
+            yield item.text(), item.data(1)                              
+
 
     def getViewName(self):
-        return self.chooseViewGroup.checkedButton().viewName
+        return self.chooseViewGroup.checkedButton().viewName            
+
 
     def getImage(self):
-        return self.imgLayer.data
+        return self.imgLayer.data                                        
+
 
     def setImage(self, im, axisLabels):
-        self.imgLayer.data = im
+        self.imgLayer.data = im                                          
         self.napariViewer.dims.axis_labels = tuple(axisLabels)
 
+
     def clearImage(self):
-        self.imgLayer.data = np.zeros((1, 1))
+        self.imgLayer.data = np.zeros((1, 1))                           
+
 
     def getImageDisplayLevels(self):
-        return self.imgLayer.contrast_limits
+        return self.imgLayer.contrast_limits                             
+
 
     def setImageDisplayLevels(self, minimum, maximum):
-        self.imgLayer.contrast_limits = (minimum, maximum)
+        self.imgLayer.contrast_limits = (minimum, maximum)                    
+ 
 
     def setImageDisplayLevelsRange(self, minimum, maximum):
-        self.imgLayer.contrast_limits_range = (minimum, maximum)
+        self.imgLayer.contrast_limits_range = (minimum, maximum)                
+ 
 
     def removeRecon(self):
         numSelected = len(self.reconList.selectedIndexes())
@@ -137,13 +156,27 @@ class ReconstructionView(QtWidgets.QFrame):
             self.reconList.takeItem(row)
             numSelected -= 1
 
+
     def removeAllRecon(self):
         for i in range(self.reconList.count()):
             currRow = self.reconList.currentRow()
             self.reconList.takeItem(currRow)
 
+
     def resetView(self):
         self.napariViewer.reset_view()
+
+
+    def _handleFastUpdate(self, im): 
+        self.imgLayer.data = im                                         
+        self.napariViewer.window.qt_viewer.canvas.update()
+
+
+    def closeEvent(self, event):                                         
+        """ Called automatically by Qt when the widget is closing. """  
+        if hasattr(self, "napariViewer"): 
+            self.napariViewer.close()
+        super().closeEvent(event)
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

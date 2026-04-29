@@ -1,11 +1,41 @@
+# type: ignore
+
 import numpy as np
+import json
 from scipy.optimize import curve_fit
 from scipy.signal import find_peaks
 
+try:
+    from .karl_models.localizer import localizer
+    NEW_LOCALIZER_AVAILABLE = True
+except ImportError as e:
+    print(f"ERROR [PatternFinder] [import] >> Could not import new localizer: {e}")
+    NEW_LOCALIZER_AVAILABLE = False
+
 
 class PatternFinder:
-    def findPattern(self, image):
-        """ Finds the offsets and periods of the pattern in the image. """
+    
+    def findPattern(self, image, imageStack=None):
+        """ Finds the offsets and periods of the pattern in the image. """        
+        if NEW_LOCALIZER_AVAILABLE:
+            try:                
+                locRes = localizer(imageStack, plot=False) 
+                with open("loc_parms.json", 'w') as f: 
+                    f.write(json.dumps(locRes))
+
+                print(f"DEBUG [PatternFinder] [findPattern] >> Custom localizer succeeded")
+
+                return [
+                    locRes["yo"], 
+                    locRes["xo"], 
+                    locRes["yp"], 
+                    locRes["xp"]
+                ] 
+            
+            except Exception as e:
+                print(f"ERROR [PatternFinder] [findPattern] >> Custom localizer failed with exception {e} => falling back to ImSwitch Localizer")
+
+        # --- LEGACY CODE ---
         image = image - image.min()
         thresh = image.max() / 3
         image[image < thresh] = 0
@@ -98,6 +128,8 @@ class PatternFinder:
             bestPeak = bestTwoPeaks[0]
 
         return bestPeak
+            
+
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

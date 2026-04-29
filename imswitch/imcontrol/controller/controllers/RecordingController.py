@@ -173,6 +173,9 @@ class RecordingController(ImConWidgetController):
                                             self._widget.getMultiDetectorSingleFile())
             }
 
+
+            self._logger.debug(f"numScanPositions = {self._commChannel.getNumScanPositions()}")
+
             if self.recMode == RecMode.SpecFrames:
                 self.recordingArgs['recFrames'] = self._widget.getNumExpositions()
                 self._master.recordingManager.startRecording(**self.recordingArgs)
@@ -231,7 +234,7 @@ class RecordingController(ImConWidgetController):
 
         if not self.recordingArgs['singleLapseFile']:
             lapseCurrentStr = str(self.lapseCurrent).zfill(len(str(self.lapseTotal)))
-            self.recordingArgs['savename'] = f'{self.savename}_scan{lapseCurrentStr}'
+            self.recordingArgs['savename'] = f'{self.savename}_scan__{lapseCurrentStr}_'
 
         if isFirstLapse:
             self._commChannel.sigScanStarting.emit()  # To get updated values from sharedAttrs

@@ -1,30 +1,30 @@
-from imswitch.imcommon.framework import Signal, SignalInterface
+# type: ignore
 
+from imswitch.imcommon.framework import Signal, SignalInterface
+import numpy as np
 
 class CommunicationChannel(SignalInterface):
     """
     Communication Channel is a class that handles the communication between Master Controller
     and Widgets, or between Widgets.
     """
+    # --- OLD SIGNALS ---
+    sigDataFolderChanged = Signal(object)          # (dataFolderPath) 
+    sigSaveFolderChanged = Signal(object)          # (saveFolderPath)
+    sigCurrentDataChanged = Signal(object)         # (dataObj)
+    sigScanParamsUpdated = Signal(object, bool)    # (scanParDict, applyOnCurrentRecon)
+    sigPatternUpdated = Signal(object)             # (pattern) 
+    sigPatternVisibilityChanged = Signal(bool)     # (visible)
+    sigAddToMultiData = Signal(str, str)           # (path, datasetName) 
+    sigReconstruct = Signal(object, bool)           
+    sigExecutionFinished = Signal(object)          
 
-    sigDataFolderChanged = Signal(object)  # (dataFolderPath)
-
-    sigSaveFolderChanged = Signal(object)  # (saveFolderPath)
-
-    sigCurrentDataChanged = Signal(object)  # (dataObj)
-
-    sigScanParamsUpdated = Signal(object, bool)  # (scanParDict, applyOnCurrentRecon)
-
-    sigPatternUpdated = Signal(object)  # (pattern)
-
-    sigPatternVisibilityChanged = Signal(bool)  # (visible)
-
-    sigAddToMultiData = Signal(str, str)  # (path, datasetName)
-
-    sigReconstruct = Signal(object, bool)
-
-    sigExecutionFinished = Signal(object)
-
+    # --- NEW SIGNALS ---
+    sigSetupLiveStream = Signal(dict, np.ndarray)   # (args, recImageBuffer)
+    sigLiveFrameReady = Signal(int)                 # (frameIndex)
+    sigLiveChunkReady = Signal(int, int)            # (startIndex, endIndex)
+    sigSaveRecImage = Signal(np.ndarray, int)       # (recImage, timePointIndex)
+    sigStopLiveStream = Signal()
 
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

@@ -1,76 +1,81 @@
+# type: ignore
+
 from os import listdir
-from os.path import isfile, join, isdir
-import time
+from os.path import join, isdir
 from qtpy import QtCore
-from datetime import datetime
 import os
-import json
-import socket
 
 
-class FileWatcher(QtCore.QThread):
-    sigNewFiles = QtCore.Signal(list)
+class FileWatcher(QtCore.QThread): 
 
-    def __init__(self, path, extension, pollTime):
+    sigNewFiles = QtCore.Signal(list) 
+
+    def __init__(self, path, extension=".tif", interval=1.0): 
         super().__init__()
         self.path = path
-        self.extension = extension
-        self.pollTime = pollTime
-        self.list = self.filesInDirectory()
-        self.watching = False
-        self.active = False
-        self._log = {}
-        self.startLog()
+        self.target_ext = extension.lower().lstrip('.')
+        self.extension = extension if extension.startswith('.') else '.' + extension
+        self.interval = interval 
+        self.running = True       
+        self.previous_files = set(self.filesInDirectory())    
 
-    def filesInDirectory(self):
-        return [f for f in listdir(self.path) if ((isfile(join(self.path, f)) or isdir(join(self.path, f))) and f.endswith('.' + self.extension))]
-
-    def updateList(self, newList):
-        differencesList = [x for x in newList if
-                           x not in self.list]  # Note if files get deleted, this will not highlight them
-        self.list = newList
-        return differencesList
 
     def run(self):
-        self.active = True
-        while self.active:
-            if not self.watching:  # Check if this is the first time the function has run
-                self.list = self.filesInDirectory()
-                self.watching = True
+        """ Watches for new files """
+        while self.running: 
+            current_files = set(self.filesInDirectory())
+            new_files = list(current_files - self.previous_files) # set subtraction
+            
+            if new_files:
+                self.previous_files.update(new_files)
+                self.sigNewFiles.emit(new_files) 
 
-            time.sleep(self.pollTime)
+            # files deleted => remove them from memory and allow them to be re-detected
+            if len(self.previous_files) > len(current_files): 
+                self.previous_files = self.previous_files.intersection(current_files)
 
-            newFileList = self.filesInDirectory()
+            # QtCore.QThread.msleep() method
+            self.msleep(int(self.interval * 1000))
+    
 
-            fileDiff = self.updateList(newFileList)
+    def stop(self): 
+        self.running = False
 
-            if len(fileDiff) == 0:
-                continue
 
-            self.sigNewFiles.emit(fileDiff)
+    def filesInDirectory(self):
+        """ Returns a list of files/folders in the directory that match the supported image extensions. """
+        target_ext = self.extension.lower().lstrip('.')
+        all_items = listdir(self.path)
+        matches = []
 
-    def stop(self):
-        self.saveLog()
-        self._log = {}
-        self.active = False
+        for f in all_items:
+            full_path = join(self.path, f)
+            f_lower = f.lower()
 
-    def removeFromList(self, files):
-        for f in files:
-            self.list.remove(f)
+            if f_lower.endswith(".zarr") and isdir(full_path):
+                if f not in matches: # avoid duplicates   
+                    matches.append(f)
 
-    def startLog(self):
-        self._log["Starting time"] = str(datetime.now())
-        self._log["Computer name"] = os.environ.get("ComputerName", socket.gethostname())
+            elif target_ext in ["h5", "hdf5"] and f_lower.endswith((".h5", ".hdf5")):
+                matches.append(f) 
 
-    def addToLog(self, key, value):
-        self._log[key] = value
+            elif target_ext in ["tif", "tiff"]: 
+                matches.append(f)  
+         
+        return matches
 
-    def getLog(self):
-        return self._log
 
-    def saveLog(self):
-        with open(self.path + '/' + 'log.json', 'a') as f:
-            f.write(json.dumps(self._log, indent=4))
+    def addToLog(self, filename, info_list): 
+        """ Specifically kept for WatcherController's script logging. """
+        log_path = os.path.join(self.path, "watcher_log.txt")
+        try:
+            with open(log_path, 'a') as f:
+                # append line at the end of the log file
+                line = f"{filename} >> " + " >> ".join(info_list) + "\n"
+                f.write(line)
+        except Exception as e:
+            print(f"ERROR [FileWatcher] [addToLog] >> Can't add to log: {e}")
+        
 
 # Adapted from https://towardsdatascience.com/implementing-a-file-watcher-in-python-73f8356a425d
 # Copyright (C) 2020-2021 ImSwitch developers

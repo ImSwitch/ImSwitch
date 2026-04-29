@@ -19,6 +19,8 @@ class Cobolt0601NewLaserManager(LaserManager):
     def __init__(self, laserInfo, name, **_lowLevelManagers):
         self.__logger = initLogger(self, instanceName=name)
 
+        # TODO: Find good fix for this missing attribute _laserInfo
+
         self._port = laserInfo.managerProperties['digitalPorts'][0]
         # self._ttlLine = laserInfo.managerProperties['digitalLine']
         self.__logger.debug(f'Initializing Cobolt0601 laser (name: {name}) on port {self._port}')
@@ -55,12 +57,16 @@ class Cobolt0601NewLaserManager(LaserManager):
         except Exception as e:
             self.__logger.error(
                 f'Failed to initialize Cobolt0601-DPL laser (name: {name}) on port {self._port}, loading mocker.')
-            package = importlib.import_module(
-                pythontools.joinModulePath('imswitch.imcontrol.model.lantzdrivers_mock.', 'cobolt0601')
-            )
-            driver = getattr(package, 'Cobolt0601_f2')
-            laser = driver(self._port)
-            laser.initialize()
+            # TODO: added temp fix for import error, which causes imswitch not to boot
+            try:
+                package = importlib.import_module(
+                    pythontools.joinModulePath('imswitch.imcontrol.model.lantzdrivers_mock.', 'cobolt0601')
+                )
+                driver = getattr(package, 'Cobolt0601_f2')
+                laser = driver(self._port)
+                laser.initialize()
+            except Exception as e:
+                self.__logger.error(f"Got exception {e} when importing: imswitch.imcontrol.model.lantzdrivers_mock")
     
     def finalize(self):
         """ Turn off laser """

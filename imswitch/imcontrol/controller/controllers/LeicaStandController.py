@@ -122,13 +122,13 @@ class LeicaStandController(ImConWidgetController):
         self._safe_call(self._manager.setCameraPort)
 
         QtCore.QTimer.singleShot(
-            self.FLUO_SHUTTER_DELAY_MS, self._finishSetFluoMode
+            self.FLUO_SHUTTER_DELAY_MS, self._setILshutterON
         )
 
         self._current_mode = "FLUO"
         self._widget.setMode(self._current_mode)
 
-    def _finishSetFluoMode(self):
+    def _setILshutterON(self):
         if not self._manager.isConnected():
             self._widget.setConnected(False)
             return
@@ -164,6 +164,10 @@ class LeicaStandController(ImConWidgetController):
         if self._current_mode == "FLUO" and self._manager.isConnected():
             slot = self._cube_name_to_slot[cube_name]
             self._safe_call(self._manager.setCube, slot)
+            QtCore.QTimer.singleShot(
+                self.FLUO_SHUTTER_DELAY_MS, self._setILshutterON
+        )
+
 
     def setPortSideByName(self, value):
         if not self._manager.isConnected():

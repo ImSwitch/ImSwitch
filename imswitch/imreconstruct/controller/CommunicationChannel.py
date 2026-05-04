@@ -20,10 +20,10 @@ class CommunicationChannel(SignalInterface):
     sigExecutionFinished = Signal(object)          
 
     # --- NEW SIGNALS ---
-    sigSetupLiveStream = Signal(dict, np.ndarray)   # (args, recImageBuffer)
+    sigSetupLiveStream = Signal(dict, np.ndarray)   # (setupParameters, recImageBuffer)
     sigLiveFrameReady = Signal(int)                 # (frameIndex)
-    sigLiveChunkReady = Signal(int, int)            # (startIndex, endIndex)
-    sigSaveRecImage = Signal(np.ndarray, int)       # (recImage, timePointIndex)
+    sigLiveChunkReady = Signal(int, int)            # (startChunkIndex, endChunkIndex)
+    sigSaveRecImage = Signal(int)                   # (timePointIndex)
     sigStopLiveStream = Signal()
 
 # Copyright (C) 2020-2021 ImSwitch developers

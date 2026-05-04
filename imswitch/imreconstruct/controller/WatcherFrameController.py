@@ -4,7 +4,6 @@ from .basecontrollers import ImRecWidgetController
 
 from imswitch.imcommon.view.guitools.FileWatcher import FileWatcher
 from imswitch.imreconstruct.controller.karl_workers.ZarrStreamWorker import ZarrStreamWorker
-from imswitch.imreconstruct.controller.karl_workers.ZarrSaveWorker import ZarrSaveWorker
 
 from imswitch.imcommon.model.logging import initLogger
 
@@ -79,6 +78,8 @@ class WatcherFrameController(ImRecWidgetController):
                     params.get("num_rows", 512), 
                     params.get("num_cols", 512)
                 )).astype(np.float32)
+                # ---
+                params["recImage_save_path"] = os.path.join(os.path.dirname(self._widget.path), "Timepoint_Recons")
                 self._commChannel.sigSetupLiveStream.emit(params, self.rawDataBuffer)
                 bufferShape = self.rawDataBuffer.shape
                 self._logger.debug(
@@ -95,18 +96,6 @@ class WatcherFrameController(ImRecWidgetController):
                 self.sigTriggerZarrStream.connect(self.zarrStreamWorker.streamZarrFile)
                 self.zarrStreamWorker.sigZarrFileFinished.connect(self.zarrStreamFinished)
                 self.zarrStreamWorkerThread.start()
-
-                # self.zarrSavePath = os.path.join(os.path.dirname(self._widget.path), "Timepoint_RECON.zarr")
-                # self.zarrSaveWorker = ZarrSaveWorker(
-                #     savePath=self.zarrSavePath, 
-                #     numRows=params["ny_c"] * params["ny_s"], 
-                #     numCols=params["nx_c"] * params["nx_s"]
-                # )
-                # self.zarrSaveWorkerThread = QtCore.QThread()
-                # self.zarrSaveWorker.moveToThread(self.zarrSaveWorkerThread)
-                # self._commChannel.sigSaveRecImage.connect(self.zarrSaveWorker.saveRecImage)
-                # self.zarrSaveWorkerThread.started.connect(self.zarrSaveWorker.run)
-                # self.zarrSaveWorkerThread.start()
 
                 self.toExecute = []
                 existingZarrFiles = [file for file in os.listdir(self._widget.path) if file.endswith(".zarr")]

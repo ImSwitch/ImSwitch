@@ -3,6 +3,7 @@
 from imswitch.imcommon.controller import PickDatasetsController
 from imswitch.imreconstruct.model import DataObj, ReconObj, PatternFinder, SignalExtractor
 from imswitch.imreconstruct.model.karl_models import GaussProcessorCPU
+from imswitch.imreconstruct.controller.karl_workers.SaveWorker import SaveWorker
 from .DataFrameController import DataFrameController
 from .MultiDataFrameController import MultiDataFrameController
 from .WatcherFrameController import WatcherFrameController
@@ -18,7 +19,6 @@ import numpy as np
 import tifffile as tiff
 import imswitch.imreconstruct.view.guitools as guitools
 
-# from qtpy.QtWidgets import QApplication
 from qtpy import QtCore
 
 try: 
@@ -148,7 +148,16 @@ class ImRecMainViewController(ImRecWidgetController):
         self._commChannel.sigLiveChunkReady.connect(self.processorWorker.processChunk)
         self._commChannel.sigStopLiveStream.connect(self.stopLiveStream)
         self.processorThread.start()
-    
+
+        self.saveWorker = SaveWorker(
+            savePath=params["recImage_save_path"],
+            recImageBuffer=self.liveReconObj.reconstructed[0, 0, 0, 0]
+        )
+        self.saveWorkerThread = QtCore.QThread()
+        self.saveWorker.moveToThread(self.saveWorkerThread)
+        self._commChannel.sigSaveRecImage.connect(self.saveWorker.saveRecImage)
+        self.saveWorkerThread.start()
+
         self._logger.debug("[setupLiveStream] >> Live Stream initialized")
 
 
@@ -168,7 +177,12 @@ class ImRecMainViewController(ImRecWidgetController):
         self._logger.debug(f"[stopLiveStream] >> Initiating shutdown...")
         self.processorThread.quit()
         self.processorThread.wait()
-        self.processorThread.terminate() 
+        self.processorThread.terminate()
+        
+        self.saveWorkerThread.quit()
+        self.saveWorkerThread.wait()
+        self.saveWorkerThread.terminate() 
+        
         self._logger.debug("[stopLiveStream] >> Processor Thread has been fully cleared.")
 
 

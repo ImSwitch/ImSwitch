@@ -415,6 +415,8 @@ class RecordingWorker(Worker):
                             for detectorName in self.detectorNames])):
                     for detectorName in self.detectorNames:
                         nFrames = nFramesPerDetector[detectorName]
+                        # adding the expected number of raw frames for a given stack
+                        datasets[detectorName].attrs["numFramesInStack"] = maxFrames  
                         if currentFrame[detectorName] >= nFrames:
                             continue  # Reached requested number of frames with this detector, skip
 

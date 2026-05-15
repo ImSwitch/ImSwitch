@@ -43,7 +43,7 @@ class GaussProcessorGPU:
             Tuple[cp.ndarray, int]: A Tuple containing the 1D weight array (CuPy) 
                                    and the number of points per focus.
         """
-        X_rec, Y_rec = get_rectangles(num_rects=6)
+        X_rec, Y_rec = get_rectangles(num_rects=4)
         sig = 2.0 
     
         gauss_vec = np.exp(-(X_rec**2 + Y_rec**2) / (2 * sig**2))

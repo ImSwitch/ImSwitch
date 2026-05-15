@@ -3,6 +3,7 @@
 from .basecontrollers import ImRecWidgetController
 
 from imswitch.imcommon.view.guitools.FileWatcher import FileWatcher
+from imswitch.imreconstruct.model.karl_models.localizer import localizer
 from imswitch.imreconstruct.controller.karl_workers.ZarrStreamWorker import ZarrStreamWorker
 
 from imswitch.imcommon.model.logging import initLogger
@@ -70,32 +71,32 @@ class WatcherFrameController(ImRecWidgetController):
         
         elif checked:
             try:
-                with open("loc_parms.json", 'r') as f:
-                    params = json.load(f)
-                self.numFramesInStack = int(params.get("nx_s", 60) * params.get("ny_s", 60))
-                self.rawDataBuffer = np.zeros((
-                    self.numFramesInStack, 
-                    params.get("num_rows", 512), 
-                    params.get("num_cols", 512)
-                )).astype(np.float32)
-                # ---
-                params["recImage_save_path"] = os.path.join(os.path.dirname(self._widget.path), "Timepoint_Recons")
-                self._commChannel.sigSetupLiveStream.emit(params, self.rawDataBuffer)
-                bufferShape = self.rawDataBuffer.shape
-                self._logger.debug(
-                    f"[toggleWatch] >> Reconstruction Image Buffer initialized: (nFrames, Y, X) = {bufferShape}"
-                )
+                # with open("loc_parms.json", 'r') as f:
+                #     params = json.load(f)
+                # self.numFramesInStack = int(params.get("nx_s", 60) * params.get("ny_s", 60))
+                # self.rawDataBuffer = np.zeros((
+                #     self.numFramesInStack, 
+                #     params.get("num_rows", 512), 
+                #     params.get("num_cols", 512)
+                # )).astype(np.float32)
+
+                # params["recImage_save_path"] = os.path.join(os.path.dirname(self._widget.path), "Timepoint_Recons")
+                # self._commChannel.sigSetupLiveStream.emit(params, self.rawDataBuffer)
+                # bufferShape = self.rawDataBuffer.shape
+                # self._logger.debug(
+                #     f"[toggleWatch] >> Reconstruction Image Buffer initialized: (nFrames, Y, X) = {bufferShape}"
+                # )
                 
-                self.zarrStreamWorker = ZarrStreamWorker(
-                    numFramesInStack=self.numFramesInStack,
-                    rawDataBuffer=self.rawDataBuffer,
-                    _commChannel=self._commChannel
-                )
-                self.zarrStreamWorkerThread = QtCore.QThread()
-                self.zarrStreamWorker.moveToThread(self.zarrStreamWorkerThread)
-                self.sigTriggerZarrStream.connect(self.zarrStreamWorker.streamZarrFile)
-                self.zarrStreamWorker.sigZarrFileFinished.connect(self.zarrStreamFinished)
-                self.zarrStreamWorkerThread.start()
+                # self.zarrStreamWorker = ZarrStreamWorker(
+                #     numFramesInStack=self.numFramesInStack,
+                #     rawDataBuffer=self.rawDataBuffer,
+                #     _commChannel=self._commChannel
+                # )
+                # self.zarrStreamWorkerThread = QtCore.QThread()
+                # self.zarrStreamWorker.moveToThread(self.zarrStreamWorkerThread)
+                # self.sigTriggerZarrStream.connect(self.zarrStreamWorker.streamZarrFile)
+                # self.zarrStreamWorker.sigZarrFileFinished.connect(self.zarrStreamFinished)
+                # self.zarrStreamWorkerThread.start()
 
                 self.toExecute = []
                 existingZarrFiles = [file for file in os.listdir(self._widget.path) if file.endswith(".zarr")]
@@ -107,7 +108,8 @@ class WatcherFrameController(ImRecWidgetController):
                 self.watcher = FileWatcher(self._widget.path, interval=0.1)
                 self.watcher.sigNewFiles.connect(self.newFiles)
                 self.watcher.start()
-
+            
+                self.runBootstrap = True
                 self.runNextFile()
 
             except Exception as e:
@@ -116,6 +118,82 @@ class WatcherFrameController(ImRecWidgetController):
             
         else: 
             self.stopAllWorkers()            
+
+
+
+    def bootstrapFileWatcher(self, filePath: str): 
+        """
+        Performs the necessarry initialization steps required for the live File Watcher:
+            1. Localization 
+            2. Scanning orientation determination 
+            3. Processor creation 
+            4. Super resolved image array initialization 
+            5. Starting of live File Watching
+
+        NOTE: this should run probably not run on the main thread, since it can cause small freezing  
+        """        
+        while True:
+            try:
+                zarrArrayPath = os.path.join(filePath, ".zarray")
+                if not os.path.isdir(zarrArrayPath):
+                    for entry in os.listdir(filePath):
+                        subPath = os.path.join(filePath, entry)
+                        self._logger.debug(f"[bootstapFileWatcher] >> subPath = {subPath}")
+                        if os.path.isdir(subPath) and os.path.exists(os.path.join(subPath, ".zarray")):
+                            zarrArrayPath = subPath
+                zarrArray = zarr.open(zarrArrayPath, mode='r')
+                zarrArray.store.close()
+                numFramesInStack = zarrArray.attrs["numFramesInStack"]
+                currNumFrames = zarrArray.shape[0]
+                self._logger.debug(f"[bootstrapFileWatcher] >> numFramesInStack = {numFramesInStack}")
+                if currNumFrames >= numFramesInStack:
+                    break
+            except Exception as e:
+                self._logger.error(f"[bootstrapFileWatcher] >> Could not open {zarrArrayPath}: {e}")
+
+        imSwitchMetaData = zarrArray.attrs["ImswitchData"]
+        x0, y0, z0 = [x for y in imSwitchMetaData["ScanStage:axis_startpos"] for x in y] 
+        x1, y1, z1 = imSwitchMetaData["ScanStage:axis_length"]
+        dx, dy, dz = imSwitchMetaData["ScanStage:axis_step_size"]
+        nx_s = int((x1 - x0) / dx) + 1
+        ny_s = int((y1 - y0) / dy) + 1
+        bootstrapParms = {}
+        data = zarrArray[:]
+        locParms = localizer(data)
+        for key, value in locParms.items() :
+            bootstrapParms[key] = value
+        _, bootstrapParms["num_rows"], bootstrapParms["num_cols"] = zarrArray.shape 
+        bootstrapParms["nx_s"] = nx_s 
+        bootstrapParms["ny_s"] = ny_s
+        
+        self.numFramesInStack = nx_s * ny_s 
+        self.rawDataBuffer = np.zeros((
+            self.numFramesInStack,
+            bootstrapParms["num_rows"],
+            bootstrapParms["num_cols"]
+        ))
+
+        self._commChannel.sigSetupLiveStream.emit(bootstrapParms, self.rawDataBuffer)
+        self._logger.debug(
+            f"[bootstrapFileWatcher] >> Reconstruction Image Buffer initialized: (nFrames, Y, X) = {self.rawDataBuffer.shape}"
+        )
+
+        self.zarrStreamWorker = ZarrStreamWorker(
+            numFramesInStack=self.numFramesInStack,
+            rawDataBuffer=self.rawDataBuffer,
+            _commChannel=self._commChannel
+        )
+        self.zarrStreamWorkerThread = QtCore.QThread()
+        self.zarrStreamWorker.moveToThread(self.zarrStreamWorkerThread)
+        self.sigTriggerZarrStream.connect(self.zarrStreamWorker.streamZarrFile)
+        self.zarrStreamWorker.sigZarrFileFinished.connect(self.zarrStreamFinished)
+        self.zarrStreamWorkerThread.start()
+
+        # params["recImage_save_path"] = os.path.join(os.path.dirname(self._widget.path), "Timepoint_Recons")
+
+        self.runBootstrap = False 
+        self.runNextFile()
+
 
 
     @QtCore.Slot(list)
@@ -136,8 +214,10 @@ class WatcherFrameController(ImRecWidgetController):
 
 
     def runNextFile(self):        
+        self.zarrFileToProcess = None
+        
         if self.execution:
-            self._logger.debug(f"[runNextFile] >> Zarr Streamer is currently working on {zarrFilePath}")
+            self._logger.debug(f"[runNextFile] >> Zarr Streamer is currently working on {self.zarrFileToProcess}")
             return
     
         if not self.toExecute:
@@ -145,12 +225,19 @@ class WatcherFrameController(ImRecWidgetController):
             return
         
         self.execution = True
-        self.zarrFileToProcess = self.toExecute.pop(0)
-        self._logger.debug(
-            f"[runNextFile] >> Streaming: {self.zarrFileToProcess} => Frames to Process: {self.numFramesInStack}"
-        )
-        zarrFilePath = os.path.join(self._widget.path, self.zarrFileToProcess)
-        self.sigTriggerZarrStream.emit(zarrFilePath)
+
+        if self.runBootstrap:
+            self.zarrFileToProcess = self.toExecute[0]
+            zarrfilePath = os.path.join(self._widget.path, self.zarrFileToProcess)
+            self._logger.debug(f"[runNextFile] >> Found {zarrfilePath} => running bootstrap")
+            self.bootstrapFileWatcher(zarrfilePath)
+        else:
+            self.zarrFileToProcess = self.toExecute.pop(0)
+            zarrfilePath = os.path.join(self._widget.path, self.zarrFileToProcess)
+            self._logger.debug(
+                f"[runNextFile] >> Streaming: {self.zarrFileToProcess} => Frames to Process: {self.numFramesInStack}"
+            )
+            self.sigTriggerZarrStream.emit(zarrfilePath)
 
 
     def zarrStreamFinished(self):
@@ -169,16 +256,7 @@ class WatcherFrameController(ImRecWidgetController):
             self.zarrStreamWorkerThread.quit()
             self.zarrStreamWorkerThread.terminate()
             self.zarrStreamWorkerThread.wait()
-            # if not self.zarrStreamWorkerThread.wait(500):
-            #     self._logger("[stopAllWorkers] >> zarrStreamWorker Timed out => Forcing termination")
-            #     self.zarrStreamWorkerThread.terminate()
-            #     self.zarrStreamWorkerThread.wait()
-
-        # if self.zarrSaveWorker:
-        #     self.zarrSaveWorkerThread.quit()
-        #     self.zarrSaveWorkerThread.wait(threadWaitTime)
-        #     self.zarrSaveWorker = None 
-
+    
         if self.watcher: 
             self.watcher.stop()
             self.watcher.quit()

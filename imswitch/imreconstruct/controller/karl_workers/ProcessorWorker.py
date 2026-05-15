@@ -73,10 +73,13 @@ class ProcessorWorker(QtCore.QObject):
         self.numFramesProcessed.emit(numFrames)
 
         # refreshRate = int(np.sqrt(chunkIndices.shape[1]))
-        # if numFrames % refreshRate == 0:
+        # if numFrames % refreshRate == 0 and numFrames >= self.processor.num_frames_in_stack - 1:
         #     self.sigTriggerUIRefresh.emit()
 
         if numFrames >= self.processor.num_frames_in_stack - 1: 
             self.sigTriggerUIRefresh.emit()
-            self._commChannel.sigSaveRecImage.emit(self.timePointIndex)
-            self.timePointIndex += 1
+
+        # if numFrames >= self.processor.num_frames_in_stack - 1: 
+        #     self.sigTriggerUIRefresh.emit()
+        #     # self._commChannel.sigSaveRecImage.emit(self.timePointIndex)
+        #     self.timePointIndex += 1

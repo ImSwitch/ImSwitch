@@ -218,8 +218,8 @@ def localizer(
         "yo": yo,
         "nx_c": nx_c, 
         "ny_c": ny_c,
-        "nx_s": nx_s, 
-        "ny_s": ny_s
+        "nx_s": nx_s, # should be removed in the future 
+        "ny_s": ny_s  # should be removed in the future
     }
 
     # --- Plotting (debugging) --- 

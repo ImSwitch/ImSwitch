@@ -149,14 +149,14 @@ class ImRecMainViewController(ImRecWidgetController):
         self._commChannel.sigStopLiveStream.connect(self.stopLiveStream)
         self.processorThread.start()
 
-        self.saveWorker = SaveWorker(
-            savePath=params["recImage_save_path"],
-            recImageBuffer=self.liveReconObj.reconstructed[0, 0, 0, 0]
-        )
-        self.saveWorkerThread = QtCore.QThread()
-        self.saveWorker.moveToThread(self.saveWorkerThread)
-        self._commChannel.sigSaveRecImage.connect(self.saveWorker.saveRecImage)
-        self.saveWorkerThread.start()
+        # self.saveWorker = SaveWorker(
+        #     savePath=params["recImage_save_path"],
+        #     recImageBuffer=self.liveReconObj.reconstructed[0, 0, 0, 0]
+        # )
+        # self.saveWorkerThread = QtCore.QThread()
+        # self.saveWorker.moveToThread(self.saveWorkerThread)
+        # self._commChannel.sigSaveRecImage.connect(self.saveWorker.saveRecImage)
+        # self.saveWorkerThread.start()
 
         self._logger.debug("[setupLiveStream] >> Live Stream initialized")
 
@@ -179,9 +179,9 @@ class ImRecMainViewController(ImRecWidgetController):
         self.processorThread.wait()
         self.processorThread.terminate()
         
-        self.saveWorkerThread.quit()
-        self.saveWorkerThread.wait()
-        self.saveWorkerThread.terminate() 
+        # self.saveWorkerThread.quit()
+        # self.saveWorkerThread.wait()
+        # self.saveWorkerThread.terminate() 
         
         self._logger.debug("[stopLiveStream] >> Processor Thread has been fully cleared.")
 

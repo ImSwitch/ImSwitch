@@ -81,33 +81,6 @@ class WatcherFrameController(ImRecWidgetController):
         
         elif checked:
             try:
-                # with open("loc_parms.json", 'r') as f:
-                #     params = json.load(f)
-                # self.numFramesInStack = int(params.get("nx_s", 60) * params.get("ny_s", 60))
-                # self.rawDataBuffer = np.zeros((
-                #     self.numFramesInStack, 
-                #     params.get("num_rows", 512), 
-                #     params.get("num_cols", 512)
-                # )).astype(np.float32)
-
-                # params["recImage_save_path"] = os.path.join(os.path.dirname(self._widget.path), "Timepoint_Recons")
-                # self._commChannel.sigSetupLiveStream.emit(params, self.rawDataBuffer)
-                # bufferShape = self.rawDataBuffer.shape
-                # self._logger.debug(
-                #     f"[toggleWatch] >> Reconstruction Image Buffer initialized: (nFrames, Y, X) = {bufferShape}"
-                # )
-                
-                # self.zarrStreamWorker = ZarrStreamWorker(
-                #     numFramesInStack=self.numFramesInStack,
-                #     rawDataBuffer=self.rawDataBuffer,
-                #     _commChannel=self._commChannel
-                # )
-                # self.zarrStreamWorkerThread = QtCore.QThread()
-                # self.zarrStreamWorker.moveToThread(self.zarrStreamWorkerThread)
-                # self.sigTriggerZarrStream.connect(self.zarrStreamWorker.streamZarrFile)
-                # self.zarrStreamWorker.sigZarrFileFinished.connect(self.zarrStreamFinished)
-                # self.zarrStreamWorkerThread.start()
-
                 self.toExecute = []
                 existingZarrFiles = [file for file in os.listdir(self._widget.path) if file.endswith(".zarr")]
                 if existingZarrFiles:
@@ -130,26 +103,13 @@ class WatcherFrameController(ImRecWidgetController):
             self.stopAllWorkers()            
 
 
-
     def bootstrapFileWatcher(self, filePath: str): 
-        """
-        Performs the necessarry initialization steps required for the live File Watcher:
-            
-            1. Localization 
-            2. Scanning orientation determination 
-            3. Processor creation 
-            4. Super resolved image array initialization 
-            5. Starting of live File Watching
-
-        NOTE: this should run probably not run on the main thread, since it can cause small freezing  
-        """        
         while True:
             try:
                 zarrArrayPath = os.path.join(filePath, ".zarray")
                 if not os.path.isdir(zarrArrayPath):
                     for entry in os.listdir(filePath):
                         subPath = os.path.join(filePath, entry)
-                        # self._logger.debug(f"[bootstapFileWatcher] >> subPath = {subPath}")
                         if os.path.isdir(subPath) and os.path.exists(os.path.join(subPath, ".zarray")):
                             zarrArrayPath = subPath
                 
@@ -157,7 +117,6 @@ class WatcherFrameController(ImRecWidgetController):
                 zarrArray.store.close()
                 numFramesInStack = zarrArray.attrs["numFramesInStack"]
                 currNumFrames = zarrArray.shape[0]
-                # self._logger.debug(f"[bootstrapFileWatcher] >> numFramesInStack = {numFramesInStack}")
             
                 if currNumFrames >= numFramesInStack:
                     break
@@ -166,69 +125,73 @@ class WatcherFrameController(ImRecWidgetController):
                 self._logger.error(f"[bootstrapFileWatcher] >> Could not open {zarrArrayPath}: {e}")
 
         imSwitchMetaData = zarrArray.attrs["ImswitchData"]
-        
-        x0, y0, z0 = [x for y in imSwitchMetaData["ScanStage:axis_startpos"] for x in y] 
+
+        axis_startpos = np.array(imSwitchMetaData["ScanStage:axis_startpos"]).flatten()
+        x0, y0, z0 = axis_startpos 
         x1, y1, z1 = imSwitchMetaData["ScanStage:axis_length"]
         dx, dy, dz = imSwitchMetaData["ScanStage:axis_step_size"]
         
         nx_s = int(np.ceil((x1 - x0) / dx)) + 1
         ny_s = int(np.ceil((y1 - y0) / dy)) + 1
         
-        bootstrapParms = {}
-        
+        bootParms = {"nx_s": nx_s, "ny_s": ny_s}
         data = zarrArray[:]
         locParms = localizer(data)
         for key, value in locParms.items():
-            bootstrapParms[key] = value
-        _, bootstrapParms["num_rows"], bootstrapParms["num_cols"] = zarrArray.shape 
-        bootstrapParms["nx_s"] = nx_s 
-        bootstrapParms["ny_s"] = ny_s
+            bootParms[key] = value
+        _, bootParms["num_rows"], bootParms["num_cols"] = zarrArray.shape 
+        bootParms["nx_s"] = nx_s 
+        bootParms["ny_s"] = ny_s
             
         if GPU_AVAILABLE:
             data = cp.array(data)
             processor = GaussProcessorGPU(
-                xp=bootstrapParms["xp"],
-                xo=bootstrapParms["xo"],
-                yp=bootstrapParms["yp"],
-                yo=bootstrapParms["yo"],
-                nx_c=bootstrapParms["nx_c"],
-                ny_c=bootstrapParms["ny_c"],
-                nx_s=bootstrapParms["nx_s"],
-                ny_s=bootstrapParms["ny_s"],
-                num_cols=bootstrapParms["num_cols"],
-                num_rows=bootstrapParms["num_rows"],
-                num_rects=4, 
+                xp=bootParms["xp"],
+                xo=bootParms["xo"],
+                yp=bootParms["yp"],
+                yo=bootParms["yo"],
+                nx_c=bootParms["nx_c"],
+                ny_c=bootParms["ny_c"],
+                nx_s=bootParms["nx_s"],
+                ny_s=bootParms["ny_s"],
+                num_cols=bootParms["num_cols"],
+                num_rows=bootParms["num_rows"],
+                num_rects=3, 
             )  
         else: 
             processor = GaussProcessorCPU(
-                xp=bootstrapParms["xp"],
-                xo=bootstrapParms["xo"],
-                yp=bootstrapParms["yp"],
-                yo=bootstrapParms["yo"],
-                nx_c=bootstrapParms["nx_c"],
-                ny_c=bootstrapParms["ny_c"],
-                nx_s=bootstrapParms["nx_s"],
-                ny_s=bootstrapParms["ny_s"],
-                num_cols=bootstrapParms["num_cols"],
-                num_rows=bootstrapParms["num_rows"],
-                num_rects=4, 
+                xp=bootParms["xp"],
+                xo=bootParms["xo"],
+                yp=bootParms["yp"],
+                yo=bootParms["yo"],
+                nx_c=bootParms["nx_c"],
+                ny_c=bootParms["ny_c"],
+                nx_s=bootParms["nx_s"],
+                ny_s=bootParms["ny_s"],
+                num_cols=bootParms["num_cols"],
+                num_rows=bootParms["num_rows"],
+                num_rects=3, 
             )  
 
-        proc_pixels = processor.process_chunk(data)
-        est_orient = get_orientation(
-            nx_c=bootstrapParms["nx_c"],
-            ny_c=bootstrapParms["ny_c"],
-            nx_s=bootstrapParms["nx_s"],
-            ny_s=bootstrapParms["ny_s"],
-            proc_pixels=proc_pixels
+        procPixels = processor.process_chunk(data)
+        estOri = get_orientation(
+            nx_c=bootParms["nx_c"],
+            ny_c=bootParms["ny_c"],
+            nx_s=bootParms["nx_s"],
+            ny_s=bootParms["ny_s"],
+            proc_pixels=procPixels
         )
-        self._logger.debug(f"[bootstrapFileWatcher] >> est_orient = {est_orient}")
-
-
-        self.numFramesInStack = nx_s * ny_s 
-        self.rawDataBuffer = np.zeros((self.numFramesInStack, bootstrapParms["num_rows"], bootstrapParms["num_cols"]))
-
-        self._commChannel.sigSetupLiveStream.emit(processor, bootstrapParms, self.rawDataBuffer)
+        processor.update_frame_inds(
+            nx_c=bootParms["nx_c"],
+            ny_c=bootParms["ny_c"],
+            nx_s=bootParms["nx_s"],
+            ny_s=bootParms["ny_s"],
+            scan_ori=estOri
+        )
+ 
+        self.numFramesInStack = numFramesInStack
+        self.rawDataBuffer = np.zeros((numFramesInStack, bootParms["num_rows"], bootParms["num_cols"]))
+        self._commChannel.sigSetupLiveStream.emit(processor, bootParms, self.rawDataBuffer)
         self._logger.debug(
             f"[bootstrapFileWatcher] >> Reconstruction Image Buffer initialized: (nFrames, Y, X) = {self.rawDataBuffer.shape}"
         )
@@ -244,12 +207,9 @@ class WatcherFrameController(ImRecWidgetController):
         self.zarrStreamWorker.sigZarrFileFinished.connect(self.zarrStreamFinished)
         self.zarrStreamWorkerThread.start()
 
-        # params["recImage_save_path"] = os.path.join(os.path.dirname(self._widget.path), "Timepoint_Recons")
-
         self.runBootstrap = False 
         self.execution = False
         self.runNextFile()
-
 
 
     @QtCore.Slot(list)

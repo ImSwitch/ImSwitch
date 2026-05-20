@@ -23,7 +23,7 @@ def _find_best_peak_index(peaks: Tuple) -> int:
     if len(prominences) < 2:
         return 0 # Fallback if only one peak exists
 
-    # Get the indices of the top 2 peaks by prominence
+    # get the indices of the top 2 peaks by prominence
     sorted_prom_indices = np.argsort(prominences)
     p1_index = sorted_prom_indices[-1]
     p2_index = sorted_prom_indices[-2]
@@ -37,7 +37,7 @@ def _find_best_peak_index(peaks: Tuple) -> int:
     diff_prom = np.abs((p1_prom - p2_prom) / (p1_prom + p2_prom)) 
     diff_height = np.abs((p1_height - p2_height) / (p1_height + p2_height))
     
-    # Selection logic for similar prominence but different heights
+    # selection logic for similar prominence but different heights
     tol = 0.2
     if (diff_prom < tol) and (diff_height < tol) and (p1_height < p2_height):
         return p2_index
@@ -77,7 +77,7 @@ def _estimate_period(
     peak_index = peaks[0][best_peak_index]
     peak_width = peaks[1]["widths"][best_peak_index]
     
-    # Define window for refinement
+    # --- Define window for refinement ---
     peak_spread = 6 * peak_width 
     win_min = int(max(0, peak_index - peak_spread))
     win_max = int(min(peak_index + peak_spread, fft_max_index))
@@ -93,6 +93,7 @@ def _estimate_period(
     est_period = np.abs(data_size / res_gauss_fit.x[2])
 
     return est_period
+
 
 def _estimate_offset(
         est_period: float, 
@@ -117,6 +118,7 @@ def _estimate_offset(
     est_offset = np.mod(res_cos_fit.x[0], est_period)
 
     return est_offset
+
 
 def _optimize_parameters(
         est_period: float, 
@@ -147,6 +149,7 @@ def _optimize_parameters(
         
     return opt_period, opt_offset
 
+
 def localizer(
         img_data: np.ndarray,
         xp_guess: float = 10.0,
@@ -169,64 +172,42 @@ def localizer(
         Dict[str, Union[int, float]]: Mapping of optimized grid parameters and dimensions.
     """
     if img_data.ndim == 3: 
-        num_frames, num_rows, num_cols = img_data.shape
+        _, num_rows, num_cols = img_data.shape
         img_stack_sum = np.double(img_data.sum(axis=0))
-        img_stack_sum_plot = np.copy(img_stack_sum)
-        nx_s = int(np.ceil(np.sqrt(num_frames)))
-        ny_s = nx_s
     elif img_data.ndim == 2:
-        num_frames = 1
         num_rows, num_cols = img_data.shape
         img_stack_sum = np.double(img_data)
-        img_stack_sum_plot = np.copy(img_stack_sum)
     else:
         raise ValueError(f"Expected 2D or 3D array, got {img_data.ndim}D")
 
-    # --- Pre-Filtering ---
     sigma_low = 2.0
     sigma_high = (xp_guess + yp_guess) / 2
     img_stack_sum -= gaussian_filter(img_stack_sum, sigma_high) # high pass
     img_stack_sum = gaussian_filter(img_stack_sum, sigma_low) # small blur
     img_stack_sum -= img_stack_sum.mean() 
 
-    # --- Get Col and Row Averages ---
-    x_img_avg = img_stack_sum.mean(axis=0) # cols 
-    y_img_avg = img_stack_sum.mean(axis=1) # rows
+    x_img_avg = img_stack_sum.mean(axis=0)  
+    y_img_avg = img_stack_sum.mean(axis=1) 
 
-    # --- Estimation ---
     xp_est = _estimate_period(xp_guess, x_img_avg)
     xo_est = _estimate_offset(xp_est, x_img_avg)
     
     yp_est = _estimate_period(yp_guess, y_img_avg)
     yo_est = _estimate_offset(yp_est, y_img_avg)
 
-    # --- Optimization ---
     xp, xo = _optimize_parameters(xp_est, xo_est, x_img_avg)
     yp, yo = _optimize_parameters(yp_est, yo_est, y_img_avg)
 
-    # --- Num of Foci in each dimension ---
     nx_c = int(np.ceil((num_cols - xo) / xp)) 
     ny_c = int(np.ceil((num_rows - yo) / yp))
 
-    # --- Localizer Parameters to Return --- 
-    loc_parms = {
-        "num_rows": num_rows,
-        "num_cols": num_cols,
+    return {
         "xp": xp,
-        "yp": yp,
         "xo": xo,
+        "yp": yp,
         "yo": yo,
-        "nx_c": nx_c, 
+        "nx_c": nx_c,
         "ny_c": ny_c,
-        "nx_s": nx_s, # should be removed in the future 
-        "ny_s": ny_s  # should be removed in the future
+        "num_cols": num_cols,
+        "num_rows": num_rows
     }
-
-    # --- Plotting (debugging) --- 
-    if plot:
-        X, Y = get_center_coords(loc_parms)
-        plt.imshow(img_stack_sum_plot, cmap="gray")
-        plt.scatter(X.flatten(), Y.flatten(), s=5, c="red")
-        plt.show()
-
-    return loc_parms

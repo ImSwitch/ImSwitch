@@ -1,15 +1,22 @@
+# type: ignore
+
+
 import numpy as np
-from typing import Union, Dict, Tuple
+from typing import Tuple
 
 
-# --- Coordinates ---
-def get_center_coords(args: Dict[str, Union[int, float]]) -> Tuple[np.ndarray, np.ndarray]:
+def get_center_coords(
+        xp: float, 
+        xo: float, 
+        yp: float, 
+        yo: float,
+        nx_c: int, 
+        ny_c: int
+) -> Tuple[np.ndarray, np.ndarray]:
     """
     Generates a grid pattern based on the parameters gathered from the localizer.
     
     Args:
-        num_rows (int): Number of pixels along y-axis in raw frame.
-        num_cols (int): Number of pixels along x-axis in raw frame. 
         xp (float): Period along x-axis in pixels from localizer. 
         xo (float): Offset along x-axis in pixels from localizer. 
         yp (float): Period along y-axis in pixels from localizer. 
@@ -18,105 +25,81 @@ def get_center_coords(args: Dict[str, Union[int, float]]) -> Tuple[np.ndarray, n
         ny_c (int): Number of foci along y-axis. 
             
     Returns: 
-        Tuple[np.ndarray, np.ndarray]: Tuple containing the flattened grid 
-        coordinates (X, Y) respectively.
+        Tuple[np.ndarray, np.ndarray]: Tuple containing the flattened grid coordinates for X and Y, respectively.
     """
-    xp = args["xp"]
-    yp = args["yp"]
-    xo = args["xo"]
-    yo = args["yo"]    
-    
-    nx_c = args["nx_c"]
-    ny_c = args["ny_c"]
-    
     x_stop = xo + (nx_c - 1) * xp 
     y_stop = yo + (ny_c - 1) * yp
     
-    X, Y = np.meshgrid(np.linspace(xo, x_stop, nx_c), np.linspace(yo, y_stop, ny_c)) # type: ignore
-
+    X, Y = np.meshgrid(np.linspace(xo, x_stop, nx_c), np.linspace(yo, y_stop, ny_c)) 
+    
     return X.flatten(), Y.flatten()
 
-def get_rectangles(
-        start_w: float = 0.0, 
-        start_h: float = 0.0, 
-        num_rects: int = 1, 
-        xoff: float = 0.0, 
-        yoff: float = 0.0
-) -> Tuple[np.ndarray, np.ndarray]:
-    """
-    Generates a series of concentric rectangular coordinate shells.
 
+def get_rectangles_coords(num_rects: int = 1) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Generates X and Y pixel coordinates for a given number of concentric rectangles.
+    
     Args:
-        start_w (float): Initial width of the innermost rectangle.
-        start_h (float): Initial height of the innermost rectangle.
-        num_rects (int): Number of concentric shells to generate.
-        xoff (float): Constant offset to add to all x-coordinates.
-        yoff (float): Constant offset to add to all y-coordinates.
+        num_rects (int): Number of rectangles.
 
     Returns:
-        Tuple[np.ndarray, np.ndarray]: Concatenated x and y coordinates of the rectangles.
+        Tuple[np.ndarray, np.ndarray]: X and Y-pixel coordinates for the rectangles.
     """
-    all_x = []
-    all_y = []
+    num_rects += 1
+    start = 1 - num_rects
+    stop = num_rects
+    steps = 1 
     
-    for i in range(num_rects):
-        w = start_w + (i * 2)
-        h = start_h + (i * 2)
+    X, Y = np.meshgrid(
+        np.arange(start, stop, steps, dtype=float),
+        np.arange(start, stop, steps, dtype=float)
+    )
     
-        x_l, x_r = -w/2, w/2
-        y_b, y_t = -h/2, h/2
-    
-        top_x = np.arange(x_l, x_r + 1, 1)
-        top_y = np.ones(len(top_x)) * y_t
-    
-        bot_x = np.arange(x_l, x_r + 1, 1)
-        bot_y = np.ones(len(bot_x)) * y_b
-    
-        side_y = np.arange(y_b + 1, y_t, 1)
-    
-        right_x = np.ones(len(side_y)) * x_r
-        right_y = side_y
-    
-        left_x = np.ones(len(side_y)) * x_l
-        left_y = side_y
-    
-        all_x.extend([top_x, bot_x, left_x, right_x])
-        all_y.extend([top_y, bot_y, left_y, right_y])
-    
-    final_x = np.concatenate(all_x) + xoff
-    final_y = np.concatenate(all_y) + yoff
-    
-    return final_x, final_y
+    return X.flatten(), Y.flatten()
 
-def get_interp_coords(args: Dict[str, Union[int, float]]) -> Tuple[np.ndarray, np.ndarray]: 
+
+def get_interp_coords(
+        xp: float, 
+        xo: float, 
+        yp: float, 
+        yo: float, 
+        nx_c: int, 
+        ny_c: int,
+        num_cols: int, 
+        num_rows: int,
+        num_rects: int = 3
+) -> Tuple[np.ndarray, np.ndarray]: 
     """
     Generates local interpolation coordinates around each grid focus center.
 
     Args:
-        num_rows (int): Total rows in the frame.
-        num_cols (int): Total columns in the frame.
         xp (float): X-axis period.
         xo (float): X-axis offset.
         yp (float): Y-axis period.
         yo (float): Y-axis offset.
+        nx_c (int): Number of foci along x-axis. 
+        ny_c (int): Number of foci along y-axis. 
+        num_cols (int): Total number of columns in the frame.
+        num_rows (int): Total number of rows in the frame.
+        num_rects (int): Number of rectangles used to model the foci.
 
     Returns:
-        Tuple[np.ndarray, np.ndarray]: Flattened interpolation coordinates clipped to frame boundaries.
+        Tuple[np.ndarray, np.ndarray]: Flattened X and Y interpolation coordinates clipped to frame boundaries.
     """
-    X_c, Y_c = get_center_coords(args)
-    X_r, Y_r = get_rectangles(num_rects=6)
+    Xc, Yc = get_center_coords(xp, xo, yp, yo, nx_c, ny_c)
+    Xr, Yr = get_rectangles_coords(num_rects)
+    
+    Xi = Xc.reshape((-1, 1)) + Xr 
+    Yi = Yc.reshape((-1, 1)) + Yr
+    
+    Xi[Xi < 0] = 0
+    Xi[Xi > num_cols - 1] = 0
+    Yi[Yi < 0] = 0
+    Yi[Yi > num_rows- 1] = 0
+    
+    return Xi.flatten(), Yi.flatten()
 
-    X = X_c.reshape((-1, 1)) + X_r 
-    Y = Y_c.reshape((-1, 1)) + Y_r
 
-    X[X < 0] = 0
-    X[X > args["num_cols"] - 1] = 0 # Clipped to -1 for safe indexing
-    Y[Y < 0] = 0
-    Y[Y > args["num_rows"] - 1] = 0
-
-    return X.flatten(), Y.flatten()
-
-# --- Indices ---
 def _get_bases(
         nx_c: int, 
         ny_c: int, 
@@ -137,17 +120,18 @@ def _get_bases(
     Returns:
         Tuple[np.ndarray, np.ndarray]: Base indices for x and y.
     """
-    if scan_ori.find("+x") != -1:
-        x_b = np.arange(0, nx_s*nx_c, step=nx_s, dtype=int)
-    else:
-        x_b = np.arange((nx_s-1), nx_s*nx_c+(nx_s-1), step=nx_s, dtype=int)
-    
-    if scan_ori.find("+y") != -1:
-        y_b = np.arange(0, ny_s*ny_c, step=ny_s, dtype=int)
-    else:
-        y_b = np.arange((ny_s-1), ny_s*ny_c+(ny_s-1), step=ny_s, dtype=int)
+    x_start = 0 if scan_ori.find("+x") != -1 else nx_s - 1
+    x_stop = x_start + nx_c * nx_s
+    x_steps = nx_s
 
-    return x_b, y_b
+    y_start = 0 if scan_ori.find("+y") != -1 else ny_s - 1 
+    y_stop = y_start + ny_c * ny_s
+    y_steps = ny_s 
+
+    xb = np.arange(x_start, x_stop, x_steps, dtype=int)
+    yb = np.arange(y_start, y_stop, y_steps, dtype=int)
+
+    return xb, yb
 
 def _get_shifts(
         nx_s: int, 
@@ -165,22 +149,34 @@ def _get_shifts(
     Returns:
         Tuple[np.ndarray, np.ndarray]: Flattened x and y shift indices.
     """
-    if scan_ori[1] == "y": 
-        y_s, x_s = np.meshgrid(np.arange(ny_s, dtype=int), np.arange(nx_s, dtype=int))
-    else:
-        x_s, y_s = np.meshgrid(np.arange(nx_s, dtype=int), np.arange(ny_s, dtype=int))
-    
-    if scan_ori.find("-x") != -1:
-        x_s = -x_s
-    
-    if scan_ori.find("-y") != -1:
-        y_s = -y_s 
-    
-    return x_s.flatten(), y_s.flatten()
+    x_start = 0
+    x_stop = nx_s 
+    x_steps = 1 
+
+    y_start = 0 
+    y_stop = ny_s 
+    y_steps = 1
+
+    x_range = np.arange(x_start, x_stop, x_steps, dtype=int)
+    y_range = np.arange(y_start, y_stop, y_steps, dtype=int)
+
+    if scan_ori[1] == "y":
+        ys, xs = np.meshgrid(y_range, x_range) 
+    else: 
+        xs, ys = np.meshgrid(x_range, y_range)
+
+    xs = -xs if scan_ori.find("-x") != -1 else xs 
+    ys = -ys if scan_ori.find("-y") != -1 else ys
+
+    return xs.flatten(), ys.flatten()
+
 
 def get_1d_indices(
-        args: Dict[str, int],
-        scan_ori: str="+x+y"
+        nx_c: int, 
+        ny_c: int,
+        nx_s: int, 
+        ny_s: int, 
+        scan_ori: str
 ) -> np.ndarray:
     """
     Calculates the final 1D index mapping for vectorized super-array updates.
@@ -190,24 +186,61 @@ def get_1d_indices(
         ny_c (int): Number of foci along y.
         nx_s (int): Scanner steps along x.
         ny_s (int): Scanner steps along y.
-        scan_ori (str): Scan orientation string. Defaults to "+x+y".
+        scan_ori (str): Scan orientation string.
 
     Returns:
         np.ndarray: A 2D mapping of (scan_steps, foci_total) to flat 1D indices.
     """
-    nx_c = args["nx_c"]
-    ny_c = args["ny_c"]
-    nx_s = args["nx_s"]
-    ny_s = args["ny_s"]
     
-    x_b, y_b = _get_bases(nx_c, ny_c, nx_s, ny_s, scan_ori)
-    x_s, y_s = _get_shifts(nx_s, ny_s, scan_ori)
-    x_b = x_b.reshape(1, 1, nx_c)
-    y_b = y_b.reshape(1, ny_c, 1)
+    xb, yb = _get_bases(nx_c, ny_c, nx_s, ny_s, scan_ori)    
+    xb = xb.reshape(1, 1, nx_c)
+    yb = yb.reshape(1, ny_c, 1)
 
-    x_s = x_s.reshape(nx_s*ny_s, 1, 1)
-    y_s = y_s.reshape(nx_s*ny_s, 1, 1)
+    xs, ys = _get_shifts(nx_s, ny_s, scan_ori)
+    xs = xs.reshape(nx_s * ny_s, 1, 1)
+    ys = ys.reshape(nx_s * ny_s, 1, 1)
 
-    frame_inds = (y_b + y_s) * (nx_s * nx_c) + (x_b + x_s) 
+    frame_inds = (yb + ys) * (nx_s * nx_c) + (xb + xs) 
 
     return frame_inds.reshape((nx_s * ny_s, nx_c * ny_c))
+
+def get_orientation(
+        nx_c: int, 
+        ny_c: int,
+        nx_s: int, 
+        ny_s: int, 
+        proc_pixels: np.ndarray
+) -> str: 
+    """
+    Determines the scanning orientation for the provided processed pixels.
+
+    Args:
+        nx_c (int): Number of foci along x.
+        ny_c (int): Number of foci along y.
+        nx_s (int): Scanner steps along x.
+        ny_s (int): Scanner steps along y.
+        scan_ori (str): Scan orientation string.
+
+    Returns:
+        str: The determined scan orientation in the form +-x+-y or +-y+-x.
+    """
+    rec_x = nx_c * nx_s
+    rec_y = ny_c * ny_s 
+    rec_img = np.zeros((rec_y * rec_x), dtype=np.float32)
+
+    orients = ("+x+y", "+x-y", "-x+y", "-x-y", "+y+x", "+y-x", "-y+x", "-y-x")
+    score_arr = np.zeros((len(orients)), dtype=float)
+    
+    for i in range(len(orients)):
+        frame_inds = get_1d_indices(nx_c, ny_c, nx_s, ny_s, scan_ori=orients[i])
+        rec_img[frame_inds.flatten()] = proc_pixels.flatten()
+        
+        # total variation
+        dx = np.abs(np.diff(rec_img.reshape((rec_y, rec_x)), axis=1), dtype=float)
+        dy = np.abs(np.diff(rec_img.reshape((rec_y, rec_x)), axis=0), dtype=float)
+        sum = np.sum(dx) + np.sum(dy)
+        
+        score_arr[i] = sum
+
+    return orients[np.argmin(score_arr)]
+    

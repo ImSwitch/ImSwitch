@@ -105,14 +105,41 @@ class ImRecMainViewController(ImRecWidgetController):
 
     def setupLiveStream(
             self, 
+            processor: object,
             params: dict, 
             rawDataBuffer: np.ndarray
     ):   
         if cupyAvailable:
-            self.liveProcessor = GaussProcessorGPU(params, scan_ori="+x-y")                          
+            self.liveProcessor = GaussProcessorGPU(
+                xp=params["xp"],
+                xo=params["xo"],
+                yp=params["yp"],
+                yo=params["yo"],
+                nx_c=params["nx_c"],
+                ny_c=params["ny_c"],
+                nx_s=params["nx_s"],
+                ny_s=params["ny_s"],
+                num_cols=params["num_cols"],
+                num_rows=params["num_rows"],
+                num_rects=4, 
+                scan_ori="+x-y"
+            )                          
             self._logger.debug("[setupLiveStream] >> GPU Processor initialized")
         else: 
-            self.liveProcessor = GaussProcessorCPU(params, scan_ori="+x-y")
+            self.liveProcessor = GaussProcessorCPU(
+                xp=params["xp"],
+                xo=params["xo"],
+                yp=params["yp"],
+                yo=params["yo"],
+                nx_c=params["nx_c"],
+                ny_c=params["ny_c"],
+                nx_s=params["nx_s"],
+                ny_s=params["ny_s"],
+                num_cols=params["num_cols"],
+                num_rows=params["num_rows"],
+                num_rects=4,
+                scan_ori="+x-y"
+            )
             self._logger.debug("[setupLiveStream] >> GPU Processor NOT initialized => Defaulting to CPU processor")
 
         self.liveReconObj = ReconObj(

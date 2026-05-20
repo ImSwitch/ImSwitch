@@ -5,6 +5,16 @@ from .basecontrollers import ImRecWidgetController
 from imswitch.imcommon.view.guitools.FileWatcher import FileWatcher
 from imswitch.imreconstruct.model.karl_models.localizer import localizer
 from imswitch.imreconstruct.controller.karl_workers.ZarrStreamWorker import ZarrStreamWorker
+from imswitch.imreconstruct.model.karl_models.GaussProcessorCPU import GaussProcessorCPU
+from imswitch.imreconstruct.model.karl_models.geometry import get_orientation
+
+try:
+    import cupy as cp
+    from imswitch.imreconstruct.model.karl_models.GaussProcessorGPU import GaussProcessorGPU
+    GPU_AVAILABLE = True 
+except Exception as e:
+    print("[WatcherFrameController] [import] >> Could not import GPU GaussProcessor => Defaulting to CPU Gauss Processor")
+    GPU_AVAILABLE = False
 
 from imswitch.imcommon.model.logging import initLogger
 
@@ -124,6 +134,7 @@ class WatcherFrameController(ImRecWidgetController):
     def bootstrapFileWatcher(self, filePath: str): 
         """
         Performs the necessarry initialization steps required for the live File Watcher:
+            
             1. Localization 
             2. Scanning orientation determination 
             3. Processor creation 
@@ -138,42 +149,86 @@ class WatcherFrameController(ImRecWidgetController):
                 if not os.path.isdir(zarrArrayPath):
                     for entry in os.listdir(filePath):
                         subPath = os.path.join(filePath, entry)
-                        self._logger.debug(f"[bootstapFileWatcher] >> subPath = {subPath}")
+                        # self._logger.debug(f"[bootstapFileWatcher] >> subPath = {subPath}")
                         if os.path.isdir(subPath) and os.path.exists(os.path.join(subPath, ".zarray")):
                             zarrArrayPath = subPath
+                
                 zarrArray = zarr.open(zarrArrayPath, mode='r')
                 zarrArray.store.close()
                 numFramesInStack = zarrArray.attrs["numFramesInStack"]
                 currNumFrames = zarrArray.shape[0]
-                self._logger.debug(f"[bootstrapFileWatcher] >> numFramesInStack = {numFramesInStack}")
+                # self._logger.debug(f"[bootstrapFileWatcher] >> numFramesInStack = {numFramesInStack}")
+            
                 if currNumFrames >= numFramesInStack:
                     break
+            
             except Exception as e:
                 self._logger.error(f"[bootstrapFileWatcher] >> Could not open {zarrArrayPath}: {e}")
 
         imSwitchMetaData = zarrArray.attrs["ImswitchData"]
+        
         x0, y0, z0 = [x for y in imSwitchMetaData["ScanStage:axis_startpos"] for x in y] 
         x1, y1, z1 = imSwitchMetaData["ScanStage:axis_length"]
         dx, dy, dz = imSwitchMetaData["ScanStage:axis_step_size"]
-        nx_s = int((x1 - x0) / dx) + 1
-        ny_s = int((y1 - y0) / dy) + 1
+        
+        nx_s = int(np.ceil((x1 - x0) / dx)) + 1
+        ny_s = int(np.ceil((y1 - y0) / dy)) + 1
+        
         bootstrapParms = {}
+        
         data = zarrArray[:]
         locParms = localizer(data)
-        for key, value in locParms.items() :
+        for key, value in locParms.items():
             bootstrapParms[key] = value
         _, bootstrapParms["num_rows"], bootstrapParms["num_cols"] = zarrArray.shape 
         bootstrapParms["nx_s"] = nx_s 
         bootstrapParms["ny_s"] = ny_s
-        
-        self.numFramesInStack = nx_s * ny_s 
-        self.rawDataBuffer = np.zeros((
-            self.numFramesInStack,
-            bootstrapParms["num_rows"],
-            bootstrapParms["num_cols"]
-        ))
+            
+        if GPU_AVAILABLE:
+            data = cp.array(data)
+            processor = GaussProcessorGPU(
+                xp=bootstrapParms["xp"],
+                xo=bootstrapParms["xo"],
+                yp=bootstrapParms["yp"],
+                yo=bootstrapParms["yo"],
+                nx_c=bootstrapParms["nx_c"],
+                ny_c=bootstrapParms["ny_c"],
+                nx_s=bootstrapParms["nx_s"],
+                ny_s=bootstrapParms["ny_s"],
+                num_cols=bootstrapParms["num_cols"],
+                num_rows=bootstrapParms["num_rows"],
+                num_rects=4, 
+            )  
+        else: 
+            processor = GaussProcessorCPU(
+                xp=bootstrapParms["xp"],
+                xo=bootstrapParms["xo"],
+                yp=bootstrapParms["yp"],
+                yo=bootstrapParms["yo"],
+                nx_c=bootstrapParms["nx_c"],
+                ny_c=bootstrapParms["ny_c"],
+                nx_s=bootstrapParms["nx_s"],
+                ny_s=bootstrapParms["ny_s"],
+                num_cols=bootstrapParms["num_cols"],
+                num_rows=bootstrapParms["num_rows"],
+                num_rects=4, 
+            )  
 
-        self._commChannel.sigSetupLiveStream.emit(bootstrapParms, self.rawDataBuffer)
+        proc_pixels = processor.process_chunk(data)
+        est_orient = get_orientation(
+            nx_c=bootstrapParms["nx_c"],
+            ny_c=bootstrapParms["ny_c"],
+            nx_s=bootstrapParms["nx_s"],
+            ny_s=bootstrapParms["ny_s"],
+            proc_pixels=proc_pixels
+        )
+        self._logger.debug(f"[bootstrapFileWatcher] >> est_orient = {est_orient}")
+
+
+        self.numFramesInStack = nx_s * ny_s 
+        self.rawDataBuffer = np.zeros((self.numFramesInStack, bootstrapParms["num_rows"], bootstrapParms["num_cols"]))
+
+        self._commChannel.sigSetupLiveStream.emit(processor, bootstrapParms, self.rawDataBuffer)
         self._logger.debug(
             f"[bootstrapFileWatcher] >> Reconstruction Image Buffer initialized: (nFrames, Y, X) = {self.rawDataBuffer.shape}"
         )
@@ -192,6 +247,7 @@ class WatcherFrameController(ImRecWidgetController):
         # params["recImage_save_path"] = os.path.join(os.path.dirname(self._widget.path), "Timepoint_Recons")
 
         self.runBootstrap = False 
+        self.execution = False
         self.runNextFile()
 
 

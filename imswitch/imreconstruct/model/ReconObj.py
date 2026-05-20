@@ -47,7 +47,7 @@ class ReconObj:
             self.flatReconView = self.reconstructed[0, 0, 0, 0].reshape(-1)
             self.reconstructed[0, 0, 0, 0, 0, 0] = 1e-8 
             self.dispLevels = [0.0, 100.0]
-            self.__logger.debug(f"[__init__] >> Reconstructed Image Array initialized: (height, widght) = ({self.reconRows}, {self.reconCols})")
+            self.__logger.debug(f"[__init__] >> Reconstructed Image Array initialized: (height, width) = ({self.reconRows}, {self.reconCols})")
     
 
     def addLiveFrame(self, flatCoeffs, frameIndices): 

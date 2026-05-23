@@ -194,7 +194,7 @@ class ImRecMainViewController(ImRecWidgetController):
         # self.saveWorkerThread.wait()
         # self.saveWorkerThread.terminate() 
         
-        self._logger.debug("[stopLiveStream] >> Processor Thread has been fully cleared.")
+        self._logger.debug("[stopLiveStream] >> Processor thread has been cleared")
 
 
     def dataFolderChanged(self, dataFolder):

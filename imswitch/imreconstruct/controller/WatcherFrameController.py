@@ -202,13 +202,13 @@ class WatcherFrameController(ImRecWidgetController):
             self.zarrFileToProcess = self.toExecute.pop(0)
             zarrfilePath = os.path.join(self._widget.path, self.zarrFileToProcess)
             self._logger.debug(
-                f"[runNextFile] >> Streaming: {zarrfilePath} | Frames to Process: {self.numFramesInStack}"
+                f"[runNextFile] >> Streaming: {self.zarrFileToProcess} ({self.numFramesInStack} frames)"
             )
             self.sigTriggerZarrStream.emit(zarrfilePath)
 
 
     def zarrStreamFinished(self):
-        self._logger.debug(f"[zarrStreamFinished] Finished processing: {self.zarrFileToProcess}")
+        self._logger.debug(f"[zarrStreamFinished] Processed: {self.zarrFileToProcess}")
         self.execution = False
         self.runNextFile()
 
@@ -218,7 +218,7 @@ class WatcherFrameController(ImRecWidgetController):
         self._commChannel.sigStopLiveStream.emit()
         self._commChannel.blockSignals(True)
         
-        if self.zarrStreamWorkerThread.isRunning():
+        if self.zarrStreamWorkerThread:
             self.zarrStreamWorker.stop()
             self.zarrStreamWorkerThread.quit()
             self.zarrStreamWorkerThread.terminate()
@@ -233,7 +233,7 @@ class WatcherFrameController(ImRecWidgetController):
         self._commChannel.blockSignals(False)
         self.execution = False
         self.toExecute = []
-        self._logger.debug(f"[stopAllWorkers] >> All Live Watcher Threads have been shutdown")
+        self._logger.debug(f"[stopAllWorkers] >> Watcher and ZarrStreamWorker threads have been cleared")
 
 
     def extensionChanged(self):

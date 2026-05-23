@@ -33,12 +33,13 @@ class StreamArgs:
 	reconCols: int 
 	processor: Processor
 
+
 class ZarrInitWorker(QtCore.QObject):
 	"""
 	Runs the initialization sequence necessary to boot up the zarr live file watching, 
 	by using the first stack of raw frames that have been detected to perform localization, 
-	scan orientation detection, and creating the necessary objects and arrays for the live 
-	reconstruction.
+	scan orientation detection, and returning the necessary arguments for the zarr streaming
+	and zarr processing.
 	"""
 	initComplete = QtCore.Signal(StreamArgs)
 
@@ -114,7 +115,7 @@ class ZarrInitWorker(QtCore.QObject):
 			self.ny_s,
 			locRes.num_rows,
 			locRes.num_cols,
-			3 # num_rects
+			4 # num_rects
 		)
 
 		if GPU_AVAILABLE:

@@ -31,8 +31,8 @@ class GaussProcessorCPU:
             ny_c: int,
             nx_s: int,
             ny_s: int, 
-            num_cols: int,
             num_rows: int,
+            num_cols: int,
             num_rects: int = 3, 
             scan_ori: str = "+x+y"
     ):
@@ -41,7 +41,7 @@ class GaussProcessorCPU:
         self.num_foci = nx_c * ny_c
         self.num_rects = num_rects
         self.scan_ori = scan_ori
-        self.x_interp, self.y_interp = get_interp_coords(xp, xo, yp, yo, num_cols, num_rows, num_rects)
+        self.x_interp, self.y_interp = get_interp_coords(xp, xo, yp, yo, nx_c, ny_c, num_rows, num_cols, num_rects)
         self.lsq_weights, self.pts_per_focus = self._calculate_weights(num_rects)
         self.frame_inds = get_1d_indices(nx_c, ny_c, nx_s, ny_s, scan_ori)
         self.num_frames_in_stack = nx_s * ny_s
@@ -94,7 +94,7 @@ class GaussProcessorCPU:
             + frame_cpu[y1, x1] * dx * dy
         ).reshape((self.num_foci, self.pts_per_focus))
 
-        return np.asnumpy(np.dot(interp_vals, self.lsq_weights))
+        return np.dot(interp_vals, self.lsq_weights)
     
 
     def process_chunk(self, chunk_cpu: np.ndarray) -> np.ndarray:

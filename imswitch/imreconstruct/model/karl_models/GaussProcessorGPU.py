@@ -32,17 +32,17 @@ class GaussProcessorGPU:
             ny_c: int,
             nx_s: int,
             ny_s: int, 
-            num_cols: int,
             num_rows: int,
+            num_cols: int,
             num_rects: int = 3, 
             scan_ori: str = "+x+y"
-    ) -> None:
+    ):
         self.num_rows = num_rows
         self.num_cols = num_cols
         self.num_foci = nx_c * ny_c
         self.num_rects = num_rects
         self.scan_ori = scan_ori
-        x_interp, y_interp = get_interp_coords(xp, xo, yp, yo, nx_c, ny_c, num_cols, num_rows, num_rects)
+        x_interp, y_interp = get_interp_coords(xp, xo, yp, yo, nx_c, ny_c, num_rows, num_cols, num_rects)
         self.x_interp = cp.array(x_interp)
         self.y_interp = cp.array(y_interp)
         self.lsq_weights, self.pts_per_focus = self._calculate_weights(num_rects)

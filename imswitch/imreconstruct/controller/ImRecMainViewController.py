@@ -1,32 +1,38 @@
 # type: ignore
 
 from imswitch.imcommon.controller import PickDatasetsController
-from imswitch.imreconstruct.model import DataObj, ReconObj, PatternFinder, SignalExtractor
-from imswitch.imreconstruct.model.karl_models import GaussProcessorCPU
-from imswitch.imreconstruct.controller.karl_workers.SaveWorker import SaveWorker
+from imswitch.imreconstruct.model import (
+        DataObj, 
+        ReconObj, 
+        PatternFinder, 
+        SignalExtractor
+)
+
 from .DataFrameController import DataFrameController
 from .MultiDataFrameController import MultiDataFrameController
 from .WatcherFrameController import WatcherFrameController
 from .ReconstructionViewController import ReconstructionViewController
 from .ScanParamsController import ScanParamsController
 from .basecontrollers import ImRecWidgetController
+
 from imswitch.imreconstruct.controller.karl_workers.ProcessorWorker import ProcessorWorker
 
 import copy
 import os
-import json
 import numpy as np
 import tifffile as tiff
 import imswitch.imreconstruct.view.guitools as guitools
 
 from qtpy import QtCore
 
+from imswitch.imreconstruct.model.karl_models import GaussProcessorCPU
 try: 
-    import cupy as cp
-    cupyAvailable = True
-    from imswitch.imreconstruct.model.karl_models import GaussProcessorGPU
+    from imswitch.imreconstruct.model.karl_models.GaussProcessorGPU import GaussProcessorGPU
+    CUPY_AVAILABLE = True
+    Processor = GaussProcessorGPU         
 except:
-    cupyAvailable = False
+    CUPY_AVAILABLE = False
+    Processor = GaussProcessorCPU
 
 
 class ImRecMainViewController(ImRecWidgetController):
@@ -53,29 +59,43 @@ class ImRecMainViewController(ImRecWidgetController):
             PickDatasetsController, self._widget.pickDatasetsDialog
         )
         self._signalExtractor = SignalExtractor()
-        self._patternFinder = PatternFinder()
         self._currentDataObj = None
+
+        self._patternFinder = PatternFinder()        
         self.localizerParams = None
         self._pattern = self._widget.getPatternParams()
+        
         self._settingPatternParams = False
         self._scanParDict = {
-            'dimensions': [self._widget.r_l_text, self._widget.u_d_text, self._widget.b_f_text,
-                           self._widget.timepoints_text],
-            'directions': [self._widget.p_text, self._widget.p_text, self._widget.p_text],
+            'dimensions': [
+                self._widget.r_l_text, 
+                self._widget.u_d_text, 
+                self._widget.b_f_text,
+                self._widget.timepoints_text
+            ],
+            'directions': [
+                self._widget.p_text, 
+                self._widget.p_text, 
+                self._widget.p_text
+            ],
             'steps': ['35', '35', '1', '1'],
             'step_sizes': ['35', '35', '35', '1'],
             'unidirectional': True
         }
+        
         self._dataFolder = None
         self._saveFolder = None
+
         self.liveProcessor = None 
         self.liveReconObj = None
+        
         self._commChannel.sigDataFolderChanged.connect(self.dataFolderChanged)
         self._commChannel.sigSaveFolderChanged.connect(self.saveFolderChanged)
         self._commChannel.sigCurrentDataChanged.connect(self.currentDataChanged)
         self._commChannel.sigScanParamsUpdated.connect(self.scanParamsUpdated)
         self._commChannel.sigReconstruct.connect(self.reconstruct)
         self._commChannel.sigSetupLiveStream.connect(self.setupLiveStream)
+        
         self._widget.sigSaveReconstruction.connect(lambda: self.saveCurrent('reconstruction'))
         self._widget.sigSaveReconstructionAll.connect(lambda: self.saveAll('reconstruction'))
         self._widget.sigSaveCoeffs.connect(lambda: self.saveCurrent('coefficients'))
@@ -95,53 +115,26 @@ class ImRecMainViewController(ImRecWidgetController):
         self._widget.sigFindPattern.connect(self.findPattern)
         self._widget.sigShowScanParamsClicked.connect(self.showScanParamsDialog)
         self._widget.sigPatternParamsChanged.connect(self.updatePattern)
+        
         self.updatePattern()
         self.updateScanParams()
-        if cupyAvailable:
+        
+        if CUPY_AVAILABLE:
             self._logger.debug("[__init__] >> CuPy available => Defaulting to GPU processing")
         else: 
             self._logger.debug("[__init__] >> CuPy NOT available => Defaulting to CPU processing")
  
 
+    @QtCore.Slot(Processor, np.ndarray, tuple)
     def setupLiveStream(
             self, 
-            processor: object,
-            params: dict, 
-            rawDataBuffer: np.ndarray
+            processor: Processor,
+            rawDataBuffer: np.ndarray,
+            reconObjArgs: tuple, 
     ):   
-        if cupyAvailable:
-            self.liveProcessor = GaussProcessorGPU(
-                xp=params["xp"],
-                xo=params["xo"],
-                yp=params["yp"],
-                yo=params["yo"],
-                nx_c=params["nx_c"],
-                ny_c=params["ny_c"],
-                nx_s=params["nx_s"],
-                ny_s=params["ny_s"],
-                num_cols=params["num_cols"],
-                num_rows=params["num_rows"],
-                num_rects=4, 
-                scan_ori="+x-y"
-            )                          
-            self._logger.debug("[setupLiveStream] >> GPU Processor initialized")
-        else: 
-            self.liveProcessor = GaussProcessorCPU(
-                xp=params["xp"],
-                xo=params["xo"],
-                yp=params["yp"],
-                yo=params["yo"],
-                nx_c=params["nx_c"],
-                ny_c=params["ny_c"],
-                nx_s=params["nx_s"],
-                ny_s=params["ny_s"],
-                num_cols=params["num_cols"],
-                num_rows=params["num_rows"],
-                num_rects=4,
-                scan_ori="+x-y"
-            )
-            self._logger.debug("[setupLiveStream] >> GPU Processor NOT initialized => Defaulting to CPU processor")
-
+        
+        self.liveProcessor = processor
+        
         self.liveReconObj = ReconObj(
             "Live_Stream", 
             self._scanParDict,
@@ -151,40 +144,29 @@ class ImRecMainViewController(ImRecWidgetController):
             self._widget.timepoints_text, 
             self._widget.p_text, 
             self._widget.n_text,
-            recImageArgs={
-                "nx_c": params["nx_c"], 
-                "ny_c": params["ny_c"], 
-                "nx_s": params["nx_s"], 
-                "ny_s": params["ny_s"]
-            }
+            *reconObjArgs # (reconRows, reconCols) 
         )            
 
         self._widget.addNewData(self.liveReconObj, "Live_Stream") 
+
         self._liveLayer = None
         
         self.processorWorker = ProcessorWorker(
-            processor=self.liveProcessor, 
-            reconObj=self.liveReconObj, 
-            rawDataBuffer=rawDataBuffer, 
-            cupyAvailable=cupyAvailable, 
-            _commChannel=self._commChannel
+            processor, 
+            self.liveReconObj, 
+            rawDataBuffer, 
+            CUPY_AVAILABLE, 
+            self._commChannel
         ) 
+        
         self.processorThread = QtCore.QThread()
         self.processorWorker.moveToThread(self.processorThread)
         self.processorWorker.sigTriggerUIRefresh.connect(self.triggerUIRefresh)
+        self.processorThread.start()
+        
         self._commChannel.sigLiveChunkReady.connect(self.processorWorker.processChunk)
         self._commChannel.sigStopLiveStream.connect(self.stopLiveStream)
-        self.processorThread.start()
-
-        # self.saveWorker = SaveWorker(
-        #     savePath=params["recImage_save_path"],
-        #     recImageBuffer=self.liveReconObj.reconstructed[0, 0, 0, 0]
-        # )
-        # self.saveWorkerThread = QtCore.QThread()
-        # self.saveWorker.moveToThread(self.saveWorkerThread)
-        # self._commChannel.sigSaveRecImage.connect(self.saveWorker.saveRecImage)
-        # self.saveWorkerThread.start()
-
+        
         self._logger.debug("[setupLiveStream] >> Live Stream initialized")
 
 
@@ -201,7 +183,9 @@ class ImRecMainViewController(ImRecWidgetController):
         if self.processorThread is None or not self.processorThread.isRunning():
             self._logger.debug("[stopLiveStream] >> Shutdown already complete or in progress. Skipping.")
             return
+
         self._logger.debug(f"[stopLiveStream] >> Initiating shutdown...")
+
         self.processorThread.quit()
         self.processorThread.wait()
         self.processorThread.terminate()
@@ -244,14 +228,9 @@ class ImRecMainViewController(ImRecWidgetController):
             return
 
         self._logger.debug("[findPattern] >> Finding pattern")
+
         pattern = self._patternFinder.findPattern(meanData, stackData) 
-        try:
-            with open("loc_parms.json", "r") as f: 
-                self.localizerParams = json.load(f)
-            self._logger.debug(f"[findPattern] >> Successfully loaded localizer parameters: {self.localizerParams}")
-        except Exception as e:
-            self._logger.error(f"[findPattern] >> Tried to load localizer data but got {e}")
-                
+
         self._logger.debug(f"[findPattern] >> Pattern found as: {self._pattern}")
         
         self.setPatternParams(pattern)

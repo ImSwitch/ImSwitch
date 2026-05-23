@@ -1,10 +1,21 @@
 import numpy as np
-from .geometry import get_center_coords
-import matplotlib.pyplot as plt
 from scipy.ndimage import gaussian_filter
 from scipy.signal import find_peaks
 from scipy.optimize import least_squares
-from typing import Union, Dict, Tuple
+from typing import Tuple
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
+class LocalizationResult: 
+    xp: float
+    xo: float 
+    yp: float 
+    yo: float 
+    nx_c: int 
+    ny_c: int 
+    num_cols: int 
+    num_rows: int 
 
 
 def _find_best_peak_index(peaks: Tuple) -> int:
@@ -154,9 +165,7 @@ def localizer(
         img_data: np.ndarray,
         xp_guess: float = 10.0,
         yp_guess: float = 10.0,
-        plot: bool = False,
-        dummy_mode: bool = False
-) -> Dict[str, Union[int, float]]:
+) -> LocalizationResult:
     """
     Finds grid periods and offsets in 2D image data. Handles both single 
     frames and summed image stacks.
@@ -165,11 +174,16 @@ def localizer(
         img_data (np.ndarray): 2D frame or 3D stack of frames.
         xp_guess (float): Initial guess for x-period.
         yp_guess (float): Initial guess for y-period.
-        plot (bool): If True, displays the grid localization results.
-        dummy_mode (bool): return dummy values for testing.
         
-    Returns:
-        Dict[str, Union[int, float]]: Mapping of optimized grid parameters and dimensions.
+    Returns (LocalizationResult):
+        xp (float): period along x-axis. 
+        xo (float): offset along x-axis.
+        yp (float): period along y-axis.
+        yo (float): offset along y-axis.
+        nx_c (int): number of foci along x-axis.
+        ny_c (int): number of foci along y-axis. 
+        num_cols (int): number of columns in raw frame. 
+        num_rows (int): number of rows in raw frame.  
     """
     if img_data.ndim == 3: 
         _, num_rows, num_cols = img_data.shape
@@ -201,13 +215,14 @@ def localizer(
     nx_c = int(np.ceil((num_cols - xo) / xp)) 
     ny_c = int(np.ceil((num_rows - yo) / yp))
 
-    return {
-        "xp": xp,
-        "xo": xo,
-        "yp": yp,
-        "yo": yo,
-        "nx_c": nx_c,
-        "ny_c": ny_c,
-        "num_cols": num_cols,
-        "num_rows": num_rows
-    }
+    return LocalizationResult(
+        xp,
+        xo,
+        yp, 
+        yo, 
+        nx_c, 
+        ny_c, 
+        num_cols, 
+        num_rows
+    )
+

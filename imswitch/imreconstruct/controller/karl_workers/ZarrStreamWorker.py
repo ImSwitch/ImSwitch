@@ -1,6 +1,5 @@
 # type: ignore 
-
-import os 
+from imswitch.imreconstruct.controller.karl_workers.ZarrWorkerUtils import findZarrArrayPath
 import zarr 
 import numpy as np 
 from qtpy import QtCore 
@@ -27,23 +26,6 @@ class ZarrStreamWorker(QtCore.QObject):
         self._commChannel = _commChannel
         self.running = True
 
-
-    def _findArrayPath(self, zarrFilePath: str) -> Union[str, None]:
-        """ Find the first subdirectory containing a .zarray file. """
-        # check if the root (zarrFilePath) is a .zarray itself
-        if os.path.exists(os.path.join(zarrFilePath, ".zarray")):
-            return zarrFilePath
-
-        # check if the root (zarrFilePath) contains a directory with a .zarray
-        if os.path.isdir(zarrFilePath):
-            for entry in os.listdir(zarrFilePath):
-                subPath = os.path.join(zarrFilePath, entry)
-                if os.path.isdir(subPath) and os.path.exists(os.path.join(subPath, ".zarray")):
-                    return subPath
-                
-        return None
-
-
     @QtCore.Slot(str)
     def streamZarrFile(self, zarrFilePath: str):
         """ Called everytime WatcherFrameController.runNextFile pops a file from the queue. """
@@ -53,10 +35,9 @@ class ZarrStreamWorker(QtCore.QObject):
 
         while self.running and zarrArrayPath is None and zarrArray is None: 
             try:
-                zarrArrayPath = self._findArrayPath(zarrFilePath)
+                zarrArrayPath = findZarrArrayPath(zarrFilePath)
                 zarrArray = zarr.open(zarrArrayPath, mode='r')
-            except Exception as e: 
-                # print(f"[ZarrStreamWorker] [run] Error when trying to open first Zarr file {e}")
+            except: 
                 QtCore.QThread.msleep(100)
 
         while self.running: 
@@ -87,11 +68,7 @@ class ZarrStreamWorker(QtCore.QObject):
                         break
 
             except RuntimeError:
-                # [Errno13] Permission Denied => loop again
-                pass
-                
-            except Exception as e:
-                # print(f"[ZarrStreamWorker] [run] Error in streaming loop: {e}")
+                # [Errno13] Permission Denied (writing) => loop again
                 pass
                              
                              

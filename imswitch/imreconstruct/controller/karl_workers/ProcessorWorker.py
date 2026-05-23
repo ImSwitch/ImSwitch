@@ -9,7 +9,7 @@ class ProcessorWorker(QtCore.QObject):
     numFramesProcessed = QtCore.Signal(int)       
     sigTriggerUIRefresh = QtCore.Signal()
     sigSaveChunk = QtCore.Signal(np.ndarray, np.ndarray, int)
-
+    
     def __init__(
             self,
             processor, 
@@ -19,11 +19,10 @@ class ProcessorWorker(QtCore.QObject):
             _commChannel = None
     ):
         super().__init__()
-        self._commChannel = _commChannel
         self.processor = processor
         self.reconObj = reconObj
-        self.rawDataBuffer = rawDataBuffer
-        self.timePointIndex = 0
+        self.rawDataBuffer = rawDataBuffer        
+        
         self.cupyAvailable = cupyAvailable
         self.cp = None
         if self.cupyAvailable:
@@ -31,55 +30,30 @@ class ProcessorWorker(QtCore.QObject):
                 import cupy as cp
                 self.cp = cp
             except ImportError:
-                print("WARNING [ProcessorWorker] [__init__] >> GPU requested but CuPy not found => Defaulting to CPU processing")
+                print("WARNING [ProcessorWorker] [__init__] >> Error when trying to import CuPy")
+                return
 
-
-    @QtCore.Slot(int)
-    def processFrame(self, frameIndex): 
-        if QtCore.QThread.currentThread().isInterruptionRequested():
-            # thread closing => no processing
-            return
-        
-        frame = self.rawDataBuffer[frameIndex]
-        if self.cupyAvailable and self.cp: 
-            frame = self.cp.asarray(frame)             
-
-        coeffs = self.processor.process_frame(frame)
-        frame_indices = self.processor.frame_inds[frameIndex]
-        self.reconObj.addLiveFrame(coeffs, frame_indices)
-        
-        refreshRate = int(np.sqrt(len(frame_indices)))
-        if frameIndex % refreshRate == 0 or frameIndex == self.processor.num_frames_in_stack - 1: 
-            self.sigTriggerUIRefresh.emit()
-            
-        self.numFramesProcessed.emit(frameIndex)
+        self._commChannel = _commChannel
 
 
     @QtCore.Slot(int, int)
-    def processChunk(self, startChunkIndex, endChunkIndex):        
+    def processChunk(self, start, end):        
         if QtCore.QThread.currentThread().isInterruptionRequested():
-            # thread closing => no processing
+            # thread closing => exit processing 
             return
         
-        chunk = self.rawDataBuffer[startChunkIndex:endChunkIndex]
+        chunk = self.rawDataBuffer[start:end]
+        
         if self.cupyAvailable and self.cp:
             chunk = self.cp.asarray(chunk)
         
         chunkCoeffs = self.processor.process_chunk(chunk)
-        chunkIndices = self.processor.frame_inds[startChunkIndex:endChunkIndex]
+        chunkIndices = self.processor.frame_inds[start:end]
         
         self.reconObj.addLiveChunk(chunkCoeffs, chunkIndices)
-        numFrames = endChunkIndex 
-        self.numFramesProcessed.emit(numFrames)
 
-        # refreshRate = int(np.sqrt(chunkIndices.shape[1]))
-        # if numFrames % refreshRate == 0 and numFrames >= self.processor.num_frames_in_stack - 1:
-        #     self.sigTriggerUIRefresh.emit()
+        self.numFramesProcessed.emit(end)
 
-        if numFrames >= self.processor.num_frames_in_stack - 1: 
+        if end >= self.processor.num_frames_in_stack - 1: 
             self.sigTriggerUIRefresh.emit()
-
-        # if numFrames >= self.processor.num_frames_in_stack - 1: 
-        #     self.sigTriggerUIRefresh.emit()
-        #     # self._commChannel.sigSaveRecImage.emit(self.timePointIndex)
-        #     self.timePointIndex += 1
+            

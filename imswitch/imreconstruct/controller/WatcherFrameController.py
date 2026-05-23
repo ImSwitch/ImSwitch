@@ -3,18 +3,23 @@
 from .basecontrollers import ImRecWidgetController
 
 from imswitch.imcommon.view.guitools.FileWatcher import FileWatcher
-from imswitch.imreconstruct.model.karl_models.localizer import localizer
+from imswitch.imreconstruct.controller.karl_workers.ZarrInitWorker import ZarrInitWorker
 from imswitch.imreconstruct.controller.karl_workers.ZarrStreamWorker import ZarrStreamWorker
-from imswitch.imreconstruct.model.karl_models.GaussProcessorCPU import GaussProcessorCPU
-from imswitch.imreconstruct.model.karl_models.geometry import get_orientation
 
+
+
+from typing import NewType
+from imswitch.imreconstruct.model.karl_models.GaussProcessorCPU import GaussProcessorCPU
 try:
     import cupy as cp
     from imswitch.imreconstruct.model.karl_models.GaussProcessorGPU import GaussProcessorGPU
     GPU_AVAILABLE = True 
+    Processor = NewType("GaussProcessorGPU", GaussProcessorGPU)
 except Exception as e:
     print("[WatcherFrameController] [import] >> Could not import GPU GaussProcessor => Defaulting to CPU Gauss Processor")
     GPU_AVAILABLE = False
+    Processor = NewType("GaussProcessorCPU", GaussProcessorCPU)
+
 
 from imswitch.imcommon.model.logging import initLogger
 
@@ -35,6 +40,7 @@ class WatcherFrameController(ImRecWidgetController):
     
     """ Linked to WatcherFrame. """
 
+    sigRunInitSequence = QtCore.Signal(str)
     sigTriggerRun = QtCore.Signal(str)
     sigTriggerZarrStream = QtCore.Signal(str)
 
@@ -42,6 +48,7 @@ class WatcherFrameController(ImRecWidgetController):
         super().__init__(*args, **kwargs)
         self.attrs = None
         self.recPath = None
+        
         self._widget.sigWatchChanged.connect(self.toggleWatch)
         self._logger = initLogger(self, tryInheritParent=False)
         try:
@@ -49,8 +56,10 @@ class WatcherFrameController(ImRecWidgetController):
         except AttributeError:
             self._logger.debug(f"[__init__] >> Available widget signals: {self._widget.__dict__.keys()}")
         self._widget.sigChangeFolder.connect(lambda: self._widget.updateFileList(self._commChannel.extension.value()))
+        
         self._commChannel.sigExecutionFinished.connect(self.executionFinished)
         self._commChannel.extension.sigValueChanged.connect(self.extensionChanged)
+        
         self.execution = False
         self.toExecute = []
         self.current = None
@@ -91,8 +100,17 @@ class WatcherFrameController(ImRecWidgetController):
                 self.watcher = FileWatcher(self._widget.path, interval=0.1)
                 self.watcher.sigNewFiles.connect(self.newFiles)
                 self.watcher.start()
+
+                self.initWorker = ZarrInitWorker()
+                self.initWorkerThread = QtCore.QThread()
+                self.initWorker.moveToThread(self.initWorkerThread)
+
+                self.sigRunInitSequence.connect(self.initWorker.runInitSequence)
+                self.initWorker.initComplete.connect(self.setupZarrStreamWorker)
+                self.initWorkerThread.start()
             
-                self.runBootstrap = True
+                self.runInitWorker = True
+                self.zarrFileToProcess = None
                 self.runNextFile()
 
             except Exception as e:
@@ -103,112 +121,46 @@ class WatcherFrameController(ImRecWidgetController):
             self.stopAllWorkers()            
 
 
-    def bootstrapFileWatcher(self, filePath: str): 
-        while True:
-            try:
-                zarrArrayPath = os.path.join(filePath, ".zarray")
-                if not os.path.isdir(zarrArrayPath):
-                    for entry in os.listdir(filePath):
-                        subPath = os.path.join(filePath, entry)
-                        if os.path.isdir(subPath) and os.path.exists(os.path.join(subPath, ".zarray")):
-                            zarrArrayPath = subPath
-                
-                zarrArray = zarr.open(zarrArrayPath, mode='r')
-                zarrArray.store.close()
-                numFramesInStack = zarrArray.attrs["numFramesInStack"]
-                currNumFrames = zarrArray.shape[0]
-            
-                if currNumFrames >= numFramesInStack:
-                    break
-            
-            except Exception as e:
-                self._logger.error(f"[bootstrapFileWatcher] >> Could not open {zarrArrayPath}: {e}")
-
-        imSwitchMetaData = zarrArray.attrs["ImswitchData"]
-
-        axis_startpos = np.array(imSwitchMetaData["ScanStage:axis_startpos"]).flatten()
-        x0, y0, z0 = axis_startpos 
-        x1, y1, z1 = imSwitchMetaData["ScanStage:axis_length"]
-        dx, dy, dz = imSwitchMetaData["ScanStage:axis_step_size"]
+    @QtCore.Slot(object)
+    def setupZarrStreamWorker(self, streamArgs: object): 
+        if hasattr(self, 'initWorkerThread') and self.initWorkerThread.isRunning():
+            self.initWorkerThread.quit()
+            self.initWorkerThread.wait()
         
-        nx_s = int(np.ceil((x1 - x0) / dx)) + 1
-        ny_s = int(np.ceil((y1 - y0) / dy)) + 1
-        
-        bootParms = {"nx_s": nx_s, "ny_s": ny_s}
-        data = zarrArray[:]
-        locParms = localizer(data)
-        for key, value in locParms.items():
-            bootParms[key] = value
-        _, bootParms["num_rows"], bootParms["num_cols"] = zarrArray.shape 
-        bootParms["nx_s"] = nx_s 
-        bootParms["ny_s"] = ny_s
-            
-        if GPU_AVAILABLE:
-            data = cp.array(data)
-            processor = GaussProcessorGPU(
-                xp=bootParms["xp"],
-                xo=bootParms["xo"],
-                yp=bootParms["yp"],
-                yo=bootParms["yo"],
-                nx_c=bootParms["nx_c"],
-                ny_c=bootParms["ny_c"],
-                nx_s=bootParms["nx_s"],
-                ny_s=bootParms["ny_s"],
-                num_cols=bootParms["num_cols"],
-                num_rows=bootParms["num_rows"],
-                num_rects=3, 
-            )  
-        else: 
-            processor = GaussProcessorCPU(
-                xp=bootParms["xp"],
-                xo=bootParms["xo"],
-                yp=bootParms["yp"],
-                yo=bootParms["yo"],
-                nx_c=bootParms["nx_c"],
-                ny_c=bootParms["ny_c"],
-                nx_s=bootParms["nx_s"],
-                ny_s=bootParms["ny_s"],
-                num_cols=bootParms["num_cols"],
-                num_rows=bootParms["num_rows"],
-                num_rects=3, 
-            )  
+        self.numFramesInStack = streamArgs.numFramesInStack
+     
+        self.rawDataBuffer = np.zeros((
+            streamArgs.numFramesInStack, 
+            streamArgs.dataBuffRows,
+            streamArgs.dataBuffCols
+        ))
 
-        procPixels = processor.process_chunk(data)
-        estOri = get_orientation(
-            nx_c=bootParms["nx_c"],
-            ny_c=bootParms["ny_c"],
-            nx_s=bootParms["nx_s"],
-            ny_s=bootParms["ny_s"],
-            proc_pixels=procPixels
+        self._commChannel.sigSetupLiveStream.emit(
+            streamArgs.processor, 
+            self.rawDataBuffer, 
+            (streamArgs.reconRows, streamArgs.reconCols) 
         )
-        processor.update_frame_inds(
-            nx_c=bootParms["nx_c"],
-            ny_c=bootParms["ny_c"],
-            nx_s=bootParms["nx_s"],
-            ny_s=bootParms["ny_s"],
-            scan_ori=estOri
-        )
- 
-        self.numFramesInStack = numFramesInStack
-        self.rawDataBuffer = np.zeros((numFramesInStack, bootParms["num_rows"], bootParms["num_cols"]))
-        self._commChannel.sigSetupLiveStream.emit(processor, bootParms, self.rawDataBuffer)
+
         self._logger.debug(
-            f"[bootstrapFileWatcher] >> Reconstruction Image Buffer initialized: (nFrames, Y, X) = {self.rawDataBuffer.shape}"
+            f"[bootstrapFileWatcher] >> Recon IMG INIT: (nFrames, Y, X) = {self.rawDataBuffer.shape}"
         )
 
         self.zarrStreamWorker = ZarrStreamWorker(
-            numFramesInStack=self.numFramesInStack,
-            rawDataBuffer=self.rawDataBuffer,
+            numFramesInStack=streamArgs.numFramesInStack,
+            rawDataBuffer=self.rawDataBuffer, # shared data buffer with ProcessorWorker
             _commChannel=self._commChannel
         )
+
         self.zarrStreamWorkerThread = QtCore.QThread()
         self.zarrStreamWorker.moveToThread(self.zarrStreamWorkerThread)
+        
         self.sigTriggerZarrStream.connect(self.zarrStreamWorker.streamZarrFile)
         self.zarrStreamWorker.sigZarrFileFinished.connect(self.zarrStreamFinished)
         self.zarrStreamWorkerThread.start()
 
-        self.runBootstrap = False 
+        self.runInitWorker = False 
         self.execution = False
+        
         self.runNextFile()
 
 
@@ -230,9 +182,8 @@ class WatcherFrameController(ImRecWidgetController):
 
 
     def runNextFile(self):        
-        self.zarrFileToProcess = None
         
-        if self.execution:
+        if self.execution and self.zarrFileToProcess:
             self._logger.debug(f"[runNextFile] >> Zarr Streamer is currently working on {self.zarrFileToProcess}")
             return
     
@@ -242,16 +193,16 @@ class WatcherFrameController(ImRecWidgetController):
         
         self.execution = True
 
-        if self.runBootstrap:
+        if self.runInitWorker:
             self.zarrFileToProcess = self.toExecute[0]
-            zarrfilePath = os.path.join(self._widget.path, self.zarrFileToProcess)
-            self._logger.debug(f"[runNextFile] >> Found {zarrfilePath} => running bootstrap")
-            self.bootstrapFileWatcher(zarrfilePath)
+            zarrFilePath = os.path.join(self._widget.path, self.zarrFileToProcess)
+            self._logger.debug(f"[runNextFile] >> Found {zarrFilePath} => Run Init Sequence")
+            self.sigRunInitSequence.emit(zarrFilePath)
         else:
             self.zarrFileToProcess = self.toExecute.pop(0)
             zarrfilePath = os.path.join(self._widget.path, self.zarrFileToProcess)
             self._logger.debug(
-                f"[runNextFile] >> Streaming: {self.zarrFileToProcess} => Frames to Process: {self.numFramesInStack}"
+                f"[runNextFile] >> Streaming: {zarrfilePath} | Frames to Process: {self.numFramesInStack}"
             )
             self.sigTriggerZarrStream.emit(zarrfilePath)
 

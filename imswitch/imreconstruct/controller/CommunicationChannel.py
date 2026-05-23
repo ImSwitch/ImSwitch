@@ -3,12 +3,15 @@
 from imswitch.imcommon.framework import Signal, SignalInterface
 import numpy as np
 
+
 class CommunicationChannel(SignalInterface):
     """
     Communication Channel is a class that handles the communication between Master Controller
     and Widgets, or between Widgets.
     """
+    
     # --- OLD SIGNALS ---
+    
     sigDataFolderChanged = Signal(object)          # (dataFolderPath) 
     sigSaveFolderChanged = Signal(object)          # (saveFolderPath)
     sigCurrentDataChanged = Signal(object)         # (dataObj)
@@ -20,11 +23,12 @@ class CommunicationChannel(SignalInterface):
     sigExecutionFinished = Signal(object)          
 
     # --- NEW SIGNALS ---
-    sigSetupLiveStream = Signal(object, dict, np.ndarray)   # (setupParameters, recImageBuffer)
-    sigLiveFrameReady = Signal(int)                   # (frameIndex)
-    sigLiveChunkReady = Signal(int, int)              # (startChunkIndex, endChunkIndex)
-    sigSaveRecImage = Signal(int)                     # (timePointIndex)
+    
+    sigSetupLiveStream = Signal(object, np.ndarray, tuple)    # (Processor, dataBuffer, (reconRows, reconCols))
+    sigLiveChunkReady = Signal(int, int)                      # (startChunkIndex, endChunkIndex)
+    sigSaveRecImage = Signal(int)                             # (timePointIndex)
     sigStopLiveStream = Signal()
+
 
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

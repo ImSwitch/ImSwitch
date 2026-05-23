@@ -65,8 +65,8 @@ def get_interp_coords(
         yo: float, 
         nx_c: int, 
         ny_c: int,
-        num_cols: int, 
         num_rows: int,
+        num_cols: int, 
         num_rects: int = 3
 ) -> Tuple[np.ndarray, np.ndarray]: 
     """
@@ -79,8 +79,8 @@ def get_interp_coords(
         yo (float): Y-axis offset.
         nx_c (int): Number of foci along x-axis. 
         ny_c (int): Number of foci along y-axis. 
-        num_cols (int): Total number of columns in the frame.
         num_rows (int): Total number of rows in the frame.
+        num_cols (int): Total number of columns in the frame.
         num_rects (int): Number of rectangles used to model the foci.
 
     Returns:
@@ -132,6 +132,7 @@ def _get_bases(
     yb = np.arange(y_start, y_stop, y_steps, dtype=int)
 
     return xb, yb
+
 
 def _get_shifts(
         nx_s: int, 
@@ -204,6 +205,7 @@ def get_1d_indices(
 
     return frame_inds.reshape((nx_s * ny_s, nx_c * ny_c))
 
+
 def get_orientation(
         nx_c: int, 
         ny_c: int,
@@ -238,9 +240,9 @@ def get_orientation(
         # total variation
         dx = np.abs(np.diff(rec_img.reshape((rec_y, rec_x)), axis=1), dtype=float)
         dy = np.abs(np.diff(rec_img.reshape((rec_y, rec_x)), axis=0), dtype=float)
-        sum = np.sum(dx) + np.sum(dy)
+        res = np.sum(dx) + np.sum(dy)
         
-        score_arr[i] = sum
+        score_arr[i] = res
 
     return orients[np.argmin(score_arr)]
     

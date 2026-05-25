@@ -66,7 +66,13 @@ class WatcherFrameController(ImRecWidgetController):
         self.t0 = None
         self.extension = None
         self.watcher = None
+
+        self.zarrStreamWorker = None
+        self.zarrStreamWorkerThread = None
         
+        self.initWorker = None 
+        self.initWorkerThread = None 
+
 
     def sortZarrFileList(self, zarrFileList):
         """ Sorts a list with Zarr files (names) based on their scan number in their name """
@@ -124,7 +130,9 @@ class WatcherFrameController(ImRecWidgetController):
     @QtCore.Slot(object)
     def setupZarrStreamWorker(self, streamArgs: object): 
         if hasattr(self, 'initWorkerThread') and self.initWorkerThread.isRunning():
+            self.initWorker = None
             self.initWorkerThread.quit()
+            self.initWorkerThread.terminate()
             self.initWorkerThread.wait()
         
         self.numFramesInStack = streamArgs.numFramesInStack
@@ -217,19 +225,24 @@ class WatcherFrameController(ImRecWidgetController):
         """ Shuts down all of the workers and their threads. """        
         self._commChannel.sigStopLiveStream.emit()
         self._commChannel.blockSignals(True)
-        
-        if self.zarrStreamWorkerThread:
-            self.zarrStreamWorker.stop()
-            self.zarrStreamWorkerThread.quit()
-            self.zarrStreamWorkerThread.terminate()
-            self.zarrStreamWorkerThread.wait()
-    
+
+        if self.initWorker: 
+            self.initWorkerThread.quit()
+            self.initWorkerThread.terminate()
+            self.initWorkerThread.wait()
+
         if self.watcher: 
             self.watcher.stop()
             self.watcher.quit()
             self.watcher.terminate()
             self.watcher.wait()
         
+        if self.zarrStreamWorkerThread:
+            self.zarrStreamWorker.stop()
+            self.zarrStreamWorkerThread.quit()
+            self.zarrStreamWorkerThread.terminate()
+            self.zarrStreamWorkerThread.wait()
+            
         self._commChannel.blockSignals(False)
         self.execution = False
         self.toExecute = []

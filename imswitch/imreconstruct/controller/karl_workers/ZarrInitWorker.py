@@ -48,11 +48,16 @@ class ZarrInitWorker(QtCore.QObject):
 		super().__init__(parent)
 		self.monitorTimer = None
 
-
+	
 	@QtCore.Slot(str)
 	def runInitSequence(self, filepath: str):		
 		try: 
-			self.zArrayPath = findZarrArrayPath(filepath)
+			self.zArrayPath = None 			
+			
+			while self.zArrayPath is None:
+				self.zArrayPath = findZarrArrayPath(filepath)
+				QtCore.QThread().msleep(200) # 0.2 s
+
 			self.zArray = zarr.open(self.zArrayPath, mode='r')
 			imSwitchMetaData = self.zArray.attrs["ImswitchData"]
 			axisStartpos = np.array(imSwitchMetaData["ScanStage:axis_startpos"]).flatten()
@@ -83,7 +88,7 @@ class ZarrInitWorker(QtCore.QObject):
 
 
 	def checkStreamProgress(self): 
-		print("[ZarrInitWorker] [checkStreamProgress] >> Checking Init Stream Progress")
+		# print("[ZarrInitWorker] [checkStreamProgress] >> Checking Init Stream Progress")
 
 		try: 
 			currFileCount = sum(1 for entry in os.scandir(self.zArrayPath) if entry.is_file())

@@ -17,9 +17,9 @@ class WatcherFrame(QtWidgets.QFrame):
         self.folderEdit = QtWidgets.QLineEdit(self.path)
 
         self.browseFolderButton = guitools.BetterPushButton('Browse')
-        self.watchCheck = QtWidgets.QCheckBox('Watch and run')
+        # self.watchCheck = QtWidgets.QCheckBox('Watch and run')
 
-        self.liveModeCheck = QtWidgets.QCheckBox("Live Reconstruction")
+        self.liveModeCheck = QtWidgets.QCheckBox("Live File Watcher")
         self.liveModeCheck.setToolTip("Stream frames to Python GaussProcessor in real-time")
 
         self.listWidget = QtWidgets.QListWidget()
@@ -30,11 +30,11 @@ class WatcherFrame(QtWidgets.QFrame):
         layout.addWidget(self.folderEdit, 0, 1)
         layout.addWidget(self.browseFolderButton, 0, 0)
         layout.addWidget(self.listWidget, 1, 0, 1, 2)
-        layout.addWidget(self.watchCheck, 2, 0)
+        # layout.addWidget(self.watchCheck, 2, 0)
 
-        layout.addWidget(self.liveModeCheck, 2, 1)
+        layout.addWidget(self.liveModeCheck, 2, 0)
 
-        self.watchCheck.toggled.connect(self.sigWatchChanged)
+        # self.watchCheck.toggled.connect(self.sigWatchChanged)
 
         self.liveModeCheck.toggled.connect(self.sigWatchChanged)
 

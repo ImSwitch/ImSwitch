@@ -26,6 +26,7 @@ class ZarrStreamWorker(QtCore.QObject):
         self._commChannel = _commChannel
         self.running = True
 
+
     @QtCore.Slot(str)
     def streamZarrFile(self, zarrFilePath: str):
         """ Called everytime WatcherFrameController.runNextFile pops a file from the queue. """
@@ -38,7 +39,7 @@ class ZarrStreamWorker(QtCore.QObject):
                 zarrArrayPath = findZarrArrayPath(zarrFilePath)
                 zarrArray = zarr.open(zarrArrayPath, mode='r')
             except: 
-                QtCore.QThread.msleep(100)
+                QtCore.QThread().msleep(100)
 
         while self.running: 
             if numFramesProcessed >= self.numFramesInStack - 1:
@@ -50,11 +51,11 @@ class ZarrStreamWorker(QtCore.QObject):
                     zarrArray.store.close()
                 
                 zarrArray = zarr.open(zarrArrayPath, mode='r')
-                isWriting = zarrArray.attrs.get("writing", False)
+                
                 currentNumFrames = zarrArray.shape[0] - 1
                 numFramesInChunk = zarrArray.chunks[0]     
                 
-                while not isWriting and numFramesInChunk <= currentNumFrames - numFramesProcessed:                
+                while numFramesInChunk <= currentNumFrames - numFramesProcessed:                
                     startChunkIndex = numFramesProcessed
                     endChunkIndex = startChunkIndex + numFramesInChunk
                     chunkToProcess = zarrArray[startChunkIndex:endChunkIndex]
@@ -67,8 +68,9 @@ class ZarrStreamWorker(QtCore.QObject):
                     if not self.running: 
                         break
 
-            except RuntimeError:
+            except Exception:
                 # [Errno13] Permission Denied (writing) => loop again
+                QtCore.QThread().msleep(10)
                 pass
                              
                              

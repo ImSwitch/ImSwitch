@@ -53,6 +53,7 @@ class ReconObj:
             self.flatReconView = self.reconstructed[0, 0, 0, 0].reshape(-1)
             self.reconstructed[0, 0, 0, 0, 0, 0] = 1e-8 
             self.dispLevels = [0.0, 100.0]
+            
             self.__logger.debug(f"[__init__] >> Rec Array init: (H, W) = ({self.reconRows}, {self.reconCols})")
     
 

@@ -1,9 +1,13 @@
 # type: ignore 
+
+from imswitch.imcommon.model import initLogger
 from imswitch.imreconstruct.controller.karl_workers.ZarrWorkerUtils import findZarrArrayPath
+
 import zarr 
 import numpy as np 
+
 from qtpy import QtCore 
-from typing import Union
+
 
 class ZarrStreamWorker(QtCore.QObject):
     """
@@ -25,11 +29,11 @@ class ZarrStreamWorker(QtCore.QObject):
         self.rawDataBuffer = rawDataBuffer
         self._commChannel = _commChannel
         self.running = True
+        self._logger = initLogger(self)
 
 
     @QtCore.Slot(str)
     def streamZarrFile(self, zarrFilePath: str):
-        """ Called everytime WatcherFrameController.runNextFile pops a file from the queue. """
         numFramesProcessed = 0 
         zarrArrayPath = None
         zarrArray = None

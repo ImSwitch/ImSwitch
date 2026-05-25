@@ -8,7 +8,8 @@ from qtpy import QtCore
 
 from imswitch.imreconstruct.model.karl_models.localizer import localizer
 from imswitch.imreconstruct.model.karl_models.geometry import get_orientation
-from typing import NewType, Tuple
+
+from typing import NewType
 from imswitch.imreconstruct.model.karl_models.GaussProcessorCPU import GaussProcessorCPU
 try: 
 	from imswitch.imreconstruct.model.karl_models.GaussProcessorGPU import GaussProcessorGPU

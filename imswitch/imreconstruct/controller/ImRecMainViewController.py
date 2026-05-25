@@ -16,6 +16,7 @@ from .ScanParamsController import ScanParamsController
 from .basecontrollers import ImRecWidgetController
 
 from imswitch.imreconstruct.controller.karl_workers.ProcessorWorker import ProcessorWorker
+from imswitch.imreconstruct.controller.karl_workers.ReconDisplayWorker import ReconDisplayWorker
 
 import copy
 import os
@@ -88,6 +89,8 @@ class ImRecMainViewController(ImRecWidgetController):
 
         self.liveProcessor = None 
         self.liveReconObj = None
+
+        self.dispReconObj = None
         
         self._commChannel.sigDataFolderChanged.connect(self.dataFolderChanged)
         self._commChannel.sigSaveFolderChanged.connect(self.saveFolderChanged)
@@ -134,7 +137,6 @@ class ImRecMainViewController(ImRecWidgetController):
     ):   
         
         self.liveProcessor = processor
-        
         self.liveReconObj = ReconObj(
             "Live_Stream", 
             self._scanParDict,
@@ -146,11 +148,30 @@ class ImRecMainViewController(ImRecWidgetController):
             self._widget.n_text,
             *reconObjArgs # (reconRows, reconCols) 
         )            
-
         self._widget.addNewData(self.liveReconObj, "Live_Stream") 
-
         self._liveLayer = None
         
+        self.dispReconObj = ReconObj(
+            "Disp_Recon_View", 
+            self._scanParDict,
+            self._widget.r_l_text, 
+            self._widget.u_d_text, 
+            self._widget.b_f_text,
+            self._widget.timepoints_text, 
+            self._widget.p_text, 
+            self._widget.n_text,
+            *reconObjArgs # (reconRows, reconCols)
+        )
+        self._widget.addNewData(self.dispReconObj, "Disp_Recon_View")        
+
+        self.reconDispWorker = ReconDisplayWorker(
+            dispArr=self.dispReconObj.reconstructed,
+            reconBuffer=self.liveReconObj.reconstructed
+        )
+        self.reconDispWorkerThread = QtCore.QThread()
+        self.reconDispWorker.moveToThread(self.reconDispWorkerThread)
+        self.reconDispWorkerThread.start()
+
         self.processorWorker = ProcessorWorker(
             processor, 
             self.liveReconObj, 
@@ -158,10 +179,10 @@ class ImRecMainViewController(ImRecWidgetController):
             CUPY_AVAILABLE, 
             self._commChannel
         ) 
-        
         self.processorThread = QtCore.QThread()
         self.processorWorker.moveToThread(self.processorThread)
         self.processorWorker.sigTriggerUIRefresh.connect(self.triggerUIRefresh)
+        self.processorWorker.sigAddReconImgToDisplay.connect(self.reconDispWorker.addReconImgToDisplay)
         self.processorThread.start()
         
         self._commChannel.sigLiveChunkReady.connect(self.processorWorker.processChunk)
@@ -186,14 +207,21 @@ class ImRecMainViewController(ImRecWidgetController):
 
         self._logger.debug(f"[stopLiveStream] >> Initiating shutdown...")
 
-        self.processorThread.quit()
-        self.processorThread.wait()
-        self.processorThread.terminate()
+        if self.processorThread:
+            self.processorThread.quit()
+            self.processorThread.terminate()
+            self.processorThread.wait()
+
+        if self.reconDispWorker: 
+            self.reconDispWorkerThread.quit()
+            self.reconDispWorkerThread.terminate()
+            self.reconDispWorkerThread.wait()    
         
-        # self.saveWorkerThread.quit()
-        # self.saveWorkerThread.wait()
-        # self.saveWorkerThread.terminate() 
-        
+        # if self.saveWorker:
+        #     self.saveWorkerThread.quit()
+        #     self.saveWorkerThread.wait()
+        #     self.saveWorkerThread.terminate() 
+            
         self._logger.debug("[stopLiveStream] >> Processor thread has been cleared")
 
 

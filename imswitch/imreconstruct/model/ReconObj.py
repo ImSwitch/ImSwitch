@@ -43,13 +43,18 @@ class ReconObj:
         if args is not None:
             self.reconRows = args[0] # <- reconRows
             self.reconCols = args[1] # <- reconCols
-            
+
+            if len(args) == 3:
+                num_timepoints = args[2]
+            else: 
+                num_timepoints = 1
+                
             self.scanParDict["range"] = [float(self.reconCols), float(self.reconRows)]
             self.scanParDict["start"] = [0.0, 0.0]
             self.scanParDict["stop"] = self.scanParDict["range"]
             
             # (Dataset, Base, Time, Z, Y, X) | transpose_order = [0, 1, 2, 3, 5, 4] 
-            self.reconstructed = np.zeros((1, 1, 1, 1, self.reconRows, self.reconCols), dtype=np.float32)
+            self.reconstructed = np.zeros((1, 1, num_timepoints, 1, self.reconRows, self.reconCols), dtype=np.float32)
             self.flatReconView = self.reconstructed[0, 0, 0, 0].reshape(-1)
             self.reconstructed[0, 0, 0, 0, 0, 0] = 1e-8 
             self.dispLevels = [0.0, 100.0]

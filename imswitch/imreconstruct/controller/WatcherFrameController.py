@@ -146,7 +146,11 @@ class WatcherFrameController(ImRecWidgetController):
         self._commChannel.sigSetupLiveStream.emit(
             streamArgs.processor, 
             self.rawDataBuffer, 
-            (streamArgs.reconRows, streamArgs.reconCols) 
+            [
+                streamArgs.reconRows, 
+                streamArgs.reconCols, 
+                streamArgs.numTimepoints
+            ]
         )
 
         self._logger.debug(

@@ -128,14 +128,13 @@ class ImRecMainViewController(ImRecWidgetController):
             self._logger.debug("[__init__] >> CuPy NOT available => Defaulting to CPU processing")
  
 
-    @QtCore.Slot(Processor, np.ndarray, tuple)
+    @QtCore.Slot(Processor, np.ndarray, list)
     def setupLiveStream(
             self, 
             processor: Processor,
             rawDataBuffer: np.ndarray,
-            reconObjArgs: tuple, 
+            reconObjArgs: list, 
     ):   
-        
         self.liveProcessor = processor
         self.liveReconObj = ReconObj(
             "Live_Stream", 
@@ -146,7 +145,7 @@ class ImRecMainViewController(ImRecWidgetController):
             self._widget.timepoints_text, 
             self._widget.p_text, 
             self._widget.n_text,
-            *reconObjArgs # (reconRows, reconCols) 
+            *reconObjArgs[0:2] # [reconRows, reconCols] 
         )            
         self._widget.addNewData(self.liveReconObj, "Live_Stream") 
         self._liveLayer = None
@@ -160,7 +159,7 @@ class ImRecMainViewController(ImRecWidgetController):
             self._widget.timepoints_text, 
             self._widget.p_text, 
             self._widget.n_text,
-            *reconObjArgs # (reconRows, reconCols)
+            *reconObjArgs # [reconRows, reconCols, timepoints]
         )
         self._widget.addNewData(self.dispReconObj, "Disp_Recon_View")        
 
@@ -194,6 +193,7 @@ class ImRecMainViewController(ImRecWidgetController):
     def triggerUIRefresh(self):
         """ Triggers napari UI update. """
         try:
+            # _widget = ImRecMainView
             self._widget.reconstructionWidget.sigUpdateImage.emit(self.liveReconObj.reconstructed)
         except Exception as e:
             self._logger.error(f"[triggerUIRefresh] >> UI refresh failed: {e}")

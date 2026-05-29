@@ -32,6 +32,7 @@ class StreamArgs:
 	dataBuffCols: int
 	reconRows: int 
 	reconCols: int 
+	numTimepoints: int 
 	processor: Processor
 
 
@@ -70,6 +71,8 @@ class ZarrInitWorker(QtCore.QObject):
 			self.nx_s = int(np.ceil((x1 - x0) / dx)) + 1
 			self.ny_s = int(np.ceil((y1 - y0) / dy)) + 1
 			
+			self.numTimepoints = imSwitchMetaData["Rec:LapseTime"]
+
 			self.numFramesInStack = self.nx_s * self.ny_s 
 
 			# zarr store: rawFrames + .zarray + .zattrs 
@@ -144,6 +147,7 @@ class ZarrInitWorker(QtCore.QObject):
 			locRes.num_cols,		
 			reconRows, 
 			reconCols,
+			self.numTimepoints,
 			processor		 	
 		)
 		

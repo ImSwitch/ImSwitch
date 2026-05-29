@@ -6,7 +6,7 @@ import numpy as np
 
 class ProcessorWorker(QtCore.QObject): 
     
-    numFramesProcessed = QtCore.Signal(int)       
+    # numFramesProcessed = QtCore.Signal(int)        
     sigTriggerUIRefresh = QtCore.Signal()
     sigSaveChunk = QtCore.Signal(np.ndarray, np.ndarray, int)
     sigAddReconImgToDisplay = QtCore.Signal()    
@@ -53,7 +53,7 @@ class ProcessorWorker(QtCore.QObject):
         
         self.reconObj.addLiveChunk(chunkCoeffs, chunkIndices)
 
-        self.numFramesProcessed.emit(end)
+        # self.numFramesProcessed.emit(end)
 
         if end >= self.processor.num_frames_in_stack - 1: 
             self.sigTriggerUIRefresh.emit()

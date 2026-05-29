@@ -145,26 +145,13 @@ class ImRecMainViewController(ImRecWidgetController):
             self._widget.timepoints_text, 
             self._widget.p_text, 
             self._widget.n_text,
-            *reconObjArgs[0:2] # [reconRows, reconCols] 
+            *reconObjArgs # [reconRows, reconCols] 
         )            
         self._widget.addNewData(self.liveReconObj, "Live_Stream") 
         self._liveLayer = None
         
-        self.dispReconObj = ReconObj(
-            "Disp_Recon_View", 
-            self._scanParDict,
-            self._widget.r_l_text, 
-            self._widget.u_d_text, 
-            self._widget.b_f_text,
-            self._widget.timepoints_text, 
-            self._widget.p_text, 
-            self._widget.n_text,
-            *reconObjArgs # [reconRows, reconCols, timepoints]
-        )
-        self._widget.addNewData(self.dispReconObj, "Disp_Recon_View")        
-
         self.reconDispWorker = ReconDisplayWorker(
-            dispArr=self.dispReconObj.reconstructed,
+            dispArr=self.liveReconObj.reconstructed,
             reconBuffer=self.liveReconObj.reconstructed
         )
         self.reconDispWorkerThread = QtCore.QThread()
@@ -181,7 +168,7 @@ class ImRecMainViewController(ImRecWidgetController):
         self.processorThread = QtCore.QThread()
         self.processorWorker.moveToThread(self.processorThread)
         self.processorWorker.sigTriggerUIRefresh.connect(self.triggerUIRefresh)
-        self.processorWorker.sigAddReconImgToDisplay.connect(self.reconDispWorker.addReconImgToDisplay)
+        self.processorWorker.sigTriggerUIRefresh.connect(self.reconDispWorker.addReconImgToDisplay)
         self.processorThread.start()
         
         self._commChannel.sigLiveChunkReady.connect(self.processorWorker.processChunk)

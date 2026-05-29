@@ -87,7 +87,7 @@ class ZarrInitWorker(QtCore.QObject):
 			self.monitorTimer.setInterval(200) # 0.2 s 
 			self.monitorTimer.timeout.connect(self.checkStreamProgress)
 
-		print(f"[ZarrInitWorker] [runInitSequence] >> Timer created in background thread")
+		# print(f"[ZarrInitWorker] [runInitSequence] >> Timer created in background thread")
 		self.monitorTimer.start()
 
 
@@ -102,14 +102,17 @@ class ZarrInitWorker(QtCore.QObject):
 				zArray = zarr.open(self.zArrayPath, mode='r') 
 				streamArgs = self.getStreamArgs(zArray[:])
 				self.initComplete.emit(streamArgs)
-				print("[ZarrInitWorker] [checkStreamProgress] >> ZarrInitWorker done!")
+				
+				QtCore.QThread.msleep(1)
+				
+				# print("[ZarrInitWorker] [checkStreamProgress] >> ZarrInitWorker done!")
 
 		except Exception as e: 
 			print(f"[ZarrInitWorker] [checkStreamProgress] >> Error when checking progress: {e}")
 		
 	
 	def getStreamArgs(self, data: np.ndarray) -> StreamArgs:
-		print("[ZarrInitWorker] [proceedWithSequence] >> All frames gathered => Proceeding with setup")
+		# print("[ZarrInitWorker] [proceedWithSequence] >> All frames gathered => Proceeding with setup")
 		
 		locRes = localizer(data)
 

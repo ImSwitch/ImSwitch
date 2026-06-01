@@ -54,8 +54,10 @@ class ProcessorWorker(QtCore.QObject):
         self.reconObj.addLiveChunk(chunkCoeffs, chunkIndices)
 
         # self.numFramesProcessed.emit(end)
+        update_rate = int(np.sqrt(len(self.processor.frame_inds)))  
+        if end % update_rate == 0 or end >= self.processor.num_frames_in_stack - 1:
+            self.sigTriggerUIRefresh.emit()
 
         if end >= self.processor.num_frames_in_stack - 1: 
-            self.sigTriggerUIRefresh.emit()
             self.sigAddReconImgToDisplay.emit()
             

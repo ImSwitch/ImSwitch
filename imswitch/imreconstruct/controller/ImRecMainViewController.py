@@ -168,20 +168,25 @@ class ImRecMainViewController(ImRecWidgetController):
         self.processorThread = QtCore.QThread()
         self.processorWorker.moveToThread(self.processorThread)
         self.processorWorker.sigTriggerUIRefresh.connect(self.triggerUIRefresh)
-        self.processorWorker.sigTriggerUIRefresh.connect(self.reconDispWorker.addReconImgToDisplay)
+        self.processorWorker.sigAddReconImgToDisplay.connect(self.reconDispWorker.addReconImgToDisplay)
         self.processorThread.start()
         
         self._commChannel.sigLiveChunkReady.connect(self.processorWorker.processChunk)
         self._commChannel.sigStopLiveStream.connect(self.stopLiveStream)
-        
+        self.timepointUpd = 0
+
         self._logger.debug("[setupLiveStream] >> Live Stream initialized")
 
+
+    #def moveSlider(self)
 
     def triggerUIRefresh(self):
         """ Triggers napari UI update. """
         try:
             # _widget = ImRecMainView
             self._widget.reconstructionWidget.sigUpdateImage.emit(self.liveReconObj.reconstructed)
+            # self._widget.reconstructionWidget.napariViewer.dims.set_current_step(2, self.timepointUpd)
+            # self.timepointUpd += 1
         except Exception as e:
             self._logger.error(f"[triggerUIRefresh] >> UI refresh failed: {e}")
 

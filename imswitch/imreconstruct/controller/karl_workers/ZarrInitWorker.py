@@ -71,6 +71,8 @@ class ZarrInitWorker(QtCore.QObject):
 			self.nx_s = int(np.ceil((x1 - x0) / dx)) + 1
 			self.ny_s = int(np.ceil((y1 - y0) / dy)) + 1
 			
+			# TODO: check for 
+
 			self.numTimepoints = imSwitchMetaData["Rec:LapseTime"]
 
 			self.numFramesInStack = self.nx_s * self.ny_s 

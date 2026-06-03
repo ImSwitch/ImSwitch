@@ -59,7 +59,7 @@ class ProcessorWorker(QtCore.QObject):
         # if end % self.updateRate == 0:
         #     self.sigTriggerUIRefresh.emit()
 
-        if end >= self.processor.num_frames_in_stack - 1: 
+        if end >= self.processor.num_frames_in_stack: 
             self.sigTriggerUIRefresh.emit()
             self.sigMoveTimeSlider.emit(self.timeIndex)
             self.timeIndex += 1 

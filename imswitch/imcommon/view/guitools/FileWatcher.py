@@ -3,6 +3,8 @@
 from os import listdir
 from os.path import join, isdir
 from qtpy import QtCore
+from typing import List
+
 
 class FileWatcher(QtCore.QThread): 
 
@@ -40,8 +42,8 @@ class FileWatcher(QtCore.QThread):
         self.running = False
 
 
-    def getFilesInPath(self) -> list[str]:
-        """ Returns a list of files/folders in the directory that match the supported image extensions. """
+    def getFilesInPath(self) -> List[str]:
+        """ Returns a List of files/folders in the directory that match the supported image extensions. """
         target_ext = self.extension.lower().lstrip('.')
         all_items = listdir(self.path)
         matches = []

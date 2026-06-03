@@ -56,7 +56,7 @@ class ZarrStreamWorker(QtCore.QObject):
                 
                 zarrArray = zarr.open(zarrArrayPath, mode='r')
                 
-                currentNumFrames = zarrArray.shape[0] - 1
+                currentNumFrames = zarrArray.shape[0] 
                 numFramesInChunk = zarrArray.chunks[0]     
                 
                 while numFramesInChunk <= currentNumFrames - numFramesProcessed:                

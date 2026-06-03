@@ -53,22 +53,16 @@ class ReconObj:
             self.scanParDict["stop"] = self.scanParDict["range"]
             
             # (Dataset, Base, Time, Z, Y, X) | transpose_order = [0, 1, 2, 3, 5, 4] 
-            self.reconstructed = np.zeros((1, 1, self.numTimepoints, 1, self.reconRows, self.reconCols), dtype=np.float32)
+            self.reconstructed = np.zeros((
+                1, 1, self.numTimepoints, 1, self.reconRows, self.reconCols), dtype=np.float32
+            )
             self.reconstructed[0, 0, 0, 0, 0, 0] = 1e-8 
 
             self.dispLevels = [0.0, 100.0]
     
-            self.__logger.debug(f"[__init__] >> Rec Array init: (H, W) = ({self.reconRows}, {self.reconCols})")
-
-
-    def addLiveChunk(
-            self, 
-            chunkCoeffs: int,
-            chunkIndices: int, 
-            timeIndex: int = 0
-    ):
-        _flatReconView = self.reconstructed[0, 0, timeIndex, 0].reshape(-1)
-        _flatReconView[chunkIndices.ravel()] = chunkCoeffs.ravel()
+            self.__logger.debug(
+                f"[__init__] >> Rec Array init: (H, W) = ({self.reconRows}, {self.reconCols})"
+            )
 
 
     def setDispLevels(self, levels):

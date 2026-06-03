@@ -15,10 +15,10 @@ try:
 	from imswitch.imreconstruct.model.karl_models.GaussProcessorGPU import GaussProcessorGPU
 	import cupy as cp
 	GPU_AVAILABLE = True 
-	Processor = NewType("GaussProcessorGPU", GaussProcessorGPU)
+	Processor = NewType("Processor", GaussProcessorGPU)
 except ImportError: 
 	GPU_AVAILABLE = False
-	Processor = NewType("GaussProcessorCPU", GaussProcessorCPU)
+	Processor = NewType("Processor", GaussProcessorCPU)
 
 from imswitch.imreconstruct.controller.karl_workers.ZarrWorkerUtils import findZarrArrayPath
 
@@ -36,7 +36,7 @@ class StreamArgs:
 	processor: Processor
 
 
-class ZarrInitWorker(QtCore.QObject):
+class ZarrInitWorker(QtCore.QThread):
 	"""
 	Runs the initialization sequence necessary to boot up the zarr live file watching, 
 	by using the first stack of raw frames that have been detected to perform localization, 
@@ -53,17 +53,17 @@ class ZarrInitWorker(QtCore.QObject):
 	
 	@QtCore.Slot(str)
 	def runInitSequence(self, filepath: str):		
-		try: 
-			self.zArrayPath = None 			
+		try:
+			self.zArrayPath = None
 			
 			while self.zArrayPath is None:
 				self.zArrayPath = findZarrArrayPath(filepath)
-				QtCore.QThread().msleep(200) # 0.2 s
+				QtCore.QThread().msleep(100)
 
 			self.zArray = zarr.open(self.zArrayPath, mode='r')
 			
 			# short sleep to allow for .attrs file to properly be created
-			QtCore.QThread.msleep(200)
+			QtCore.QThread.msleep(100)
 			
 			imSwitchMetaData = self.zArray.attrs["ImswitchData"]
 			axisStartpos = np.array(imSwitchMetaData["ScanStage:axis_startpos"]).flatten()
@@ -95,9 +95,9 @@ class ZarrInitWorker(QtCore.QObject):
 
 	def checkStreamProgress(self): 
 		try: 
-			currFileCount = sum(1 for entry in os.scandir(self.zArrayPath) if entry.is_file())
+			fileCount = sum(1 for entry in os.scandir(self.zArrayPath) if entry.is_file())
 			
-			if currFileCount >= self.targetFileCount:
+			if fileCount >= self.targetFileCount:
 				self.monitorTimer.stop()
 				zArray = zarr.open(self.zArrayPath, mode='r') 
 				streamArgs = self.getStreamArgs(zArray[:])

@@ -2,11 +2,10 @@
 
 from .basecontrollers import ImRecWidgetController
 
+from imswitch.imreconstruct.controller.karl_workers.DirectoryWorker import DirectoryWorker
 from imswitch.imcommon.view.guitools.FileWatcher import FileWatcher
 from imswitch.imreconstruct.controller.karl_workers.ZarrInitWorker import ZarrInitWorker
 from imswitch.imreconstruct.controller.karl_workers.ZarrStreamWorker import ZarrStreamWorker
-
-
 
 from typing import NewType
 from imswitch.imreconstruct.model.karl_models.GaussProcessorCPU import GaussProcessorCPU
@@ -24,6 +23,8 @@ except Exception as e:
 from imswitch.imcommon.model.logging import initLogger
 
 import os
+from os.path import isdir, join
+
 import json
 import tifffile as tiff
 import h5py
@@ -36,8 +37,10 @@ from time import perf_counter
 from qtpy import QtCore
 
 
+
+
 class WatcherFrameController(ImRecWidgetController):
-    
+
     """ Linked to WatcherFrame. """
 
     sigRunInitSequence = QtCore.Signal(str)
@@ -46,130 +49,101 @@ class WatcherFrameController(ImRecWidgetController):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.attrs = None
-        self.recPath = None
-        
+
         self._widget.sigWatchChanged.connect(self.toggleWatch)
+
         self._logger = initLogger(self, tryInheritParent=False)
-        try:
-            self._widget.sigLiveReconChanged.connect(self.toggleWatch)
-        except AttributeError:
-            self._logger.debug(f"[__init__] >> Available widget signals: {self._widget.__dict__.keys()}")
-        self._widget.sigChangeFolder.connect(lambda: self._widget.updateFileList(self._commChannel.extension.value()))
-        
-        self._commChannel.sigExecutionFinished.connect(self.executionFinished)
-        self._commChannel.extension.sigValueChanged.connect(self.extensionChanged)
-        
+
         self.execution = False
         self.toExecute = []
-        self.current = None
-        self.t0 = None
-        self.extension = None
-        self.watcher = None
+
+        self.fileWatcher = None
+
+        self.runInitSequence = True
+
+        self.zarrInitWorker = None
+        self.zarrInitWorker = None
+
+        self.zarrFileToProcess = None
 
         self.zarrStreamWorker = None
         self.zarrStreamWorkerThread = None
-        
-        self.initWorker = None 
-        self.initWorkerThread = None 
 
 
     def sortZarrFileList(self, zarrFileList):
-        """ Sorts a list with Zarr files (names) based on their scan number in their name """
-        try: 
-            zarrFileList.sort(key=lambda x : int(x.split("__")[1]))
-        except Exception as e:
-            self._logger.error(f"[sortZarrFileList] >> Could not sort zarrFileList: {e}")
+        zarrFileList.sort(key=lambda x : int(x.split("__")[1]))
 
 
     def toggleWatch(self, checked):
         self._widget.path = self._widget.folderEdit.text()
-        self.extension = self._commChannel.extension.value()
 
-        if checked and (not self._widget.path or not os.path.isdir(self._widget.path)):
-            self._logger.error("[toggleWatch] >> Select a valid folder!")
-            for button in [self._widget.watchCheck, self._widget.liveModeCheck]:
-                button.blockSignals(True)
-                button.setChecked(False)
-                button.blockSignals(False)
-            return
-        
+        if checked and (not self._widget.path or not isdir(self._widget.path)):
+            self._logger.error("[toggleWatch] >> Select a valid folder")
+            self.uncheckButton()
         elif checked:
-            try:
-                self.bootWatcher()
-            except Exception as e:
-                self._logger.error(f"[toggleWatch] >> Error occurred during setup: {e}")
-                return
-            
-        else: 
-            self.stopAllWorkers()            
+            self.runDirectoryWorker()
+        else:
+            self.stopAllWorkers()
 
 
-    def bootWatcher(self):
-        self.toExecute = []
-        existingZarrFiles = [file for file in os.listdir(self._widget.path) if file.endswith(".zarr")]
-        if existingZarrFiles:
-            self.sortZarrFileList(existingZarrFiles)
-            self.toExecute.extend(existingZarrFiles)
-            self._logger.debug(f"[toggleWatch] >> Found {len(self.toExecute)} Zarr files in: {self._widget.path}")
-            
-        self.watcher = FileWatcher(self._widget.path, interval=0.1)
-        self.watcher.sigNewFiles.connect(self.newFiles)
-        self.watcher.start()
-        
-        self.initWorker = ZarrInitWorker()
-        self.initWorkerThread = QtCore.QThread()
-        self.initWorker.moveToThread(self.initWorkerThread)
-
-        self.sigRunInitSequence.connect(self.initWorker.runInitSequence)
-        self.initWorker.initComplete.connect(self.setupZarrStreamWorker)
-        self.initWorkerThread.start()
-    
-        self.runInitWorker = True
-        self.zarrFileToProcess = None
-        self.runNextFile()
+    def uncheckButton(self):
+        button = self._widget.liveModeCheck
+        button.blockSignals(True)
+        button.setChecked(False)
+        button.blockSignals(False)
 
 
-    def bootZarrWorkers(self): 
-        self.initWorker = ZarrInitWorker()
-        self.initWorkerThread = QtCore.QThread()
-        self.initWorker.moveToThread(self.initWorkerThread)
+    def runDirectoryWorker(self):
+        self.directoryWorker = DirectoryWorker(self._widget.path)
+        self.directoryWorker.sigEmitDirectory.connect(self.runFileWatcher)
+        self.directoryWorker.start()
 
-        self.sigRunInitSequence.connect(self.initWorker.runInitSequence)
-        self.initWorker.initComplete.connect(self.setupZarrStreamWorker)
-        self.initWorkerThread.start()
-    
 
+    @QtCore.Slot(str)
+    def runFileWatcher(self, dirPath: str):
+        self.dirPath = dirPath
+
+        if self.fileWatcher is None:
+            self.fileWatcher = FileWatcher(dirPath, interval=0.1)
+            self.fileWatcher.sigNewFiles.connect(self.newFiles)
+            self.fileWatcher.start()
+        else:
+            self.fileWatcher.setNewPath(dirPath)
+            self.fileWatcher.start()
+
+        self.runZarrInitWorker()
+
+
+    def runZarrInitWorker(self):
+        self.zarrInitWorker = ZarrInitWorker()
+        self.sigRunInitSequence.connect(self.zarrInitWorker.runInitSequence)
+        self.zarrInitWorker.initComplete.connect(self.runZarrStreamWorker)
+        self.zarrInitWorker.start()
+
+
+    def stopZarrInitWorker(self):
+        if hasattr(self, 'zarrInitWorker') and self.zarrInitWorker.isRunning():
+            self.zarrInitWorker.quit()
+            self.zarrInitWorker.terminate()
+            self.zarrInitWorker.wait()
 
 
     @QtCore.Slot(object)
-    def setupZarrStreamWorker(self, streamArgs: object): 
-        if hasattr(self, 'initWorkerThread') and self.initWorkerThread.isRunning():
-            self.initWorker = None
-            self.initWorkerThread.quit()
-            self.initWorkerThread.terminate()
-            self.initWorkerThread.wait()
-        
+    def runZarrStreamWorker(self, streamArgs: object):
+        self.stopZarrInitWorker()
+
         self.numFramesInStack = streamArgs.numFramesInStack
-     
+
         self.rawData = np.zeros((
-            streamArgs.numFramesInStack, 
+            streamArgs.numFramesInStack,
             streamArgs.dataBuffRows,
             streamArgs.dataBuffCols
         ))
 
         self._commChannel.sigSetupLiveStream.emit(
-            streamArgs.processor, 
-            self.rawData, 
-            [
-                streamArgs.reconRows, 
-                streamArgs.reconCols, 
-                streamArgs.numTimepoints
-            ]
-        )
-
-        self._logger.debug(
-            f"[bootstrapFileWatcher] >> Recon IMG INIT: (nFrames, Y, X) = {self.rawData.shape}"
+            streamArgs.processor,
+            self.rawData,
+            [streamArgs.reconRows, streamArgs.reconCols, streamArgs.numTimepoints]
         )
 
         self.zarrStreamWorker = ZarrStreamWorker(
@@ -180,57 +154,52 @@ class WatcherFrameController(ImRecWidgetController):
 
         self.zarrStreamWorkerThread = QtCore.QThread()
         self.zarrStreamWorker.moveToThread(self.zarrStreamWorkerThread)
-        
+
         self.sigTriggerZarrStream.connect(self.zarrStreamWorker.run)
         self.zarrStreamWorker.sigZarrFileFinished.connect(self.zarrStreamFinished)
         self.zarrStreamWorkerThread.start()
 
-        self.runInitWorker = False 
+        self.runInitSequence = False
+
         self.execution = False
-        
+
         self.runNextFile()
 
 
     @QtCore.Slot(list)
     def newFiles(self, files):
-        newZarrFiles = [file for file in files if file.endswith(".zarr")]
+        newZarrFiles = [f for f in files if f.endswith(".zarr")]
+
         if not newZarrFiles:
             return
 
         self.sortZarrFileList(newZarrFiles)
+
         for zarrFile in newZarrFiles:
-            if zarrFile not in self.toExecute: 
+            if zarrFile not in self.toExecute:
                 self.toExecute.append(zarrFile)
-        
-        self._widget.updateFileList(self.extension) 
-        
+
         if not self.execution:
             self.runNextFile()
 
 
-    def runNextFile(self):        
+    def runNextFile(self):
         if self.execution and self.zarrFileToProcess:
             self._logger.debug(f"[runNextFile] >> Zarr Streamer is currently working on {self.zarrFileToProcess}")
             return
-    
+
         if not self.toExecute:
             self._logger.debug("[runNextFile] >> No files to process")
             return
-        
+
         self.execution = True
 
-        if self.runInitWorker:
+        if self.runInitSequence:
             self.zarrFileToProcess = self.toExecute[0]
-            zarrFilePath = os.path.join(self._widget.path, self.zarrFileToProcess)
-            self._logger.debug(f"[runNextFile] >> Found {zarrFilePath} => Run Init Sequence")
-            self.sigRunInitSequence.emit(zarrFilePath)
+            self.sigRunInitSequence.emit(self.zarrFileToProcess)
         else:
             self.zarrFileToProcess = self.toExecute.pop(0)
-            zarrfilePath = os.path.join(self._widget.path, self.zarrFileToProcess)
-            self._logger.debug(
-                f"[runNextFile] >> Streaming: {self.zarrFileToProcess} ({self.numFramesInStack} frames)"
-            )
-            self.sigTriggerZarrStream.emit(zarrfilePath)
+            self.sigTriggerZarrStream.emit(self.zarrFileToProcess)
 
 
     def zarrStreamFinished(self):
@@ -240,70 +209,31 @@ class WatcherFrameController(ImRecWidgetController):
 
 
     def stopAllWorkers(self):
-        """ Shuts down all of the workers and their threads. """        
         self._commChannel.sigStopLiveStream.emit()
         self._commChannel.blockSignals(True)
 
-        if self.initWorker is not None: 
-            self.initWorkerThread.quit()
-            self.initWorkerThread.terminate()
-            self.initWorkerThread.wait()
+        if self.zarrInitWorker is not None:
+            self.zarrInitWorker.quit()
+            self.zarrInitWorker.terminate()
+            self.zarrInitWorker.wait()
 
-        if self.watcher is not None: 
-            self.watcher.stop()
-            self.watcher.quit()
-            self.watcher.terminate()
-            self.watcher.wait()
-        
+        if self.fileWatcher is not None:
+            self.fileWatcher.stop()
+            self.fileWatcher.quit()
+            self.fileWatcher.terminate()
+            self.fileWatcher.wait()
+
         if self.zarrStreamWorkerThread is not None:
             self.zarrStreamWorker.stop()
             self.zarrStreamWorkerThread.quit()
             self.zarrStreamWorkerThread.terminate()
             self.zarrStreamWorkerThread.wait()
-            
+
         self._commChannel.blockSignals(False)
         self.execution = False
         self.toExecute = []
-        self._logger.debug(f"[stopAllWorkers] >> Watcher and ZarrStreamWorker threads have been cleared")
 
-
-    def extensionChanged(self):
-        self._widget.updateFileList(self._commChannel.extension.value())
-        self._widget.watchCheck.setChecked(False)
-
-
-    def executionFinished(self, image):
-        if self.execution:
-            self.execution = False
-            self.saveImage(image)
-            diff = perf_counter() - self.t0 
-            self.watcher.addToLog(self.current, [str(self.t0), str(diff)])
-            self._widget.updateFileList(self.extension)
-            self.runNextFile()
-
-
-    def saveImage(self, image):
-        image = np.squeeze(image[:, 0, :, :, :, :])
-        image = np.reshape(image, (1, *image.shape))
-        extension = self._commChannel.extension.value()
-        if not os.path.exists(self.recPath): 
-            if extension == 'zarr':
-                store = parse_url(self.recPath + '.tmp', mode="w").store 
-                root = zarr.group(store=store)
-                root.attrs["ImSwitchData"] = self.attrs["ImSwitchData"] 
-                write_image(image=image, group=root, axes="zyx")
-                store.close()
-                os.rename(self.recPath + '.tmp', self.recPath) 
-                tiff.imwrite(self.recPath.split('.')[0] + ".tiff", image) 
-            if extension == 'hdf5':
-                h = h5py.File(self.recPath + '.tmp', 'w') 
-                dset = h.create_dataset('data', data=image)
-                self._logger.debug(type(self.attrs))
-                for k in self.attrs.keys(): 
-                    dset.attrs[k] = self.attrs[k] 
-                h.close()
-                os.rename(self.recPath + '.tmp', self.recPath) 
-                tiff.imwrite(self.recPath.split('.')[0] + ".tiff", image) 
+        self._logger.debug(f"[stopAllWorkers] >> fileWatcher and ZarrStreamWorker threads have been cleared")
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

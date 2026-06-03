@@ -18,23 +18,25 @@ class FileWatcher(QtCore.QThread):
         self.interval = interval 
         self.running = True       
         self.previous_files = set(self.getFilesInPath())    
-
+        self.firstRun = True
 
     def run(self):
-        """ Watches for new files """
         while self.running: 
             current_files = set(self.getFilesInPath())
             new_files = list(current_files - self.previous_files) # set subtraction
-            
+
+            if self.firstRun and not new_files:
+                self.sigNewFiles.emit(list(current_files))
+                self.firstRun = False
+
             if new_files:
                 self.previous_files.update(new_files)
-                self.sigNewFiles.emit(new_files) 
+                self.sigNewFiles.emit(new_files)
 
-            # files deleted => remove them from memory and allow them to be re-detected
-            if len(self.previous_files) > len(current_files): 
+
+            if len(self.previous_files) > len(current_files):
                 self.previous_files = self.previous_files.intersection(current_files)
 
-            # QtCore.QThread.msleep() method
             self.msleep(int(self.interval * 1000))
     
 
@@ -43,25 +45,13 @@ class FileWatcher(QtCore.QThread):
 
 
     def getFilesInPath(self) -> List[str]:
-        """ Returns a List of files/folders in the directory that match the supported image extensions. """
-        target_ext = self.extension.lower().lstrip('.')
         all_items = listdir(self.path)
         matches = []
-
         for f in all_items:
             full_path = join(self.path, f)
-            f_lower = f.lower()
-
-            if f_lower.endswith(".zarr") and isdir(full_path):
-                if f not in matches: # avoid duplicates   
-                    matches.append(f)
-
-            elif target_ext in ["h5", "hdf5"] and f_lower.endswith((".h5", ".hdf5")):
-                matches.append(f) 
-
-            elif target_ext in ["tif", "tiff"]: 
-                matches.append(f)  
-         
+            if f.lower().endswith(".zarr") and isdir(full_path):
+                if f not in matches:
+                    matches.append(full_path)
         return matches
 
 

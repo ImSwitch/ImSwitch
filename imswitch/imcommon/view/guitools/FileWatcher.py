@@ -3,8 +3,6 @@
 from os import listdir
 from os.path import join, isdir
 from qtpy import QtCore
-import os
-
 
 class FileWatcher(QtCore.QThread): 
 
@@ -17,13 +15,13 @@ class FileWatcher(QtCore.QThread):
         self.extension = extension if extension.startswith('.') else '.' + extension
         self.interval = interval 
         self.running = True       
-        self.previous_files = set(self.filesInDirectory())    
+        self.previous_files = set(self.getFilesInPath())    
 
 
     def run(self):
         """ Watches for new files """
         while self.running: 
-            current_files = set(self.filesInDirectory())
+            current_files = set(self.getFilesInPath())
             new_files = list(current_files - self.previous_files) # set subtraction
             
             if new_files:
@@ -42,7 +40,7 @@ class FileWatcher(QtCore.QThread):
         self.running = False
 
 
-    def filesInDirectory(self):
+    def getFilesInPath(self) -> list[str]:
         """ Returns a list of files/folders in the directory that match the supported image extensions. """
         target_ext = self.extension.lower().lstrip('.')
         all_items = listdir(self.path)
@@ -65,17 +63,8 @@ class FileWatcher(QtCore.QThread):
         return matches
 
 
-    def addToLog(self, filename, info_list): 
-        """ Specifically kept for WatcherController's script logging. """
-        log_path = os.path.join(self.path, "watcher_log.txt")
-        try:
-            with open(log_path, 'a') as f:
-                # append line at the end of the log file
-                line = f"{filename} >> " + " >> ".join(info_list) + "\n"
-                f.write(line)
-        except Exception as e:
-            print(f"ERROR [FileWatcher] [addToLog] >> Can't add to log: {e}")
-        
+    def setNewPath(self, path: str):
+        self.path = path
 
 # Adapted from https://towardsdatascience.com/implementing-a-file-watcher-in-python-73f8356a425d
 # Copyright (C) 2020-2021 ImSwitch developers

@@ -16,7 +16,6 @@ from .ScanParamsController import ScanParamsController
 from .basecontrollers import ImRecWidgetController
 
 from imswitch.imreconstruct.controller.karl_workers.ProcessorWorker import ProcessorWorker
-from imswitch.imreconstruct.controller.karl_workers.ReconDisplayWorker import ReconDisplayWorker
 
 import copy
 import os
@@ -87,11 +86,10 @@ class ImRecMainViewController(ImRecWidgetController):
         self._dataFolder = None
         self._saveFolder = None
 
-        self.liveProcessor = None 
         self.liveReconObj = None
 
-        self.dispReconObj = None
-        
+        self.reconWidget = self._widget.reconstructionWidget
+
         self._commChannel.sigDataFolderChanged.connect(self.dataFolderChanged)
         self._commChannel.sigSaveFolderChanged.connect(self.saveFolderChanged)
         self._commChannel.sigCurrentDataChanged.connect(self.currentDataChanged)
@@ -132,10 +130,9 @@ class ImRecMainViewController(ImRecWidgetController):
     def setupLiveStream(
             self, 
             processor: Processor,
-            rawDataBuffer: np.ndarray,
+            rawData: np.ndarray,
             reconObjArgs: list, 
-    ):   
-        self.liveProcessor = processor
+    ):       
         self.liveReconObj = ReconObj(
             "Live_Stream", 
             self._scanParDict,
@@ -145,48 +142,41 @@ class ImRecMainViewController(ImRecWidgetController):
             self._widget.timepoints_text, 
             self._widget.p_text, 
             self._widget.n_text,
-            *reconObjArgs # [reconRows, reconCols] 
+            *reconObjArgs # [reconRows, reconCols, numTimepoints] 
         )            
-        self._widget.addNewData(self.liveReconObj, "Live_Stream") 
-        self._liveLayer = None
         
-        self.reconDispWorker = ReconDisplayWorker(
-            dispArr=self.liveReconObj.reconstructed,
-            reconBuffer=self.liveReconObj.reconstructed
-        )
-        self.reconDispWorkerThread = QtCore.QThread()
-        self.reconDispWorker.moveToThread(self.reconDispWorkerThread)
-        self.reconDispWorkerThread.start()
-
+        self._widget.addNewData(self.liveReconObj, "Live_Stream") 
+    
         self.processorWorker = ProcessorWorker(
             processor, 
+            rawData,
             self.liveReconObj, 
-            rawDataBuffer, 
-            CUPY_AVAILABLE, 
-            self._commChannel
+            CUPY_AVAILABLE 
         ) 
+        
         self.processorThread = QtCore.QThread()
         self.processorWorker.moveToThread(self.processorThread)
+        
         self.processorWorker.sigTriggerUIRefresh.connect(self.triggerUIRefresh)
-        self.processorWorker.sigAddReconImgToDisplay.connect(self.reconDispWorker.addReconImgToDisplay)
+        self.processorWorker.sigMoveTimeSlider.connect(self.moveTimeSlider)
+        
         self.processorThread.start()
         
         self._commChannel.sigLiveChunkReady.connect(self.processorWorker.processChunk)
         self._commChannel.sigStopLiveStream.connect(self.stopLiveStream)
-        self.timepointUpd = 0
 
         self._logger.debug("[setupLiveStream] >> Live Stream initialized")
 
 
-    #def moveSlider(self)
+    @QtCore.Slot(int)
+    def moveTimeSlider(self, timeIndex: int):
+        self.reconWidget.napariViewer.dims.set_current_step(2, timeIndex)
+
 
     def triggerUIRefresh(self):
         """ Triggers napari UI update. """
         try:
-            # _widget = ImRecMainView
-            self._widget.reconstructionWidget.sigUpdateImage.emit(self.liveReconObj.reconstructed)
-            # self._widget.reconstructionWidget.napariViewer.dims.set_current_step(2, self.timepointUpd)
-            # self.timepointUpd += 1
+            self.reconWidget.sigUpdateImage.emit(self.liveReconObj.reconstructed)
         except Exception as e:
             self._logger.error(f"[triggerUIRefresh] >> UI refresh failed: {e}")
 
@@ -199,21 +189,11 @@ class ImRecMainViewController(ImRecWidgetController):
 
         self._logger.debug(f"[stopLiveStream] >> Initiating shutdown...")
 
-        if self.processorThread:
+        if self.processorThread is not None:
             self.processorThread.quit()
             self.processorThread.terminate()
             self.processorThread.wait()
-
-        if self.reconDispWorker: 
-            self.reconDispWorkerThread.quit()
-            self.reconDispWorkerThread.terminate()
-            self.reconDispWorkerThread.wait()    
-        
-        # if self.saveWorker:
-        #     self.saveWorkerThread.quit()
-        #     self.saveWorkerThread.wait()
-        #     self.saveWorkerThread.terminate() 
-            
+ 
         self._logger.debug("[stopLiveStream] >> Processor thread has been cleared")
 
 

@@ -61,6 +61,10 @@ class ZarrInitWorker(QtCore.QObject):
 				QtCore.QThread().msleep(200) # 0.2 s
 
 			self.zArray = zarr.open(self.zArrayPath, mode='r')
+			
+			# short sleep to allow for .attrs file to properly be created
+			QtCore.QThread.msleep(200)
+			
 			imSwitchMetaData = self.zArray.attrs["ImswitchData"]
 			axisStartpos = np.array(imSwitchMetaData["ScanStage:axis_startpos"]).flatten()
 			
@@ -69,15 +73,12 @@ class ZarrInitWorker(QtCore.QObject):
 			dx, dy, _ = imSwitchMetaData["ScanStage:axis_step_size"]
 			
 			self.nx_s = int(np.ceil((x1 - x0) / dx)) + 1
-			self.ny_s = int(np.ceil((y1 - y0) / dy)) + 1
-			
-			# TODO: check for 
+			self.ny_s = int(np.ceil((y1 - y0) / dy)) + 1	
+			self.numFramesInStack = self.nx_s * self.ny_s 
 
 			self.numTimepoints = imSwitchMetaData["Rec:LapseTime"]
 
-			self.numFramesInStack = self.nx_s * self.ny_s 
-
-			# zarr store: rawFrames + .zarray + .zattrs 
+			# zarr_dir_size = num_frames_in_stack + .zarray + .zattrs 
 			self.targetFileCount = self.numFramesInStack + 2
 			
 		except Exception as e: 
@@ -89,13 +90,10 @@ class ZarrInitWorker(QtCore.QObject):
 			self.monitorTimer.setInterval(200) # 0.2 s 
 			self.monitorTimer.timeout.connect(self.checkStreamProgress)
 
-		# print(f"[ZarrInitWorker] [runInitSequence] >> Timer created in background thread")
 		self.monitorTimer.start()
 
 
 	def checkStreamProgress(self): 
-		# print("[ZarrInitWorker] [checkStreamProgress] >> Checking Init Stream Progress")
-
 		try: 
 			currFileCount = sum(1 for entry in os.scandir(self.zArrayPath) if entry.is_file())
 			
@@ -105,17 +103,13 @@ class ZarrInitWorker(QtCore.QObject):
 				streamArgs = self.getStreamArgs(zArray[:])
 				self.initComplete.emit(streamArgs)
 				
-				QtCore.QThread.msleep(1)
+				QtCore.QThread.msleep(50)
 				
-				# print("[ZarrInitWorker] [checkStreamProgress] >> ZarrInitWorker done!")
-
 		except Exception as e: 
 			print(f"[ZarrInitWorker] [checkStreamProgress] >> Error when checking progress: {e}")
 		
 	
-	def getStreamArgs(self, data: np.ndarray) -> StreamArgs:
-		# print("[ZarrInitWorker] [proceedWithSequence] >> All frames gathered => Proceeding with setup")
-		
+	def getStreamArgs(self, data: np.ndarray) -> StreamArgs:		
 		locRes = localizer(data)
 
 		gaussArgs = (

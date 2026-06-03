@@ -20,7 +20,7 @@ class WatcherController(ImConWidgetController):
         if checked:
             self.watcher = FileWatcher(self._widget.path, 'py', 1)
             self._widget.updateFileList()
-            files = self.watcher.filesInDirectory()
+            files = self.watcher.getFilesInPath()
             self.toExecute = files
             self.watcher.sigNewFiles.connect(self.newFiles)
             self.watcher.start()

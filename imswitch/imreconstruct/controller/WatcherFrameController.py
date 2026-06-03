@@ -96,35 +96,50 @@ class WatcherFrameController(ImRecWidgetController):
         
         elif checked:
             try:
-                self.toExecute = []
-                existingZarrFiles = [file for file in os.listdir(self._widget.path) if file.endswith(".zarr")]
-                if existingZarrFiles:
-                    self.sortZarrFileList(existingZarrFiles)
-                    self.toExecute.extend(existingZarrFiles)
-                    self._logger.debug(f"[toggleWatch] >> Found {len(self.toExecute)} Zarr files in: {self._widget.path}")
-                    
-                self.watcher = FileWatcher(self._widget.path, interval=0.1)
-                self.watcher.sigNewFiles.connect(self.newFiles)
-                self.watcher.start()
-
-                self.initWorker = ZarrInitWorker()
-                self.initWorkerThread = QtCore.QThread()
-                self.initWorker.moveToThread(self.initWorkerThread)
-
-                self.sigRunInitSequence.connect(self.initWorker.runInitSequence)
-                self.initWorker.initComplete.connect(self.setupZarrStreamWorker)
-                self.initWorkerThread.start()
-            
-                self.runInitWorker = True
-                self.zarrFileToProcess = None
-                self.runNextFile()
-
+                self.bootWatcher()
             except Exception as e:
                 self._logger.error(f"[toggleWatch] >> Error occurred during setup: {e}")
                 return
             
         else: 
             self.stopAllWorkers()            
+
+
+    def bootWatcher(self):
+        self.toExecute = []
+        existingZarrFiles = [file for file in os.listdir(self._widget.path) if file.endswith(".zarr")]
+        if existingZarrFiles:
+            self.sortZarrFileList(existingZarrFiles)
+            self.toExecute.extend(existingZarrFiles)
+            self._logger.debug(f"[toggleWatch] >> Found {len(self.toExecute)} Zarr files in: {self._widget.path}")
+            
+        self.watcher = FileWatcher(self._widget.path, interval=0.1)
+        self.watcher.sigNewFiles.connect(self.newFiles)
+        self.watcher.start()
+        
+        self.initWorker = ZarrInitWorker()
+        self.initWorkerThread = QtCore.QThread()
+        self.initWorker.moveToThread(self.initWorkerThread)
+
+        self.sigRunInitSequence.connect(self.initWorker.runInitSequence)
+        self.initWorker.initComplete.connect(self.setupZarrStreamWorker)
+        self.initWorkerThread.start()
+    
+        self.runInitWorker = True
+        self.zarrFileToProcess = None
+        self.runNextFile()
+
+
+    def bootZarrWorkers(self): 
+        self.initWorker = ZarrInitWorker()
+        self.initWorkerThread = QtCore.QThread()
+        self.initWorker.moveToThread(self.initWorkerThread)
+
+        self.sigRunInitSequence.connect(self.initWorker.runInitSequence)
+        self.initWorker.initComplete.connect(self.setupZarrStreamWorker)
+        self.initWorkerThread.start()
+    
+
 
 
     @QtCore.Slot(object)
@@ -137,7 +152,7 @@ class WatcherFrameController(ImRecWidgetController):
         
         self.numFramesInStack = streamArgs.numFramesInStack
      
-        self.rawDataBuffer = np.zeros((
+        self.rawData = np.zeros((
             streamArgs.numFramesInStack, 
             streamArgs.dataBuffRows,
             streamArgs.dataBuffCols
@@ -145,7 +160,7 @@ class WatcherFrameController(ImRecWidgetController):
 
         self._commChannel.sigSetupLiveStream.emit(
             streamArgs.processor, 
-            self.rawDataBuffer, 
+            self.rawData, 
             [
                 streamArgs.reconRows, 
                 streamArgs.reconCols, 
@@ -154,19 +169,19 @@ class WatcherFrameController(ImRecWidgetController):
         )
 
         self._logger.debug(
-            f"[bootstrapFileWatcher] >> Recon IMG INIT: (nFrames, Y, X) = {self.rawDataBuffer.shape}"
+            f"[bootstrapFileWatcher] >> Recon IMG INIT: (nFrames, Y, X) = {self.rawData.shape}"
         )
 
         self.zarrStreamWorker = ZarrStreamWorker(
             numFramesInStack=streamArgs.numFramesInStack,
-            rawDataBuffer=self.rawDataBuffer, # shared data buffer with ProcessorWorker
+            rawData=self.rawData, # shared data buffer with ProcessorWorker
             _commChannel=self._commChannel
         )
 
         self.zarrStreamWorkerThread = QtCore.QThread()
         self.zarrStreamWorker.moveToThread(self.zarrStreamWorkerThread)
         
-        self.sigTriggerZarrStream.connect(self.zarrStreamWorker.streamZarrFile)
+        self.sigTriggerZarrStream.connect(self.zarrStreamWorker.run)
         self.zarrStreamWorker.sigZarrFileFinished.connect(self.zarrStreamFinished)
         self.zarrStreamWorkerThread.start()
 
@@ -194,7 +209,6 @@ class WatcherFrameController(ImRecWidgetController):
 
 
     def runNextFile(self):        
-        
         if self.execution and self.zarrFileToProcess:
             self._logger.debug(f"[runNextFile] >> Zarr Streamer is currently working on {self.zarrFileToProcess}")
             return
@@ -230,18 +244,18 @@ class WatcherFrameController(ImRecWidgetController):
         self._commChannel.sigStopLiveStream.emit()
         self._commChannel.blockSignals(True)
 
-        if self.initWorker: 
+        if self.initWorker is not None: 
             self.initWorkerThread.quit()
             self.initWorkerThread.terminate()
             self.initWorkerThread.wait()
 
-        if self.watcher: 
+        if self.watcher is not None: 
             self.watcher.stop()
             self.watcher.quit()
             self.watcher.terminate()
             self.watcher.wait()
         
-        if self.zarrStreamWorkerThread:
+        if self.zarrStreamWorkerThread is not None:
             self.zarrStreamWorker.stop()
             self.zarrStreamWorkerThread.quit()
             self.zarrStreamWorkerThread.terminate()

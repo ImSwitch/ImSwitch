@@ -38,36 +38,37 @@ class ReconObj:
         
         self.reconRows = None 
         self.reconCols = None 
-        self.flatReconView = None
         
         if args is not None:
-            self.reconRows = args[0] # <- reconRows
-            self.reconCols = args[1] # <- reconCols
+            self.reconRows = args[0] 
+            self.reconCols = args[1] 
 
             if len(args) == 3:
-                self.num_timepoints = args[2]
+                self.numTimepoints = args[2]
             else: 
-                self.num_timepoints = 1
+                self.numTimepoints = 1
                 
             self.scanParDict["range"] = [float(self.reconCols), float(self.reconRows)]
             self.scanParDict["start"] = [0.0, 0.0]
             self.scanParDict["stop"] = self.scanParDict["range"]
             
             # (Dataset, Base, Time, Z, Y, X) | transpose_order = [0, 1, 2, 3, 5, 4] 
-            self.reconstructed = np.zeros((1, 1, self.num_timepoints + 1, 1, self.reconRows, self.reconCols), dtype=np.float32)
-            self.flatReconView = self.reconstructed[0, 0, 0, 0].reshape(-1)
+            self.reconstructed = np.zeros((1, 1, self.numTimepoints, 1, self.reconRows, self.reconCols), dtype=np.float32)
             self.reconstructed[0, 0, 0, 0, 0, 0] = 1e-8 
+
             self.dispLevels = [0.0, 100.0]
-            
-
-            self.timepointIndex = 0
-
-
+    
             self.__logger.debug(f"[__init__] >> Rec Array init: (H, W) = ({self.reconRows}, {self.reconCols})")
 
 
-    def addLiveChunk(self, chunkCoeffs, chunkIndices):
-        self.flatReconView[chunkIndices.ravel()] = chunkCoeffs.ravel()
+    def addLiveChunk(
+            self, 
+            chunkCoeffs: int,
+            chunkIndices: int, 
+            timeIndex: int = 0
+    ):
+        _flatReconView = self.reconstructed[0, 0, timeIndex, 0].reshape(-1)
+        _flatReconView[chunkIndices.ravel()] = chunkCoeffs.ravel()
 
 
     def setDispLevels(self, levels):

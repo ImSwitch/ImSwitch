@@ -9,24 +9,25 @@ class ProcessorWorker(QtCore.QObject):
     # numFramesProcessed = QtCore.Signal(int)        
     sigTriggerUIRefresh = QtCore.Signal()
     sigSaveChunk = QtCore.Signal(np.ndarray, np.ndarray, int)
-    sigAddReconImgToDisplay = QtCore.Signal()    
+    sigMoveTimeSlider = QtCore.Signal(int)    
     
     def __init__(
             self,
             processor, 
+            rawData,
             reconObj, 
-            rawDataBuffer,
-            cupyAvailable = False,
-            _commChannel = None
+            cupyAvailable = False
     ):
         super().__init__()
         self.processor = processor
+        self.rawData = rawData
         self.reconObj = reconObj
-        self.rawDataBuffer = rawDataBuffer        
         
-        self.cupyAvailable = cupyAvailable
+        self.updateRate = int(np.sqrt(len(self.processor.frame_inds)))
+        self.timeIndex = 0        
+        
         self.cp = None
-        if self.cupyAvailable:
+        if cupyAvailable:
             try:
                 import cupy as cp
                 self.cp = cp
@@ -34,30 +35,31 @@ class ProcessorWorker(QtCore.QObject):
                 print("WARNING [ProcessorWorker] [__init__] >> Error when trying to import CuPy")
                 return
 
-        self._commChannel = _commChannel
-
-
     @QtCore.Slot(int, int)
     def processChunk(self, start, end):        
         if QtCore.QThread.currentThread().isInterruptionRequested():
             # thread closing => exit processing 
             return
         
-        chunk = self.rawDataBuffer[start:end]
+        # fetch raw data
+        chunk = self.rawData[start:end]
         
-        if self.cupyAvailable and self.cp:
+        # process raw data
+        if self.cp is not None:
             chunk = self.cp.asarray(chunk)
-        
-        chunkCoeffs = self.processor.process_chunk(chunk)
-        chunkIndices = self.processor.frame_inds[start:end]
-        
-        self.reconObj.addLiveChunk(chunkCoeffs, chunkIndices)
+        procPixels = self.processor.process_chunk(chunk)
+        pixelIndices = self.processor.frame_inds[start:end]
 
-        # self.numFramesProcessed.emit(end)
-        update_rate = int(np.sqrt(len(self.processor.frame_inds)))  
-        if end % update_rate == 0 or end >= self.processor.num_frames_in_stack - 1:
-            self.sigTriggerUIRefresh.emit()
+        # insert processed data into reconObj 
+        flatReconView = self.reconObj.reconstructed[0, 0, self.timeIndex, 0].reshape(-1)
+        flatReconView[pixelIndices.ravel()] = procPixels.ravel()
+    
+        # update view 
+    
+        # if end % self.updateRate == 0:
+        #     self.sigTriggerUIRefresh.emit()
 
         if end >= self.processor.num_frames_in_stack - 1: 
-            self.sigAddReconImgToDisplay.emit()
-            
+            self.sigTriggerUIRefresh.emit()
+            self.sigMoveTimeSlider.emit(self.timeIndex)
+            self.timeIndex += 1 

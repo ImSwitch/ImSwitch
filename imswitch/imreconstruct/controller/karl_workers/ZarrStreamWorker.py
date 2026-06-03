@@ -21,19 +21,19 @@ class ZarrStreamWorker(QtCore.QObject):
     def __init__(
             self, 
             numFramesInStack: int,
-            rawDataBuffer: np.ndarray,
+            rawData: np.ndarray,
             _commChannel: object
     ): 
         super().__init__()
         self.numFramesInStack = numFramesInStack
-        self.rawDataBuffer = rawDataBuffer
+        self.rawData = rawData
         self._commChannel = _commChannel
         self.running = True
         self._logger = initLogger(self)
 
 
     @QtCore.Slot(str)
-    def streamZarrFile(self, zarrFilePath: str):
+    def run(self, zarrFilePath: str):
         numFramesProcessed = 0 
         zarrArrayPath = None
         zarrArray = None
@@ -65,7 +65,7 @@ class ZarrStreamWorker(QtCore.QObject):
                     chunkToProcess = zarrArray[startChunkIndex:endChunkIndex]
                     
                     if chunkToProcess.size > 0: 
-                        self.rawDataBuffer[startChunkIndex:endChunkIndex, :, :] = chunkToProcess
+                        self.rawData[startChunkIndex:endChunkIndex, :, :] = chunkToProcess
                         self._commChannel.sigLiveChunkReady.emit(startChunkIndex, endChunkIndex)
                         numFramesProcessed += numFramesInChunk
                     

@@ -133,6 +133,8 @@ class ImRecMainViewController(ImRecWidgetController):
             rawData: np.ndarray,
             reconObjArgs: list, 
     ):       
+
+
         self.liveReconObj = ReconObj(
             "Live_Stream", 
             self._scanParDict,

@@ -2,7 +2,7 @@
 
 from .basecontrollers import ImRecWidgetController
 
-from imswitch.imreconstruct.controller.karl_workers.DirectoryWorker import DirectoryWorker
+from imswitch.imreconstruct.controller.karl_workers.DirectoryWatcher import DirectoryWatcher
 from imswitch.imcommon.view.guitools.FileWatcher import FileWatcher
 from imswitch.imreconstruct.controller.karl_workers.ZarrInitWorker import ZarrInitWorker
 from imswitch.imreconstruct.controller.karl_workers.ZarrStreamWorker import ZarrStreamWorker
@@ -50,54 +50,53 @@ class WatcherFrameController(ImRecWidgetController):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self._widget.sigWatchChanged.connect(self.toggleWatch)
+        self._widget.sigWatchChanged.connect(self.toggle_watch)
 
         self._logger = initLogger(self, tryInheritParent=False)
 
-        self.execution = False
-        self.toExecute = []
+        self.directory_watcher = None
+        self.dir_queue = []
 
-        self.fileWatcher = None
+        self.file_watcher = None
+        self.file_queue = []
 
-        self.runInitSequence = True
+#     def sort_zarr_files(self, zarrFileList):
+#         zarrFileList.sort(key=lambda x : int(x.split("__")[1]))
 
-        self.zarrInitWorker = None
-        self.zarrInitWorker = None
-
-        self.zarrFileToProcess = None
-
-        self.zarrStreamWorker = None
-        self.zarrStreamWorkerThread = None
-
-
-    def sortZarrFileList(self, zarrFileList):
-        zarrFileList.sort(key=lambda x : int(x.split("__")[1]))
-
-
-    def toggleWatch(self, checked):
+    def toggle_watch(self, checked):
         self._widget.path = self._widget.folderEdit.text()
 
         if checked and (not self._widget.path or not isdir(self._widget.path)):
-            self._logger.error("[toggleWatch] >> Select a valid folder")
-            self.uncheckButton()
+            self._logger.error("[toggle_watch] >> Select a valid folder")
+            self.uncheck_button()
         elif checked:
-            self.runDirectoryWorker()
+            self.start_directory_watcher()
         else:
             self.stopAllWorkers()
 
 
-    def uncheckButton(self):
+    def uncheck_button(self):
         button = self._widget.liveModeCheck
         button.blockSignals(True)
         button.setChecked(False)
         button.blockSignals(False)
 
 
-    def runDirectoryWorker(self):
-        self.directoryWorker = DirectoryWorker(self._widget.path)
-        self.directoryWorker.sigEmitDirectory.connect(self.runFileWatcher)
-        self.directoryWorker.start()
+    def start_directory_watcher(self):
+        self.directory_watcher = DirectoryWatcher(self._widget.path, self.dir_queue)
+        self.directory_watcher.start()
 
+    def start_file_watcher(self):
+        self.file_watcher = FileWatcher(self.dir_queue, self.file_queue)
+        self.file_watcher.start()
+
+
+
+
+
+
+    # here we should have logic that runs the entire pipeline for processing a
+    # folder containing the TL-data
 
     @QtCore.Slot(str)
     def runFileWatcher(self, dirPath: str):
@@ -112,6 +111,14 @@ class WatcherFrameController(ImRecWidgetController):
             self.fileWatcher.start()
 
         self.runZarrInitWorker()
+
+
+
+
+
+
+
+
 
 
     def runZarrInitWorker(self):

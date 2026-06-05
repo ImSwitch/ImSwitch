@@ -2,7 +2,6 @@
 
 from .basecontrollers import ImRecWidgetController
 
-from imswitch.imreconstruct.controller.karl_workers.DirectoryWatcher import DirectoryWatcher
 from imswitch.imcommon.view.guitools.FileWatcher import FileWatcher
 from imswitch.imreconstruct.controller.karl_workers.ZarrInitWorker import ZarrInitWorker
 from imswitch.imreconstruct.controller.karl_workers.ZarrStreamWorker import ZarrStreamWorker
@@ -47,6 +46,8 @@ class WatcherFrameController(ImRecWidgetController):
     sigTriggerRun = QtCore.Signal(str)
     sigTriggerZarrStream = QtCore.Signal(str)
 
+    sigRunDirectory = QtCore.Signal(str)
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -54,25 +55,25 @@ class WatcherFrameController(ImRecWidgetController):
 
         self._logger = initLogger(self, tryInheritParent=False)
 
-        self.directory_watcher = None
-        self.dir_queue = []
+        self.root_path = None
+
+        self.processed_directories = []
 
         self.file_watcher = None
-        self.file_queue = []
+
 
 #     def sort_zarr_files(self, zarrFileList):
 #         zarrFileList.sort(key=lambda x : int(x.split("__")[1]))
 
     def toggle_watch(self, checked):
-        self._widget.path = self._widget.folderEdit.text()
-
-        if checked and (not self._widget.path or not isdir(self._widget.path)):
+        self.root_path = self._widget.folderEdit.text()
+        if checked and not isdir(self.root_path):
             self._logger.error("[toggle_watch] >> Select a valid folder")
             self.uncheck_button()
         elif checked:
-            self.start_directory_watcher()
+            self.start_file_watcher()
         else:
-            self.stopAllWorkers()
+            self.stop_all_watchers()
 
 
     def uncheck_button(self):
@@ -82,44 +83,15 @@ class WatcherFrameController(ImRecWidgetController):
         button.blockSignals(False)
 
 
-    def start_directory_watcher(self):
-        self.directory_watcher = DirectoryWatcher(self._widget.path, self.dir_queue)
-        self.directory_watcher.start()
-
     def start_file_watcher(self):
-        self.file_watcher = FileWatcher(self.dir_queue, self.file_queue)
+        self.file_watcher = FileWatcher(self.root_path)
+        self.file_watcher.sigFinishedDirectory.connect(self.new_files)
         self.file_watcher.start()
 
-
-
-
-
-
-    # here we should have logic that runs the entire pipeline for processing a
-    # folder containing the TL-data
-
-    @QtCore.Slot(str)
-    def runFileWatcher(self, dirPath: str):
-        self.dirPath = dirPath
-
-        if self.fileWatcher is None:
-            self.fileWatcher = FileWatcher(dirPath, interval=0.1)
-            self.fileWatcher.sigNewFiles.connect(self.newFiles)
-            self.fileWatcher.start()
-        else:
-            self.fileWatcher.setNewPath(dirPath)
-            self.fileWatcher.start()
-
-        self.runZarrInitWorker()
-
-
-
-
-
-
-
-
-
+    # temporary test method
+    @QtCore.Slot(list)
+    def new_files(self, files):
+        print(f"files = {files}")
 
     def runZarrInitWorker(self):
         self.zarrInitWorker = ZarrInitWorker()
@@ -215,7 +187,22 @@ class WatcherFrameController(ImRecWidgetController):
         self.runNextFile()
 
 
-    def stopAllWorkers(self):
+    def stop_all_watchers(self):
+        if self.directory_watcher is not None:
+            self.directory_watcher.stop()
+            self.directory_watcher.quit()
+            self.directory_watcher.terminate()
+            self.directory_watcher.wait()
+
+        if self.file_watcher is not None:
+            self.file_watcher.stop()
+            self.file_watcher.quit()
+            self.file_watcher.wait()
+
+        self.directory_index = 0
+
+
+    def _stop_all_watchers(self):
         self._commChannel.sigStopLiveStream.emit()
         self._commChannel.blockSignals(True)
 
@@ -240,7 +227,7 @@ class WatcherFrameController(ImRecWidgetController):
         self.execution = False
         self.toExecute = []
 
-        self._logger.debug(f"[stopAllWorkers] >> fileWatcher and ZarrStreamWorker threads have been cleared")
+        self._logger.debug(f"[stop_all_watchers] >> fileWatcher and ZarrStreamWorker threads have been cleared")
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

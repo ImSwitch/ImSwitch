@@ -6,34 +6,48 @@ from qtpy import QtCore
 from typing import List
 
 
-class FileWatcher(QtCore.QThread): 
+class FileWatcher(QtCore.QThread):
 
-    def __init__(
-            self,
-            dir_queue: list[str],
-            file_queue: list[str],
-    ):
-        super().__init__()
-        self.dir_queue = dir_queue
-        self.file_queue = file_queue
-        self._dir_to_monitor = None
+    sigFinishedDirectory = QtCore.Signal(list)
+
+    def __init__(self, path: str, parent=None):
+        super().__init__(parent)
+        self.root_path = path
+        self.directories = []
+        self.directory_index = 0
         self.running = True
 
     def run(self):
         while self.running:
-            if self.dir_queue:
-                self._dir_to_monitor = dir_queue.pop(0)
-                while True:
-                    self._add_files_to_queue()
-                    self.msleep(200)
+            self._find_directories()
 
-    def _add_files_to_queue(self):
-        dir_to_monitor = self._dir_to_monitor
-        for f in listdir(dir_to_monitor):
-            f_abs = join(dir_to_monitor, f)
+            if self.directories and self.directory_index <= len(self.directories) - 1:
+                d = self.directories[self.directory_index]
+                self.directory_index += 1
+                # TODO: fix proper loop for the files and condition for when to break it
+                files = self._find_files(d)
+                self.sigFinishedDirectory.emit(files)
+
+            self.msleep(500)
+
+    def stop(self):
+        self.running = False
+
+    def _find_directories(self):
+        path = self.root_path
+        for d in listdir(path):
+            d_abs = join(path, d)
+            if isdir(d_abs) and not d_abs in self.directories:
+                self.directories.append(d_abs)
+
+    def _find_files(self, d) -> List[str]:
+        files = []
+        for f in listdir(d):
+            f_abs = join(d, f)
             if f.lower().endswith(".zarr"):
-                self.file_queue.append(f_abs)
+                files.append(f_abs)
 
+        return files
 # Adapted from https://towardsdatascience.com/implementing-a-file-watcher-in-python-73f8356a425d
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

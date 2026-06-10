@@ -20,111 +20,105 @@ except ImportError:
 	GPU_AVAILABLE = False
 	Processor = NewType("Processor", GaussProcessorCPU)
 
-from imswitch.imreconstruct.controller.karl_workers.ZarrWorkerUtils import findZarrArrayPath
 
 from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
 class StreamArgs:
-	numFramesInStack: int 
-	dataBuffRows: int
-	dataBuffCols: int
-	reconRows: int 
-	reconCols: int 
-	numTimepoints: int 
+	num_frames_in_stack: int 
+	raw_data_rows: int
+	raw_data_cols: int
+	recon_rows: int 
+	recon_cols: int 
+	num_time_points: int 
 	processor: Processor
 
 
-class ZarrInitWorker(QtCore.QThread):
+class ZarrInitWorker(QtCore.QObject):
+
 	"""
 	Runs the initialization sequence necessary to boot up the zarr live file watching, 
-	by using the first stack of raw frames that have been detected to perform localization, 
+	by using the first stack of raw frames that has been detected to perform localization, 
 	scan orientation detection, and returning the necessary arguments for the zarr streaming
 	and zarr processing.
 	"""
-	initComplete = QtCore.Signal(StreamArgs)
-
-
-	def __init__(self, parent=None):
-		super().__init__(parent)
-		self.monitorTimer = None
-
 	
-	@QtCore.Slot(str)
-	def runInitSequence(self, filepath: str):		
-		try:
-			self.zArrayPath = None
-			
-			while self.zArrayPath is None:
-				self.zArrayPath = findZarrArrayPath(filepath)
-				QtCore.QThread().msleep(100)
+	sigInitComplete = QtCore.Signal(StreamArgs)
 
-			self.zArray = zarr.open(self.zArrayPath, mode='r')
+	def __init__(self, path: str):
+		super().__init__()
+		self.z_arr_path = path	
+		self.monitor_timer = None
+
+	def run(self):		
+		try:
+			z_arr = None
+			while z_arr == None:
+				try: 
+					z_arr = zarr.open(self.z_arr_path)
+				except Exception as e:
+					QtCore.QThread.msleep(100)
+					pass
+
+			imswitch_meta = z_arr.attrs["ImswitchData"]
+			axis_startpos = np.array(imswitch_meta["ScanStage:axis_startpos"]).flatten()
 			
-			# short sleep to allow for .attrs file to properly be created
-			QtCore.QThread.msleep(100)
-			
-			imSwitchMetaData = self.zArray.attrs["ImswitchData"]
-			axisStartpos = np.array(imSwitchMetaData["ScanStage:axis_startpos"]).flatten()
-			
-			x0, y0, _ = axisStartpos
-			x1, y1, _ = imSwitchMetaData["ScanStage:axis_length"]
-			dx, dy, _ = imSwitchMetaData["ScanStage:axis_step_size"]
+			x0, y0, _ = axis_startpos
+			x1, y1, _ = imswitch_meta["ScanStage:axis_length"]
+			dx, dy, _ = imswitch_meta["ScanStage:axis_step_size"]
 			
 			self.nx_s = int(np.ceil((x1 - x0) / dx)) + 1
 			self.ny_s = int(np.ceil((y1 - y0) / dy)) + 1	
-			self.numFramesInStack = self.nx_s * self.ny_s 
+			self.num_frames_in_stack = self.nx_s * self.ny_s 
 
-			self.numTimepoints = imSwitchMetaData["Rec:LapseTime"]
+			self.num_time_points = imswitch_meta["Rec:LapseTime"]
 
 			# zarr_dir_size = num_frames_in_stack + .zarray + .zattrs 
-			self.targetFileCount = self.numFramesInStack + 2
+			self.target_file_count = self.num_frames_in_stack + 2
 			
 		except Exception as e: 
-			print(f"[ZarrInitWorker] [runInitSequence] >> Error: {e}")
+			print(f"[ZarrInitWorker] [run] >> Error: {e}")
 			return
 
-		if self.monitorTimer is None: 
-			self.monitorTimer = QtCore.QTimer(self)
-			self.monitorTimer.setInterval(200) # 0.2 s 
-			self.monitorTimer.timeout.connect(self.checkStreamProgress)
+		if self.monitor_timer is None: 
+			self.monitor_timer = QtCore.QTimer(self)
+			self.monitor_timer.setInterval(200) # 0.2 s 
+			self.monitor_timer.timeout.connect(self._check_stream_progress)
 
-		self.monitorTimer.start()
+		self.monitor_timer.start()
 
-
-	def checkStreamProgress(self): 
+	def _check_stream_progress(self): 
 		try: 
-			fileCount = sum(1 for entry in os.scandir(self.zArrayPath) if entry.is_file())
-			
-			if fileCount >= self.targetFileCount:
-				self.monitorTimer.stop()
-				zArray = zarr.open(self.zArrayPath, mode='r') 
-				streamArgs = self.getStreamArgs(zArray[:])
-				self.initComplete.emit(streamArgs)
-				
-				QtCore.QThread.msleep(50)
+			file_count = sum(1 for entry in os.scandir(self.z_arr_path) if entry.is_file())			
+			if file_count >= self.target_file_count:
+				self.monitor_timer.stop()
+				z_arr = zarr.open(self.z_arr_path, mode='r') 
+				stream_args = self._get_stream_args(z_arr[:])	
+				self.sigInitComplete.emit(stream_args)				
+				QtCore.QThread.msleep(100)
 				
 		except Exception as e: 
-			print(f"[ZarrInitWorker] [checkStreamProgress] >> Error when checking progress: {e}")
+			print(f"[ZarrInitWorker] [_check_stream_progress] >> Error when checking progress: {e}")
 		
-	
-	def getStreamArgs(self, data: np.ndarray) -> StreamArgs:		
-		locRes = localizer(data)
+	def _get_stream_args(self, data: np.ndarray) -> StreamArgs:		
+		loc_result = localizer(data)
 
-		gaussArgs = (
-			locRes.xp, 
-			locRes.xo,
-			locRes.yp,
-			locRes.yo, 
-			locRes.nx_c, 
-			locRes.ny_c,
+		gauss_args = (
+			loc_result.xp, 
+			loc_result.xo,
+			loc_result.yp,
+			loc_result.yo, 
+			loc_result.nx_c, 
+			loc_result.ny_c,
 			self.nx_s,
 			self.ny_s,
-			locRes.num_rows,
-			locRes.num_cols,
+			loc_result.num_rows,
+			loc_result.num_cols,
 			4 # num_rects
 		)
+
+		recon_rows, recon_cols = loc_result.ny_c * self.ny_s, loc_result.nx_c * self.nx_s 
 
 		if GPU_AVAILABLE:
 			ProcessorClass = GaussProcessorGPU
@@ -132,21 +126,19 @@ class ZarrInitWorker(QtCore.QThread):
 		else:
 			ProcessorClass = GaussProcessorCPU
 
-		processor = ProcessorClass(*gaussArgs)
+		processor = ProcessorClass(*gauss_args)
 
-		procPixels = processor.process_chunk(data)
-		detOrientation = get_orientation(locRes.nx_c, locRes.ny_c, self.nx_s, self.ny_s, procPixels)
-		processor.update_frame_inds(locRes.nx_c, locRes.ny_c, self.nx_s, self.ny_s, detOrientation)
-		
-		reconRows, reconCols = locRes.ny_c * self.ny_s, locRes.nx_c * self.nx_s 
+		proc_pixels = processor.process_chunk(data)
+		ori = get_orientation(loc_result.nx_c, loc_result.ny_c, self.nx_s, self.ny_s, proc_pixels)
+		processor.update_frame_inds(loc_result.nx_c, loc_result.ny_c, self.nx_s, self.ny_s, ori)	
 
 		return StreamArgs(
-			self.numFramesInStack,
-			locRes.num_rows,
-			locRes.num_cols,		
-			reconRows, 
-			reconCols,
-			self.numTimepoints,
+			self.num_frames_in_stack,
+			loc_result.num_rows,
+			loc_result.num_cols,		
+			recon_rows, 
+			recon_cols,
+			self.num_time_points,
 			processor		 	
 		)
 		

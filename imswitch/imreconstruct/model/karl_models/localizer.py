@@ -1,3 +1,6 @@
+# type: ignore
+
+
 import numpy as np
 from scipy.ndimage import gaussian_filter
 from scipy.signal import find_peaks
@@ -72,7 +75,7 @@ def _estimate_period(
     data_size = input_data.size
 
     # --- Frequency Analysis ---
-    fft_max_index = data_size // 2 
+    fft_max_index = data_size // 2 + 1 
     abs_fft = np.abs(np.fft.fft(input_data)[0:fft_max_index])
     fft_freqs = np.fft.fftfreq(fft_max_index)
     

@@ -5,29 +5,31 @@ import numpy as np
 
 
 class ProcessorWorker(QtCore.QObject): 
-    
-    # numFramesProcessed = QtCore.Signal(int)        
+    """
+    ... 
+    """
+
     sigTriggerUIRefresh = QtCore.Signal()
     sigSaveChunk = QtCore.Signal(np.ndarray, np.ndarray, int)
     sigMoveTimeSlider = QtCore.Signal(int)    
     
     def __init__(
             self,
-            processor, 
-            rawData,
-            reconObj, 
-            cupyAvailable = False
+            processor: object, 
+            raw_data: np.ndarray,
+            recon_obj: object, 
+            cupy_available: bool = False
     ):
         super().__init__()
         self.processor = processor
-        self.rawData = rawData
-        self.reconObj = reconObj
+        self.raw_data = raw_data
+        self.recon_obj = recon_obj
         
-        self.updateRate = int(np.sqrt(len(self.processor.frame_inds)))
-        self.timeIndex = 0        
+        self.refresh_rate = int(np.sqrt(len(self.processor.frame_inds)))
+        self.time_index = 0        
         
         self.cp = None
-        if cupyAvailable:
+        if cupy_available: 
             try:
                 import cupy as cp
                 self.cp = cp
@@ -41,25 +43,20 @@ class ProcessorWorker(QtCore.QObject):
             # thread closing => exit processing 
             return
         
-        # fetch raw data
-        chunk = self.rawData[start:end]
-        
-        # process raw data
-        if self.cp is not None:
+        chunk = self.raw_data[start:end] 
+        if self.cp != None:
             chunk = self.cp.asarray(chunk)
-        procPixels = self.processor.process_chunk(chunk)
-        pixelIndices = self.processor.frame_inds[start:end]
 
-        # insert processed data into reconObj 
-        flatReconView = self.reconObj.reconstructed[0, 0, self.timeIndex, 0].reshape(-1)
-        flatReconView[pixelIndices.ravel()] = procPixels.ravel()
-    
-        # update view 
-    
-        # if end % self.updateRate == 0:
-        #     self.sigTriggerUIRefresh.emit()
+        proc_pixels = self.processor.process_chunk(chunk)
+        pixel_indices = self.processor.frame_inds[start:end]
+
+        flat_recon = self.recon_obj.reconstructed[0, 0, self.time_index, 0].reshape(-1)
+        flat_recon[pixel_indices.ravel()] = proc_pixels.ravel()
+     
+        # if end % self.refresh_rate == 0:
+            # self.sigTriggerUIRefresh.emit()
 
         if end >= self.processor.num_frames_in_stack: 
             self.sigTriggerUIRefresh.emit()
-            self.sigMoveTimeSlider.emit(self.timeIndex)
-            self.timeIndex += 1 
+            self.sigMoveTimeSlider.emit(self.time_index)
+            self.time_index += 1 

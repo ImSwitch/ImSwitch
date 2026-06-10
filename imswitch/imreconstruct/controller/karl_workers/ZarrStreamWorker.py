@@ -1,82 +1,64 @@
 # type: ignore 
 
-from imswitch.imcommon.model import initLogger
-from imswitch.imreconstruct.controller.karl_workers.ZarrWorkerUtils import findZarrArrayPath
-
 import zarr 
 import numpy as np 
 
-from qtpy import QtCore 
+import os 
 
+from qtpy import QtCore 
+from typing import Union
 
 class ZarrStreamWorker(QtCore.QObject):
+    
     """
-    Specialized worker for imreconstruct: Monitor a growing Zarr store.
-    An instance of this class should mimic the FileLoaderWorker's output to stay 
-    compatible with the existing reconstruction pipeline.
+    ... 
     """
-    sigChunkLoaded = QtCore.Signal(np.ndarray) # (chunk)
+   
+    sigChunkLoaded = QtCore.Signal(np.ndarray) 
     sigZarrFileFinished = QtCore.Signal()
 
     def __init__(
             self, 
-            numFramesInStack: int,
-            rawData: np.ndarray,
+            num_frames_in_stack: int,
+            raw_data: np.ndarray,
             _commChannel: object
     ): 
         super().__init__()
-        self.numFramesInStack = numFramesInStack
-        self.rawData = rawData
+        self.num_frame_in_stack = num_frames_in_stack
+        self.raw_data = raw_data
         self._commChannel = _commChannel
         self.running = True
-        self._logger = initLogger(self)
-
 
     @QtCore.Slot(str)
-    def run(self, zarrFilePath: str):
-        numFramesProcessed = 0 
-        zarrArrayPath = None
-        zarrArray = None
-
-        while self.running and zarrArrayPath is None and zarrArray is None: 
-            try:
-                zarrArrayPath = findZarrArrayPath(zarrFilePath)
-                zarrArray = zarr.open(zarrArrayPath, mode='r')
-            except: 
-                QtCore.QThread().msleep(100)
-
+    def run(self, path: str):
+        z_arr = None
+        num_frames_processed = 0 
         while self.running: 
-            if numFramesProcessed >= self.numFramesInStack - 1:
-                self.sigZarrFileFinished.emit()
-                break
-
             try: 
-                if zarrArray is not None:
-                    zarrArray.store.close()
+                if num_frames_processed >= self.num_frame_in_stack - 1:
+                    self.sigZarrFileFinished.emit()
+                    break     
                 
-                zarrArray = zarr.open(zarrArrayPath, mode='r')
+                if z_arr != None:
+                    z_arr.store.close()
                 
-                currentNumFrames = zarrArray.shape[0] 
-                numFramesInChunk = zarrArray.chunks[0]     
+                z_arr = zarr.open(path, mode='r') 
+                curr_num_frames = z_arr.shape[0] 
+                num_frames_in_chunk = z_arr.chunks[0]      
                 
-                while numFramesInChunk <= currentNumFrames - numFramesProcessed:                
-                    startChunkIndex = numFramesProcessed
-                    endChunkIndex = startChunkIndex + numFramesInChunk
-                    chunkToProcess = zarrArray[startChunkIndex:endChunkIndex]
-                    
-                    if chunkToProcess.size > 0: 
-                        self.rawData[startChunkIndex:endChunkIndex, :, :] = chunkToProcess
-                        self._commChannel.sigLiveChunkReady.emit(startChunkIndex, endChunkIndex)
-                        numFramesProcessed += numFramesInChunk
-                    
-                    if not self.running: 
-                        break
+                while num_frames_in_chunk <= curr_num_frames - num_frames_processed:                
+                    start = num_frames_processed
+                    end = start + num_frames_in_chunk
+                    chunk = z_arr[start:end]  
+                    self.raw_data[start:end, :, :] = chunk
+                    self._commChannel.sigLiveChunkReady.emit(start, end)
+                    num_frames_processed += num_frames_in_chunk 
 
             except Exception:
-                # [Errno13] Permission Denied (writing) => loop again
-                QtCore.QThread().msleep(10)
+                # [Errno13] File being written to => loop again
+                # TODO: find a better way to check if the file is being written to or not  
+                QtCore.QThread.msleep(10)
                 pass
-                             
-                             
+                              
     def stop(self): 
         self.running = False

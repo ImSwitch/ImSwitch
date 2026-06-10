@@ -116,7 +116,9 @@ class ImRecMainViewController(ImRecWidgetController):
         self._widget.sigFindPattern.connect(self.findPattern)
         self._widget.sigShowScanParamsClicked.connect(self.showScanParamsDialog)
         self._widget.sigPatternParamsChanged.connect(self.updatePattern)
-        
+
+        self.reconObjects = []
+
         self.updatePattern()
         self.updateScanParams()
         
@@ -133,8 +135,6 @@ class ImRecMainViewController(ImRecWidgetController):
             rawData: np.ndarray,
             reconObjArgs: list, 
     ):       
-
-
         self.liveReconObj = ReconObj(
             "Live_Stream", 
             self._scanParDict,
@@ -146,34 +146,25 @@ class ImRecMainViewController(ImRecWidgetController):
             self._widget.n_text,
             *reconObjArgs # [reconRows, reconCols, numTimepoints] 
         )            
-        
         self._widget.addNewData(self.liveReconObj, "Live_Stream") 
-    
         self.processorWorker = ProcessorWorker(
             processor, 
             rawData,
             self.liveReconObj, 
             CUPY_AVAILABLE 
         ) 
-        
         self.processorThread = QtCore.QThread()
         self.processorWorker.moveToThread(self.processorThread)
-        
         self.processorWorker.sigTriggerUIRefresh.connect(self.triggerUIRefresh)
         self.processorWorker.sigMoveTimeSlider.connect(self.moveTimeSlider)
-        
         self.processorThread.start()
-        
         self._commChannel.sigLiveChunkReady.connect(self.processorWorker.processChunk)
         self._commChannel.sigStopLiveStream.connect(self.stopLiveStream)
-
         self._logger.debug("[setupLiveStream] >> Live Stream initialized")
-
 
     @QtCore.Slot(int)
     def moveTimeSlider(self, timeIndex: int):
         self.reconWidget.napariViewer.dims.set_current_step(2, timeIndex)
-
 
     def triggerUIRefresh(self):
         """ Triggers napari UI update. """
@@ -181,7 +172,6 @@ class ImRecMainViewController(ImRecWidgetController):
             self.reconWidget.sigUpdateImage.emit(self.liveReconObj.reconstructed)
         except Exception as e:
             self._logger.error(f"[triggerUIRefresh] >> UI refresh failed: {e}")
-
 
     def stopLiveStream(self): 
         """ Shuts down processor thread. """
@@ -198,51 +188,42 @@ class ImRecMainViewController(ImRecWidgetController):
  
         self._logger.debug("[stopLiveStream] >> Processor thread has been cleared")
 
-
     def dataFolderChanged(self, dataFolder):
         self._dataFolder = dataFolder
 
-
     def saveFolderChanged(self, saveFolder):
         self._saveFolder = saveFolder
-
 
     def setDataFolder(self):
         dataFolder = guitools.askForFolderPath(self._widget)
         if dataFolder:
             self._commChannel.sigDataFolderChanged.emit(dataFolder)
 
-
     def setSaveFolder(self):
         saveFolder = guitools.askForFolderPath(self._widget)
         if saveFolder:
             self._commChannel.sigSaveFolderChanged.emit(saveFolder)
 
-
     def findPattern(self):
         self._logger.debug("[findPattern] >> Find pattern clicked")
+
         if self._currentDataObj is None:
             return
-
         meanData = self._currentDataObj.getMeanData()
         stackData = self._currentDataObj.data        
+       
         if len(meanData) < 1:
             return
-
-        self._logger.debug("[findPattern] >> Finding pattern")
-
-        pattern = self._patternFinder.findPattern(meanData, stackData) 
-
-        self._logger.debug(f"[findPattern] >> Pattern found as: {self._pattern}")
         
+        self._logger.debug("[findPattern] >> Finding pattern")
+        pattern = self._patternFinder.findPattern(meanData, stackData) 
+        self._logger.debug(f"[findPattern] >> Pattern found as: {self._pattern}")
         self.setPatternParams(pattern)
         self.updatePattern()
-
 
     def togglePattern(self, enabled):
         self._logger.debug("[togglePattern] >> Toggling pattern")
         self._commChannel.sigPatternVisibilityChanged.emit(enabled)
-
 
     def updatePattern(self):
         if self._settingPatternParams:
@@ -250,7 +231,6 @@ class ImRecMainViewController(ImRecWidgetController):
         self._logger.debug("[updatePattern] >> Updating pattern")
         self._pattern = self._widget.getPatternParams() # This returns [yo, xo, yp, xp]
         self._commChannel.sigPatternUpdated.emit(self._pattern)
-
 
     def setPatternParams(self, pattern):
         try:
@@ -262,20 +242,16 @@ class ImRecMainViewController(ImRecWidgetController):
         finally:
             self._settingPatternParams = False
 
-
     def updateScanParams(self, applyOnCurrentRecon=False):
         self._commChannel.sigScanParamsUpdated.emit(copy.deepcopy(self._scanParDict),
                                                     applyOnCurrentRecon)
 
-
     def scanParamsUpdated(self, scanParDict):
         self._scanParDict = scanParDict
-
 
     def showScanParamsDialog(self):
         self.updateScanParams()
         self._widget.showScanParamsDialog()
-
 
     def quickLoadData(self):
         extension = self._widget.extension.value()
@@ -323,7 +299,6 @@ class ImRecMainViewController(ImRecWidgetController):
             else:
                 pass
 
-
     def currentDataChanged(self, dataObj):
         self._currentDataObj = dataObj
 
@@ -365,7 +340,6 @@ class ImRecMainViewController(ImRecWidgetController):
 
         self.updateScanParams()
 
-
     def extractData(self, data):
         fwhmNm = self._widget.getFwhmNm()
         # bgModelling = self._widget.getBgModelling()
@@ -394,17 +368,14 @@ class ImRecMainViewController(ImRecWidgetController):
 
         return coeffs
 
-
     def reconstructCurrent(self):
         if self._currentDataObj is None:
             return
 
         self.reconstruct([self._currentDataObj], consolidate=False)
 
-
     def reconstructMulti(self, consolidate):
         self.reconstruct(self._widget.getMultiDatas(), consolidate)
-
 
     def reconstruct(self, dataObjs, consolidate):
         reconObj = None
@@ -446,7 +417,6 @@ class ImRecMainViewController(ImRecWidgetController):
             self._widget.addNewData(reconObj, f'{reconObj.name}_multi')
             self._commChannel.sigExecutionFinished.emit(self.reconstructionController.getImage())
 
-
     def bleachingCorrection(self, data):
         correctedData = data.copy()
         energy = np.sum(data, axis=(1, 2))
@@ -454,7 +424,6 @@ class ImRecMainViewController(ImRecWidgetController):
             c = (energy[0] / energy[i]) ** 4
             correctedData[i, :, :] = data[i, :, :] * c
         return correctedData
-
 
     def saveCurrent(self, dataType):
         """ Saves the reconstructed image or coefficeints from the current
@@ -473,7 +442,6 @@ class ImRecMainViewController(ImRecWidgetController):
                 self.saveCoefficients(reconObj, filePath)
             else:
                 raise ValueError(f'Invalid save data type "{dataType}"')
-
 
     def saveAll(self, dataType):
         """ Saves the reconstructed image or coefficeints from all available
@@ -502,7 +470,6 @@ class ImRecMainViewController(ImRecWidgetController):
                     self.saveCoefficients(reconObj, filePath)
                 else:
                     raise ValueError(f'Invalid save data type "{dataType}"')
-
 
     def saveReconstruction(self, reconObj, filePath):
         scanParDict = reconObj.getScanParams()
@@ -536,7 +503,6 @@ class ImRecMainViewController(ImRecWidgetController):
         tiff.imwrite(filePath, reconstrData,
                      imagej=True, resolution=(1 / vxsizec, 1 / vxsizer),
                      metadata={'spacing': vxsizez, 'unit': 'nm', 'axes': 'TZCYX'})
-
 
     def saveCoefficients(self, reconObj, filePath):
         coeffs = copy.deepcopy(reconObj.getCoeffs())

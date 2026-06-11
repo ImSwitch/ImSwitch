@@ -23,6 +23,7 @@ import numpy as np
 import tifffile as tiff
 import imswitch.imreconstruct.view.guitools as guitools
 
+from qtpy import QtWidgets
 from qtpy import QtCore
 
 from imswitch.imreconstruct.model.karl_models import GaussProcessorCPU
@@ -148,19 +149,24 @@ class ImRecMainViewController(ImRecWidgetController):
             *reconObjArgs # [reconRows, reconCols, numTimepoints] 
         )            
         self._widget.addNewData(self.liveReconObj, recon_obj_name) 
+       
         self.processorWorker = ProcessorWorker(
-            processor, 
-            rawData,
-            self.liveReconObj, 
-            CUPY_AVAILABLE 
+            processor, rawData, self.liveReconObj, self._commChannel, CUPY_AVAILABLE
         ) 
         self.processorThread = QtCore.QThread()
         self.processorWorker.moveToThread(self.processorThread)
+        
+        self._commChannel.finish.connect(self.processorWorker.deleteLater)
+        self._commChannel.finish.connect(self.processorThread.quit)
+        self.processorThread.finished.connect(self.processorThread.deleteLater) 
+        
         self.processorWorker.sigTriggerUIRefresh.connect(self.triggerUIRefresh)
         self.processorWorker.sigMoveTimeSlider.connect(self.moveTimeSlider)
         self.processorThread.start()
+        
         self._commChannel.sigLiveChunkReady.connect(self.processorWorker.processChunk)
         self._commChannel.sigStopLiveStream.connect(self.stopLiveStream)
+       
         self._logger.debug("[setupLiveStream] >> Live Stream initialized")
 
     @QtCore.Slot(int)
@@ -170,7 +176,8 @@ class ImRecMainViewController(ImRecWidgetController):
         self.reconWidget.napariViewer.dims.set_current_step(2, timeIndex)
 
     def triggerUIRefresh(self):
-        self.reconWidget.sigUpdateImage.emit(np.array(self.liveReconObj.reconstructed, copy=False))
+        self.reconWidget.sigUpdateImage.emit(self.liveReconObj.reconstructed)
+        # QtWidgets.QApplication.processEvents()
 
     def stopLiveStream(self): 
         """ Shuts down processor thread. """

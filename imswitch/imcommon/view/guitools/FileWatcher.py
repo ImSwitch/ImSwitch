@@ -13,45 +13,33 @@ class FileWatcher(QtCore.QObject):
     """
     ...
     """
-    
-    sigFileQueueUpdated = QtCore.Signal()
-    sigFinishedDirectory = QtCore.Signal()
 
-    def __init__(self, directory_path: str, file_queue: List[str]):
+    sigFileFound = QtCore.Signal(str)    
+
+    def __init__(self, directory_path: str):
         super().__init__()
         self.directory_path = directory_path
-        self.file_queue = file_queue 
+        self.seen_files = set()
         self.running = True
 
     def run(self):
-        # TODO: pass header metadata from WatcherFrameController before starting the file watching? 
         while self.running: 
-            self._check_for_files()
-            QtCore.QThread.msleep(100) 
+            try: 
+                self._check_for_files()
+            except Exception as e:
+                print(f"[FileWatcher] [run] >> Error scanning directory: {e}") 
+            
+            QtCore.QThread.msleep(200) 
 
     def stop(self):
         self.running = False
 
     def _check_for_files(self):
-        new_files_found = False  
-        
         for f in listdir(self.directory_path):
             f_abs = join(self.directory_path, f)
-            if f.lower().endswith(".zarr") and f_abs not in self.file_queue: 
-                self.file_queue.append(f_abs)
-                self.file_queue.sort()
-                new_files_found = True  
-        
-        if new_files_found: 
-            self.sigFileQueueUpdated.emit()
-
-    def _get_meta_value(self, meta_key: str) -> object: 
-        for f in listdir(self.directory_path):
-            if f.lower().endswith(".zattrs"):
-                z = zarr.open(self.directory_path)
-                imswitch_meta = z.attrs.get("ImswitchData", None) 
-                meta_val = imswitch_meta.get(meta_key, None) if imswitch_meta != None else None
-                return meta_val
+            if f.lower().endswith(".zarr") and f_abs not in self.seen_files:
+                self.seen_files.add(f_abs)
+                self.sigFileFound.emit(f_abs)
 
 
 # Adapted from https://towardsdatascience.com/implementing-a-file-watcher-in-python-73f8356a425d

@@ -47,16 +47,20 @@ class ZarrInitWorker(QtCore.QObject):
 		super().__init__()
 		self.z_arr_path = path	
 		self.monitor_timer = None
+		self.target_file_count = 0 
+		self.num_frames_in_stack = 0 
+		self.num_time_points = 0
+		self.nx_s = 0 
+		self.ny_s = 0
 
 	def run(self):		
 		try:
 			z_arr = None
-			while z_arr == None:
+			while z_arr is None:
 				try: 
 					z_arr = zarr.open(self.z_arr_path)
-				except Exception as e:
+				except Exception:
 					QtCore.QThread.msleep(100)
-					pass
 
 			imswitch_meta = z_arr.attrs.get("ImswitchData")
 			
@@ -68,7 +72,6 @@ class ZarrInitWorker(QtCore.QObject):
 			self.nx_s = int(np.ceil((x1 - x0) / dx)) + 1
 			self.ny_s = int(np.ceil((y1 - y0) / dy)) + 1	
 			self.num_frames_in_stack = self.nx_s * self.ny_s 
-
 			self.num_time_points = imswitch_meta["Rec:LapseTime"]
 
 			# zarr_dir_size = num_frames_in_stack + .zarray + .zattrs 
@@ -80,7 +83,7 @@ class ZarrInitWorker(QtCore.QObject):
 
 		if self.monitor_timer is None: 
 			self.monitor_timer = QtCore.QTimer(self)
-			self.monitor_timer.setInterval(200) # 0.2 s 
+			self.monitor_timer.setInterval(200) # 200 ms 
 			self.monitor_timer.timeout.connect(self._check_stream_progress)
 
 		self.monitor_timer.start()

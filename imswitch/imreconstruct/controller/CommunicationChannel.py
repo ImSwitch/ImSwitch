@@ -18,7 +18,7 @@ class CommunicationChannel(SignalInterface):
     sigScanParamsUpdated = Signal(object, bool)    # (scanParDict, applyOnCurrentRecon)
     sigPatternUpdated = Signal(object)             # (pattern) 
     sigPatternVisibilityChanged = Signal(bool)     # (visible)
-    sigAddToMultiData = Signal(str, str)           # (path, datasetName) 
+    sigAddToMultiData = Signal(str, str)           # (path, datasetName)
     sigReconstruct = Signal(object, bool)           
     sigExecutionFinished = Signal(object)          
 
@@ -28,7 +28,8 @@ class CommunicationChannel(SignalInterface):
     sigLiveChunkReady = Signal(int, int)                           # (startChunkIndex, endChunkIndex)
     sigSaveRecImage = Signal(int)                                  # (timePointIndex)
     sigStopLiveStream = Signal()
-
+    sigProcessingFinished = Signal()
+    finish = Signal()
 
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

@@ -137,6 +137,7 @@ class ImRecMainViewController(ImRecWidgetController):
             rawData: np.ndarray,
             reconObjArgs: list, 
     ):       
+        self.stopLiveStream()
         self.liveReconObj = ReconObj(
             recon_obj_name, 
             self._scanParDict,
@@ -146,51 +147,53 @@ class ImRecMainViewController(ImRecWidgetController):
             self._widget.timepoints_text, 
             self._widget.p_text, 
             self._widget.n_text,
-            *reconObjArgs # [reconRows, reconCols, numTimepoints] 
+            *reconObjArgs 
         )            
         self._widget.addNewData(self.liveReconObj, recon_obj_name) 
-       
         self.processorWorker = ProcessorWorker(
             processor, rawData, self.liveReconObj, self._commChannel, CUPY_AVAILABLE
         ) 
         self.processorThread = QtCore.QThread()
         self.processorWorker.moveToThread(self.processorThread)
-        
-        self._commChannel.finish.connect(self.processorWorker.deleteLater)
-        self._commChannel.finish.connect(self.processorThread.quit)
-        self.processorThread.finished.connect(self.processorThread.deleteLater) 
-        
         self.processorWorker.sigTriggerUIRefresh.connect(self.triggerUIRefresh)
         self.processorWorker.sigMoveTimeSlider.connect(self.moveTimeSlider)
         self.processorThread.start()
-        
         self._commChannel.sigLiveChunkReady.connect(self.processorWorker.processChunk)
+        try:
+            self._commChannel.sigStopLiveStream.disconnect(self.stopLiveStream)
+        except TypeError:
+            pass
         self._commChannel.sigStopLiveStream.connect(self.stopLiveStream)
-       
-        self._logger.debug("[setupLiveStream] >> Live Stream initialized")
+        self._logger.debug("[setupLiveStream] >> Live Stream initialized successfully")
 
     @QtCore.Slot(int)
-    def moveTimeSlider(self, timeIndex: int):
-        # axes: (D, B, T, Z, Y, X)
+    def moveTimeSlider(self, timeIndex: int): 
         #        0  1  2  3  4  5
+        # axes: (D, B, T, Z, Y, X)
         self.reconWidget.napariViewer.dims.set_current_step(2, timeIndex)
 
     def triggerUIRefresh(self):
         self.reconWidget.sigUpdateImage.emit(self.liveReconObj.reconstructed)
-        # QtWidgets.QApplication.processEvents()
 
     def stopLiveStream(self): 
-        """ Shuts down processor thread. """
         try: 
             self._commChannel.sigLiveChunkReady.disconnect(self.processorWorker.processChunk)
-        except:
+        except (TypeError, AttributeError):
             pass 
-        
-        if hasattr(self, "processorThread"):
-            self.processorThread.quit()
-            self.processorThread.wait()
-        
-        self._logger.debug("[stopLiveStream] >> ProcessorWorker stopped")
+        if hasattr(self, "processorWorker") and self.processorWorker is not None:
+            self.processorWorker.deleteLater()
+            self.processorWorker = None
+        if hasattr(self, "processorThread") and self.processorThread is not None:
+            if self.processorThread.isRunning():
+                self.processorThread.quit()
+                if self.processorThread.wait(2000):
+                    self._logger.debug("[stopLiveStream] >> processorThread stopped cleanly.")
+                else:
+                    self._logger.warning("[stopLiveStream] >> processorThread hung! Forcing termination.")
+                    self.processorThread.terminate()
+                    self.processorThread.wait()
+            self.processorThread = None
+        self._logger.debug("[stopLiveStream] >> Processor pipeline cleared.")
 
     def dataFolderChanged(self, dataFolder):
         self._dataFolder = dataFolder

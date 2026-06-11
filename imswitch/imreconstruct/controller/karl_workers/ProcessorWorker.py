@@ -5,6 +5,7 @@ import numpy as np
 
 
 class ProcessorWorker(QtCore.QObject): 
+    
     """
     ... 
     """
@@ -27,17 +28,15 @@ class ProcessorWorker(QtCore.QObject):
         self.raw_data = raw_data
         self.recon_obj = recon_obj
         self._commChannel = _commChannel
-
         self.refresh_rate = int(np.sqrt(len(self.processor.frame_inds)))
         self.time_index = 0        
-        
         self.cp = None
         if cupy_available: 
             try:
                 import cupy as cp
                 self.cp = cp
             except ImportError:
-                print("WARNING [ProcessorWorker] [__init__] >> Error when trying to import CuPy")
+                print("ERROR [ProcessorWorker] [__init__] >> Error when trying to import CuPy")
                 return
 
     @QtCore.Slot(int, int)
@@ -49,16 +48,13 @@ class ProcessorWorker(QtCore.QObject):
         chunk = self.raw_data[start:end] 
         if self.cp != None:
             chunk = self.cp.asarray(chunk)
-
         proc_pixels = self.processor.process_chunk(chunk)
         pixel_indices = self.processor.frame_inds[start:end]
-
         flat_recon = self.recon_obj.reconstructed[0, 0, self.time_index, 0].reshape(-1)
         flat_recon[pixel_indices.ravel()] = proc_pixels.ravel()
-     
+       
         # if end % self.refresh_rate == 0:
             # self.sigTriggerUIRefresh.emit()
-
         if end >= self.processor.num_frames_in_stack: 
             self.sigMoveTimeSlider.emit(self.time_index)
             self.sigTriggerUIRefresh.emit()

@@ -63,12 +63,10 @@ class ZarrInitWorker(QtCore.QObject):
 					QtCore.QThread.msleep(100)
 
 			imswitch_meta = z_arr.attrs.get("ImswitchData")
-			
 			axis_startpos = np.array(imswitch_meta["ScanStage:axis_startpos"]).flatten()	
 			x0, y0, _ = axis_startpos
 			x1, y1, _ = imswitch_meta["ScanStage:axis_length"]
 			dx, dy, _ = imswitch_meta["ScanStage:axis_step_size"]
-			
 			self.nx_s = int(np.ceil((x1 - x0) / dx)) + 1
 			self.ny_s = int(np.ceil((y1 - y0) / dy)) + 1	
 			self.num_frames_in_stack = self.nx_s * self.ny_s 
@@ -103,7 +101,6 @@ class ZarrInitWorker(QtCore.QObject):
 		
 	def _get_stream_args(self, data: np.ndarray) -> StreamArgs:		
 		loc_result = localizer(data)
-
 		gauss_args = (
 			loc_result.xp, 
 			loc_result.xo,
@@ -117,7 +114,6 @@ class ZarrInitWorker(QtCore.QObject):
 			loc_result.num_cols,
 			4 # num_rects
 		)
-
 		recon_rows, recon_cols = loc_result.ny_c * self.ny_s, loc_result.nx_c * self.nx_s 
 
 		if GPU_AVAILABLE:
@@ -125,9 +121,7 @@ class ZarrInitWorker(QtCore.QObject):
 			data = cp.array(data)
 		else:
 			ProcessorClass = GaussProcessorCPU
-
 		processor = ProcessorClass(*gauss_args)
-
 		proc_pixels = processor.process_chunk(data)
 		ori = get_orientation(loc_result.nx_c, loc_result.ny_c, self.nx_s, self.ny_s, proc_pixels)
 		processor.update_frame_inds(loc_result.nx_c, loc_result.ny_c, self.nx_s, self.ny_s, ori)	

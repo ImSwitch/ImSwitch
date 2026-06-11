@@ -58,17 +58,12 @@ class ZarrStreamWorker(QtCore.QObject):
 
                 if num_frames_proc >= self.num_frame_in_stack - 1: 
                     self.num_time_points_proc += 1 
-                    if self.num_time_points_proc >= self.num_time_points:
-                        print(f"[ZarrStreamWorker] [run] >> Completed all timepoints => Folder Done")
-                    else: 
-                        print(f"[ZarrStreamWorker] [run] >> File completed => going to next file")
                     break
                 
-                QtCore.QThread.msleep(100)  
+                QtCore.QThread.msleep(50)  
             
             except Exception as e:
                 # Errno 13 => windows file locking retry
-                print(f"[ZarrStreamWorker] [run] >> {e}") 
                 QtCore.QThread.msleep(50)
                 pass
 

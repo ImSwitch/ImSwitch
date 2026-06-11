@@ -20,10 +20,7 @@ except ImportError:
 	GPU_AVAILABLE = False
 	Processor = NewType("Processor", GaussProcessorCPU)
 
-
 from dataclasses import dataclass
-
-
 @dataclass(frozen=True)
 class StreamArgs:
 	num_frames_in_stack: int 
@@ -61,9 +58,9 @@ class ZarrInitWorker(QtCore.QObject):
 					QtCore.QThread.msleep(100)
 					pass
 
-			imswitch_meta = z_arr.attrs["ImswitchData"]
-			axis_startpos = np.array(imswitch_meta["ScanStage:axis_startpos"]).flatten()
+			imswitch_meta = z_arr.attrs.get("ImswitchData")
 			
+			axis_startpos = np.array(imswitch_meta["ScanStage:axis_startpos"]).flatten()	
 			x0, y0, _ = axis_startpos
 			x1, y1, _ = imswitch_meta["ScanStage:axis_length"]
 			dx, dy, _ = imswitch_meta["ScanStage:axis_step_size"]

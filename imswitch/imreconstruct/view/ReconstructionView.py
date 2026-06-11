@@ -168,7 +168,7 @@ class ReconstructionView(QtWidgets.QFrame):
 
 
     def _handleFastUpdate(self, im): 
-        self.imgLayer.data = im                                         
+        self.imgLayer.data = im.view()                             
         self.napariViewer.window.qt_viewer.canvas.update()
 
 

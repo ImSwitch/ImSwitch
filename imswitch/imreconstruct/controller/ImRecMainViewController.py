@@ -128,15 +128,16 @@ class ImRecMainViewController(ImRecWidgetController):
             self._logger.debug("[__init__] >> CuPy NOT available => Defaulting to CPU processing")
  
 
-    @QtCore.Slot(Processor, np.ndarray, list)
+    @QtCore.Slot(str, Processor, np.ndarray, list)
     def setupLiveStream(
             self, 
+            recon_obj_name: str, 
             processor: Processor,
             rawData: np.ndarray,
             reconObjArgs: list, 
     ):       
         self.liveReconObj = ReconObj(
-            "Live_Stream", 
+            recon_obj_name, 
             self._scanParDict,
             self._widget.r_l_text, 
             self._widget.u_d_text, 
@@ -146,7 +147,7 @@ class ImRecMainViewController(ImRecWidgetController):
             self._widget.n_text,
             *reconObjArgs # [reconRows, reconCols, numTimepoints] 
         )            
-        self._widget.addNewData(self.liveReconObj, "Live_Stream") 
+        self._widget.addNewData(self.liveReconObj, recon_obj_name) 
         self.processorWorker = ProcessorWorker(
             processor, 
             rawData,
@@ -164,29 +165,25 @@ class ImRecMainViewController(ImRecWidgetController):
 
     @QtCore.Slot(int)
     def moveTimeSlider(self, timeIndex: int):
+        # axes: (D, B, T, Z, Y, X)
+        #        0  1  2  3  4  5
         self.reconWidget.napariViewer.dims.set_current_step(2, timeIndex)
 
     def triggerUIRefresh(self):
-        """ Triggers napari UI update. """
-        try:
-            self.reconWidget.sigUpdateImage.emit(self.liveReconObj.reconstructed)
-        except Exception as e:
-            self._logger.error(f"[triggerUIRefresh] >> UI refresh failed: {e}")
+        self.reconWidget.sigUpdateImage.emit(np.array(self.liveReconObj.reconstructed, copy=False))
 
     def stopLiveStream(self): 
         """ Shuts down processor thread. """
-        if self.processorThread is None or not self.processorThread.isRunning():
-            self._logger.debug("[stopLiveStream] >> Shutdown already complete or in progress. Skipping.")
-            return
-
-        self._logger.debug(f"[stopLiveStream] >> Initiating shutdown...")
-
-        if self.processorThread is not None:
+        try: 
+            self._commChannel.sigLiveChunkReady.disconnect(self.processorWorker.processChunk)
+        except:
+            pass 
+        
+        if hasattr(self, "processorThread"):
             self.processorThread.quit()
-            self.processorThread.terminate()
             self.processorThread.wait()
- 
-        self._logger.debug("[stopLiveStream] >> Processor thread has been cleared")
+        
+        self._logger.debug("[stopLiveStream] >> ProcessorWorker stopped")
 
     def dataFolderChanged(self, dataFolder):
         self._dataFolder = dataFolder

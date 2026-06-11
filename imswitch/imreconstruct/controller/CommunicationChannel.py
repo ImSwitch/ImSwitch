@@ -24,9 +24,9 @@ class CommunicationChannel(SignalInterface):
 
     # --- NEW SIGNALS ---
     
-    sigSetupLiveStream = Signal(object, np.ndarray, list)     # (Processor, dataBuffer, [reconRows, reconCols])
-    sigLiveChunkReady = Signal(int, int)                      # (startChunkIndex, endChunkIndex)
-    sigSaveRecImage = Signal(int)                             # (timePointIndex)
+    sigSetupLiveStream = Signal(str, object, np.ndarray, list)     # (recon_obj_name, Processor, dataBuffer, [reconRows, reconCols])
+    sigLiveChunkReady = Signal(int, int)                           # (startChunkIndex, endChunkIndex)
+    sigSaveRecImage = Signal(int)                                  # (timePointIndex)
     sigStopLiveStream = Signal()
 
 

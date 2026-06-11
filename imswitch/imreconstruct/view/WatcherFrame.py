@@ -1,14 +1,19 @@
+# type: ignore
+
+
 from qtpy import QtCore, QtWidgets
 
 from imswitch.imcontrol.view import guitools
+
 import os
 
 
 class WatcherFrame(QtWidgets.QFrame):
-    """Frame for reconstructing files from a folder automatically."""
+    
+    """ Frame for reconstructing files from a folder automatically. """
 
-    sigWatchChanged = QtCore.Signal(bool)  # type: ignore (enabled)
-    sigChangeFolder = QtCore.Signal() # type: ignore
+    sigWatchChanged = QtCore.Signal(bool)  
+    sigChangeFolder = QtCore.Signal() 
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

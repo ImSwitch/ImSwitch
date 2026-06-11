@@ -1,10 +1,12 @@
 # type: ignore
 
+
 from os import listdir
-from os.path import join, isdir
+from os.path import join 
 from qtpy import QtCore
 from typing import List
 import zarr
+
 
 class FileWatcher(QtCore.QObject):
 
@@ -12,77 +14,46 @@ class FileWatcher(QtCore.QObject):
     ...
     """
     
-    sigSendFiles = QtCore.Signal(list)
+    sigFileQueueUpdated = QtCore.Signal()
     sigFinishedDirectory = QtCore.Signal()
 
-    def __init__(self, path: str):
+    def __init__(self, directory_path: str, file_queue: List[str]):
         super().__init__()
-        self.root_path = path
-        self.directories = []
-        self.directory_index = 0
+        self.directory_path = directory_path
+        self.file_queue = file_queue 
         self.running = True
 
-    def start_monitoring(self):
+    def run(self):
+        # TODO: pass header metadata from WatcherFrameController before starting the file watching? 
         while self.running: 
-            self._update_directories() 
-            if self.directory_index <= len(self.directories) - 1: 
-                d = self.directories[self.directory_index]
-                self.directory_index += 1
-                self._poll_directory(d)  
-            QtCore.QThread.msleep(100)
+            self._check_for_files()
+            QtCore.QThread.msleep(100) 
 
     def stop(self):
         self.running = False
 
-    def _update_directories(self):
-        path = self.root_path
-        for d in listdir(path):
-            d_abs = join(path, d)
-            if isdir(d_abs) and not d_abs in self.directories:
-                self.directories.append(d_abs)
+    def _check_for_files(self):
+        new_files_found = False  
+        
+        for f in listdir(self.directory_path):
+            f_abs = join(self.directory_path, f)
+            if f.lower().endswith(".zarr") and f_abs not in self.file_queue: 
+                self.file_queue.append(f_abs)
+                self.file_queue.sort()
+                new_files_found = True  
+        
+        if new_files_found: 
+            self.sigFileQueueUpdated.emit()
 
-    def _find_files(self, dir_path: str) -> List[str]:
-        files = set()
-        for f in listdir(dir_path):
-            f_abs = join(dir_path, f)
-            if f.lower().endswith(".zarr"):
-                files.add(f_abs)
-        return files
+    def _get_meta_value(self, meta_key: str) -> object: 
+        for f in listdir(self.directory_path):
+            if f.lower().endswith(".zattrs"):
+                z = zarr.open(self.directory_path)
+                imswitch_meta = z.attrs.get("ImswitchData", None) 
+                meta_val = imswitch_meta.get(meta_key, None) if imswitch_meta != None else None
+                return meta_val
 
-    def _get_meta_value(self, dir_path: str, meta_key: str) -> object:
-        while True:
-            for f in listdir(dir_path):
-                if f.endswith(".zattrs"):
-                    z = zarr.open(dir_path)
-                    imswitch_meta = z.attrs.get("ImswitchData", None) 
-                    meta_val = imswitch_meta.get(meta_key, None) if imswitch_meta != None else None
-                    return meta_val
-            QtCore.QThread.msleep(100)
 
-    def _poll_directory(self, dir_path: str): 
-        old_files = set()  
-        num_files = self._get_meta_value(dir_path, "Rec:LapseTime") 
-        while True: 
-            new_files = self._find_files(dir_path) - old_files
-            old_files |= new_files # set operation: insert new files into old files 
-
-            files = list(new_files)
-            if files:
-                files.sort() 
-                self.sigSendFiles.emit(files)
-
-            if num_files != None and len(old_files) >= num_files:
-                self.sigFinishedDirectory.emit() 
-                break 
-            
-            scan_flag = self._get_meta_value(dir_path, "scan_flag")
-            if scan_flag != None and not scan_flag:
-                self.sigFinishedDirectory.emit() 
-                break
-            
-            QtCore.QThread.msleep(100) 
-
-    
 # Adapted from https://towardsdatascience.com/implementing-a-file-watcher-in-python-73f8356a425d
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

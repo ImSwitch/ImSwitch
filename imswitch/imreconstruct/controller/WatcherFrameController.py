@@ -65,10 +65,11 @@ class WatcherFrameController(ImRecWidgetController):
             self._logger.error("[toggle_watch] >> Select a valid folder")
             self.uncheck_button()
         elif checked:
+            self._logger.debug(f"[toggle_watch] >> Started monitoring: {self.root_path}") 
             self.start_directory_watcher(self.root_path)
         else:
             self.stop_all_workers()
-            self.directory_queue.clear()
+            #self.directory_queue.clear()
             self.directory_index = 0
             self.file_queue.clear()
 

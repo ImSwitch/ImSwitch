@@ -60,11 +60,11 @@ class ZarrStreamWorker(QtCore.QObject):
                     self.num_time_points_proc += 1 
                     break
                 
-                QtCore.QThread.msleep(50)  
+                QtCore.QThread.msleep(100)  
             
             except Exception as e:
                 # Errno 13 => windows file locking retry
-                QtCore.QThread.msleep(50)
+                QtCore.QThread.msleep(100)
                 pass
 
     def stop(self): 

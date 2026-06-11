@@ -56,13 +56,20 @@ class ZarrInitWorker(QtCore.QObject):
 	def run(self):		
 		try:
 			z_arr = None
-			while z_arr is None:
+			imswitch_meta = None
+			while z_arr is None or imswitch_meta is None: 
 				try: 
 					z_arr = zarr.open(self.z_arr_path)
+					imswitch_meta = z_arr.attrs.get("ImswitchData", None)	
+					if imswitch_meta is None: 
+						QtCore.QThread.mslee(200)
+						continue		
 				except Exception:
-					QtCore.QThread.msleep(100)
+					z_arr = None 
+					imswitch_meta = None 		
+					QtCore.QThread.msleep(200)
 
-			imswitch_meta = z_arr.attrs.get("ImswitchData")
+			imswitch_meta = z_arr.attrs.get("ImswitchData", None)
 			axis_startpos = np.array(imswitch_meta["ScanStage:axis_startpos"]).flatten()	
 			x0, y0, _ = axis_startpos
 			x1, y1, _ = imswitch_meta["ScanStage:axis_length"]

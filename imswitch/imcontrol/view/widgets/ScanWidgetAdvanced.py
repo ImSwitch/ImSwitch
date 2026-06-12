@@ -64,6 +64,9 @@ class ScanWidgetAdvanced(SuperScanWidget):
         # --- Advanced mode ---
         self.advancedOptionsBox = QtWidgets.QCheckBox("Advanced Line Program")
         self.advancedOptionsBox.setChecked(False)
+        self.advancedProgramModeCombo = QtWidgets.QComboBox()
+        self.advancedProgramModeCombo.addItems(["Timing windows", "Sequence builder"])
+        self.advancedProgramModeCombo.setVisible(False)
         self.intraPixelPositionersBox = QtWidgets.QCheckBox("Intra-pixel positioners movement")
         self.intraPixelPositionersBox.setChecked(False)
         self.intraPixelPositionersBox.setVisible(False)
@@ -77,6 +80,8 @@ class ScanWidgetAdvanced(SuperScanWidget):
         self._pulseMasterBox = QtWidgets.QCheckBox("Master")
         self._pulseLockBox = QtWidgets.QCheckBox("Lock-with:")
         self._pulseLockTarget = QtWidgets.QComboBox()
+        self._pulseDeviceLabel = QtWidgets.QLabel("Device:")
+        self._pulseLineStepLabel = QtWidgets.QLabel("Line step:")
 
         self._pulseStartEdit = QtWidgets.QLineEdit("")  # ms list: "0.0, 0.2, ..."
         self._pulseEndEdit = QtWidgets.QLineEdit("")    # ms list
@@ -86,11 +91,75 @@ class ScanWidgetAdvanced(SuperScanWidget):
         self._analogLevelEdit.setMaximum(100)
         self._analogLevelEdit.setSingleStep(1)
         self._analogLevelEdit.setValue(100)
+
+        self._sequenceTable = QtWidgets.QTableWidget(0, 4)
+        self._sequenceTable.setHorizontalHeaderLabels(["Device(s)", "Duration (ms)", "Wait (ms)", "Value"])
+        self._sequenceTable.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
+        self._sequenceTable.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
+        self._sequenceTable.verticalHeader().setVisible(False)
+        self._sequenceTable.setFrameShape(QtWidgets.QFrame.NoFrame)
+        self._sequenceTable.setShowGrid(False)
+        self._sequenceTable.setAlternatingRowColors(False)
+        self._sequenceTable.setFont(self.font())
+        sequence_header_font = self.font()
+        sequence_header_font.setPointSize(max(7, sequence_header_font.pointSize() - 3))
+        sequence_header_font.setBold(False)
+        sequence_header = self._sequenceTable.horizontalHeader()
+        sequence_header.setFont(sequence_header_font)
+        sequence_header.setFixedHeight(20)
+        sequence_header.setStyleSheet("""
+            QHeaderView {
+                font-size: 9px;
+                font-weight: normal;
+            }
+            QHeaderView::section {
+                font-size: 9px;
+                font-weight: normal;
+                padding: 0px 3px;
+                min-height: 18px;
+                max-height: 18px;
+                border-radius: 5px;
+                margin: 1px;
+            }
+        """)
+        for column in range(self._sequenceTable.columnCount()):
+            item = self._sequenceTable.horizontalHeaderItem(column)
+            if item is not None:
+                item.setFont(sequence_header_font)
+        self._sequenceTable.setStyleSheet("""
+            QTableWidget {
+                border: 0;
+            }
+        """)
+        self._sequenceTable.setColumnWidth(1, 76)
+        self._sequenceTable.setColumnWidth(2, 66)
+        self._sequenceTable.setColumnWidth(3, 68)
+        self._sequenceTable.horizontalHeader().setStretchLastSection(False)
+        self._sequenceTable.horizontalHeader().setSectionResizeMode(0, QtWidgets.QHeaderView.Stretch)
+        self._sequenceTable.horizontalHeader().setSectionResizeMode(1, QtWidgets.QHeaderView.Fixed)
+        self._sequenceTable.horizontalHeader().setSectionResizeMode(2, QtWidgets.QHeaderView.Fixed)
+        self._sequenceTable.horizontalHeader().setSectionResizeMode(3, QtWidgets.QHeaderView.Fixed)
+        self._sequenceTable.setVisible(False)
+        self._sequenceAddButton = guitools.BetterPushButton("+")
+        self._sequenceRemoveButton = guitools.BetterPushButton("-")
+        self._sequenceUpButton = guitools.BetterPushButton("↑")
+        self._sequenceDownButton = guitools.BetterPushButton("↓")
+        for button in (
+            self._sequenceAddButton,
+            self._sequenceRemoveButton,
+            self._sequenceUpButton,
+            self._sequenceDownButton,
+        ):
+            button.setMaximumWidth(34)
+            button.setVisible(False)
+        self._sequenceRowsByStep = {}
+
         self.graph_steps = GraphFrame()  # always visible (scatter)
         self.graph_steps.setFixedHeight(140)
 
         self.graph_pixel = GraphFrame()  # only visible in advanced mode
         self.graph_pixel.setFixedHeight(140)
+        self.graph_pixel.setMinimumWidth(0)
 
         self.plotScanButton = guitools.BetterPushButton("Plot")
         self.plotIncludeTTLBox = QtWidgets.QCheckBox("include TTL")
@@ -103,6 +172,7 @@ class ScanWidgetAdvanced(SuperScanWidget):
         # Connect TTL signals
         self.linestep_counter.valueChanged.connect(self._onLineStepsChanged)
         self.advancedOptionsBox.stateChanged.connect(self._onAdvancedModeChanged)
+        self.advancedProgramModeCombo.currentIndexChanged.connect(lambda: self._onAdvancedProgramModeChanged())
         self.intraPixelPositionersBox.stateChanged.connect(self._onIntraPixelPositionersChanged)
         self._pulseSelectDevice.currentIndexChanged.connect(self._syncPulseEditsFromModel)
         self._pulseSelectStep.valueChanged.connect(self._syncPulseEditsFromModel)
@@ -113,6 +183,11 @@ class ScanWidgetAdvanced(SuperScanWidget):
         self._pulseEndEdit.textChanged.connect(lambda: self._onPulseEditsChanged())
         self._positionerStepUmEdit.textChanged.connect(lambda: self._onPulseEditsChanged())
         self._analogLevelEdit.valueChanged.connect(lambda: self._onPulseEditsChanged())
+        self._sequenceTable.itemSelectionChanged.connect(self._refreshSequenceButtonState)
+        self._sequenceAddButton.clicked.connect(self._addSequenceRow)
+        self._sequenceRemoveButton.clicked.connect(self._removeSelectedSequenceRow)
+        self._sequenceUpButton.clicked.connect(lambda: self._moveSelectedSequenceRow(-1))
+        self._sequenceDownButton.clicked.connect(lambda: self._moveSelectedSequenceRow(1))
         self.plotScanButton.clicked.connect(self.sigPlotScanClicked)
 
 
@@ -120,6 +195,7 @@ class ScanWidgetAdvanced(SuperScanWidget):
         self._updatingPulseEdits = False
         self._updatingLockControls = False
         self._syncingLockedDevices = False
+        self._updatingSequenceTable = False
         # Devices (laser lines) that support per-linestep analog power programming
         self._linestep_power_capable_devices = set()
 
@@ -304,7 +380,8 @@ class ScanWidgetAdvanced(SuperScanWidget):
         self._refreshAdvancedLineProgramDeviceVisibility()
 
         self.grid.addWidget(self.advancedOptionsBox, currentRow, 0, 1, 2)
-        self.grid.addWidget(self.intraPixelPositionersBox, currentRow, 2, 1, 3)
+        self.grid.addWidget(self.advancedProgramModeCombo, currentRow, 2, 1, 2)
+        self.grid.addWidget(self.intraPixelPositionersBox, currentRow, 4, 1, 4)
         currentRow += 1
 
         # ---------------------------
@@ -316,10 +393,10 @@ class ScanWidgetAdvanced(SuperScanWidget):
         advLayout = QtWidgets.QGridLayout()
         advGroup.setLayout(advLayout)
 
-        advLayout.addWidget(QtWidgets.QLabel("Device:"), 0, 0)
+        advLayout.addWidget(self._pulseDeviceLabel, 0, 0)
         advLayout.addWidget(self._pulseSelectDevice, 0, 1)
 
-        advLayout.addWidget(QtWidgets.QLabel("Line step:"), 0, 2)
+        advLayout.addWidget(self._pulseLineStepLabel, 0, 2)
         advLayout.addWidget(self._pulseSelectStep, 0, 3)
 
         advLayout.addWidget(self._pulseMasterBox, 1, 0)
@@ -341,6 +418,20 @@ class ScanWidgetAdvanced(SuperScanWidget):
         self._analogLevelLabel = QtWidgets.QLabel("Power Level (%)")
         advLayout.addWidget(self._analogLevelLabel, 5, 0, 1, 2)
         advLayout.addWidget(self._analogLevelEdit, 5, 2, 1, 2)
+
+        self._sequenceButtons = QtWidgets.QWidget()
+        sequenceButtonLayout = QtWidgets.QHBoxLayout(self._sequenceButtons)
+        sequenceButtonLayout.setContentsMargins(0, 0, 0, 0)
+        sequenceButtonLayout.setSpacing(4)
+        sequenceButtonLayout.addWidget(self._sequenceAddButton)
+        sequenceButtonLayout.addWidget(self._sequenceRemoveButton)
+        sequenceButtonLayout.addWidget(self._sequenceUpButton)
+        sequenceButtonLayout.addWidget(self._sequenceDownButton)
+        sequenceButtonLayout.addStretch()
+        self._sequenceButtons.setVisible(False)
+
+        advLayout.addWidget(self._sequenceTable, 1, 0, 4, 4)
+        advLayout.addWidget(self._sequenceButtons, 5, 0, 1, 4)
         advanced_row_height = self._pulseStartEdit.sizeHint().height()
         for widget in (
             self._pulseEndEdit,
@@ -352,6 +443,10 @@ class ScanWidgetAdvanced(SuperScanWidget):
             widget.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Fixed)
 
         advLayout.addWidget(self.graph_pixel, 0, 4, 6, 4)
+        for col in range(8):
+            advLayout.setColumnStretch(col, 1)
+            advLayout.setColumnMinimumWidth(col, 0)
+        self._sequenceTable.setMinimumWidth(0)
 
         self._advGroup = advGroup
         self._advGroup.setVisible(False)
@@ -406,6 +501,58 @@ class ScanWidgetAdvanced(SuperScanWidget):
 
     def getAdvancedDeviceLockTarget(self):
         return dict(self._advanced_lock_target)
+
+    def getAdvancedProgramMode(self) -> str:
+        return "sequence" if self.advancedProgramModeCombo.currentIndex() == 1 else "timing"
+
+    def commitAdvancedProgramEdits(self):
+        if self.getAdvancedProgramMode() == "sequence":
+            self._storeCurrentSequenceTable()
+            self._compileSequenceProgram()
+
+    def setAdvancedProgramMode(self, mode: str) -> None:
+        mode = str(mode or "timing").lower()
+        self.advancedProgramModeCombo.setCurrentIndex(1 if mode == "sequence" else 0)
+        self._refreshAdvancedProgramMode()
+
+    def getAdvancedSequenceRows(self):
+        self._storeCurrentSequenceTable()
+        rows_by_step = []
+        for step in range(self.getNumLineSteps()):
+            rows = []
+            for row in self._sequenceRowsByStep.get(step, []):
+                rows.append({
+                    "devices": list(row.get("devices", []) or []),
+                    "duration_ms": float(row.get("duration_ms", 0.0)),
+                    "wait_ms": float(row.get("wait_ms", 0.0)),
+                    "value": float(row.get("value", self._sequenceDefaultValue(row.get("devices", [])))),
+                })
+            rows_by_step.append(rows)
+        return rows_by_step
+
+    def setAdvancedSequenceRows(self, rows_by_step) -> None:
+        self._sequenceRowsByStep = {}
+        if isinstance(rows_by_step, dict):
+            iterable = rows_by_step.items()
+        else:
+            iterable = enumerate(list(rows_by_step or []))
+
+        for step, rows in iterable:
+            try:
+                step_idx = int(step)
+            except Exception:
+                continue
+            self._sequenceRowsByStep[step_idx] = []
+            for row in list(rows or []):
+                self._sequenceRowsByStep[step_idx].append({
+                    "devices": list(row.get("devices", []) or []),
+                    "duration_ms": float(row.get("duration_ms", 0.0)),
+                    "wait_ms": float(row.get("wait_ms", 0.0)),
+                    "value": float(row.get("value", self._sequenceDefaultValue(row.get("devices", [])))),
+                })
+
+        self._refreshSequenceTableFromModel()
+        self._compileSequenceProgram()
 
     def setAdvancedDeviceLockState(self, masters=None, targets=None):
         devices = set(self._visibleAdvancedProgramDevices())
@@ -590,9 +737,9 @@ class ScanWidgetAdvanced(SuperScanWidget):
         S = self.getNumLineSteps()
 
         total = spp * S
-        x = np.arange(total)
+        x = np.arange(total) / float(sampleRate) * 1000.0
 
-        vlines = [k * spp for k in range(1, S)]
+        vlines = [k * spp / float(sampleRate) * 1000.0 for k in range(1, S)]
         for xv in vlines:
             plot.addItem(pg.InfiniteLine(pos=xv, angle=90, movable=False))
 
@@ -608,6 +755,7 @@ class ScanWidgetAdvanced(SuperScanWidget):
 
         ymin = -0.15 * len(plot_labels) - 0.2
         ymax = 110.0
+        sequence_mode = self.getAdvancedProgramMode() == "sequence"
 
         for dev_idx, dev in enumerate(plot_labels):
             y = np.zeros(total, dtype=float)
@@ -645,10 +793,12 @@ class ScanWidgetAdvanced(SuperScanWidget):
                     y[start:end] = seg
                     continue
 
-                if not self.getLineStepEnabled(dev, step):
+                pe = self._getPulseEditor(dev, step)
+                if not sequence_mode and not self.getLineStepEnabled(dev, step):
+                    continue
+                if sequence_mode and not (pe.starts_s and pe.ends_s):
                     continue
 
-                pe = self._getPulseEditor(dev, step)
                 if pe.starts_s and pe.ends_s and pe.power_percent:
                     seg = np.zeros(spp, dtype=float)
                     for t0, t1 in zip(pe.starts_s, pe.ends_s):
@@ -670,7 +820,7 @@ class ScanWidgetAdvanced(SuperScanWidget):
             plot.plot(x, yy, pen=pg.mkPen(plot_colors[dev_idx]), name=dev)
 
         plot.setYRange(ymin, ymax)
-        plot.setLabel("bottom", "Samples within single dwell time")
+        plot.setLabel("bottom", "Time within single dwell time (ms)")
         plot.setLabel("left", "Power [%]")
 
     @staticmethod
@@ -754,17 +904,67 @@ class ScanWidgetAdvanced(SuperScanWidget):
     def _onAdvancedModeChanged(self):
         enabled = self.advancedOptionsBox.isChecked()
         self._advGroup.setVisible(enabled)
+        self.advancedProgramModeCombo.setVisible(enabled)
         self.intraPixelPositionersBox.setVisible(enabled)
         self._refreshAdvancedLineProgramDeviceVisibility()
         self._refreshPulseDeviceChoices()
+        self._refreshAdvancedProgramMode()
 
         # On toggle, refresh the pulse editor panel from stored model
         self._syncPulseEditsFromModel()
         self.sigSignalParChanged.emit()
 
+    def _onAdvancedProgramModeChanged(self):
+        if self._updatingPulseEdits:
+            return
+        self._refreshAdvancedProgramMode()
+        if self.getAdvancedProgramMode() == "sequence":
+            self._refreshSequenceTableFromModel()
+            self._compileSequenceProgram()
+        self._syncPulseEditsFromModel()
+        self.sigSignalParChanged.emit()
+
+    def _refreshAdvancedProgramMode(self):
+        sequence_mode = self.getAdvancedProgramMode() == "sequence"
+        timing_widgets = (
+            self._pulseDeviceLabel,
+            self._pulseSelectDevice,
+            self._pulseMasterBox,
+            self._pulseLockBox,
+            self._pulseLockTarget,
+            self._pulseStartLabel,
+            self._pulseStartEdit,
+            self._pulseEndLabel,
+            self._pulseEndEdit,
+            self._positionerStepUmLabel,
+            self._positionerStepUmEdit,
+            self._analogLevelLabel,
+            self._analogLevelEdit,
+        )
+        for widget in timing_widgets:
+            widget.setVisible(not sequence_mode)
+
+        self._pulseLineStepLabel.setVisible(True)
+        self._pulseSelectStep.setVisible(True)
+        self._sequenceTable.setVisible(sequence_mode)
+        self._sequenceButtons.setVisible(sequence_mode)
+        for button in (
+            self._sequenceAddButton,
+            self._sequenceRemoveButton,
+            self._sequenceUpButton,
+            self._sequenceDownButton,
+        ):
+            button.setVisible(sequence_mode)
+
+        if sequence_mode:
+            self._refreshSequenceTableFromModel()
+
     def _onIntraPixelPositionersChanged(self):
         self._refreshAdvancedLineProgramDeviceVisibility()
         self._refreshPulseDeviceChoices()
+        self._refreshSequenceTableFromModel()
+        if self.getAdvancedProgramMode() == "sequence":
+            self._compileSequenceProgram()
         self._syncPulseEditsFromModel()
         self.sigSignalParChanged.emit()
 
@@ -801,6 +1001,282 @@ class ScanWidgetAdvanced(SuperScanWidget):
         finally:
             self._pulseSelectDevice.blockSignals(False)
         self._refreshLockControlsFromModel()
+
+    def _currentSequenceStep(self):
+        return max(0, int(self._pulseSelectStep.value()) - 1)
+
+    def _selectedSequenceRow(self):
+        rows = self._sequenceTable.selectionModel().selectedRows()
+        if not rows:
+            return -1
+        return int(rows[0].row())
+
+    def _sequenceRowsForCurrentStep(self):
+        step = self._currentSequenceStep()
+        if step not in self._sequenceRowsByStep:
+            self._sequenceRowsByStep[step] = []
+        return self._sequenceRowsByStep[step]
+
+    def _refreshSequenceTableFromModel(self):
+        if not hasattr(self, "_sequenceTable"):
+            return
+        if self.getAdvancedProgramMode() != "sequence":
+            return
+
+        rows = self._sequenceRowsForCurrentStep()
+        self._updatingSequenceTable = True
+        try:
+            self._sequenceTable.setRowCount(0)
+            for row_idx, row in enumerate(rows):
+                self._sequenceTable.insertRow(row_idx)
+                self._setSequenceRowWidgets(row_idx, row)
+            self._sequenceTable.resizeRowsToContents()
+        finally:
+            self._updatingSequenceTable = False
+        self._refreshSequenceValueColumnVisibility()
+        self._refreshSequenceButtonState()
+
+    def _setSequenceRowWidgets(self, row_idx, row):
+        device_widget = QtWidgets.QWidget()
+        layout = QtWidgets.QHBoxLayout(device_widget)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(4)
+
+        add_button = QtWidgets.QToolButton()
+        add_button.setText("+")
+        add_button.setPopupMode(QtWidgets.QToolButton.InstantPopup)
+        add_button.setMenu(self._makeSequenceDeviceMenu(row_idx))
+        device_label = QtWidgets.QLabel(self._formatSequenceDevices(row.get("devices", [])))
+        device_label.setMinimumWidth(80)
+        device_label.setFont(self.font())
+        layout.addWidget(add_button)
+        layout.addWidget(device_label)
+        layout.addStretch()
+        self._sequenceTable.setCellWidget(row_idx, 0, device_widget)
+
+        duration = QtWidgets.QDoubleSpinBox()
+        duration.setDecimals(3)
+        duration.setMinimum(0.0)
+        duration.setMaximum(1e6)
+        duration.setSingleStep(0.1)
+        duration.setValue(float(row.get("duration_ms", 0.0)))
+        duration.setFont(self.font())
+        duration.valueChanged.connect(lambda value, r=row_idx: self._onSequenceValueChanged(r, "duration_ms", value))
+        self._sequenceTable.setCellWidget(row_idx, 1, duration)
+
+        wait = QtWidgets.QDoubleSpinBox()
+        wait.setDecimals(3)
+        wait.setMinimum(0.0)
+        wait.setMaximum(1e6)
+        wait.setSingleStep(0.1)
+        wait.setValue(float(row.get("wait_ms", 0.0)))
+        wait.setFont(self.font())
+        wait.valueChanged.connect(lambda value, r=row_idx: self._onSequenceValueChanged(r, "wait_ms", value))
+        self._sequenceTable.setCellWidget(row_idx, 2, wait)
+
+        value = QtWidgets.QDoubleSpinBox()
+        value.setDecimals(3)
+        value.setMinimum(-1e6)
+        value.setMaximum(1e6)
+        value.setSingleStep(0.1)
+        value_devices = row.get("devices", [])
+        if self._sequenceRowUsesValue(value_devices):
+            display_value = float(row.get("value", self._sequenceDefaultValue(value_devices)))
+        else:
+            display_value = 0.0
+            row["value"] = 0.0
+        value.setValue(display_value)
+        value.setSuffix(self._sequenceValueSuffix(value_devices))
+        value.setEnabled(self._sequenceRowUsesValue(value_devices))
+        value.setFont(self.font())
+        value.valueChanged.connect(lambda v, r=row_idx: self._onSequenceValueChanged(r, "value", v))
+        self._sequenceTable.setCellWidget(row_idx, 3, value)
+
+    def _refreshSequenceValueColumnVisibility(self):
+        if not hasattr(self, "_sequenceTable"):
+            return
+        rows = self._sequenceRowsForCurrentStep()
+        show_value = any(
+            self._sequenceRowUsesValue(row.get("devices", []))
+            for row in rows
+        )
+        self._sequenceTable.setColumnHidden(3, not show_value)
+
+    def _makeSequenceDeviceMenu(self, row_idx):
+        menu = QtWidgets.QMenu(self)
+        rows = self._sequenceRowsForCurrentStep()
+        selected = set(rows[row_idx].get("devices", []) if row_idx < len(rows) else [])
+        for dev in self._visibleAdvancedProgramDevices():
+            action = menu.addAction(dev)
+            action.setCheckable(True)
+            action.setChecked(dev in selected)
+            action.toggled.connect(
+                lambda checked, d=dev, r=row_idx: self._onSequenceDeviceToggled(r, d, checked)
+            )
+        return menu
+
+    @staticmethod
+    def _formatSequenceDevices(devices):
+        devices = list(devices or [])
+        return ", ".join(devices) if devices else "-"
+
+    def _onSequenceDeviceToggled(self, row_idx, device, checked):
+        rows = self._sequenceRowsForCurrentStep()
+        if row_idx < 0 or row_idx >= len(rows):
+            return
+        devices = list(rows[row_idx].get("devices", []) or [])
+        old_kind = self._sequenceValueKind(devices)
+        if checked and device not in devices:
+            devices.append(device)
+        elif not checked and device in devices:
+            devices.remove(device)
+        new_kind = self._sequenceValueKind(devices)
+        rows[row_idx]["devices"] = devices
+        if old_kind != new_kind:
+            rows[row_idx]["value"] = self._sequenceDefaultValue(devices)
+        self._refreshSequenceTableFromModel()
+        self._selectSequenceRow(row_idx)
+        self._compileSequenceProgram()
+        self.sigSignalParChanged.emit()
+
+    def _onSequenceValueChanged(self, row_idx, key, value):
+        if self._updatingSequenceTable:
+            return
+        rows = self._sequenceRowsForCurrentStep()
+        if row_idx < 0 or row_idx >= len(rows):
+            return
+        rows[row_idx][key] = float(value)
+        self._compileSequenceProgram()
+        self.sigSignalParChanged.emit()
+
+    def _addSequenceRow(self):
+        rows = self._sequenceRowsForCurrentStep()
+        selected = self._selectedSequenceRow()
+        insert_at = selected + 1 if selected >= 0 else len(rows)
+        rows.insert(insert_at, {"devices": [], "duration_ms": 1.0, "wait_ms": 0.1, "value": 0.0})
+        self._refreshSequenceTableFromModel()
+        self._selectSequenceRow(insert_at)
+        self._compileSequenceProgram()
+        self.sigSignalParChanged.emit()
+
+    def _removeSelectedSequenceRow(self):
+        rows = self._sequenceRowsForCurrentStep()
+        selected = self._selectedSequenceRow()
+        if selected < 0 or selected >= len(rows):
+            return
+        rows.pop(selected)
+        self._refreshSequenceTableFromModel()
+        if rows:
+            self._selectSequenceRow(min(selected, len(rows) - 1))
+        self._compileSequenceProgram()
+        self.sigSignalParChanged.emit()
+
+    def _moveSelectedSequenceRow(self, direction):
+        rows = self._sequenceRowsForCurrentStep()
+        selected = self._selectedSequenceRow()
+        new_index = selected + int(direction)
+        if selected < 0 or selected >= len(rows) or new_index < 0 or new_index >= len(rows):
+            return
+        rows[selected], rows[new_index] = rows[new_index], rows[selected]
+        self._refreshSequenceTableFromModel()
+        self._selectSequenceRow(new_index)
+        self._compileSequenceProgram()
+        self.sigSignalParChanged.emit()
+
+    def _selectSequenceRow(self, row_idx):
+        if row_idx < 0 or row_idx >= self._sequenceTable.rowCount():
+            return
+        self._sequenceTable.selectRow(row_idx)
+
+    def _refreshSequenceButtonState(self):
+        if not hasattr(self, "_sequenceRemoveButton"):
+            return
+        selected = self._selectedSequenceRow()
+        row_count = self._sequenceTable.rowCount()
+        has_selection = selected >= 0
+        self._sequenceRemoveButton.setEnabled(has_selection)
+        self._sequenceUpButton.setEnabled(has_selection and selected > 0)
+        self._sequenceDownButton.setEnabled(has_selection and selected < row_count - 1)
+
+    def _storeCurrentSequenceTable(self):
+        if self._updatingSequenceTable or not hasattr(self, "_sequenceTable"):
+            return
+        rows = self._sequenceRowsForCurrentStep()
+        for row_idx in range(min(self._sequenceTable.rowCount(), len(rows))):
+            duration = self._sequenceTable.cellWidget(row_idx, 1)
+            wait = self._sequenceTable.cellWidget(row_idx, 2)
+            value = self._sequenceTable.cellWidget(row_idx, 3)
+            if duration is not None:
+                rows[row_idx]["duration_ms"] = float(duration.value())
+            if wait is not None:
+                rows[row_idx]["wait_ms"] = float(wait.value())
+            if value is not None:
+                rows[row_idx]["value"] = float(value.value())
+
+    def _compileSequenceProgram(self, stepIdx=None):
+        if self.getAdvancedProgramMode() != "sequence":
+            return
+
+        step_indices = [int(stepIdx)] if stepIdx is not None else range(self.getNumLineSteps())
+        for step in step_indices:
+            rows = self._sequenceRowsByStep.get(step, [])
+            for dev in self._visibleAdvancedProgramDevices():
+                pe = self._getPulseEditor(dev, step)
+                pe.starts_s = []
+                pe.ends_s = []
+                if dev in self._positioner_device_names:
+                    pe.positioner_step_um = []
+
+            t_ms = 0.0
+            for row in rows:
+                duration_ms = max(0.0, float(row.get("duration_ms", 0.0)))
+                wait_ms = max(0.0, float(row.get("wait_ms", 0.0)))
+                value = float(row.get("value", self._sequenceDefaultValue(row.get("devices", []))))
+                if duration_ms > 0:
+                    start_s = t_ms / 1000.0
+                    end_s = (t_ms + duration_ms) / 1000.0
+                    for dev in list(row.get("devices", []) or []):
+                        if dev not in self._visibleAdvancedProgramDevices():
+                            continue
+                        pe = self._getPulseEditor(dev, step)
+                        pe.starts_s.append(start_s)
+                        pe.ends_s.append(end_s)
+                        if dev in self._positioner_device_names:
+                            steps = self._coerce_positioner_step_list(
+                                getattr(pe, "positioner_step_um", [])
+                            )
+                            steps.append(value)
+                            pe.positioner_step_um = steps
+                        elif dev in self._linestep_power_capable_devices:
+                            pe.power_percent = max(0.0, min(100.0, value))
+                t_ms += duration_ms + wait_ms
+
+    def _sequenceValueKind(self, devices):
+        devices = set(devices or [])
+        if devices.intersection(self._positioner_device_names):
+            return "positioner"
+        if devices.intersection(self._linestep_power_capable_devices):
+            return "power"
+        return None
+
+    def _sequenceDefaultValue(self, devices):
+        kind = self._sequenceValueKind(devices)
+        if kind == "positioner":
+            return 0.1
+        if kind == "power":
+            return 100.0
+        return 0.0
+
+    def _sequenceRowUsesValue(self, devices):
+        return self._sequenceValueKind(devices) is not None
+
+    def _sequenceValueSuffix(self, devices):
+        kind = self._sequenceValueKind(devices)
+        if kind == "positioner":
+            return " um"
+        if kind == "power":
+            return " %"
+        return ""
 
     def _cleanupLockState(self):
         devices = set(self._visibleAdvancedProgramDevices())
@@ -959,6 +1435,11 @@ class ScanWidgetAdvanced(SuperScanWidget):
         if not self.isadvancedOptionsMode():
             return
         if self._pulseSelectDevice.count() == 0:
+            return
+        if self.getAdvancedProgramMode() == "sequence":
+            self._refreshAdvancedProgramMode()
+            self._refreshSequenceTableFromModel()
+            self._refreshSequenceButtonState()
             return
 
         dev = self._pulseSelectDevice.currentText()

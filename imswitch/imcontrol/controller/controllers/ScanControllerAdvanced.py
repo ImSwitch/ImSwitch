@@ -500,6 +500,11 @@ class ScanControllerAdvanced(SuperScanController):
         # Digital (advanced schema)
         # -------------------------
         try:
+            self._widget.commitAdvancedProgramEdits()
+        except Exception:
+            pass
+
+        try:
             S = int(self._widget.getNumLineSteps())
         except Exception:
             S = 1
@@ -508,6 +513,11 @@ class ScanControllerAdvanced(SuperScanController):
             advanced_mode = bool(self._widget.isAdvancedTTLMode())
         except Exception:
             advanced_mode = False
+        try:
+            advanced_program_mode = self._widget.getAdvancedProgramMode()
+        except Exception:
+            advanced_program_mode = "timing"
+        sequence_mode = advanced_mode and advanced_program_mode == "sequence"
 
         included_devices = []
         linestep_enable = {}
@@ -540,6 +550,9 @@ class ScanControllerAdvanced(SuperScanController):
                     except Exception:
                         starts_steps[s] = []
                         ends_steps[s] = []
+
+                    if sequence_mode and starts_steps[s] and ends_steps[s]:
+                        enable_vec[s] = True
 
             # Include device if any step enabled OR any pulses specified
             any_pulses = any(len(starts_steps[s]) or len(ends_steps[s]) for s in range(S))
@@ -626,6 +639,12 @@ class ScanControllerAdvanced(SuperScanController):
         }
 
         try:
+            self._digitalParameterDict["advanced_program_mode"] = (
+                self._widget.getAdvancedProgramMode()
+            )
+            self._digitalParameterDict["advanced_sequence_rows"] = (
+                self._widget.getAdvancedSequenceRows()
+            )
             self._digitalParameterDict["advanced_device_lock_master"] = (
                 self._widget.getAdvancedDeviceLockMaster()
             )
@@ -746,6 +765,16 @@ class ScanControllerAdvanced(SuperScanController):
                             self._widget.setPulseTimes(dev, s, starts_steps[s], ends_steps[s])
                         except Exception:
                             pass
+
+            try:
+                self._widget.setAdvancedProgramMode(
+                    dig.get("advanced_program_mode", "timing")
+                )
+                self._widget.setAdvancedSequenceRows(
+                    dig.get("advanced_sequence_rows", []) or []
+                )
+            except Exception:
+                pass
 
             # ensure the advanced panel reflects the stored model
             try:

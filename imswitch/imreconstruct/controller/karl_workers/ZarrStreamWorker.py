@@ -1,9 +1,12 @@
 # type: ignore 
 
 import zarr 
-import numpy as np 
+import numpy as np
+import os
+from qtpy import QtCore
+from typing import Union
 
-from qtpy import QtCore 
+
 
 class ZarrStreamWorker(QtCore.QObject):
     
@@ -42,7 +45,8 @@ class ZarrStreamWorker(QtCore.QObject):
             try: 
                 if z_arr is not None: 
                     z_arr.store.close()
-                z_arr = zarr.open(path, mode='r')
+                z_arr_path = self._find_zarr_array(path)
+                z_arr = zarr.open(z_arr_path, mode='r')
 
                 curr_num_frames = z_arr.shape[0]
                 num_frames_in_chunk = z_arr.chunks[0] 
@@ -70,3 +74,15 @@ class ZarrStreamWorker(QtCore.QObject):
     def stop(self): 
         self.running = False
         self.num_time_points_proc = 0
+
+    def _find_zarr_array(self, zarr_path: str) -> Union[str, None]:
+        for f in os.listdir(zarr_path):
+            f_abs = os.path.join(zarr_path, f)
+            if os.path.isdir(f_abs):
+                d_abs = os.path.join(zarr_path, f)
+                for ff in os.listdir(d_abs):
+                    if ff.lower().endswith(".zarray"):
+                        return d_abs
+            elif f.lower().endswith(".zarray"):
+                return zarr_path
+        return None

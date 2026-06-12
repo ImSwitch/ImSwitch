@@ -37,7 +37,11 @@ except:
 
 
 class ImRecMainViewController(ImRecWidgetController):
-    
+
+    # TODO: check the termination of the processor worker and thread
+    #       see if it can be simplified
+
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._commChannel.extension = self._widget.extension

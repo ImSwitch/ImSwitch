@@ -70,7 +70,7 @@ class WatcherFrameController(ImRecWidgetController):
         else:
             self.stop_all_workers()
             #self.directory_queue.clear()
-            self.directory_index = 0
+            #self.directory_index = 0
             self.file_queue.clear()
 
     def uncheck_button(self):
@@ -191,6 +191,7 @@ class WatcherFrameController(ImRecWidgetController):
 
     def stop_zarr_init_worker(self):
         if self.zarr_init_worker:
+            self.zarr_init_worker.stop()
             self.zarr_init_worker.deleteLater()
         if self.zarr_init_thread:
             self.zarr_init_thread.quit()

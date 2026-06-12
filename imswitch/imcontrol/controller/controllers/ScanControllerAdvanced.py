@@ -645,6 +645,12 @@ class ScanControllerAdvanced(SuperScanController):
             self._digitalParameterDict["advanced_sequence_rows"] = (
                 self._widget.getAdvancedSequenceRows()
             )
+            self._digitalParameterDict["advanced_sequence_start_offset_ms"] = (
+                self._widget.getAdvancedSequenceStartOffsets()
+            )
+            self._digitalParameterDict["line_program_devices_enabled"] = (
+                self._widget.isLineProgramDevicesMode()
+            )
             self._digitalParameterDict["advanced_device_lock_master"] = (
                 self._widget.getAdvancedDeviceLockMaster()
             )
@@ -689,6 +695,13 @@ class ScanControllerAdvanced(SuperScanController):
 
             try:
                 self._widget.setAdvancedTTLMode(bool(dig.get("advanced_mode", False)))
+            except Exception:
+                pass
+
+            try:
+                self._widget.setLineProgramDevicesMode(
+                    bool(dig.get("line_program_devices_enabled", False))
+                )
             except Exception:
                 pass
 
@@ -769,6 +782,9 @@ class ScanControllerAdvanced(SuperScanController):
             try:
                 self._widget.setAdvancedProgramMode(
                     dig.get("advanced_program_mode", "timing")
+                )
+                self._widget.setAdvancedSequenceStartOffsets(
+                    dig.get("advanced_sequence_start_offset_ms", []) or []
                 )
                 self._widget.setAdvancedSequenceRows(
                     dig.get("advanced_sequence_rows", []) or []

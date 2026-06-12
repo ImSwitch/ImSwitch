@@ -625,6 +625,16 @@ class ScanControllerAdvanced(SuperScanController):
             "positioner_step_size_um": positioner_step_size_um,
         }
 
+        try:
+            self._digitalParameterDict["advanced_device_lock_master"] = (
+                self._widget.getAdvancedDeviceLockMaster()
+            )
+            self._digitalParameterDict["advanced_device_lock_target"] = (
+                self._widget.getAdvancedDeviceLockTarget()
+            )
+        except Exception:
+            pass
+
     # ---------------------------------------------------------------------
     # Parameters: dicts -> UI (used by loadScan)
     # ---------------------------------------------------------------------
@@ -684,6 +694,14 @@ class ScanControllerAdvanced(SuperScanController):
             try:
                 self._widget.setIntraPixelPositionersMode(
                     bool(dig.get("intra_pixel_positioner_movement", False))
+                )
+            except Exception:
+                pass
+
+            try:
+                self._widget.setAdvancedDeviceLockState(
+                    dig.get("advanced_device_lock_master", {}) or {},
+                    dig.get("advanced_device_lock_target", {}) or {},
                 )
             except Exception:
                 pass

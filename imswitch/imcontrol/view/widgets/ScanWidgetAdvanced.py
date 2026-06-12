@@ -52,6 +52,8 @@ class ScanWidgetAdvanced(SuperScanWidget):
         self._ttl_device_names = []
         self._positioner_device_names = []
         self._line_step_device_widgets = {}  # device -> (label, ScanLineWidget)
+        self._advanced_lock_master = {}       # device -> bool
+        self._advanced_lock_target = {}       # follower device -> master device
 
         # --- Line-step count ---
         self.linestep_counter = QSpinBox()
@@ -72,6 +74,9 @@ class ScanWidgetAdvanced(SuperScanWidget):
         self._pulseSelectStep.setMinimum(1)
         self._pulseSelectStep.setMaximum(100)
         self._pulseSelectStep.setSingleStep(1)
+        self._pulseMasterBox = QtWidgets.QCheckBox("Master")
+        self._pulseLockBox = QtWidgets.QCheckBox("Lock-with:")
+        self._pulseLockTarget = QtWidgets.QComboBox()
 
         self._pulseStartEdit = QtWidgets.QLineEdit("")  # ms list: "0.0, 0.2, ..."
         self._pulseEndEdit = QtWidgets.QLineEdit("")    # ms list
@@ -101,6 +106,9 @@ class ScanWidgetAdvanced(SuperScanWidget):
         self.intraPixelPositionersBox.stateChanged.connect(self._onIntraPixelPositionersChanged)
         self._pulseSelectDevice.currentIndexChanged.connect(self._syncPulseEditsFromModel)
         self._pulseSelectStep.valueChanged.connect(self._syncPulseEditsFromModel)
+        self._pulseMasterBox.stateChanged.connect(lambda: self._onPulseMasterChanged())
+        self._pulseLockBox.stateChanged.connect(lambda: self._onPulseLockChanged())
+        self._pulseLockTarget.currentIndexChanged.connect(lambda: self._onPulseLockTargetChanged())
         self._pulseStartEdit.textChanged.connect(lambda: self._onPulseEditsChanged())
         self._pulseEndEdit.textChanged.connect(lambda: self._onPulseEditsChanged())
         self._positionerStepUmEdit.textChanged.connect(lambda: self._onPulseEditsChanged())
@@ -110,6 +118,8 @@ class ScanWidgetAdvanced(SuperScanWidget):
 
         # Internal: track when we are programmatically updating the pulse edits
         self._updatingPulseEdits = False
+        self._updatingLockControls = False
+        self._syncingLockedDevices = False
         # Devices (laser lines) that support per-linestep analog power programming
         self._linestep_power_capable_devices = set()
 
@@ -285,6 +295,7 @@ class ScanWidgetAdvanced(SuperScanWidget):
 
             # Build pulse editor model storage (one per step)
             self.ttl_pulses[deviceName] = [PulseEditor() for _ in range(self.linestep_counter.value())]
+            self._advanced_lock_master.setdefault(deviceName, False)
 
             adv_row_counter += 1
             currentRow += 1
@@ -311,21 +322,25 @@ class ScanWidgetAdvanced(SuperScanWidget):
         advLayout.addWidget(QtWidgets.QLabel("Line step:"), 0, 2)
         advLayout.addWidget(self._pulseSelectStep, 0, 3)
 
+        advLayout.addWidget(self._pulseMasterBox, 1, 0)
+        advLayout.addWidget(self._pulseLockBox, 1, 1)
+        advLayout.addWidget(self._pulseLockTarget, 1, 2, 1, 2)
+
         self._pulseStartLabel = QtWidgets.QLabel("Start(s) (ms, comma-separated):")
-        advLayout.addWidget(self._pulseStartLabel, 1, 0, 1, 2)
-        advLayout.addWidget(self._pulseStartEdit, 1, 2, 1, 2)
+        advLayout.addWidget(self._pulseStartLabel, 2, 0, 1, 2)
+        advLayout.addWidget(self._pulseStartEdit, 2, 2, 1, 2)
 
         self._pulseEndLabel = QtWidgets.QLabel("End(s) (ms, comma-separated):")
-        advLayout.addWidget(self._pulseEndLabel, 2, 0, 1, 2)
-        advLayout.addWidget(self._pulseEndEdit, 2, 2, 1, 2)
+        advLayout.addWidget(self._pulseEndLabel, 3, 0, 1, 2)
+        advLayout.addWidget(self._pulseEndEdit, 3, 2, 1, 2)
 
         self._positionerStepUmLabel = QtWidgets.QLabel("Step(s) (um, comma-separated):")
-        advLayout.addWidget(self._positionerStepUmLabel, 3, 0, 1, 2)
-        advLayout.addWidget(self._positionerStepUmEdit, 3, 2, 1, 2)
+        advLayout.addWidget(self._positionerStepUmLabel, 4, 0, 1, 2)
+        advLayout.addWidget(self._positionerStepUmEdit, 4, 2, 1, 2)
 
         self._analogLevelLabel = QtWidgets.QLabel("Power Level (%)")
-        advLayout.addWidget(self._analogLevelLabel, 4, 0, 1, 2)
-        advLayout.addWidget(self._analogLevelEdit, 4, 2, 1, 2)
+        advLayout.addWidget(self._analogLevelLabel, 5, 0, 1, 2)
+        advLayout.addWidget(self._analogLevelEdit, 5, 2, 1, 2)
         advanced_row_height = self._pulseStartEdit.sizeHint().height()
         for widget in (
             self._pulseEndEdit,
@@ -336,7 +351,7 @@ class ScanWidgetAdvanced(SuperScanWidget):
             widget.setMaximumHeight(advanced_row_height)
             widget.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Fixed)
 
-        advLayout.addWidget(self.graph_pixel, 0, 4, 5, 4)
+        advLayout.addWidget(self.graph_pixel, 0, 4, 6, 4)
 
         self._advGroup = advGroup
         self._advGroup.setVisible(False)
@@ -382,6 +397,28 @@ class ScanWidgetAdvanced(SuperScanWidget):
 
     def isPlotTTLIncluded(self) -> bool:
         return bool(self.plotIncludeTTLBox.isChecked())
+
+    def getAdvancedDeviceLockMaster(self):
+        return {
+            dev: bool(self._advanced_lock_master.get(dev, False))
+            for dev in self._visibleAdvancedProgramDevices()
+        }
+
+    def getAdvancedDeviceLockTarget(self):
+        return dict(self._advanced_lock_target)
+
+    def setAdvancedDeviceLockState(self, masters=None, targets=None):
+        devices = set(self._visibleAdvancedProgramDevices())
+        self._advanced_lock_master = {
+            dev: bool((masters or {}).get(dev, False))
+            for dev in devices
+        }
+        self._advanced_lock_target = {
+            dev: target for dev, target in (targets or {}).items()
+            if dev in devices and target in devices and target != dev
+        }
+        self._cleanupLockState()
+        self._refreshLockControlsFromModel()
 
     def getNumLineSteps(self) -> int:
         return int(self.linestep_counter.value())
@@ -749,6 +786,9 @@ class ScanWidgetAdvanced(SuperScanWidget):
 
         current = self._pulseSelectDevice.currentText()
         devices = self._visibleAdvancedProgramDevices()
+        for dev in devices:
+            self._advanced_lock_master.setdefault(dev, False)
+        self._cleanupLockState()
 
         self._pulseSelectDevice.blockSignals(True)
         try:
@@ -760,6 +800,148 @@ class ScanWidgetAdvanced(SuperScanWidget):
                 self._pulseSelectDevice.setCurrentIndex(0)
         finally:
             self._pulseSelectDevice.blockSignals(False)
+        self._refreshLockControlsFromModel()
+
+    def _cleanupLockState(self):
+        devices = set(self._visibleAdvancedProgramDevices())
+        self._advanced_lock_master = {
+            dev: bool(self._advanced_lock_master.get(dev, False))
+            for dev in devices
+        }
+
+        cleaned_targets = {}
+        for dev, target in self._advanced_lock_target.items():
+            if dev not in devices or target not in devices or dev == target:
+                continue
+            if self._advanced_lock_master.get(dev, False):
+                continue
+            if not self._advanced_lock_master.get(target, False):
+                continue
+            cleaned_targets[dev] = target
+        self._advanced_lock_target = cleaned_targets
+
+    def _refreshLockControlsFromModel(self):
+        if not hasattr(self, "_pulseMasterBox"):
+            return
+        if self._pulseSelectDevice.count() == 0:
+            return
+
+        self._cleanupLockState()
+        dev = self._pulseSelectDevice.currentText()
+        is_master = bool(self._advanced_lock_master.get(dev, False))
+        target = self._advanced_lock_target.get(dev, None)
+        master_devices = [
+            name for name, enabled in self._advanced_lock_master.items()
+            if enabled and name != dev
+        ]
+
+        self._updatingLockControls = True
+        try:
+            self._pulseMasterBox.setChecked(is_master)
+            self._pulseLockTarget.blockSignals(True)
+            try:
+                self._pulseLockTarget.clear()
+                self._pulseLockTarget.addItems(master_devices)
+                if target in master_devices:
+                    self._pulseLockTarget.setCurrentIndex(master_devices.index(target))
+                elif master_devices:
+                    self._pulseLockTarget.setCurrentIndex(0)
+            finally:
+                self._pulseLockTarget.blockSignals(False)
+
+            can_lock = (not is_master) and bool(master_devices)
+            locked = (not is_master) and target in master_devices
+            self._pulseLockBox.setChecked(locked)
+            self._pulseLockBox.setEnabled(can_lock)
+            self._pulseLockTarget.setEnabled(can_lock and locked)
+        finally:
+            self._updatingLockControls = False
+
+    def _onPulseMasterChanged(self):
+        if self._updatingLockControls:
+            return
+        dev = self._pulseSelectDevice.currentText()
+        if not dev:
+            return
+
+        is_master = bool(self._pulseMasterBox.isChecked())
+        self._advanced_lock_master[dev] = is_master
+        if is_master:
+            self._advanced_lock_target.pop(dev, None)
+        else:
+            self._advanced_lock_target = {
+                follower: target
+                for follower, target in self._advanced_lock_target.items()
+                if target != dev
+            }
+
+        self._cleanupLockState()
+        self._refreshLockControlsFromModel()
+        self._syncPulseEditsFromModel()
+        self.sigSignalParChanged.emit()
+
+    def _onPulseLockChanged(self):
+        if self._updatingLockControls:
+            return
+        dev = self._pulseSelectDevice.currentText()
+        if not dev or self._advanced_lock_master.get(dev, False):
+            return
+
+        if self._pulseLockBox.isChecked() and self._pulseLockTarget.count() > 0:
+            target = self._pulseLockTarget.currentText()
+            if target and target != dev:
+                self._advanced_lock_target[dev] = target
+                self._copyTimingFromMasterToFollower(target, dev)
+        else:
+            self._advanced_lock_target.pop(dev, None)
+
+        self._cleanupLockState()
+        self._refreshLockControlsFromModel()
+        self._syncPulseEditsFromModel()
+        self.sigSignalParChanged.emit()
+
+    def _onPulseLockTargetChanged(self):
+        if self._updatingLockControls or not self._pulseLockBox.isChecked():
+            return
+        dev = self._pulseSelectDevice.currentText()
+        target = self._pulseLockTarget.currentText()
+        if not dev or not target or dev == target:
+            return
+
+        self._advanced_lock_target[dev] = target
+        self._copyTimingFromMasterToFollower(target, dev)
+        self._cleanupLockState()
+        self._syncPulseEditsFromModel()
+        self.sigSignalParChanged.emit()
+
+    def _copyTimingFromMasterToFollower(self, master, follower, stepIdx=None):
+        if not master or not follower or master == follower:
+            return
+
+        step_indices = [int(stepIdx)] if stepIdx is not None else range(self.getNumLineSteps())
+        for s in step_indices:
+            mpe = self._getPulseEditor(master, s)
+            fpe = self._getPulseEditor(follower, s)
+            fpe.starts_s = list(mpe.starts_s or [])
+            fpe.ends_s = list(mpe.ends_s or [])
+            if master in self._positioner_device_names and follower in self._positioner_device_names:
+                fpe.positioner_step_um = self._coerce_positioner_step_list(
+                    getattr(mpe, "positioner_step_um", [0.1])
+                )
+
+    def _propagateMasterTiming(self, master, stepIdx=None):
+        if self._syncingLockedDevices:
+            return
+        if not self._advanced_lock_master.get(master, False):
+            return
+
+        self._syncingLockedDevices = True
+        try:
+            for follower, target in list(self._advanced_lock_target.items()):
+                if target == master:
+                    self._copyTimingFromMasterToFollower(master, follower, stepIdx=stepIdx)
+        finally:
+            self._syncingLockedDevices = False
 
     def _getPulseEditor(self, deviceName: str, stepIdx: int) -> "PulseEditor":
         stepIdx = int(stepIdx)
@@ -781,10 +963,15 @@ class ScanWidgetAdvanced(SuperScanWidget):
 
         dev = self._pulseSelectDevice.currentText()
         step0 = int(self._pulseSelectStep.value()) - 1  # UI is 1-based
+        lock_target = self._advanced_lock_target.get(dev, None)
+        if lock_target:
+            self._copyTimingFromMasterToFollower(lock_target, dev, stepIdx=step0)
         pe = self._getPulseEditor(dev, step0)
+        self._refreshLockControlsFromModel()
 
         # Show/hide power editor depending on capability of selected device
         is_positioner = dev in self._positioner_device_names
+        is_locked_follower = lock_target is not None
         power_ok = not is_positioner and dev in self._linestep_power_capable_devices
         self._pulseEndLabel.setVisible(True)
         self._pulseEndEdit.setVisible(True)
@@ -793,6 +980,10 @@ class ScanWidgetAdvanced(SuperScanWidget):
         self._positionerStepUmEdit.setVisible(is_positioner)
         self._analogLevelLabel.setVisible(power_ok)
         self._analogLevelEdit.setVisible(power_ok)
+        self._pulseStartEdit.setEnabled(not is_locked_follower)
+        self._pulseEndEdit.setEnabled(not is_locked_follower)
+        self._positionerStepUmEdit.setEnabled(is_positioner and not is_locked_follower)
+        self._analogLevelEdit.setEnabled(power_ok)
 
         self._updatingPulseEdits = True
         try:
@@ -819,6 +1010,7 @@ class ScanWidgetAdvanced(SuperScanWidget):
         pe = self._getPulseEditor(dev, step0)
 
         is_positioner = dev in self._positioner_device_names
+        is_locked_follower = dev in self._advanced_lock_target
         try:
             starts_ms = self._parse_float_list_ms(self._pulseStartEdit.text())
             ends_ms = self._parse_float_list_ms(self._pulseEndEdit.text())
@@ -829,20 +1021,24 @@ class ScanWidgetAdvanced(SuperScanWidget):
         except ValueError:
             return
 
-        if is_positioner:
-            pe.starts_s = [v / 1000.0 for v in starts_ms]
-            pe.ends_s = [v / 1000.0 for v in ends_ms]
-        elif not starts_ms and not ends_ms:
-            pe.starts_s = []
-            pe.ends_s = []
-        else:
-            pe.starts_s = [v / 1000.0 for v in starts_ms]
-            pe.ends_s = [v / 1000.0 for v in ends_ms]
+        if not is_locked_follower:
+            if is_positioner:
+                pe.starts_s = [v / 1000.0 for v in starts_ms]
+                pe.ends_s = [v / 1000.0 for v in ends_ms]
+            elif not starts_ms and not ends_ms:
+                pe.starts_s = []
+                pe.ends_s = []
+            else:
+                pe.starts_s = [v / 1000.0 for v in starts_ms]
+                pe.ends_s = [v / 1000.0 for v in ends_ms]
 
-        if is_positioner:
-            pe.positioner_step_um = positioner_steps
-        else:
+            if is_positioner:
+                pe.positioner_step_um = positioner_steps
+
+        if not is_positioner:
             pe.power_percent = float(self._analogLevelEdit.value())
+
+        self._propagateMasterTiming(dev, stepIdx=step0)
         self.sigSignalParChanged.emit()
 
     def getTTLIncluded(self, deviceName):

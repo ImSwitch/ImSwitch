@@ -63,7 +63,7 @@ class AdvancedScanTTLCycleDesigner(TTLCycleDesigner):
     def make_signal(self, parameterDict, setupInfo, scanInfoDict=None):
         Fs = setupInfo.scan.sampleRate
         if scanInfoDict is None:
-            return self._make_preview(parameterDict, Fs)
+            return self._make_preview(parameterDict, setupInfo, Fs)
         return self._make_full_scan(parameterDict, setupInfo, scanInfoDict, Fs)
 
 
@@ -71,12 +71,12 @@ class AdvancedScanTTLCycleDesigner(TTLCycleDesigner):
     # Preview (graph)
     # -----------------
 
-    def _make_preview(self, p, Fs):
+    def _make_preview(self, p, setupInfo, Fs):
         """
         Return per-target boolean arrays for plotting.
         We generate 1 pixel worth of TTL for each linestep and concatenate them.
         """
-        targets = p["target_device"]
+        targets = self._ttl_targets(p["target_device"], setupInfo)
         S = int(p["n_linesteps"])
         dwell_s = float(p["sequence_time"])
         advanced = bool(p["advanced_mode"])
@@ -128,7 +128,7 @@ class AdvancedScanTTLCycleDesigner(TTLCycleDesigner):
         """
         Fs = setupInfo.scan.sampleRate
 
-        targets = parameterDict["target_device"]
+        targets = self._ttl_targets(parameterDict["target_device"], setupInfo)
         S = int(parameterDict["n_linesteps"])
         dwell_s = float(parameterDict["sequence_time"])
         advanced = bool(parameterDict["advanced_mode"])
@@ -166,7 +166,7 @@ class AdvancedScanTTLCycleDesigner(TTLCycleDesigner):
     def _make_full_scan(self, p, setupInfo, scanInfoDict, Fs):
         signal_dict = {}
 
-        targets = p["target_device"]
+        targets = self._ttl_targets(p["target_device"], setupInfo)
         S = int(p["n_linesteps"])
         dwell_s = float(p["sequence_time"])
         advanced = bool(p["advanced_mode"])
@@ -324,6 +324,18 @@ class AdvancedScanTTLCycleDesigner(TTLCycleDesigner):
         ))
 
         return signal_dict, scanInfoDict
+
+    @staticmethod
+    def _ttl_targets(targets, setupInfo):
+        """Return targets that are not scanning positioners."""
+        positioners = getattr(setupInfo, "positioners", {}) or {}
+        out = []
+        for target in targets:
+            pos_info = positioners.get(target, None)
+            if pos_info is not None and getattr(pos_info, "forScanning", False):
+                continue
+            out.append(target)
+        return out
 
     # -----------------
     # Line builder (core new piece)

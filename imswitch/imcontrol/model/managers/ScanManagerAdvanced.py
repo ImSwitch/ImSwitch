@@ -45,7 +45,9 @@ class ScanManagerAdvanced(ScanManagerBase):
         parameterDict.update(TTLParameters)
 
         # Force preview behavior explicitly
-        return self._TTLCycleDesigner._make_preview(parameterDict, self._setupInfo.scan.sampleRate)
+        return self._TTLCycleDesigner._make_preview(
+            parameterDict, self._setupInfo, self._setupInfo.scan.sampleRate
+        )
 
     def getTTLCycleSignalsDict(self, TTLParameters, scanInfoDict=None):
         """

@@ -26,6 +26,7 @@ class ScanWidgetAdvanced(SuperScanWidget):
     sigUpdateBeadRecCenter = Signal(int, int)   # (y, x) in pixels
     sigShowBeadRecCenterCross = Signal(bool)    # show/hide crosshair on bead image
     sigAutoAxialToggled = Signal(bool)          # enable/disable axial scan sequence
+    sigPlotScanClicked = Signal()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -48,6 +49,9 @@ class ScanWidgetAdvanced(SuperScanWidget):
         self.ttl_pulses = {}       # device -> list[PulseEditor] (len = n_linesteps)
         self._ttl_axis = {}        # optional: device -> axis combo, kept for future; not used now
         self.ttl_line_powers = {}
+        self._ttl_device_names = []
+        self._positioner_device_names = []
+        self._line_step_device_widgets = {}  # device -> (label, ScanLineWidget)
 
         # --- Line-step count ---
         self.linestep_counter = QSpinBox()
@@ -58,6 +62,9 @@ class ScanWidgetAdvanced(SuperScanWidget):
         # --- Advanced mode ---
         self.advancedOptionsBox = QtWidgets.QCheckBox("Advanced Line Program")
         self.advancedOptionsBox.setChecked(False)
+        self.intraPixelPositionersBox = QtWidgets.QCheckBox("Intra-pixel positioners movement")
+        self.intraPixelPositionersBox.setChecked(False)
+        self.intraPixelPositionersBox.setVisible(False)
 
         # --- Pulse editor selection controls (advanced mode UI) ---
         self._pulseSelectDevice = QtWidgets.QComboBox()
@@ -68,19 +75,20 @@ class ScanWidgetAdvanced(SuperScanWidget):
 
         self._pulseStartEdit = QtWidgets.QLineEdit("")  # ms list: "0.0, 0.2, ..."
         self._pulseEndEdit = QtWidgets.QLineEdit("")    # ms list
+        self._positionerStepUmEdit = QtWidgets.QLineEdit("0.1")
         self._analogLevelEdit = QtWidgets.QSpinBox()
         self._analogLevelEdit.setMinimum(0)
         self._analogLevelEdit.setMaximum(100)
         self._analogLevelEdit.setSingleStep(1)
         self._analogLevelEdit.setValue(100)
-        self._applyAdvancedOptionsButton = QtWidgets.QPushButton("Apply Advanced Options")
-
         self.graph_steps = GraphFrame()  # always visible (scatter)
         self.graph_steps.setFixedHeight(140)
 
         self.graph_pixel = GraphFrame()  # only visible in advanced mode
         self.graph_pixel.setFixedHeight(140)
 
+        self.plotScanButton = guitools.BetterPushButton("Plot")
+        self.plotIncludeTTLBox = QtWidgets.QCheckBox("include TTL")
 
         # Connect scan timing signals
         self.seqTimePar.textChanged.connect(lambda: self.sigSeqTimeParChanged.emit())
@@ -90,9 +98,14 @@ class ScanWidgetAdvanced(SuperScanWidget):
         # Connect TTL signals
         self.linestep_counter.valueChanged.connect(self._onLineStepsChanged)
         self.advancedOptionsBox.stateChanged.connect(self._onAdvancedModeChanged)
+        self.intraPixelPositionersBox.stateChanged.connect(self._onIntraPixelPositionersChanged)
         self._pulseSelectDevice.currentIndexChanged.connect(self._syncPulseEditsFromModel)
         self._pulseSelectStep.valueChanged.connect(self._syncPulseEditsFromModel)
-        self._applyAdvancedOptionsButton.clicked.connect(self._onPulseEditsChanged)
+        self._pulseStartEdit.textChanged.connect(lambda: self._onPulseEditsChanged())
+        self._pulseEndEdit.textChanged.connect(lambda: self._onPulseEditsChanged())
+        self._positionerStepUmEdit.textChanged.connect(lambda: self._onPulseEditsChanged())
+        self._analogLevelEdit.valueChanged.connect(lambda: self._onPulseEditsChanged())
+        self.plotScanButton.clicked.connect(self.sigPlotScanClicked)
 
 
         # Internal: track when we are programmatically updating the pulse edits
@@ -120,19 +133,22 @@ class ScanWidgetAdvanced(SuperScanWidget):
 
     def initControls(self, positionerNames, TTLDeviceNames,TTLTimeunit):
         currentRow = 0
+        self._ttl_device_names = list(TTLDeviceNames)
+        self._positioner_device_names = list(positionerNames)
         self.scanDims = list(positionerNames)
         self.scanDims.append("None")
 
         # --- Top row: buttons ---
         self.grid.addWidget(self.loadScanBtn, currentRow, 0)
         self.grid.addWidget(self.saveScanBtn, currentRow, 1)
+        self.grid.addWidget(self.repeatBox, currentRow, 3)
         self.grid.addItem(
             QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum),
-            currentRow, 2, 1, 3
+            currentRow, 4, 1, 1
         )
-
-        self.grid.addWidget(self.repeatBox, currentRow, 3)
-        self.grid.addWidget(self.scanButton, currentRow, 6)
+        self.grid.addWidget(self.plotScanButton, currentRow, 5)
+        self.grid.addWidget(self.plotIncludeTTLBox, currentRow, 6)
+        self.grid.addWidget(self.scanButton, currentRow, 7)
         currentRow += 1
 
         # spacer
@@ -156,7 +172,7 @@ class ScanWidgetAdvanced(SuperScanWidget):
         self.grid.addWidget(stepLabel, currentRow, 2)
         self.grid.addWidget(pixelsLabel, currentRow, 3)
         self.grid.addWidget(centerLabel, currentRow, 4)
-        self.grid.addWidget(scandimLabel, currentRow, 6)
+        self.grid.addWidget(scandimLabel, currentRow, 7)
         currentRow += 1
 
         for index, positionerName in enumerate(positionerNames):
@@ -197,12 +213,12 @@ class ScanWidgetAdvanced(SuperScanWidget):
 
             dimlabel = QtWidgets.QLabel(f"{index+1}{guitools.ordinalSuffix(index+1)} dimension:")
             dimlabel.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
-            self.grid.addWidget(dimlabel, currentRow, 5)
+            self.grid.addWidget(dimlabel, currentRow, 6)
             scanDimPar = QtWidgets.QComboBox()
             scanDimPar.addItems(self.scanDims)
             scanDimPar.setCurrentIndex(index if index < 2 else self.scanDims.index("None"))
             self.scanPar["scanDim" + str(index)] = scanDimPar
-            self.grid.addWidget(scanDimPar, currentRow, 6)
+            self.grid.addWidget(scanDimPar, currentRow, 7)
 
             # Connect
             sizePar.textChanged.connect(lambda: self.sigStageParChanged.emit())
@@ -237,7 +253,7 @@ class ScanWidgetAdvanced(SuperScanWidget):
         # ---------------------------
         # line steps
         # ---------------------------
-        linestepsHeader = QtWidgets.QLabel("Lasers")
+        linestepsHeader = QtWidgets.QLabel("Line program devices")
         linestepsHeader.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
         self.grid.addWidget(linestepsHeader, currentRow, 0, 1, 2)
 
@@ -246,19 +262,26 @@ class ScanWidgetAdvanced(SuperScanWidget):
 
         currentRow += 1
 
-        self.grid.addWidget(self.graph_steps, currentRow, 4, len(TTLDeviceNames), 3)
+        allAdvancedDeviceNames = self._ttl_device_names + self._positioner_device_names
+
+        self.grid.addWidget(self.graph_steps, currentRow, 4, max(1, len(allAdvancedDeviceNames)), 3)
 
         # Line-step matrix rows per device
         ttldevgroup = QtWidgets.QGroupBox()
         ttldevgrouplayout = QGridLayout()
         ttldevgroup.setLayout(ttldevgrouplayout)
         adv_row_counter = 0
-        for deviceName in TTLDeviceNames:
-            ttldevgrouplayout.addWidget(QtWidgets.QLabel(deviceName), adv_row_counter, 0)
+        for deviceName in allAdvancedDeviceNames:
+            deviceLabel = QtWidgets.QLabel(deviceName)
+            ttldevgrouplayout.addWidget(deviceLabel, adv_row_counter, 0)
             row = ScanLineWidget(initial_count=self.linestep_counter.value())
+            if deviceName in self._positioner_device_names:
+                for cb in row.checkboxes:
+                    cb.setChecked(False)
             row.line_steps_changed.connect(self.sigSignalParChanged)
             self.ttl_line_steps[deviceName] = row
             ttldevgrouplayout.addWidget(row, adv_row_counter, 1, 1, 3)
+            self._line_step_device_widgets[deviceName] = (deviceLabel, row)
 
             # Build pulse editor model storage (one per step)
             self.ttl_pulses[deviceName] = [PulseEditor() for _ in range(self.linestep_counter.value())]
@@ -266,15 +289,17 @@ class ScanWidgetAdvanced(SuperScanWidget):
             adv_row_counter += 1
             currentRow += 1
 
-        self.grid.addWidget(ttldevgroup, currentRow-adv_row_counter, 0, len(TTLDeviceNames), 4)
+        self.grid.addWidget(ttldevgroup, currentRow-adv_row_counter, 0, max(1, adv_row_counter), 4)
+        self._refreshAdvancedLineProgramDeviceVisibility()
 
         self.grid.addWidget(self.advancedOptionsBox, currentRow, 0, 1, 2)
+        self.grid.addWidget(self.intraPixelPositionersBox, currentRow, 2, 1, 3)
         currentRow += 1
 
         # ---------------------------
         # Advanced pulse editor panel + graph
         # ---------------------------
-        self._pulseSelectDevice.addItems(list(TTLDeviceNames))
+        self._refreshPulseDeviceChoices()
 
         advGroup = QtWidgets.QGroupBox("Advanced intra-pixel pulses (per device, per line-step)")
         advLayout = QtWidgets.QGridLayout()
@@ -286,19 +311,32 @@ class ScanWidgetAdvanced(SuperScanWidget):
         advLayout.addWidget(QtWidgets.QLabel("Line step:"), 0, 2)
         advLayout.addWidget(self._pulseSelectStep, 0, 3)
 
-        advLayout.addWidget(QtWidgets.QLabel("Start(s) (ms, comma-separated):"), 1, 0, 1, 2)
+        self._pulseStartLabel = QtWidgets.QLabel("Start(s) (ms, comma-separated):")
+        advLayout.addWidget(self._pulseStartLabel, 1, 0, 1, 2)
         advLayout.addWidget(self._pulseStartEdit, 1, 2, 1, 2)
 
-        advLayout.addWidget(QtWidgets.QLabel("End(s) (ms, comma-separated):"), 2, 0, 1, 2)
+        self._pulseEndLabel = QtWidgets.QLabel("End(s) (ms, comma-separated):")
+        advLayout.addWidget(self._pulseEndLabel, 2, 0, 1, 2)
         advLayout.addWidget(self._pulseEndEdit, 2, 2, 1, 2)
 
+        self._positionerStepUmLabel = QtWidgets.QLabel("Step(s) (um, comma-separated):")
+        advLayout.addWidget(self._positionerStepUmLabel, 3, 0, 1, 2)
+        advLayout.addWidget(self._positionerStepUmEdit, 3, 2, 1, 2)
+
         self._analogLevelLabel = QtWidgets.QLabel("Power Level (%)")
-        advLayout.addWidget(self._analogLevelLabel, 3, 0, 1, 2)
-        advLayout.addWidget(self._analogLevelEdit, 3, 2, 1, 2)
+        advLayout.addWidget(self._analogLevelLabel, 4, 0, 1, 2)
+        advLayout.addWidget(self._analogLevelEdit, 4, 2, 1, 2)
+        advanced_row_height = self._pulseStartEdit.sizeHint().height()
+        for widget in (
+            self._pulseEndEdit,
+            self._positionerStepUmEdit,
+            self._analogLevelEdit,
+        ):
+            widget.setMinimumHeight(advanced_row_height)
+            widget.setMaximumHeight(advanced_row_height)
+            widget.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Fixed)
 
-        advLayout.addWidget(self._applyAdvancedOptionsButton, 4, 0, 1, 4)
-
-        advLayout.addWidget(self.graph_pixel, 0, 4, 4, 4)
+        advLayout.addWidget(self.graph_pixel, 0, 4, 5, 4)
 
         self._advGroup = advGroup
         self._advGroup.setVisible(False)
@@ -324,7 +362,7 @@ class ScanWidgetAdvanced(SuperScanWidget):
         currentRow += 1
 
         # Column widths
-        self.grid.setColumnMinimumWidth(6, 90)
+        self.grid.setColumnMinimumWidth(7, 90)
 
     # -----------------------------
     # New controller-facing getters
@@ -335,6 +373,15 @@ class ScanWidgetAdvanced(SuperScanWidget):
 
     def setadvancedOptionsMode(self, enabled: bool) -> None:
         self.advancedOptionsBox.setChecked(bool(enabled))
+
+    def isIntraPixelPositionersMode(self) -> bool:
+        return self.advancedOptionsBox.isChecked() and self.intraPixelPositionersBox.isChecked()
+
+    def setIntraPixelPositionersMode(self, enabled: bool) -> None:
+        self.intraPixelPositionersBox.setChecked(bool(enabled))
+
+    def isPlotTTLIncluded(self) -> bool:
+        return bool(self.plotIncludeTTLBox.isChecked())
 
     def getNumLineSteps(self) -> int:
         return int(self.linestep_counter.value())
@@ -368,6 +415,20 @@ class ScanWidgetAdvanced(SuperScanWidget):
     def setLineStepPowerPercent(self, deviceName: str, stepIdx: int, value: float) -> None:
         pe = self._getPulseEditor(deviceName, stepIdx)
         pe.power_percent = float(value)
+
+    def getLineStepPositionerStepUm(self, deviceName: str, stepIdx: int):
+        pe = self._getPulseEditor(deviceName, stepIdx)
+        return self._coerce_positioner_step_list(getattr(pe, "positioner_step_um", [0.1]))
+
+    def setLineStepPositionerStepUm(self, deviceName: str, stepIdx: int, value) -> None:
+        pe = self._getPulseEditor(deviceName, stepIdx)
+        pe.positioner_step_um = self._coerce_positioner_step_list(value)
+
+    def isAdvancedLineProgramPositioner(self, deviceName: str) -> bool:
+        return deviceName in self._positioner_device_names
+
+    def getAdvancedLineProgramDeviceNames(self):
+        return self._visibleAdvancedProgramDevices()
 
 
     def getLineEnableVectorExpanded(self, deviceName: str, Ny: int, S: int):
@@ -492,25 +553,67 @@ class ScanWidgetAdvanced(SuperScanWidget):
         S = self.getNumLineSteps()
 
         total = spp * S
-        x = np.arange(total)  # or ms: np.arange(total)/sampleRate*1000
+        x = np.arange(total)
 
         vlines = [k * spp for k in range(1, S)]
         for xv in vlines:
             plot.addItem(pg.InfiniteLine(pos=xv, angle=90, movable=False))
 
-        for dev_idx, dev in enumerate(labels):
-            y = np.zeros(total, dtype=np.uint8)
+        plot_labels = list(labels)
+        plot_colors = list(colors)
+        if self.isIntraPixelPositionersMode():
+            for pos_idx, dev in enumerate(self._positioner_device_names):
+                if dev not in plot_labels:
+                    plot_labels.append(dev)
+                    plot_colors.append(
+                        pg.intColor(pos_idx, hues=max(1, len(self._positioner_device_names))).name()
+                    )
+
+        ymin = -0.15 * len(plot_labels) - 0.2
+        ymax = 110.0
+
+        for dev_idx, dev in enumerate(plot_labels):
+            y = np.zeros(total, dtype=float)
 
             for step in range(S):
                 start = step * spp
                 end = start + spp
+
+                if dev in self._positioner_device_names:
+                    pe = self._getPulseEditor(dev, step)
+                    starts = list(pe.starts_s or [])
+                    ends = list(pe.ends_s or [])
+                    steps_um = self._coerce_positioner_step_list(
+                        getattr(pe, "positioner_step_um", [])
+                    )
+
+                    seg = np.zeros(spp, dtype=float)
+                    for window_idx, t0 in enumerate(starts):
+                        if window_idx >= len(ends):
+                            continue
+
+                        if window_idx < len(steps_um):
+                            step_um = float(steps_um[window_idx])
+                        elif steps_um:
+                            step_um = float(steps_um[-1])
+                        else:
+                            step_um = 0.0
+
+                        i0 = int(round(float(t0) * sampleRate))
+                        i1 = int(round(float(ends[window_idx]) * sampleRate))
+                        i0 = max(0, min(spp, i0))
+                        i1 = max(0, min(spp, i1))
+                        if i1 > i0:
+                            seg[i0:i1] = 100.0 if step_um >= 0 else -100.0
+                    y[start:end] = seg
+                    continue
 
                 if not self.getLineStepEnabled(dev, step):
                     continue
 
                 pe = self._getPulseEditor(dev, step)
                 if pe.starts_s and pe.ends_s and pe.power_percent:
-                    seg = np.zeros(spp, dtype=np.uint8)
+                    seg = np.zeros(spp, dtype=float)
                     for t0, t1 in zip(pe.starts_s, pe.ends_s):
                         i0 = int(round(float(t0) * sampleRate))
                         i1 = int(round(float(t1) * sampleRate))
@@ -519,17 +622,33 @@ class ScanWidgetAdvanced(SuperScanWidget):
                         if i1 > i0:
                             seg[i0:i1] = pe.power_percent
                 else:
-                    seg = np.ones(spp, dtype=np.uint8)*100
+                    seg = np.ones(spp, dtype=float)*100
 
                 y[start:end] = seg
 
             # stack traces slightly
             yy = y.astype(float) - 0.15 * dev_idx
-            plot.plot(x, yy, pen=pg.mkPen(colors[dev_idx]), name=dev)
+            ymin = min(ymin, float(np.min(yy)) - 5.0)
+            ymax = max(ymax, float(np.max(yy)) + 5.0)
+            plot.plot(x, yy, pen=pg.mkPen(plot_colors[dev_idx]), name=dev)
 
-        plot.setYRange(-0.15 * len(labels) - 0.2, 110)
+        plot.setYRange(ymin, ymax)
         plot.setLabel("bottom", "Samples within single dwell time")
         plot.setLabel("left", "Power [%]")
+
+    @staticmethod
+    def _lockPlotXRange(plot, n_samples):
+        xmax = max(1, int(n_samples))
+        plot.setXRange(0, xmax, padding=0)
+        try:
+            plot.getViewBox().setLimits(xMin=0, xMax=xmax, minXRange=1, maxXRange=xmax)
+            plot.getViewBox().setRange(xRange=(0, xmax), padding=0)
+        except Exception:
+            pass
+        try:
+            plot.disableAutoRange()
+        except Exception:
+            pass
 
 
     def _plotLineStepScatter(self, signals, colors,  labels, vlines=None):
@@ -598,10 +717,49 @@ class ScanWidgetAdvanced(SuperScanWidget):
     def _onAdvancedModeChanged(self):
         enabled = self.advancedOptionsBox.isChecked()
         self._advGroup.setVisible(enabled)
+        self.intraPixelPositionersBox.setVisible(enabled)
+        self._refreshAdvancedLineProgramDeviceVisibility()
+        self._refreshPulseDeviceChoices()
 
         # On toggle, refresh the pulse editor panel from stored model
         self._syncPulseEditsFromModel()
         self.sigSignalParChanged.emit()
+
+    def _onIntraPixelPositionersChanged(self):
+        self._refreshAdvancedLineProgramDeviceVisibility()
+        self._refreshPulseDeviceChoices()
+        self._syncPulseEditsFromModel()
+        self.sigSignalParChanged.emit()
+
+    def _visibleAdvancedProgramDevices(self):
+        devices = list(self._ttl_device_names)
+        if self.isIntraPixelPositionersMode():
+            devices.extend(self._positioner_device_names)
+        return devices
+
+    def _refreshAdvancedLineProgramDeviceVisibility(self):
+        for dev, widgets in self._line_step_device_widgets.items():
+            visible = dev not in self._positioner_device_names
+            for widget in widgets:
+                widget.setVisible(visible)
+
+    def _refreshPulseDeviceChoices(self):
+        if not hasattr(self, "_pulseSelectDevice"):
+            return
+
+        current = self._pulseSelectDevice.currentText()
+        devices = self._visibleAdvancedProgramDevices()
+
+        self._pulseSelectDevice.blockSignals(True)
+        try:
+            self._pulseSelectDevice.clear()
+            self._pulseSelectDevice.addItems(devices)
+            if current in devices:
+                self._pulseSelectDevice.setCurrentIndex(devices.index(current))
+            elif devices:
+                self._pulseSelectDevice.setCurrentIndex(0)
+        finally:
+            self._pulseSelectDevice.blockSignals(False)
 
     def _getPulseEditor(self, deviceName: str, stepIdx: int) -> "PulseEditor":
         stepIdx = int(stepIdx)
@@ -626,16 +784,24 @@ class ScanWidgetAdvanced(SuperScanWidget):
         pe = self._getPulseEditor(dev, step0)
 
         # Show/hide power editor depending on capability of selected device
-        power_ok = dev in self._linestep_power_capable_devices
+        is_positioner = dev in self._positioner_device_names
+        power_ok = not is_positioner and dev in self._linestep_power_capable_devices
+        self._pulseEndLabel.setVisible(True)
+        self._pulseEndEdit.setVisible(True)
+        self._pulseEndLabel.setText("End(s) (ms, comma-separated):")
+        self._positionerStepUmLabel.setVisible(is_positioner)
+        self._positionerStepUmEdit.setVisible(is_positioner)
+        self._analogLevelLabel.setVisible(power_ok)
         self._analogLevelEdit.setVisible(power_ok)
-        if hasattr(self, "_analogLevelLabel"):
-            self._analogLevelLabel.setVisible(power_ok)
 
         self._updatingPulseEdits = True
         try:
             # show in ms
             self._pulseStartEdit.setText(", ".join([str(round(s * 1000.0, 4)) for s in pe.starts_s]))
             self._pulseEndEdit.setText(", ".join([str(round(s * 1000.0, 4)) for s in pe.ends_s]))
+            if is_positioner:
+                steps_um = self._coerce_positioner_step_list(getattr(pe, "positioner_step_um", [0.1]))
+                self._positionerStepUmEdit.setText(", ".join([str(round(v, 3)) for v in steps_um]))
 
             # per-linestep power (percent)
             self._analogLevelEdit.setValue(int(round(float(getattr(pe, "power_percent", 100.0)))))
@@ -652,17 +818,31 @@ class ScanWidgetAdvanced(SuperScanWidget):
         step0 = int(self._pulseSelectStep.value()) - 1
         pe = self._getPulseEditor(dev, step0)
 
-        starts_ms = self._parse_float_list_ms(self._pulseStartEdit.text())
-        ends_ms = self._parse_float_list_ms(self._pulseEndEdit.text())
+        is_positioner = dev in self._positioner_device_names
+        try:
+            starts_ms = self._parse_float_list_ms(self._pulseStartEdit.text())
+            ends_ms = self._parse_float_list_ms(self._pulseEndEdit.text())
+            if is_positioner:
+                positioner_steps = self._parse_float_list(self._positionerStepUmEdit.text())
+            else:
+                positioner_steps = []
+        except ValueError:
+            return
 
-        if not starts_ms and not ends_ms:
+        if is_positioner:
+            pe.starts_s = [v / 1000.0 for v in starts_ms]
+            pe.ends_s = [v / 1000.0 for v in ends_ms]
+        elif not starts_ms and not ends_ms:
             pe.starts_s = []
             pe.ends_s = []
         else:
             pe.starts_s = [v / 1000.0 for v in starts_ms]
             pe.ends_s = [v / 1000.0 for v in ends_ms]
 
-        pe.power_percent = float(self._analogLevelEdit.value())
+        if is_positioner:
+            pe.positioner_step_um = positioner_steps
+        else:
+            pe.power_percent = float(self._analogLevelEdit.value())
         self.sigSignalParChanged.emit()
 
     def getTTLIncluded(self, deviceName):
@@ -715,6 +895,10 @@ class ScanWidgetAdvanced(SuperScanWidget):
 
     @staticmethod
     def _parse_float_list_ms(txt: str):
+        return ScanWidgetAdvanced._parse_float_list(txt)
+
+    @staticmethod
+    def _parse_float_list(txt: str):
         txt = (txt or "").strip()
         if not txt:
             return []
@@ -726,6 +910,14 @@ class ScanWidgetAdvanced(SuperScanWidget):
             out.append(float(p))
         return out
 
+    @staticmethod
+    def _coerce_positioner_step_list(value):
+        if value is None:
+            return []
+        if isinstance(value, (list, tuple)):
+            return [float(v) for v in value]
+        return [float(value)]
+
 
 class PulseEditor:
     """Stores intra-pixel pulses for one (device, linestep). Times are seconds."""
@@ -733,6 +925,7 @@ class PulseEditor:
         self.starts_s = []
         self.ends_s = []
         self.power_percent = 100.0  # constant within line, used for AO-capable lasers
+        self.positioner_step_um = [0.1]
 
 
 class ScanLineWidget(QWidget):

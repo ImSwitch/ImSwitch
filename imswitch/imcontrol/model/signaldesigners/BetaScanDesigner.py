@@ -28,6 +28,9 @@ class BetaScanDesigner(ScanDesigner):
     def make_signal(self, parameterDict, setupInfo):
         n_linesteps = int(parameterDict.get("n_linesteps", 1))
         n_linesteps = max(1, n_linesteps)
+        positioner_line_program = self.__normalize_positioner_line_program(
+            parameterDict, n_linesteps
+        )
 
         if not self.parameterCompatibility(parameterDict):
             self._logger.error([*parameterDict])
@@ -102,6 +105,17 @@ class BetaScanDesigner(ScanDesigner):
                     rampSignal[end - smooth - settling: end - settling] = self.__smoothRamp(rampValues[s], rampValues[s + 1], smooth)
                     rampSignal[end - settling:end] = rampValues[s + 1]
 
+        fast_axis_offset = self.__make_intrapixel_line_offset(
+            positioner_line_program,
+            parameterDict['target_device'][0],
+            fast_axis_positions,
+            sequenceSamples,
+            sampleRate,
+            convFactors[0],
+        )
+        if fast_axis_offset is not None:
+            rampSignal += fast_axis_offset
+
         #rampSignal = self.__makeRamp(fast_axis_start, fast_axis_size, rampSamples)
         returnRamp = self.__smoothRamp(fast_axis_size+fast_axis_start, fast_axis_start, returnSamples)
         fullLineSignal = np.concatenate((rampSignal, returnRamp))
@@ -113,6 +127,14 @@ class BetaScanDesigner(ScanDesigner):
 
         colSamples = middle_axis_positions * n_linesteps * lineSamples
         fullSquareSignal = np.zeros(colSamples)
+        middle_axis_offset = self.__make_intrapixel_line_offset(
+            positioner_line_program,
+            parameterDict['target_device'][1],
+            fast_axis_positions,
+            sequenceSamples,
+            sampleRate,
+            convFactors[1],
+        )
 
         for s in range(middle_axis_positions):
             for r in range(n_linesteps):
@@ -121,6 +143,8 @@ class BetaScanDesigner(ScanDesigner):
 
                 # hold during the pixel ramp portion
                 fullSquareSignal[block0: block0 + rampSamples] = colValues[s]
+                if middle_axis_offset is not None:
+                    fullSquareSignal[block0: block0 + rampSamples] += middle_axis_offset
 
                 # return portion:
                 if r < n_linesteps - 1:
@@ -139,8 +163,21 @@ class BetaScanDesigner(ScanDesigner):
         sliceValues = self.__makeRamp(slow_axis_start, slow_axis_size, slow_axis_positions)
         self._logger.debug(sliceValues)
         fullCubeSignal = np.zeros(sliceSamples)
+        slow_axis_offset = self.__make_intrapixel_line_offset(
+            positioner_line_program,
+            parameterDict['target_device'][2],
+            fast_axis_positions,
+            sequenceSamples,
+            sampleRate,
+            convFactors[2],
+        )
         for s in range(slow_axis_positions):
             fullCubeSignal[s * colSamples:(s + 1) * colSamples - returnSamples] = sliceValues[s]
+            if slow_axis_offset is not None:
+                slice0 = s * colSamples
+                for line_idx in range(middle_axis_positions * n_linesteps):
+                    line0 = slice0 + line_idx * lineSamples
+                    fullCubeSignal[line0: line0 + rampSamples] += slow_axis_offset
 
             try:
                 fullCubeSignal[(s + 1) * colSamples - returnSamples:(s + 1) * colSamples] = \
@@ -185,10 +222,194 @@ class BetaScanDesigner(ScanDesigner):
             return_time=parameterDict['return_time'],
         )
         scanInfoDict = contract.to_dict()
+        scanInfoDict["positioner_line_program"] = positioner_line_program
+        self._last_positioner_line_program = positioner_line_program
 
         self.__plot_curves(plot=False, signals=[fastAxisSignal, middleAxisSignal, slowAxisSignal])
 
         return sig_dict, positions, scanInfoDict
+
+    def __make_intrapixel_line_offset(self, positioner_line_program, target_device,
+                                      n_pixels, sequence_samples, sample_rate, conv_factor):
+        """Build one fast-line additive offset for a target axis.
+
+        The advanced positioner program is authored per pixel dwell. This returns
+        one full active-line offset, tiled across all fast-axis pixels. Return
+        values are already converted from micrometres to the scan signal units.
+        """
+        starts_s, ends_s, steps_um = self.__get_axis_intrapixel_commands(
+            positioner_line_program, target_device
+        )
+        if not starts_s or not ends_s:
+            return None
+
+        sequence_samples = int(sequence_samples)
+        pixel_offset = np.zeros(sequence_samples, dtype=float)
+        for command_idx, start_s in enumerate(starts_s):
+            if command_idx >= len(ends_s):
+                continue
+
+            if command_idx < len(steps_um):
+                step_um = float(steps_um[command_idx])
+            elif steps_um:
+                step_um = float(steps_um[-1])
+            else:
+                step_um = 0.0
+
+            start_sample = int(round(float(start_s) * sample_rate))
+            end_sample = int(round(float(ends_s[command_idx]) * sample_rate))
+            start_sample = max(0, min(sequence_samples, start_sample))
+            end_sample = max(0, min(sequence_samples, end_sample))
+            if start_sample >= sequence_samples or end_sample <= start_sample:
+                continue
+
+            pixel_offset[start_sample:end_sample] += step_um / conv_factor
+
+        if not np.any(pixel_offset):
+            return None
+
+        return np.tile(pixel_offset, int(n_pixels))
+
+    @staticmethod
+    def __get_axis_intrapixel_commands(positioner_line_program, target_device):
+        """Return the first enabled line-step commands for *target_device*."""
+        program = positioner_line_program or {}
+        if not program.get("enabled", False):
+            return [], [], []
+        if target_device not in program.get("target_device", []):
+            return [], [], []
+
+        n_linesteps = int(program.get("n_linesteps", 1))
+        enable_vec = list(program.get("linestep_enable", {}).get(target_device, []))
+        starts_steps = list(program.get("movement_starts_s", {}).get(target_device, []))
+        ends_steps = list(program.get("movement_ends_s", {}).get(target_device, []))
+        step_steps = list(program.get("step_size_um", {}).get(target_device, []))
+
+        for step_idx in range(n_linesteps):
+            enabled = enable_vec[step_idx] if step_idx < len(enable_vec) else False
+            starts_s = starts_steps[step_idx] if step_idx < len(starts_steps) else []
+            ends_s = ends_steps[step_idx] if step_idx < len(ends_steps) else []
+            if not enabled and not (starts_s and ends_s):
+                continue
+
+            steps_um = step_steps[step_idx] if step_idx < len(step_steps) else []
+            return list(starts_s or []), list(ends_s or []), list(steps_um or [])
+
+        return [], [], []
+
+    def __normalize_positioner_line_program(self, parameterDict, n_linesteps):
+        """Return intra-pixel positioner movement params in scan-designer shape.
+
+        The advanced line-program UI stores positioner movements beside TTL
+        pulse settings. The TTL designer ignores these fields; this scan
+        designer normalizes them so analog curve generation can consume them.
+        Times are seconds, step sizes are micrometres.
+        """
+        enabled = bool(parameterDict.get("intra_pixel_positioner_movement", False))
+        targets = list(parameterDict.get("positioner_target_device", []) or [])
+        starts_by_dev = parameterDict.get("positioner_movement_starts_s", {}) or {}
+        ends_by_dev = parameterDict.get("positioner_movement_ends_s", {}) or {}
+        steps_by_dev = parameterDict.get("positioner_step_size_um", {}) or {}
+        enable_by_dev = parameterDict.get("positioner_linestep_enable", {}) or {}
+
+        program = {
+            "enabled": enabled,
+            "target_device": [],
+            "n_linesteps": int(n_linesteps),
+            "linestep_enable": {},
+            "movement_starts_s": {},
+            "movement_ends_s": {},
+            "step_size_um": {},
+        }
+
+        if not enabled:
+            return program
+
+        for dev in targets:
+            starts_steps = self.__normalize_nested_float_lists(
+                starts_by_dev.get(dev, []), n_linesteps
+            )
+            ends_steps = self.__normalize_nested_float_lists(
+                ends_by_dev.get(dev, []), n_linesteps
+            )
+            step_sizes = self.__normalize_step_size_lists(
+                steps_by_dev.get(dev, []), n_linesteps
+            )
+
+            enable_vec_raw = enable_by_dev.get(dev, None)
+            if enable_vec_raw is None:
+                enable_vec = [
+                    bool(starts_steps[s] and ends_steps[s])
+                    for s in range(n_linesteps)
+                ]
+            else:
+                enable_vec = self.__normalize_bool_vector(
+                    enable_vec_raw, n_linesteps
+                )
+
+            if not any(enable_vec):
+                continue
+
+            program["target_device"].append(dev)
+            program["linestep_enable"][dev] = enable_vec
+            program["movement_starts_s"][dev] = starts_steps
+            program["movement_ends_s"][dev] = ends_steps
+            program["step_size_um"][dev] = step_sizes
+
+        return program
+
+    @staticmethod
+    def __normalize_nested_float_lists(value, n_steps):
+        out = []
+        value = list(value or [])
+        for i in range(n_steps):
+            if i < len(value) and value[i] is not None:
+                out.append([float(v) for v in list(value[i] or [])])
+            else:
+                out.append([])
+        return out
+
+    @staticmethod
+    def __normalize_step_size_lists(value, n_steps):
+        if value is None:
+            value = []
+        elif not isinstance(value, (list, tuple)):
+            value = [value]
+        else:
+            value = list(value)
+
+        out = []
+        for i in range(n_steps):
+            if i >= len(value) or value[i] is None:
+                out.append([])
+                continue
+
+            item = value[i]
+            if isinstance(item, (list, tuple)):
+                out.append([float(v) for v in item])
+            else:
+                out.append([float(item)])
+
+        return out
+
+    @staticmethod
+    def __normalize_float_vector(value, n_steps, default=0.0):
+        value = list(value or [])
+        out = []
+        for i in range(n_steps):
+            if i < len(value):
+                out.append(float(value[i]))
+            else:
+                out.append(float(default))
+        return out
+
+    @staticmethod
+    def __normalize_bool_vector(value, n_steps):
+        value = list(value or [])
+        out = []
+        for i in range(n_steps):
+            out.append(bool(value[i]) if i < len(value) else False)
+        return out
 
     def __makeRamp(self, start, size, samples):
         #return np.linspace(start, end, num=samples)

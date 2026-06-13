@@ -28,4 +28,5 @@ from .ULensesController import ULensesController
 from .ViewController import ViewController
 from .WatcherController import WatcherController
 from .BFTimelapseController import BFTimelapseController
+from .FlipMirrorController import FlipMirrorController
 # from .EtController import EtController # Current prototype on old Monalisa machine needs rework and is not tracked currently.

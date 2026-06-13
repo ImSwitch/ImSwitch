@@ -13,3 +13,4 @@ from .ScanManagerMoNaLISA import ScanManagerMoNaLISA
 from .ScanManagerAdvanced import ScanManagerAdvanced
 from .StandManager import StandManager
 from .RotatorsManager import RotatorsManager
+from .FlipMirrorsManager import FlipMirrorsManager

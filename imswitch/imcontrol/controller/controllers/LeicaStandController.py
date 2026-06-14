@@ -1,4 +1,4 @@
-from qtpy import QtCore, QtGui, QtWidgets
+from qtpy import QtCore
 from imswitch.imcommon.model import initLogger
 from imswitch.imcontrol.controller.basecontrollers import ImConWidgetController, SetupModeMixin
 
@@ -40,14 +40,6 @@ class LeicaStandController(SetupModeMixin, ImConWidgetController):
 
         self._connect_widget_signals()
         self._init_widget()
-        self._init_shortcuts()
-
-    def _init_shortcuts(self):
-        self._toggleModeShortcut = QtWidgets.QShortcut(
-            QtGui.QKeySequence("F2"),
-            self._widget
-        )
-        self._toggleModeShortcut.activated.connect(self.toggleMode)
 
     def toggleMode(self):
         if self._manager is None or not self._manager.isConnected():

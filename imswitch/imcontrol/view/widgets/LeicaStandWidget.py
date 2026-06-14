@@ -49,8 +49,8 @@ class LeicaStandWidget(Widget):
 
         self.modeFluoBtn.setChecked(True)
 
-        self.modeFluoBtn.setToolTip("FLUO mode: widefield with LEDs illumination (shortcut: F2)")
-        self.modeCSBtn.setToolTip("CS mode: for MoNaLISA imaging (shortcut: F2)")
+        self.modeFluoBtn.setToolTip("FLUO mode: widefield with LEDs illumination")
+        self.modeCSBtn.setToolTip("CS mode: for MoNaLISA imaging")
 
         self.cubeLabel = QtWidgets.QLabel("Cube:")
         self.cubeCombo = QtWidgets.QComboBox()

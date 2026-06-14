@@ -80,6 +80,7 @@ class ImConMainView(QtWidgets.QMainWindow):
         }
         leftDockInfos = {
             'LeicaStand': _DockInfo(name='Stand', yPosition=0),
+            'SetupModes': _DockInfo(name='Setup Modes', yPosition=0),
             'Settings': _DockInfo(name='Detector Settings', yPosition=1),
             'View': _DockInfo(name='Image Controls', yPosition=2),
             'Recording': _DockInfo(name='Recording', yPosition=3),

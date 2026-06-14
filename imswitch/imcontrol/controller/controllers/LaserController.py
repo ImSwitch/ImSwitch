@@ -3,10 +3,10 @@ from typing import List, Union
 from imswitch.imcommon.model import APIExport
 from imswitch.imcontrol.model import configfiletools
 from imswitch.imcontrol.view import guitools
-from ..basecontrollers import ImConWidgetController
+from ..basecontrollers import ImConWidgetController, SetupModeMixin
 
 
-class LaserController(ImConWidgetController):
+class LaserController(SetupModeMixin, ImConWidgetController):
     """ Linked to LaserWidget."""
 
     def __init__(self, *args, **kwargs):
@@ -15,6 +15,7 @@ class LaserController(ImConWidgetController):
         self.settingAttr = False
         self.presetBeforeScan = None
         self.is_scanning = False
+        self._setupModeLaserValueUnits = {}
 
         # Set up lasers
         for lName, lManager in self._master.lasersManager:
@@ -37,6 +38,7 @@ class LaserController(ImConWidgetController):
                 valueRangeStep if valueRangeStep is not None else None,
                 (lManager.freqRangeMin, lManager.freqRangeMax, lManager.freqRangeInit) if lManager.isModulated else (0, 0, 0),
             )
+            self._setupModeLaserValueUnits[lName] = valueUnits
             if not lManager.isBinary:
                 self.valueChanged(lName, valueRangeMin)
 
@@ -74,6 +76,131 @@ class LaserController(ImConWidgetController):
     def closeEvent(self):
         self._master.lasersManager.execOnAll(lambda l: l.setScanModeActive(False))
         self._master.lasersManager.execOnAll(lambda l: l.setValue(0))
+
+    def getSetupModeState(self):
+        lasers = {}
+        laserOrder = []
+
+        for lName, lManager in self._master.lasersManager:
+            laserOrder.append(lName)
+            laserState = {
+                "enabled": bool(self._widget.isLaserActive(lName)),
+                "isBinary": bool(lManager.isBinary),
+                "isModulated": bool(lManager.isModulated),
+                "valueUnits": self._setupModeLaserValueUnits.get(
+                    lName, getattr(lManager, "valueUnits", None)
+                ),
+            }
+
+            if not lManager.isBinary:
+                laserState["value"] = self._widget.getValue(lName)
+
+            module = self._widget.laserModules.get(lName)
+            hasModulationControls = self._laserModuleHasModulationControls(module)
+            laserState["hasModulationControls"] = hasModulationControls
+            if hasModulationControls:
+                modulationState = {}
+                modulationState["enabled"] = bool(module.modulationEnable.isChecked())
+                modulationState["frequency"] = module.getFrequency()
+                modulationState["dutyCycle"] = module.getDutyCycle()
+                laserState["modulation"] = modulationState
+
+            lasers[lName] = laserState
+
+        return {
+            "currentPreset": self._widget.getCurrentPreset(),
+            "scanDefaultPreset": self._setupInfo.defaultLaserPresetForScan,
+            "laserOrder": laserOrder,
+            "lasers": lasers,
+        }
+
+    def applySetupModeState(self, state):
+        warnings = []
+
+        if not isinstance(state, dict):
+            return ["Saved laser state is not a dictionary."]
+
+        savedLasers = state.get("lasers", {})
+        if not isinstance(savedLasers, dict):
+            return ["Saved laser entries are not a dictionary."]
+
+        currentPreset = state.get("currentPreset")
+        if currentPreset is not None:
+            if currentPreset in self._setupInfo.laserPresets:
+                self._widget.setCurrentPreset(currentPreset)
+            else:
+                warnings.append(f'Laser preset "{currentPreset}" is not available.')
+
+        scanDefaultPreset = state.get("scanDefaultPreset")
+        if scanDefaultPreset is None or scanDefaultPreset in self._setupInfo.laserPresets:
+            self._setupInfo.setDefaultLaserPresetForScan(scanDefaultPreset)
+            self._widget.setScanDefaultPreset(scanDefaultPreset)
+            self._widget.setScanDefaultPresetActive(
+                self._widget.getCurrentPreset() == scanDefaultPreset and scanDefaultPreset is not None
+            )
+        else:
+            warnings.append(f'Laser scan-default preset "{scanDefaultPreset}" is not available.')
+
+        availableLasers = set(self._master.lasersManager.getAllDeviceNames())
+
+        for laserName, laserState in savedLasers.items():
+            if laserName not in availableLasers:
+                warnings.append(f'Laser "{laserName}" is not available.')
+                continue
+
+            if not isinstance(laserState, dict):
+                warnings.append(f'Laser "{laserName}" saved state is not a dictionary.')
+                continue
+
+            lManager = self._master.lasersManager[laserName]
+            targetEnabled = bool(laserState.get("enabled", False))
+            savedUnits = laserState.get("valueUnits")
+            currentUnits = self._setupModeLaserValueUnits.get(
+                laserName, getattr(lManager, "valueUnits", None)
+            )
+            if savedUnits and currentUnits and savedUnits != currentUnits:
+                warnings.append(
+                    f'Laser "{laserName}" saved units "{savedUnits}" differ from current "{currentUnits}".'
+                )
+
+            try:
+                if not targetEnabled:
+                    self.setLaserActive(laserName, False)
+
+                if not lManager.isBinary and "value" in laserState:
+                    self.setLaserValue(laserName, laserState["value"])
+
+                modulationState = laserState.get("modulation", {})
+                if lManager.isModulated and isinstance(modulationState, dict):
+                    module = self._widget.laserModules.get(laserName)
+                    if self._laserModuleHasModulationControls(module):
+                        if "frequency" in modulationState:
+                            self.frequencyChanged(laserName, modulationState["frequency"])
+                        if "dutyCycle" in modulationState:
+                            self.dutyCycleChanged(laserName, modulationState["dutyCycle"])
+                        if "enabled" in modulationState:
+                            module.modulationEnable.setChecked(bool(modulationState["enabled"]))
+                    elif modulationState:
+                        warnings.append(
+                            f'Laser "{laserName}" has no modulation controls; modulation state was not applied.'
+                        )
+
+                if targetEnabled:
+                    self.setLaserActive(laserName, True)
+            except Exception as e:
+                warnings.append(f'Failed to apply laser "{laserName}": {e}')
+
+        return warnings
+
+    def _laserModuleHasModulationControls(self, module):
+        return module is not None and all(
+            hasattr(module, attr)
+            for attr in (
+                "modulationEnable",
+                "modulationFrequencyEdit",
+                "modulationDutyCycleEdit",
+            )
+        )
 
     def toggleLaser(self, laserName, enabled):
         """ Enable or disable laser (on/off)."""

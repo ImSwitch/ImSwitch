@@ -23,6 +23,7 @@ from .ScanWidgetAdvanced import ScanWidgetAdvanced
 from .RotationScanWidget import RotationScanWidget
 from .RotatorWidget import RotatorWidget
 from .SettingsWidget import SettingsWidget
+from .SetupModesWidget import SetupModesWidget
 from .SLMWidget import SLMWidget
 from .TilingWidget import TilingWidget
 from .ULensesWidget import ULensesWidget

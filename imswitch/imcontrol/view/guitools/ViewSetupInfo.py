@@ -50,6 +50,7 @@ class ViewSetupInfo(SetupInfo):
     - ``View`` (image controls widget)
     - ``Recording`` (recording widget)
     - ``Image`` (image display widget)
+    - ``SetupModes`` (general setup modes widget)
     - ``FocusLock`` (focus lock widget; requires ``focusLock`` field to be
       defined)
     - ``Autofocus`` (autofocus widget; requires ``focusLock`` field to be

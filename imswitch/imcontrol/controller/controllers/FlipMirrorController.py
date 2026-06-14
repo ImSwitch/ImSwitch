@@ -1,9 +1,9 @@
 from imswitch.imcommon.model import APIExport, initLogger
 
-from ..basecontrollers import ImConWidgetController
+from ..basecontrollers import ImConWidgetController, SetupModeMixin
 
 
-class FlipMirrorController(ImConWidgetController):
+class FlipMirrorController(SetupModeMixin, ImConWidgetController):
     """Controller for FlipMirrorWidget."""
 
     def __init__(self, *args, **kwargs):
@@ -45,6 +45,86 @@ class FlipMirrorController(ImConWidgetController):
 
     def closeEvent(self):
         pass
+
+    def getSetupModeState(self):
+        mirrors = {}
+
+        for name in self._names:
+            state = None
+            connected = self._is_connected(name)
+            if connected:
+                try:
+                    state = int(self._manager[name].get_state())
+                except Exception as e:
+                    self.__logger.error(f"Failed to snapshot flip mirror {name}: {e}")
+
+            mirrors[name] = {
+                "state": state,
+                "connected": connected,
+            }
+
+        return {
+            "mirrors": mirrors,
+            "links": dict(self._master_by_follower),
+        }
+
+    def applySetupModeState(self, state):
+        warnings = []
+
+        if self._manager is None or not self._manager.hasDevices():
+            return ["No flip mirror manager/devices are available."]
+
+        if not isinstance(state, dict):
+            return ["Saved flip mirror state is not a dictionary."]
+
+        mirrors = state.get("mirrors", {})
+        links = state.get("links", {})
+
+        if not isinstance(mirrors, dict):
+            warnings.append("Saved flip mirror mirror-state section is not a dictionary.")
+            mirrors = {}
+        if not isinstance(links, dict):
+            warnings.append("Saved flip mirror link section is not a dictionary.")
+            links = {}
+
+        # Remove existing links first so physical states can be restored without
+        # follower propagation from the old link graph.
+        for follower in list(self._master_by_follower.keys()):
+            self.set_link(follower, None)
+
+        for name, mirrorState in mirrors.items():
+            if name not in self._names:
+                warnings.append(f'Flip mirror "{name}" is not available.')
+                continue
+
+            if not self._is_connected(name):
+                warnings.append(f'Flip mirror "{name}" is not connected.')
+                continue
+
+            if isinstance(mirrorState, dict):
+                savedState = mirrorState.get("state")
+            else:
+                savedState = mirrorState
+
+            if savedState is None:
+                warnings.append(f'Flip mirror "{name}" has no saved state.')
+                continue
+
+            if not self._safe_move_one(name, int(savedState)):
+                warnings.append(f'Failed to move flip mirror "{name}" to state {savedState}.')
+
+        for follower, master in links.items():
+            if follower not in self._names:
+                warnings.append(f'Flip mirror follower "{follower}" is not available.')
+                continue
+            if master not in self._names:
+                warnings.append(f'Flip mirror master "{master}" is not available.')
+                continue
+            if not self.set_link(follower, master):
+                warnings.append(f'Failed to restore flip mirror link {follower} -> {master}.')
+
+        self._refresh_link_ui()
+        return warnings
 
     def _is_connected(self, name):
         try:

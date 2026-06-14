@@ -22,6 +22,7 @@ from .ScanControllerAdvanced import ScanControllerAdvanced
 from .RotationScanController import RotationScanController
 from .RotatorController import RotatorController
 from .SettingsController import SettingsController
+from .SetupModesController import SetupModesController
 from .SLMController import SLMController
 from .TilingController import TilingController
 from .ULensesController import ULensesController

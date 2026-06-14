@@ -1164,7 +1164,7 @@ class ScanWidgetAdvanced(SuperScanWidget):
         self._sequenceTable.setColumnHidden(3, not show_value)
 
     def _makeSequenceDeviceMenu(self, row_idx):
-        menu = QtWidgets.QMenu(self)
+        menu = PersistentCheckableMenu(self)
         rows = self._sequenceRowsForCurrentStep()
         selected = set(rows[row_idx].get("devices", []) if row_idx < len(rows) else [])
         for dev in self._visibleAdvancedProgramDevices():
@@ -1882,6 +1882,24 @@ class ScanLineWidget(QWidget):
             self.layout.removeWidget(cb)
             cb.setParent(None)
             cb.deleteLater()
+
+
+class PersistentCheckableMenu(QtWidgets.QMenu):
+    """Keep the menu open while checkable actions are toggled."""
+
+    def mouseReleaseEvent(self, event):
+        action = self.actionAt(event.pos())
+        if (
+            action is not None
+            and action.isEnabled()
+            and action.isCheckable()
+            and event.button() == QtCore.Qt.LeftButton
+        ):
+            action.setChecked(not action.isChecked())
+            event.accept()
+            return
+
+        super().mouseReleaseEvent(event)
 
 
 class GraphFrame(pg.GraphicsLayoutWidget):

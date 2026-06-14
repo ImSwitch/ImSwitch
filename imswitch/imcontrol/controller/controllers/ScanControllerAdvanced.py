@@ -1043,8 +1043,14 @@ class ScanControllerAdvanced(SuperScanController):
         config = configparser.ConfigParser()
         config.optionxform = str
 
-        config["analogParameterDict"] = self._analogParameterDict
-        config["digitalParameterDict"] = self._digitalParameterDict
+        config["analogParameterDict"] = {
+            key: repr(value)
+            for key, value in self._analogParameterDict.items()
+        }
+        config["digitalParameterDict"] = {
+            key: repr(value)
+            for key, value in self._digitalParameterDict.items()
+        }
 
         with open(filePath, "w") as f:
             config.write(f)
@@ -1057,14 +1063,25 @@ class ScanControllerAdvanced(SuperScanController):
 
         for key in self._analogParameterDict:
             if key in config._sections.get("analogParameterDict", {}):
-                self._analogParameterDict[key] = literal_eval(config._sections["analogParameterDict"][key])
+                self._analogParameterDict[key] = self._literalEvalOrString(
+                    config._sections["analogParameterDict"][key]
+                )
 
         # digital dict might not have all keys pre-defined
         self._digitalParameterDict = {}
         for key, val in config._sections.get("digitalParameterDict", {}).items():
-            self._digitalParameterDict[key] = literal_eval(val)
+            if key == "__name__":
+                continue
+            self._digitalParameterDict[key] = self._literalEvalOrString(val)
 
         self.setParameters()
+
+    @staticmethod
+    def _literalEvalOrString(value):
+        try:
+            return literal_eval(value)
+        except (ValueError, SyntaxError):
+            return value
 
 
     @APIExport(runOnUIThread=True)

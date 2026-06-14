@@ -147,6 +147,8 @@ class ScanWidgetAdvanced(SuperScanWidget):
         self._sequenceRemoveButton = guitools.BetterPushButton("-")
         self._sequenceUpButton = guitools.BetterPushButton("↑")
         self._sequenceDownButton = guitools.BetterPushButton("↓")
+        self._dwellDeadTimeLabel = QtWidgets.QLabel("Dead time: -")
+        self._dwellDeadTimeLabel.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
         for button in (
             self._sequenceAddButton,
             self._sequenceRemoveButton,
@@ -169,6 +171,7 @@ class ScanWidgetAdvanced(SuperScanWidget):
 
         # Connect scan timing signals
         self.seqTimePar.textChanged.connect(lambda: self.sigSeqTimeParChanged.emit())
+        self.seqTimePar.textChanged.connect(lambda: self._refreshDwellDeadTimeLabel())
         self.phaseDelayPar.textChanged.connect(lambda: self.sigStageParChanged.emit())
         self.d3StepDelayPar.textChanged.connect(lambda: self.sigStageParChanged.emit())
 
@@ -439,6 +442,7 @@ class ScanWidgetAdvanced(SuperScanWidget):
         sequenceButtonLayout.addWidget(self._sequenceUpButton)
         sequenceButtonLayout.addWidget(self._sequenceDownButton)
         sequenceButtonLayout.addStretch()
+        sequenceButtonLayout.addWidget(self._dwellDeadTimeLabel)
         self._sequenceButtons.setVisible(False)
 
         advLayout.addWidget(self._sequenceTable, 1, 0, 4, 4)
@@ -1008,7 +1012,7 @@ class ScanWidgetAdvanced(SuperScanWidget):
         self._pulseLineStepLabel.setVisible(show_line_step)
         self._pulseSelectStep.setVisible(show_line_step)
         self._sequenceTable.setVisible(sequence_mode)
-        self._sequenceButtons.setVisible(sequence_mode)
+        self._sequenceButtons.setVisible(True)
         for button in (
             self._sequenceAddButton,
             self._sequenceRemoveButton,
@@ -1019,6 +1023,7 @@ class ScanWidgetAdvanced(SuperScanWidget):
 
         if sequence_mode:
             self._refreshSequenceTableFromModel()
+        self._refreshDwellDeadTimeLabel()
 
     def _onIntraPixelPositionersChanged(self):
         self._refreshAdvancedLineProgramDeviceVisibility()
@@ -1098,7 +1103,11 @@ class ScanWidgetAdvanced(SuperScanWidget):
         self._refreshSequenceButtonState()
 
     def _setSequenceRowWidgets(self, row_idx, row):
+        row_devices_text = self._formatSequenceDevices(row.get("devices", []))
+        row_tooltip = f"Devices: {row_devices_text}"
+
         device_widget = QtWidgets.QWidget()
+        device_widget.setToolTip(row_tooltip)
         layout = QtWidgets.QHBoxLayout(device_widget)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(4)
@@ -1107,9 +1116,11 @@ class ScanWidgetAdvanced(SuperScanWidget):
         add_button.setText("+")
         add_button.setPopupMode(QtWidgets.QToolButton.InstantPopup)
         add_button.setMenu(self._makeSequenceDeviceMenu(row_idx))
-        device_label = QtWidgets.QLabel(self._formatSequenceDevices(row.get("devices", [])))
+        add_button.setToolTip(row_tooltip)
+        device_label = QtWidgets.QLabel(row_devices_text)
         device_label.setMinimumWidth(80)
         device_label.setFont(self.font())
+        device_label.setToolTip(row_tooltip)
         layout.addWidget(add_button)
         layout.addWidget(device_label)
         layout.addStretch()
@@ -1263,6 +1274,33 @@ class ScanWidgetAdvanced(SuperScanWidget):
         self._sequenceUpButton.setEnabled(has_selection and selected > 0)
         self._sequenceDownButton.setEnabled(has_selection and selected < row_count - 1)
 
+    def _refreshDwellDeadTimeLabel(self):
+        if not hasattr(self, "_dwellDeadTimeLabel"):
+            return
+
+        try:
+            dwell_ms = float(self.seqTimePar.text())
+        except Exception:
+            self._dwellDeadTimeLabel.setText("Dead time: -")
+            return
+
+        step = self._currentSequenceStep()
+        last_end_s = 0.0
+        for dev in self._visibleAdvancedProgramDevices():
+            try:
+                pe = self._getPulseEditor(dev, step)
+                for end_s in list(pe.ends_s or []):
+                    last_end_s = max(last_end_s, float(end_s))
+            except Exception:
+                continue
+
+        last_end_ms = last_end_s * 1000.0
+        dead_time_ms = dwell_ms - last_end_ms
+        self._dwellDeadTimeLabel.setText(f"Dead time: {dead_time_ms:.3f} ms")
+        self._dwellDeadTimeLabel.setToolTip(
+            f"Time from latest pulse end ({last_end_ms:.3f} ms) to dwell end ({dwell_ms:.3f} ms)."
+        )
+
     def _storeCurrentSequenceTable(self):
         if self._updatingSequenceTable or not hasattr(self, "_sequenceTable"):
             return
@@ -1316,6 +1354,7 @@ class ScanWidgetAdvanced(SuperScanWidget):
                         elif dev in self._linestep_power_capable_devices:
                             pe.power_percent = max(0.0, min(100.0, value))
                 previous_end_ms = start_ms + duration_ms
+        self._refreshDwellDeadTimeLabel()
 
     def _deriveLocksFromSequenceRows(self):
         devices = set(self._visibleAdvancedProgramDevices())
@@ -1676,6 +1715,7 @@ class ScanWidgetAdvanced(SuperScanWidget):
             self._refreshAdvancedProgramMode()
             self._refreshSequenceTableFromModel()
             self._refreshSequenceButtonState()
+            self._refreshDwellDeadTimeLabel()
             return
 
         dev = self._pulseSelectDevice.currentText()
@@ -1715,6 +1755,7 @@ class ScanWidgetAdvanced(SuperScanWidget):
             self._analogLevelEdit.setValue(int(round(float(getattr(pe, "power_percent", 100.0)))))
         finally:
             self._updatingPulseEdits = False
+        self._refreshDwellDeadTimeLabel()
 
     def _onPulseEditsChanged(self):
         if self._updatingPulseEdits:
@@ -1756,6 +1797,7 @@ class ScanWidgetAdvanced(SuperScanWidget):
             pe.power_percent = float(self._analogLevelEdit.value())
 
         self._propagateMasterTiming(dev, stepIdx=step0)
+        self._refreshDwellDeadTimeLabel()
         self.sigSignalParChanged.emit()
 
     def getTTLIncluded(self, deviceName):
@@ -1778,6 +1820,7 @@ class ScanWidgetAdvanced(SuperScanWidget):
             for pe in self.ttl_pulses[deviceName]:
                 pe.starts_s = []
                 pe.ends_s = []
+        self._refreshDwellDeadTimeLabel()
 
     def setScanMode(self):
         # If you have a scan/cont toggle, set it here.
@@ -1807,6 +1850,7 @@ class ScanWidgetAdvanced(SuperScanWidget):
         pe = self._getPulseEditor(deviceName, stepIdx)
         pe.starts_s = list(starts_s or [])
         pe.ends_s = list(ends_s or [])
+        self._refreshDwellDeadTimeLabel()
 
     @staticmethod
     def _parse_float_list_ms(txt: str):

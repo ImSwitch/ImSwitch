@@ -645,9 +645,6 @@ class ScanControllerAdvanced(SuperScanController):
             self._digitalParameterDict["advanced_sequence_rows"] = (
                 self._widget.getAdvancedSequenceRows()
             )
-            self._digitalParameterDict["advanced_sequence_start_offset_ms"] = (
-                self._widget.getAdvancedSequenceStartOffsets()
-            )
             self._digitalParameterDict["line_program_devices_enabled"] = (
                 self._widget.isLineProgramDevicesMode()
             )
@@ -782,9 +779,6 @@ class ScanControllerAdvanced(SuperScanController):
             try:
                 self._widget.setAdvancedProgramMode(
                     dig.get("advanced_program_mode", "timing")
-                )
-                self._widget.setAdvancedSequenceStartOffsets(
-                    dig.get("advanced_sequence_start_offset_ms", []) or []
                 )
                 self._widget.setAdvancedSequenceRows(
                     dig.get("advanced_sequence_rows", []) or []

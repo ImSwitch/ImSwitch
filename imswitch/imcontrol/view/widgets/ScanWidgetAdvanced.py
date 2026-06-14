@@ -96,7 +96,7 @@ class ScanWidgetAdvanced(SuperScanWidget):
         self._analogLevelEdit.setValue(100)
 
         self._sequenceTable = QtWidgets.QTableWidget(0, 4)
-        self._sequenceTable.setHorizontalHeaderLabels(["Device(s)", "Duration (ms)", "Wait (ms)", "Value"])
+        self._sequenceTable.setHorizontalHeaderLabels(["Device(s)", "Start delay (ms)", "Duration (ms)", "Value"])
         self._sequenceTable.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
         self._sequenceTable.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
         self._sequenceTable.verticalHeader().setVisible(False)
@@ -147,14 +147,6 @@ class ScanWidgetAdvanced(SuperScanWidget):
         self._sequenceRemoveButton = guitools.BetterPushButton("-")
         self._sequenceUpButton = guitools.BetterPushButton("↑")
         self._sequenceDownButton = guitools.BetterPushButton("↓")
-        self._sequenceStartOffsetLabel = QtWidgets.QLabel("Start offset (ms):")
-        self._sequenceStartOffset = QtWidgets.QDoubleSpinBox()
-        self._sequenceStartOffset.setDecimals(3)
-        self._sequenceStartOffset.setMinimum(0.0)
-        self._sequenceStartOffset.setMaximum(1e6)
-        self._sequenceStartOffset.setSingleStep(0.1)
-        self._sequenceStartOffset.setValue(0.0)
-        self._sequenceStartOffset.setMaximumWidth(90)
         for button in (
             self._sequenceAddButton,
             self._sequenceRemoveButton,
@@ -164,7 +156,6 @@ class ScanWidgetAdvanced(SuperScanWidget):
             button.setMaximumWidth(34)
             button.setVisible(False)
         self._sequenceRowsByStep = {}
-        self._sequenceStartOffsetByStep = {}
 
         self.graph_steps = GraphFrame()  # always visible (scatter)
         self.graph_steps.setFixedHeight(140)
@@ -201,7 +192,6 @@ class ScanWidgetAdvanced(SuperScanWidget):
         self._sequenceRemoveButton.clicked.connect(self._removeSelectedSequenceRow)
         self._sequenceUpButton.clicked.connect(lambda: self._moveSelectedSequenceRow(-1))
         self._sequenceDownButton.clicked.connect(lambda: self._moveSelectedSequenceRow(1))
-        self._sequenceStartOffset.valueChanged.connect(self._onSequenceStartOffsetChanged)
         self.plotScanButton.clicked.connect(self.sigPlotScanClicked)
 
 
@@ -444,9 +434,6 @@ class ScanWidgetAdvanced(SuperScanWidget):
         sequenceButtonLayout.addWidget(self._sequenceRemoveButton)
         sequenceButtonLayout.addWidget(self._sequenceUpButton)
         sequenceButtonLayout.addWidget(self._sequenceDownButton)
-        sequenceButtonLayout.addSpacing(12)
-        sequenceButtonLayout.addWidget(self._sequenceStartOffsetLabel)
-        sequenceButtonLayout.addWidget(self._sequenceStartOffset)
         sequenceButtonLayout.addStretch()
         self._sequenceButtons.setVisible(False)
 
@@ -555,35 +542,12 @@ class ScanWidgetAdvanced(SuperScanWidget):
             for row in self._sequenceRowsByStep.get(step, []):
                 rows.append({
                     "devices": list(row.get("devices", []) or []),
+                    "offset_ms": float(row.get("offset_ms", 0.0)),
                     "duration_ms": float(row.get("duration_ms", 0.0)),
-                    "wait_ms": float(row.get("wait_ms", 0.0)),
                     "value": float(row.get("value", self._sequenceDefaultValue(row.get("devices", [])))),
                 })
             rows_by_step.append(rows)
         return rows_by_step
-
-    def getAdvancedSequenceStartOffsets(self):
-        self._storeCurrentSequenceTable()
-        return [
-            float(self._sequenceStartOffsetByStep.get(step, 0.0))
-            for step in range(self.getNumLineSteps())
-        ]
-
-    def setAdvancedSequenceStartOffsets(self, offsets) -> None:
-        self._sequenceStartOffsetByStep = {}
-        if isinstance(offsets, dict):
-            iterable = offsets.items()
-        else:
-            iterable = enumerate(list(offsets or []))
-        for step, value in iterable:
-            try:
-                step_idx = int(step)
-                offset_ms = float(value)
-            except Exception:
-                continue
-            self._sequenceStartOffsetByStep[step_idx] = max(0.0, offset_ms)
-        self._refreshSequenceStartOffsetFromModel()
-        self._compileSequenceProgram()
 
     def setAdvancedSequenceRows(self, rows_by_step) -> None:
         self._sequenceRowsByStep = {}
@@ -601,8 +565,8 @@ class ScanWidgetAdvanced(SuperScanWidget):
             for row in list(rows or []):
                 self._sequenceRowsByStep[step_idx].append({
                     "devices": list(row.get("devices", []) or []),
+                    "offset_ms": float(row.get("offset_ms", 0.0)),
                     "duration_ms": float(row.get("duration_ms", 0.0)),
-                    "wait_ms": float(row.get("wait_ms", 0.0)),
                     "value": float(row.get("value", self._sequenceDefaultValue(row.get("devices", [])))),
                 })
 
@@ -1119,7 +1083,6 @@ class ScanWidgetAdvanced(SuperScanWidget):
         rows = self._sequenceRowsForCurrentStep()
         self._updatingSequenceTable = True
         try:
-            self._refreshSequenceStartOffsetFromModel()
             self._sequenceTable.setRowCount(0)
             for row_idx, row in enumerate(rows):
                 self._sequenceTable.insertRow(row_idx)
@@ -1148,6 +1111,16 @@ class ScanWidgetAdvanced(SuperScanWidget):
         layout.addStretch()
         self._sequenceTable.setCellWidget(row_idx, 0, device_widget)
 
+        offset = QtWidgets.QDoubleSpinBox()
+        offset.setDecimals(3)
+        offset.setMinimum(-1e6)
+        offset.setMaximum(1e6)
+        offset.setSingleStep(0.1)
+        offset.setValue(float(row.get("offset_ms", 0.0)))
+        offset.setFont(self.font())
+        offset.valueChanged.connect(lambda value, r=row_idx: self._onSequenceValueChanged(r, "offset_ms", value))
+        self._sequenceTable.setCellWidget(row_idx, 1, offset)
+
         duration = QtWidgets.QDoubleSpinBox()
         duration.setDecimals(3)
         duration.setMinimum(0.0)
@@ -1156,17 +1129,7 @@ class ScanWidgetAdvanced(SuperScanWidget):
         duration.setValue(float(row.get("duration_ms", 0.0)))
         duration.setFont(self.font())
         duration.valueChanged.connect(lambda value, r=row_idx: self._onSequenceValueChanged(r, "duration_ms", value))
-        self._sequenceTable.setCellWidget(row_idx, 1, duration)
-
-        wait = QtWidgets.QDoubleSpinBox()
-        wait.setDecimals(3)
-        wait.setMinimum(0.0)
-        wait.setMaximum(1e6)
-        wait.setSingleStep(0.1)
-        wait.setValue(float(row.get("wait_ms", 0.0)))
-        wait.setFont(self.font())
-        wait.valueChanged.connect(lambda value, r=row_idx: self._onSequenceValueChanged(r, "wait_ms", value))
-        self._sequenceTable.setCellWidget(row_idx, 2, wait)
+        self._sequenceTable.setCellWidget(row_idx, 2, duration)
 
         value = QtWidgets.QDoubleSpinBox()
         value.setDecimals(3)
@@ -1247,7 +1210,11 @@ class ScanWidgetAdvanced(SuperScanWidget):
         rows = self._sequenceRowsForCurrentStep()
         selected = self._selectedSequenceRow()
         insert_at = selected + 1 if selected >= 0 else len(rows)
-        rows.insert(insert_at, {"devices": [], "duration_ms": 1.0, "wait_ms": 0.1, "value": 0.0})
+        if insert_at == 0:
+            offset_ms = 0.0
+        else:
+            offset_ms = 0.1
+        rows.insert(insert_at, {"devices": [], "offset_ms": offset_ms, "duration_ms": 1.0, "value": 0.0})
         self._refreshSequenceTableFromModel()
         self._selectSequenceRow(insert_at)
         self._compileSequenceProgram()
@@ -1292,41 +1259,18 @@ class ScanWidgetAdvanced(SuperScanWidget):
         self._sequenceUpButton.setEnabled(has_selection and selected > 0)
         self._sequenceDownButton.setEnabled(has_selection and selected < row_count - 1)
 
-    def _refreshSequenceStartOffsetFromModel(self):
-        if not hasattr(self, "_sequenceStartOffset"):
-            return
-        step = self._currentSequenceStep()
-        value = float(self._sequenceStartOffsetByStep.get(step, 0.0))
-        blocked = self._sequenceStartOffset.blockSignals(True)
-        try:
-            self._sequenceStartOffset.setValue(value)
-        finally:
-            self._sequenceStartOffset.blockSignals(blocked)
-
-    def _onSequenceStartOffsetChanged(self, value):
-        if self._updatingSequenceTable:
-            return
-        step = self._currentSequenceStep()
-        self._sequenceStartOffsetByStep[step] = max(0.0, float(value))
-        self._compileSequenceProgram(stepIdx=step)
-        self.sigSignalParChanged.emit()
-
     def _storeCurrentSequenceTable(self):
         if self._updatingSequenceTable or not hasattr(self, "_sequenceTable"):
             return
-        self._sequenceStartOffsetByStep[self._currentSequenceStep()] = max(
-            0.0,
-            float(self._sequenceStartOffset.value())
-        )
         rows = self._sequenceRowsForCurrentStep()
         for row_idx in range(min(self._sequenceTable.rowCount(), len(rows))):
-            duration = self._sequenceTable.cellWidget(row_idx, 1)
-            wait = self._sequenceTable.cellWidget(row_idx, 2)
+            offset = self._sequenceTable.cellWidget(row_idx, 1)
+            duration = self._sequenceTable.cellWidget(row_idx, 2)
             value = self._sequenceTable.cellWidget(row_idx, 3)
+            if offset is not None:
+                rows[row_idx]["offset_ms"] = float(offset.value())
             if duration is not None:
                 rows[row_idx]["duration_ms"] = float(duration.value())
-            if wait is not None:
-                rows[row_idx]["wait_ms"] = float(wait.value())
             if value is not None:
                 rows[row_idx]["value"] = float(value.value())
 
@@ -1344,14 +1288,15 @@ class ScanWidgetAdvanced(SuperScanWidget):
                 if dev in self._positioner_device_names:
                     pe.positioner_step_um = []
 
-            t_ms = max(0.0, float(self._sequenceStartOffsetByStep.get(step, 0.0)))
+            previous_end_ms = 0.0
             for row in rows:
+                offset_ms = float(row.get("offset_ms", 0.0))
+                start_ms = previous_end_ms + offset_ms
                 duration_ms = max(0.0, float(row.get("duration_ms", 0.0)))
-                wait_ms = max(0.0, float(row.get("wait_ms", 0.0)))
                 value = float(row.get("value", self._sequenceDefaultValue(row.get("devices", []))))
                 if duration_ms > 0:
-                    start_s = t_ms / 1000.0
-                    end_s = (t_ms + duration_ms) / 1000.0
+                    start_s = start_ms / 1000.0
+                    end_s = (start_ms + duration_ms) / 1000.0
                     for dev in list(row.get("devices", []) or []):
                         if dev not in self._visibleAdvancedProgramDevices():
                             continue
@@ -1366,7 +1311,7 @@ class ScanWidgetAdvanced(SuperScanWidget):
                             pe.positioner_step_um = steps
                         elif dev in self._linestep_power_capable_devices:
                             pe.power_percent = max(0.0, min(100.0, value))
-                t_ms += duration_ms + wait_ms
+                previous_end_ms = start_ms + duration_ms
 
     def _deriveLocksFromSequenceRows(self):
         devices = set(self._visibleAdvancedProgramDevices())
@@ -1486,23 +1431,19 @@ class ScanWidgetAdvanced(SuperScanWidget):
                 merged.values(),
                 key=lambda event: (event["start_s"], event["end_s"])
             )
-            initial_wait_ms = 0.0
-            if ordered_events:
-                initial_wait_ms = max(0.0, ordered_events[0]["start_s"] * 1000.0)
-            self._sequenceStartOffsetByStep[step] = initial_wait_ms
             rows = []
+            previous_end_ms = 0.0
             for idx, event in enumerate(ordered_events):
+                start_ms = float(event["start_s"]) * 1000.0
+                offset_ms = start_ms - previous_end_ms
                 duration_ms = max(0.0, (event["end_s"] - event["start_s"]) * 1000.0)
-                if idx + 1 < len(ordered_events):
-                    wait_ms = max(0.0, (ordered_events[idx + 1]["start_s"] - event["end_s"]) * 1000.0)
-                else:
-                    wait_ms = 0.0
                 rows.append({
                     "devices": list(event["devices"]),
+                    "offset_ms": offset_ms,
                     "duration_ms": duration_ms,
-                    "wait_ms": wait_ms,
                     "value": event["value"],
                 })
+                previous_end_ms = start_ms + duration_ms
             rows_by_step[step] = rows
 
         self._sequenceRowsByStep = rows_by_step

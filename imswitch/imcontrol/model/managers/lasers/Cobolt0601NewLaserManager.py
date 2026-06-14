@@ -1,9 +1,9 @@
-from imswitch.imcommon.model import initLogger, pythontools
+from imswitch.imcommon.model import initLogger
 from .PyCoboltManager import list_lasers
 from .PyCoboltManager import Cobolt06
+from .PyCoboltMock import MockCobolt06
 from .LaserManager import LaserManager
 import traceback
-import importlib
 
 
 class Cobolt0601NewLaserManager(LaserManager):
@@ -24,13 +24,13 @@ class Cobolt0601NewLaserManager(LaserManager):
         self.__logger.debug(f'Initializing Cobolt0601 laser (name: {name}) on port {self._port}')
         self._is_DPL = False
         self._digitalMod = True
+        self._isMock = False
         self.powerQ = 0
         if 'DPL' in name:
             self._is_DPL = True
         try:
             # self._laser = CoboltLaser(port=self._port)
             self._laser = Cobolt06(port=self._port)
-            self._digitalMod = False
 
             # start up by turning on modulation power -> laser is off
             self._laser.constant_current(0)
@@ -38,38 +38,39 @@ class Cobolt0601NewLaserManager(LaserManager):
             mode = self._laser.get_mode()
             # mode = 1
 
-            # self.__logger.debug(f'Laser mode is: {mode}, might have to turn the key.')
-            super().__init__(laserInfo, name, isBinary=False, valueUnits='mW', valueDecimals=0)
-
-            if not self._laser.is_on():
-                try: 
-                    self._laser.turn_on() # turn on laser
-                    self.setEnabled(False) # pause emission
-                    self.__logger.debug(f'Laser {name} turned on, mode {mode} - emission paused. Might have to turn the key.')
-                except Exception as e:
-                    err = traceback.format_exc()
-                    self.__logger.warning(f'Laser {name} could not be turned on: {err}')
-
-
-        # TODO mocker does not work
-        except Exception as e:
-            self.__logger.error(
-                f'Failed to initialize Cobolt0601-DPL laser (name: {name}) on port {self._port}, loading mocker.')
-            package = importlib.import_module(
-                pythontools.joinModulePath('imswitch.imcontrol.model.lantzdrivers_mock.', 'cobolt0601')
+        except Exception as exc:
+            self.__logger.warning(
+                f'Failed to initialize Cobolt0601 laser (name: {name}) on port {self._port},'
+                f' loading mock: {exc}'
             )
-            driver = getattr(package, 'Cobolt0601_f2')
-            laser = driver(self._port)
-            laser.initialize()
+            # self.__logger.debug(f'Cobolt0601 initialization traceback: {traceback.format_exc()}')
+            self._isMock = True
+            self._laser = MockCobolt06(port=self._port)
+            self._laser.constant_current(0)
+            mode = self._laser.get_mode()
+
+        self._digitalMod = False
+
+        # self.__logger.debug(f'Laser mode is: {mode}, might have to turn the key.')
+        super().__init__(laserInfo, name, isBinary=False, valueUnits='mW', valueDecimals=0)
+
+        if not self._laser.is_on():
+            try:
+                self._laser.turn_on() # turn on laser
+                self.setEnabled(False) # pause emission
+                self.__logger.debug(f'Laser {name} turned on, mode {mode} - emission paused. Might have to turn the key.')
+            except Exception:
+                err = traceback.format_exc()
+                self.__logger.warning(f'Laser {name} could not be turned on: {err}')
     
     def finalize(self):
         """ Turn off laser """
-        if self._laser.is_on():
-            try:
+        try:
+            if self._laser.is_on():
                 self._laser.turn_off() # turn on laser
-            except Exception as e:
-                err = traceback.format_exc()
-                self.__logger.warning(f'Laser could not be turned off properly: {err}.')
+        except Exception:
+            err = traceback.format_exc()
+            self.__logger.warning(f'Laser could not be turned off properly: {err}.')
 
     def setEnabled(self, enabled):  # toggle laser on or off
         if enabled:  # laser is toggled on
@@ -80,7 +81,7 @@ class Cobolt0601NewLaserManager(LaserManager):
             self._laser.pause_emission()
             #self._laser.constant_current(0)  # If laser should be disabled, turn off by setting scanmode to active -> modulation mode
 
-    def setValue(self, power):
+    def setValue(self, power, enabled=True, for_scanning=False):
         power = int(power)
         self.powerQ = power
         if self._digitalMod:
@@ -117,7 +118,7 @@ class Cobolt0601NewLaserManager(LaserManager):
             # powerQ = self._laser.power_sp * self._numLasers
 
             self.__logger.debug('Entered digital modulation mode')
-            self.__logger.debug(f'Modulation mode is: {self._laser.get_modulation_state}')
+            self.__logger.debug(f'Modulation mode is: {self._laser.get_modulation_state()}')
         self._digitalMod = active
         # TODO
         # this is needed when imswitch is handling the scan
@@ -140,8 +141,12 @@ class Cobolt0601NewLaserManager(LaserManager):
         return self._laser.get_modulation_power()
 
     def getAllDeviceNames(self):  # wonder where thats needed
-        self.__logger.debug(f'Available devices: {list_lasers()}')
-        return list_lasers()
+        if self._isMock:
+            devices = [self._port]
+        else:
+            devices = list_lasers()
+        self.__logger.debug(f'Available devices: {devices}')
+        return devices
 
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

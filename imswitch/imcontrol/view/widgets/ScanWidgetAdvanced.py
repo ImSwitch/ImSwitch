@@ -232,13 +232,17 @@ class ScanWidgetAdvanced(SuperScanWidget):
         # --- Top row: buttons ---
         self.grid.addWidget(self.loadScanBtn, currentRow, 0)
         self.grid.addWidget(self.saveScanBtn, currentRow, 1)
-        self.grid.addWidget(self.repeatBox, currentRow, 3)
         self.grid.addItem(
-            QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum),
-            currentRow, 4, 1, 1
+            QtWidgets.QSpacerItem(20, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum),
+            currentRow, 2, 1, 1
         )
-        self.grid.addWidget(self.plotScanButton, currentRow, 5)
-        self.grid.addWidget(self.plotIncludeTTLBox, currentRow, 6)
+        self.grid.addWidget(self.plotScanButton, currentRow, 3)
+        self.grid.addWidget(self.plotIncludeTTLBox, currentRow, 4)
+        self.grid.addItem(
+            QtWidgets.QSpacerItem(20, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum),
+            currentRow, 5, 1, 1
+        )
+        self.grid.addWidget(self.repeatBox, currentRow, 6)
         self.grid.addWidget(self.scanButton, currentRow, 7)
         currentRow += 1
 

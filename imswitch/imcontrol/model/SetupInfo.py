@@ -207,6 +207,10 @@ class FocusLockInfo:
     piKi: float
     """ Default ki value of feedback loop. """
 
+    positionerAxis: Optional[Union[str, int]] = None
+    """ Positioner axis used for focus-lock movements. Defaults to ``"Z"`` if
+    available on the configured positioner, otherwise ``0``. """
+
 @dataclass(frozen=True)
 class AutofocusInfo:
     camera: str

@@ -55,7 +55,7 @@ class PiezoconceptZManager2(PositionerManager):
         _ = self.get_abs()
         return self._position
 
-    def get_abs(self):
+    def get_abs(self, axis=None):
         cmd = 'GET_Z'
         reply = self._rs232Manager.query(cmd)
         if reply is None:

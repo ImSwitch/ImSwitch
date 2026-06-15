@@ -299,6 +299,7 @@ class SLMsWidget(Widget):
             QtWidgets.QSizePolicy.Expanding,
             QtWidgets.QSizePolicy.Fixed
         )
+        configCombo.view().setMouseTracking(True)
         configCombo.wheelEvent = lambda event: None  # disable wheel event
         setattr(self, f"{slmKey}_configCombo", configCombo)
         layout.addWidget(configCombo)
@@ -1316,12 +1317,13 @@ class SLMsWidget(Widget):
         """
         combo = getattr(self, f"{slmKey}_configCombo")
         current = self._currentConfigs.get(slmKey,{}).get("path", "")
+        currentPath = os.path.abspath(current) if current else None
         combo.blockSignals(True)
         combo.clear()
         current_index = -1
         for i, (name, path) in enumerate(configs):
             combo.addItem(name, path)
-            if current is not None and path == current:
+            if currentPath is not None and os.path.abspath(path) == currentPath:
                 current_index = i
         if current_index >= 0:
             combo.setCurrentIndex(current_index)
@@ -1352,7 +1354,27 @@ class SLMsWidget(Widget):
     def current_config_changed(self,slmKey,config_dict):
         """ updates self._currentConfigs """
         self._currentConfigs[slmKey] = config_dict
+        self._sync_current_config_combo(slmKey)
         self.update_config_info(slmKey)
+
+    def _sync_current_config_combo(self, slmKey):
+        combo = getattr(self, f"{slmKey}_configCombo")
+        current = self._currentConfigs.get(slmKey,{}).get("path")
+        currentPath = os.path.abspath(current) if current else None
+        currentIndex = -1
+
+        if currentPath is not None:
+            for index in range(combo.count()):
+                itemPath = combo.itemData(index)
+                if itemPath and os.path.abspath(itemPath) == currentPath:
+                    currentIndex = index
+                    break
+
+        combo.blockSignals(True)
+        try:
+            combo.setCurrentIndex(currentIndex)
+        finally:
+            combo.blockSignals(False)
     
     def current_config_renamed(self,slmKey,new_path):
         """ updates current config path """

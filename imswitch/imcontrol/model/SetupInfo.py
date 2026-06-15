@@ -207,6 +207,10 @@ class FocusLockInfo:
     piKi: float
     """ Default ki value of feedback loop. """
 
+    positionerAxis: Optional[Union[str, int]] = None
+    """ Positioner axis used for focus-lock movements. Defaults to ``"Z"`` if
+    available on the configured positioner, otherwise ``0``. """
+
 @dataclass(frozen=True)
 class AutofocusInfo:
     camera: str
@@ -340,6 +344,26 @@ class PyroServerInfo:
     port: Optional[int] = 54333
     active: Optional[bool] = False
 
+@dataclass(frozen=True)
+class FlipMirrorInfo:
+    managerName: str
+    """Manager class name."""
+
+    serial_number: str
+    """Serial number, used to find device and establish coneection."""
+
+    invert: bool = False
+    """If true, logical states 0/1 are swapped."""
+
+    initial_state: Optional[int] = None
+    """Optional state to move to at startup. Use null to keep current state."""
+    
+    state_names: Dict[str, str] = field(default_factory=dict)
+    """Optional display names for logical states 0 and 1."""
+
+    managerProperties: Dict[str, Any] = field(default_factory=dict)
+    """Optional manager-specific properties."""
+
 
 @dataclass_json(undefined=Undefined.INCLUDE)
 @dataclass
@@ -398,6 +422,9 @@ class SetupInfo:
     """ Pulse Streamer settings. """
 
     pyroServerInfo: PyroServerInfo = field(default_factory=PyroServerInfo)
+
+    flipMirrors: Optional[Dict[str, FlipMirrorInfo]] = field(default_factory=lambda: None)
+    """Motorized flip mirror settings."""
 
     _catchAll: CatchAll = None
 

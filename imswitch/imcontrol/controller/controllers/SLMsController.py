@@ -7,7 +7,7 @@ import traceback
 import h5py
 import datetime
 
-from ..basecontrollers import ImConWidgetController
+from ..basecontrollers import ImConWidgetController, SetupModeMixin
 from imswitch.imcommon.model import initLogger
 from imswitch.imcontrol.view.guitools import askForFilePath, JsonEditorDialog
 from imswitch.imcommon.view.guitools.dialogtools import askYesNoQuestion
@@ -24,7 +24,7 @@ full_registry = {
     "cgh_targets": TARGETS_REGISTRY
 }
 
-class SLMsController(ImConWidgetController):
+class SLMsController(SetupModeMixin, ImConWidgetController):
     """Linked to SLMsWidget."""
 
     def __init__(self, *args, **kwargs):
@@ -138,6 +138,100 @@ class SLMsController(ImConWidgetController):
         if hasattr(self,"_cghThread"):
             self._cghThread.quit()
             self._cghThread.wait()
+
+    def getSetupModeState(self):
+        slms = {}
+
+        for slmKey, slmName in self._slmNames.items():
+            config = dict(self._widget._currentConfigs.get(slmKey, {}) or {})
+            configPath = config.get("path")
+
+            slms[slmKey] = {
+                "slmName": slmName,
+                "configPath": configPath,
+                "configName": os.path.basename(configPath) if configPath else None,
+                "config": config,
+            }
+
+        return {
+            "slms": slms,
+        }
+
+    def applySetupModeState(self, state):
+        warnings = []
+
+        if not isinstance(state, dict):
+            return ["Saved SLMs state is not a dictionary."]
+
+        savedSlms = state.get("slms", {})
+        if not isinstance(savedSlms, dict):
+            return ["Saved SLM entries are not a dictionary."]
+
+        for savedSlmKey, slmState in savedSlms.items():
+            if not isinstance(slmState, dict):
+                warnings.append(f'SLM "{savedSlmKey}" saved state is not a dictionary.')
+                continue
+
+            slmKey = savedSlmKey
+            if slmKey not in self._slmNames:
+                savedSlmName = slmState.get("slmName")
+                slmKey = self._slmKeys.get(savedSlmName)
+
+            if slmKey not in self._slmNames:
+                warnings.append(
+                    f'SLM "{savedSlmKey}" ({slmState.get("slmName")}) is not available.'
+                )
+                continue
+
+            configPath = self._resolveSetupModeConfigPath(slmKey, slmState)
+            if configPath is None:
+                configName = slmState.get("configName") or slmState.get("configPath")
+                warnings.append(
+                    f'SLM "{self._slmNames[slmKey]}" config "{configName}" is not available.'
+                )
+                continue
+
+            try:
+                self.on_load_config(slmKey, path=configPath)
+            except Exception as e:
+                warnings.append(
+                    f'Failed to load SLM "{self._slmNames[slmKey]}" config "{configPath}": {e}'
+                )
+                continue
+
+            loadedPath = self._widget._currentConfigs.get(slmKey, {}).get("path")
+            if loadedPath and os.path.abspath(loadedPath) != os.path.abspath(configPath):
+                warnings.append(
+                    f'SLM "{self._slmNames[slmKey]}" loaded "{loadedPath}" instead of "{configPath}".'
+                )
+            elif not loadedPath:
+                warnings.append(
+                    f'SLM "{self._slmNames[slmKey]}" config "{configPath}" may not have loaded.'
+                )
+
+        return warnings
+
+    def _resolveSetupModeConfigPath(self, slmKey, slmState):
+        configPath = slmState.get("configPath")
+        configName = slmState.get("configName")
+
+        config = slmState.get("config", {})
+        if isinstance(config, dict):
+            configPath = configPath or config.get("path")
+            if configPath and configName is None:
+                configName = os.path.basename(configPath)
+
+        candidates = []
+        if configPath:
+            candidates.append(configPath)
+        if configName:
+            candidates.append(os.path.join(self.get_slm_config_dir(slmKey), configName))
+
+        for candidate in candidates:
+            if candidate and os.path.isfile(candidate):
+                return candidate
+
+        return None
 
     def _startup_connection(self, slmKey):
         success = self.on_connect(slmKey,state=True,display_msg=False)

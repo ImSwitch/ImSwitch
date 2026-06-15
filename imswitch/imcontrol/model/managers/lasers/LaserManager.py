@@ -128,6 +128,10 @@ class LaserManager(ABC):
         supports it). """
         pass
 
+    def consumeOnEnableWarning(self):
+        """ Returns and clears a warning that should be shown before enabling. """
+        return None
+
     def finalize(self) -> None:
         """ Close/cleanup laser. """
         pass

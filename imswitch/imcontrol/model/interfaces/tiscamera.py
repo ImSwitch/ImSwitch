@@ -9,12 +9,14 @@ class CameraTIS:
         super().__init__()
         self.__logger = initLogger(self, tryInheritParent=True)
 
-        ic_ic = IC_ImagingControl.IC_ImagingControl()
-        ic_ic.init_library()
-        cam_names = ic_ic.get_unique_device_names()
-        self.model = cam_names[cameraNo]
-        self.cam = ic_ic.get_device(cam_names[cameraNo])
+        self._closed = False
 
+        self._ic_ic = IC_ImagingControl.IC_ImagingControl()
+        self._ic_ic.init_library()
+
+        cam_names = self._ic_ic.get_unique_device_names()
+        self.model = cam_names[cameraNo]
+        self.cam = self._ic_ic.get_device(cam_names[cameraNo])
         self.cam.open()
 
         self.shape = (0, 0)
@@ -104,6 +106,55 @@ class CameraTIS:
 
     def openPropertiesGUI(self):
         self.cam.show_property_dialog()
+    
+    def finalize(self):
+        self.close()
+    
+    def close(self):
+        """Stop acquisition, close the TIS device, release grabber handles,
+        and close the IC Imaging Control library.
+        """
+        if getattr(self, "_closed", False):
+            return
+
+        self.__logger.info(f"Closing TIS camera, model: {getattr(self, 'model', 'unknown')}")
+        self._closed = True
+
+        cam = getattr(self, "cam", None)
+
+        if cam is not None:
+            try:
+                # Final shutdown should stop live mode, not only suspend it.
+                cam.stop_live()
+                self.__logger.debug("TIS camera live acquisition stopped")
+            except Exception as e:
+                # stop_live may fail if the camera was not in live mode.
+                self.__logger.debug(f"TIS stop_live ignored during close: {e}")
+
+            try:
+                if cam.is_open():
+                    cam.close()
+                    self.__logger.debug("TIS video capture device closed")
+            except Exception as e:
+                self.__logger.warning(f"Could not close TIS video capture device cleanly: {e}")
+
+        try:
+            ic_ic = getattr(self, "_ic_ic", None)
+            if ic_ic is not None:
+                ic_ic.close_library()
+                self.__logger.debug("TIS IC Imaging Control library closed")
+        except Exception as e:
+            self.__logger.warning(f"Could not close TIS IC Imaging Control library cleanly: {e}")
+
+        self.cam = None
+        self._ic_ic = None
+
+
+    def __del__(self):
+        try:
+            self.close()
+        except Exception:
+            pass
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

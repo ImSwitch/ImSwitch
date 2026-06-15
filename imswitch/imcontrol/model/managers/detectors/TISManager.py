@@ -151,10 +151,30 @@ class TISManager(DetectorManager):
         self.__logger.info(f'Initialized camera, model: {camera.model}')
         return camera
     
+    def finalize(self):
+        self.close()
+    
     def close(self):
-        self.__logger.info(f'Shutting down camera, model: {self._camera.model}')
-        pass
+        model = getattr(self._camera, "model", "unknown")
+        self.__logger.info(f"Shutting down TIS camera, model: {model}")
 
+        self._running = False
+        self._adjustingParameters = True
+
+        try:
+            close = getattr(self._camera, "close", None)
+            if callable(close):
+                close()
+            else:
+                try:
+                    self._camera.stop_live()
+                except Exception:
+                    pass
+        except Exception as e:
+            self.__logger.warning(f"Error while shutting down TIS camera {model}: {e}")
+        finally:
+            self._adjustingParameters = False
+            self.__image = None
 
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

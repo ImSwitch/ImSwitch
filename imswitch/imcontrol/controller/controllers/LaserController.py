@@ -204,7 +204,13 @@ class LaserController(SetupModeMixin, ImConWidgetController):
 
     def toggleLaser(self, laserName, enabled):
         """ Enable or disable laser (on/off)."""
-        self._master.lasersManager[laserName].setEnabled(enabled)
+        lManager = self._master.lasersManager[laserName]
+        if enabled:
+            warning = lManager.consumeOnEnableWarning()
+            if warning:
+                self._widget.showLaserWarning('Laser startup warning', warning)
+
+        lManager.setEnabled(enabled)
         self.setSharedAttr(laserName, _enabledAttr, enabled)
 
     def valueChanged(self, laserName, magnitude):

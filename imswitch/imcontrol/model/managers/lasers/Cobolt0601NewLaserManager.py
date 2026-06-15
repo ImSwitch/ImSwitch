@@ -25,6 +25,7 @@ class Cobolt0601NewLaserManager(LaserManager):
         self._is_DPL = False
         self._digitalMod = True
         self._isMock = False
+        self._checkKeyOnFirstEnable = False
         self.powerQ = 0
         if 'DPL' in name:
             self._is_DPL = True
@@ -53,12 +54,13 @@ class Cobolt0601NewLaserManager(LaserManager):
 
         # self.__logger.debug(f'Laser mode is: {mode}, might have to turn the key.')
         super().__init__(laserInfo, name, isBinary=False, valueUnits='mW', valueDecimals=0)
+        self._checkKeyOnFirstEnable = not self._isMock
 
         if not self._laser.is_on():
             try:
                 self._laser.turn_on() # turn on laser
                 self.setEnabled(False) # pause emission
-                self.__logger.debug(f'Laser {name} turned on, mode {mode} - emission paused. Might have to turn the key.')
+                self.__logger.debug(f'Laser {name} turned on, mode {mode} - emission paused.')
             except Exception:
                 err = traceback.format_exc()
                 self.__logger.warning(f'Laser {name} could not be turned on: {err}')
@@ -147,6 +149,37 @@ class Cobolt0601NewLaserManager(LaserManager):
             devices = list_lasers()
         self.__logger.debug(f'Available devices: {devices}')
         return devices
+
+    def consumeOnEnableWarning(self):
+        if not self._checkKeyOnFirstEnable:
+            return None
+
+        self._checkKeyOnFirstEnable = False
+        state = self._getLaserState()
+        if self._isWaitingForKey(state):
+            return (
+                f'Laser "{self.name}" is waiting for the key. Turn the laser key on before'
+                f' enabling emission.'
+            )
+
+        if state is None:
+            return (
+                f'ImSwitch could not verify the current key state for laser "{self.name}".'
+                f' Make sure the laser key is turned on before enabling emission.'
+            )
+
+        return None
+
+    def _getLaserState(self):
+        try:
+            return self._laser.get_state()
+        except Exception:
+            self.__logger.debug(f'Could not read Cobolt0601 laser state: {traceback.format_exc()}')
+            return None
+
+    def _isWaitingForKey(self, state):
+        state = str(state).strip().lower()
+        return state in ('1', 'autostartwaitingforkeyon') or 'waitingforkey' in state
 
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

@@ -10,6 +10,7 @@ class MockCobolt06:
         self._is_on = False
         self._is_paused = True
         self._mode = 'ConstantCurrent'
+        self._state = 'AutostartLaserOff'
         self._power = 0.0
         self._current = 0.0
         self._modulation_power = 0.0
@@ -37,11 +38,13 @@ class MockCobolt06:
 
     def turn_on(self):
         self._is_on = True
+        self._state = 'AutostartLaserOn'
         return 'OK'
 
     def turn_off(self):
         self._is_on = False
         self._is_paused = True
+        self._state = 'AutostartLaserOff'
         return 'OK'
 
     def is_on(self):
@@ -65,6 +68,9 @@ class MockCobolt06:
 
     def get_mode(self):
         return self._mode
+
+    def get_state(self):
+        return self._state
 
     def power_modulation_mode(self, digital_enabled=True, analog_enabled=False):
         self._mode = 'PowerModulation'

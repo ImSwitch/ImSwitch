@@ -165,6 +165,11 @@ class ScanWidgetAdvanced(SuperScanWidget):
         self.graph_pixel = GraphFrame()  # only visible in advanced mode
         self.graph_pixel.setFixedHeight(140)
         self.graph_pixel.setMinimumWidth(0)
+        self._pixelXAxisUnitLabel = QtWidgets.QLabel("Time unit:")
+        self._pixelXAxisUnitCombo = QtWidgets.QComboBox()
+        self._pixelXAxisUnitCombo.addItems(["ms", "us", "samples"])
+        self._pixelXAxisUnitCombo.setMaximumWidth(90)
+        self._lastPixelPlotArgs = None
 
         self.plotScanButton = guitools.BetterPushButton("Plot")
         self.plotIncludeTTLBox = QtWidgets.QCheckBox("include TTL")
@@ -195,6 +200,7 @@ class ScanWidgetAdvanced(SuperScanWidget):
         self._sequenceRemoveButton.clicked.connect(self._removeSelectedSequenceRow)
         self._sequenceUpButton.clicked.connect(lambda: self._moveSelectedSequenceRow(-1))
         self._sequenceDownButton.clicked.connect(lambda: self._moveSelectedSequenceRow(1))
+        self._pixelXAxisUnitCombo.currentIndexChanged.connect(lambda: self._onPixelXAxisUnitChanged())
         self.plotScanButton.clicked.connect(self.sigPlotScanClicked)
 
 
@@ -443,10 +449,11 @@ class ScanWidgetAdvanced(SuperScanWidget):
         sequenceButtonLayout.addWidget(self._sequenceDownButton)
         sequenceButtonLayout.addStretch()
         sequenceButtonLayout.addWidget(self._dwellDeadTimeLabel)
+        self._sequenceButtons.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Fixed)
         self._sequenceButtons.setVisible(False)
 
         advLayout.addWidget(self._sequenceTable, 1, 0, 4, 4)
-        advLayout.addWidget(self._sequenceButtons, 5, 0, 1, 4)
+        advLayout.addWidget(self._sequenceButtons, 5, 0, 1, 4, QtCore.Qt.AlignBottom)
         advanced_row_height = max(18, self._pulseStartEdit.sizeHint().height() - 4)
         for widget in (
             self._pulseStartEdit,
@@ -461,7 +468,17 @@ class ScanWidgetAdvanced(SuperScanWidget):
         for row in (2, 3, 4, 5):
             advLayout.setRowMinimumHeight(row, advanced_row_height + 6)
 
-        advLayout.addWidget(self.graph_pixel, 0, 4, 6, 4)
+        self._pixelAxisUnitWidget = QtWidgets.QWidget()
+        self._pixelAxisUnitWidget.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Fixed)
+        pixelAxisUnitLayout = QtWidgets.QHBoxLayout()
+        pixelAxisUnitLayout.setContentsMargins(0, 0, 0, 0)
+        pixelAxisUnitLayout.setSpacing(4)
+        pixelAxisUnitLayout.addStretch()
+        pixelAxisUnitLayout.addWidget(self._pixelXAxisUnitLabel)
+        pixelAxisUnitLayout.addWidget(self._pixelXAxisUnitCombo)
+        self._pixelAxisUnitWidget.setLayout(pixelAxisUnitLayout)
+        advLayout.addWidget(self.graph_pixel, 0, 4, 5, 4)
+        advLayout.addWidget(self._pixelAxisUnitWidget, 5, 4, 1, 4, QtCore.Qt.AlignBottom)
         for col in range(8):
             advLayout.setColumnStretch(col, 1)
             advLayout.setColumnMinimumWidth(col, 0)
@@ -731,6 +748,29 @@ class ScanWidgetAdvanced(SuperScanWidget):
         return float(self.d3StepDelayPar.text())
 
     # Setters used by controller
+    def setScanStepSize(self, positionerName, stepSize):
+        stepSizePar = self.scanPar.get("stepSize" + positionerName)
+        if stepSizePar is not None:
+            stepSizePar.setValue(float(stepSize))
+
+    def setScanCenterPos(self, positionerName, centerPos):
+        centerPar = self.scanPar.get("center" + positionerName)
+        if centerPar is not None:
+            centerPar.setValue(float(centerPos))
+
+    def setScanSize(self, positionerName, size):
+        sizePar = self.scanPar.get("size" + positionerName)
+        if sizePar is not None:
+            sizePar.setValue(float(size))
+
+    def setScanDim(self, i: int, scanDimName: str):
+        scanDimPar = self.scanPar.get("scanDim" + str(i))
+        if scanDimPar is None:
+            return
+        index = scanDimPar.findText(str(scanDimName))
+        if index >= 0:
+            scanDimPar.setCurrentIndex(index)
+
     def setScanPixels(self, positionerName, pixels):
         txt = str(pixels) if pixels > 1 else "-"
         self.scanPar["pixels" + positionerName].setText(txt)
@@ -754,10 +794,16 @@ class ScanWidgetAdvanced(SuperScanWidget):
             self._plotLineStepScatter(signals=signals, colors=colors, labels=labels)
 
             if self.isadvancedOptionsMode():
+                self._lastPixelPlotArgs = (list(labels), list(colors), sampleRate)
                 self._plotPerPixelProgram(labels=labels, colors=colors, sampleRate=sampleRate)
         except Exception as e:
             print(e)
 
+    def _onPixelXAxisUnitChanged(self):
+        if self._lastPixelPlotArgs is None:
+            return
+        labels, colors, sampleRate = self._lastPixelPlotArgs
+        self._plotPerPixelProgram(labels=labels, colors=colors, sampleRate=sampleRate)
 
     def _plotPerPixelProgram(self, labels, colors, sampleRate):
         plot = self.graph_pixel.plot
@@ -768,9 +814,13 @@ class ScanWidgetAdvanced(SuperScanWidget):
         S = self.getNumLineSteps()
 
         total = spp * S
-        x = np.arange(total) / float(sampleRate) * 1000.0
+        unit = self._pixelXAxisUnit()
+        x = self._pixelXAxisValues(total, sampleRate, unit)
 
-        vlines = [k * spp / float(sampleRate) * 1000.0 for k in range(1, S)]
+        vlines = [
+            self._pixelXAxisPosition(k * spp, sampleRate, unit)
+            for k in range(1, S)
+        ]
         for xv in vlines:
             plot.addItem(pg.InfiniteLine(pos=xv, angle=90, movable=False))
 
@@ -851,8 +901,38 @@ class ScanWidgetAdvanced(SuperScanWidget):
             plot.plot(x, yy, pen=pg.mkPen(plot_colors[dev_idx]), name=dev)
 
         plot.setYRange(ymin, ymax)
-        plot.setLabel("bottom", "Time within single dwell time (ms)")
+        plot.setLabel("bottom", self._pixelXAxisLabel(unit))
         plot.setLabel("left", "Power [%]")
+
+    def _pixelXAxisUnit(self):
+        if not hasattr(self, "_pixelXAxisUnitCombo"):
+            return "ms"
+        return self._pixelXAxisUnitCombo.currentText() or "ms"
+
+    @staticmethod
+    def _pixelXAxisValues(total, sampleRate, unit):
+        samples = np.arange(total)
+        if unit == "samples":
+            return samples
+        if unit == "us":
+            return samples / float(sampleRate) * 1e6
+        return samples / float(sampleRate) * 1000.0
+
+    @staticmethod
+    def _pixelXAxisPosition(sample, sampleRate, unit):
+        if unit == "samples":
+            return sample
+        if unit == "us":
+            return sample / float(sampleRate) * 1e6
+        return sample / float(sampleRate) * 1000.0
+
+    @staticmethod
+    def _pixelXAxisLabel(unit):
+        if unit == "samples":
+            return "Samples within single dwell time"
+        if unit == "us":
+            return "Time within single dwell time (us)"
+        return "Time within single dwell time (ms)"
 
     @staticmethod
     def _lockPlotXRange(plot, n_samples):

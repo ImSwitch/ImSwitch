@@ -665,6 +665,12 @@ class ScanControllerAdvanced(SuperScanController):
         self.settingParameters = True
         try:
             # --- analog back into widget (like PointScan) ---
+            for i, scanDimName in enumerate(self._analogParameterDict.get("scan_dim_target_device", [])):
+                try:
+                    self._widget.setScanDim(i, scanDimName)
+                except Exception:
+                    pass
+
             for i in range(len(self._analogParameterDict.get("target_device", []))):
                 positionerName = self._analogParameterDict["target_device"][i]
                 if positionerName == "None":
@@ -673,12 +679,6 @@ class ScanControllerAdvanced(SuperScanController):
                     self._widget.setScanSize(positionerName, self._analogParameterDict["axis_length"][i])
                     self._widget.setScanStepSize(positionerName, self._analogParameterDict["axis_step_size"][i])
                     self._widget.setScanCenterPos(positionerName, self._analogParameterDict["axis_centerpos"][i])
-                except Exception:
-                    pass
-
-            for i, scanDimName in enumerate(self._analogParameterDict.get("scan_dim_target_device", [])):
-                try:
-                    self._widget.setScanDim(i, scanDimName)
                 except Exception:
                     pass
 
@@ -1061,11 +1061,11 @@ class ScanControllerAdvanced(SuperScanController):
         config.optionxform = str
         config.read(filePath)
 
-        for key in self._analogParameterDict:
-            if key in config._sections.get("analogParameterDict", {}):
-                self._analogParameterDict[key] = self._literalEvalOrString(
-                    config._sections["analogParameterDict"][key]
-                )
+        self._analogParameterDict = {}
+        for key, val in config._sections.get("analogParameterDict", {}).items():
+            if key == "__name__":
+                continue
+            self._analogParameterDict[key] = self._literalEvalOrString(val)
 
         # digital dict might not have all keys pre-defined
         self._digitalParameterDict = {}

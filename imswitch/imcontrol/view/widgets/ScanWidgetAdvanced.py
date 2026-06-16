@@ -612,18 +612,14 @@ class ScanWidgetAdvanced(SuperScanWidget):
         self._refreshLockControlsFromModel()
 
     def getNumLineSteps(self) -> int:
-        if not self.isLineProgramDevicesMode():
-            return 1
         return int(self.linestep_counter.value())
 
     def setNumLineSteps(self, n: int) -> None:
         n = int(n)
-        self.linestep_counter.setValue(1 if not self.isLineProgramDevicesMode() else n)
+        self.linestep_counter.setValue(n)
 
     def getLineStepEnabled(self, deviceName: str, stepIdx: int) -> bool:
         # stepIdx is 0-based
-        if not self.isLineProgramDevicesMode():
-            return int(stepIdx) == 0 and deviceName in self._ttl_device_names
         row = self.ttl_line_steps.get(deviceName)
         if row is None:
             return False
@@ -994,10 +990,6 @@ class ScanWidgetAdvanced(SuperScanWidget):
 
 
     def _onLineStepsChanged(self):
-        if not self.isLineProgramDevicesMode() and int(self.linestep_counter.value()) != 1:
-            self.linestep_counter.setValue(1)
-            return
-
         n = int(self.linestep_counter.value())
         self._pulseSelectStep.setMaximum(max(1, n))
 
@@ -1017,22 +1009,14 @@ class ScanWidgetAdvanced(SuperScanWidget):
         self._syncPulseEditsFromModel()
 
     def _onLineProgramDevicesChanged(self):
-        if not self.isLineProgramDevicesMode():
-            self.linestep_counter.setValue(1)
         self._refreshLineProgramDevicesVisibility()
         self._refreshAdvancedProgramMode()
-        self._onLineStepsChanged()
 
     def _refreshLineProgramDevicesVisibility(self):
-        enabled = self.isLineProgramDevicesMode()
-        self._lineRepeatsLabel.setEnabled(enabled)
-        self.linestep_counter.setEnabled(enabled)
-        if not enabled and int(self.linestep_counter.value()) != 1:
-            self.linestep_counter.setValue(1)
-
+        visible = self.isLineProgramDevicesMode()
         if hasattr(self, "_lineProgramDeviceGroup"):
-            self._lineProgramDeviceGroup.setVisible(enabled)
-        self.graph_steps.setVisible(enabled)
+            self._lineProgramDeviceGroup.setVisible(visible)
+        self.graph_steps.setVisible(visible)
 
     def _onAdvancedModeChanged(self):
         enabled = self.advancedOptionsBox.isChecked()
@@ -1088,9 +1072,8 @@ class ScanWidgetAdvanced(SuperScanWidget):
         for widget in timing_widgets:
             widget.setVisible(not sequence_mode)
 
-        show_line_step = self.isLineProgramDevicesMode()
-        self._pulseLineStepLabel.setVisible(show_line_step)
-        self._pulseSelectStep.setVisible(show_line_step)
+        self._pulseLineStepLabel.setVisible(True)
+        self._pulseSelectStep.setVisible(True)
         self._sequenceTable.setVisible(sequence_mode)
         self._sequenceButtons.setVisible(True)
         for button in (
@@ -1881,8 +1864,6 @@ class ScanWidgetAdvanced(SuperScanWidget):
         self.sigSignalParChanged.emit()
 
     def getTTLIncluded(self, deviceName):
-        if not self.isLineProgramDevicesMode():
-            return deviceName in self._ttl_device_names
         row = self.ttl_line_steps.get(deviceName, None)
         if row is None:
             return False

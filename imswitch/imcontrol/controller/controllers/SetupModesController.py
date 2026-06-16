@@ -831,7 +831,6 @@ class SetupModesController(ImConWidgetController):
                 summaries.append(f"{label}: unavailable in current setup")
                 continue
             if oldState == newState:
-                summaries.append(f"{label}: no change")
                 continue
 
             summaries.append(

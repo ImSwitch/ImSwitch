@@ -63,7 +63,7 @@ There are two ways of registering parameters:
 
 
 from qtpy import QtCore, QtWidgets, QtGui
-from imswitch.imcontrol.view.guitools import CollapsibleSection, BetterPushButton, InfoButton
+from imswitch.imcontrol.view.guitools import CollapsibleSection, BetterPushButton
 from imswitch.imcommon.view.guitools.dialogtools import askForTextInput,askYesNoQuestion,askForTwoTextInputs
 import pyqtgraph as pg
 from .basewidgets import Widget
@@ -73,6 +73,7 @@ import json
 import numpy as np
 import matplotlib.pyplot as plt
 from functools import partial
+import h5py
 import os
 import datetime
 from typing import TYPE_CHECKING
@@ -91,6 +92,21 @@ _DEBOUNCE_TIME = 800 # 800ms
 class SLMsWidget(Widget):
     """Widget containing SLM interface, patterns, and CGH controls."""
 
+    _transparentToolButtonStyle = """
+        QToolButton {
+            border: none;
+            background: transparent;
+        }
+        QToolButton:hover {
+            background: transparent;
+        }
+        QToolButton:pressed {
+            background: transparent;
+        }
+    """
+
+    inspectDialogFontPointSize = 10
+
     sigConnectSLMusb = QtCore.Signal(str,bool,bool)         # slmName, state, display_msg
     sigUpdatePattern = QtCore.Signal(str, dict)             # slmKey, params
     sigComputeCGH = QtCore.Signal(str, str,dict)            # slmKey, secKey, cgh_params
@@ -101,6 +117,9 @@ class SLMsWidget(Widget):
 
     sigDeleteConfig = QtCore.Signal(str,str)                # slmKey, config path
     sigRenameConfig = QtCore.Signal(str,str,str)            # slmKey, old name, new name
+    sigDuplicateConfig = QtCore.Signal(str,str,str)         # slmKey, config path, new name
+    sigSetStartupConfig = QtCore.Signal(str,str)            # slmKey, config path
+    sigOpenConfigFolder = QtCore.Signal(str)                # slmKey
     sigLoadConfig = QtCore.Signal(str,str)                  # slmKey, config path
     sigLoadAberr = QtCore.Signal(str,str)                   # slmKey, secKey
     sigLoadCgh = QtCore.Signal(str, str)                    # slmKey, secKey
@@ -300,29 +319,67 @@ class SLMsWidget(Widget):
             QtWidgets.QSizePolicy.Fixed
         )
         configCombo.view().setMouseTracking(True)
+        configCombo.view().viewport().setMouseTracking(True)
         configCombo.wheelEvent = lambda event: None  # disable wheel event
         setattr(self, f"{slmKey}_configCombo", configCombo)
         layout.addWidget(configCombo)
 
         # Info button
-        infoBtn = InfoButton()
+        infoBtn = QtWidgets.QToolButton()
+        infoBtn.setIcon(
+            self.style().standardIcon(QtWidgets.QStyle.SP_MessageBoxInformation)
+        )
+        infoBtn.setAutoRaise(True)
+        infoBtn.setFixedSize(18, 18)
+        infoBtn.setToolTip("Open config inspector")
+        infoBtn.setStyleSheet(self._transparentToolButtonStyle)
         setattr(self, f"{slmKey}_infoBtn", infoBtn)
         layout.addWidget(infoBtn)
 
+        reloadBtn = QtWidgets.QToolButton()
+        reloadBtn.setIcon(
+            self.style().standardIcon(
+                getattr(QtWidgets.QStyle, "SP_BrowserReload", QtWidgets.QStyle.SP_ArrowRight)
+            )
+        )
+        reloadBtn.setAutoRaise(True)
+        reloadBtn.setFixedSize(22, 22)
+        reloadBtn.setToolTip("Reload selected config")
+        reloadBtn.setStyleSheet(self._transparentToolButtonStyle)
+        setattr(self, f"{slmKey}_reloadBtn", reloadBtn)
+        layout.addWidget(reloadBtn)
+
+        updateBtn = BetterPushButton("Update Config")
+        updateBtn.setFixedHeight(20)
+        setattr(self, f"{slmKey}_updateConfigBtn", updateBtn)
+        layout.addWidget(updateBtn)
+
         # "More..." menu
         moreBtn = QtWidgets.QToolButton()
-        moreBtn.setText("More…  ")
-        moreBtn.setFixedHeight(18)
+        moreBtn.setText("More")
+        moreBtn.setFixedHeight(20)
         moreBtn.setPopupMode(QtWidgets.QToolButton.InstantPopup)
         setattr(self, f"{slmKey}_moreBtn", moreBtn)
         layout.addWidget(moreBtn)
 
         menu = QtWidgets.QMenu(moreBtn)
-        menu.addAction("Save as current", lambda p=slmKey: self.on_update_current_config_clicked(p))
-        menu.addAction("Save as new", lambda p=slmKey: self.on_save_new_config_clicked(p))
-        menu.addAction("Rename config", lambda p=slmKey: self.on_rename_config(p))
-        menu.addAction("Delete config", lambda p=slmKey: self.on_delete_config(p))
-        menu.addAction("Set as startup config", lambda p=slmKey: self.on_set_startup_config(p))
+        saveAsAction = menu.addAction("Save as...", lambda p=slmKey: self.on_save_new_config_clicked(p))
+        menu.addSeparator()
+        renameAction = menu.addAction("Rename config...", lambda p=slmKey: self.on_rename_config(p))
+        duplicateAction = menu.addAction("Duplicate config...", lambda p=slmKey: self.on_duplicate_config(p))
+        deleteAction = menu.addAction("Delete config", lambda p=slmKey: self.on_delete_config(p))
+        menu.addSeparator()
+        startupAction = menu.addAction("Set as startup config", lambda p=slmKey: self.on_set_startup_config(p))
+        openFolderAction = menu.addAction("Open config folder", lambda p=slmKey: self.sigOpenConfigFolder.emit(p))
+        menu.addSeparator()
+        settingsAction = menu.addAction("Settings...", lambda p=slmKey: self.show_config_settings_dialog(p))
+        setattr(self, f"{slmKey}_saveAsAction", saveAsAction)
+        setattr(self, f"{slmKey}_renameAction", renameAction)
+        setattr(self, f"{slmKey}_duplicateAction", duplicateAction)
+        setattr(self, f"{slmKey}_deleteAction", deleteAction)
+        setattr(self, f"{slmKey}_startupAction", startupAction)
+        setattr(self, f"{slmKey}_openFolderAction", openFolderAction)
+        setattr(self, f"{slmKey}_settingsAction", settingsAction)
         moreBtn.setMenu(menu)
         moreBtn.setPopupMode(QtWidgets.QToolButton.InstantPopup)
 
@@ -331,7 +388,12 @@ class SLMsWidget(Widget):
         # signal connections
         if add_connect_btn:
             connectBtn.toggled.connect(lambda state, p=slmKey: self.sigConnectSLMusb.emit(p, state, True))
-        configCombo.currentIndexChanged.connect(lambda _, p=slmKey: self.on_config_selection_changed(p))
+        configCombo.currentIndexChanged.connect(lambda index, p=slmKey: self._on_config_index_changed(p, index))
+        configCombo.activated.connect(lambda _, p=slmKey: self.on_config_selection_changed(p))
+        infoBtn.clicked.connect(lambda _, p=slmKey: self.showInspectConfigsDialog(p))
+        reloadBtn.clicked.connect(lambda _, p=slmKey: self.on_reload_config_clicked(p))
+        updateBtn.clicked.connect(lambda _, p=slmKey: self.on_update_current_config_clicked(p))
+        self._update_config_controls(slmKey)
 
 
 
@@ -881,6 +943,7 @@ class SLMsWidget(Widget):
                         lambda text, slmKey=slmKey: self._lineEditUpdate(text, slmKey)
                         )
                 col += 2
+                
 
             # ComboBox
             elif ptype == "combo":
@@ -1323,6 +1386,7 @@ class SLMsWidget(Widget):
         current_index = -1
         for i, (name, path) in enumerate(configs):
             combo.addItem(name, path)
+            combo.setItemData(i, self._config_tooltip_text(path), QtCore.Qt.ToolTipRole)
             if currentPath is not None and os.path.abspath(path) == currentPath:
                 current_index = i
         if current_index >= 0:
@@ -1330,6 +1394,7 @@ class SLMsWidget(Widget):
         else:
             combo.setCurrentIndex(-1)
         combo.blockSignals(False)
+        self._on_config_index_changed(slmKey, combo.currentIndex())
     
     def on_config_loaded(self, slmKey, slm_params, update_pattern = False, 
                          config_dict={}, msg_box=False):
@@ -1375,28 +1440,50 @@ class SLMsWidget(Widget):
             combo.setCurrentIndex(currentIndex)
         finally:
             combo.blockSignals(False)
+        self._on_config_index_changed(slmKey, currentIndex)
     
     def current_config_renamed(self,slmKey,new_path):
         """ updates current config path """
-        self._currentConfigs[slmKey]["path"] = new_path
+        self._currentConfigs.setdefault(slmKey, {})["path"] = new_path
 
     def current_config_deleted(self,slmKey):
         self._currentConfigs[slmKey] = {}
 
     def update_config_info(self,slmKey):
-        """ updates the infoBtn with the right current config info """
-        config = self._currentConfigs.get(slmKey,{})
-        if config.get("path") is None:
-            text = "No configuration is loaded"
-        else:
-            info = config.get("info", "No information provided")
-            info = info.replace("\n", "<br>") #html formatting
-            date = format_creation_date(config.get("date", "Unknown"))
-            text = f"<b>Creation date:</b><br>{date}<br><br><b>Info:</b><br>{info}"
+        """Update config controls after the current config changed."""
         infoBtn = getattr(self, f"{slmKey}_infoBtn")
-        infoBtn.setTextInfo(text)
+        infoBtn.setToolTip("Open config inspector")
+        self._update_config_controls(slmKey)
 
     # config buttons logic
+    def _on_config_index_changed(self, slmKey, _index):
+        combo = getattr(self, f"{slmKey}_configCombo")
+        tooltip = combo.itemData(combo.currentIndex(), QtCore.Qt.ToolTipRole) or ""
+        combo.setToolTip(tooltip)
+        self._update_config_controls(slmKey)
+
+    def _update_config_controls(self, slmKey):
+        combo = getattr(self, f"{slmKey}_configCombo", None)
+        has_config = combo is not None and combo.currentData() is not None
+
+        for attr in (f"{slmKey}_reloadBtn", f"{slmKey}_updateConfigBtn"):
+            button = getattr(self, attr, None)
+            if button is not None:
+                button.setEnabled(has_config)
+
+        for attr in (
+                f"{slmKey}_renameAction", f"{slmKey}_duplicateAction",
+                f"{slmKey}_deleteAction", f"{slmKey}_startupAction"):
+            action = getattr(self, attr, None)
+            if action is not None:
+                action.setEnabled(has_config)
+
+    def on_reload_config_clicked(self, slmKey):
+        combo = getattr(self, f"{slmKey}_configCombo")
+        path = combo.currentData()
+        if path:
+            self.sigLoadConfig.emit(slmKey, path)
+
     def on_config_selection_changed(self, slmKey):
         combo = getattr(self, f"{slmKey}_configCombo")
         path = combo.currentData()
@@ -1407,7 +1494,7 @@ class SLMsWidget(Widget):
         combo = getattr(self, f"{slmKey}_configCombo")
         
         while True:
-            name, info = askForTwoTextInputs("Save new config", "Config name:", "Config info:")
+            name, info = askForTwoTextInputs("Save as...", "Config name:", "Config info:")
             if not name:
                 return
             # Check for duplicate
@@ -1435,6 +1522,18 @@ class SLMsWidget(Widget):
             return
         self.sigRenameConfig.emit(slmKey, path, new_name)
 
+    def on_duplicate_config(self, slmKey):
+        combo = getattr(self, f"{slmKey}_configCombo")
+        path = combo.currentData()
+        if not path:
+            return
+        old_name = combo.currentText()
+        suggested = os.path.splitext(old_name)[0] + "_copy"
+        new_name = askForTextInput(self, f"Duplicate config {old_name}", "New name:", suggested=suggested)
+        if not new_name:
+            return
+        self.sigDuplicateConfig.emit(slmKey, path, new_name)
+
     def on_delete_config(self, slmKey):
         combo = getattr(self, f"{slmKey}_configCombo")
         path = combo.currentData()
@@ -1460,23 +1559,360 @@ class SLMsWidget(Widget):
             msg = "JSON configuration files are legacy format, saving is not supported. Choose 'save as new' to save as hdf5."
             self.show_message_box(msg,"error", title="Saving error")
             return
-        ok = askYesNoQuestion(self,"Update current config",
-            f"This will overwrite the configuration '{name}'.\nAre you sure?"
-        )
+        changes = self._config_change_summary(slmKey, path)
+        ok = self.showUpdateConfigDialog(name, changes)
         if not ok:
             return
         current_info = self._currentConfigs.get(slmKey,{}).get("info")
         _,new_info = askForTwoTextInputs("Update config info", "Config name:", "Config info:",
                                        default1=name,default2=current_info,readonly1=True)
+        if new_info is None:
+            return
         self.sigSaveConfig.emit(slmKey, path, new_info, True)
 
         
     def on_set_startup_config(self, slmKey):
-        #TODO
-        self.show_message_box(title="Not implemented",
-                            message=f"This functionnality has not been implemented yet",
-                            msg_type="error")
-        return
+        combo = getattr(self, f"{slmKey}_configCombo")
+        path = combo.currentData()
+        if not path:
+            return
+        self.sigSetStartupConfig.emit(slmKey, path)
+
+    def show_config_settings_dialog(self, slmKey):
+        dialog = QtWidgets.QDialog(self)
+        dialog.setWindowTitle("SLM config settings")
+        dialog.resize(320, 120)
+
+        layout = QtWidgets.QVBoxLayout(dialog)
+        layout.addStretch(1)
+        buttonBox = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Close)
+        buttonBox.rejected.connect(dialog.reject)
+        layout.addWidget(buttonBox)
+
+        self._execDialog(dialog)
+
+    def showUpdateConfigDialog(self, config_name, changes):
+        dialog = QtWidgets.QDialog(self)
+        dialog.setWindowTitle("Update SLM config")
+        dialog.resize(560, 340)
+
+        layout = QtWidgets.QVBoxLayout(dialog)
+        layout.addWidget(QtWidgets.QLabel(f"This will overwrite '{config_name}'."))
+
+        changesLabel = QtWidgets.QLabel("Changed values")
+        font = QtGui.QFont(changesLabel.font())
+        font.setBold(True)
+        changesLabel.setFont(font)
+        layout.addWidget(changesLabel)
+
+        changesEdit = QtWidgets.QPlainTextEdit()
+        changesEdit.setReadOnly(True)
+        changesEdit.setPlainText(changes)
+        layout.addWidget(changesEdit, 1)
+
+        buttonBox = QtWidgets.QDialogButtonBox(
+            QtWidgets.QDialogButtonBox.Ok | QtWidgets.QDialogButtonBox.Cancel
+        )
+        buttonBox.button(QtWidgets.QDialogButtonBox.Ok).setText("Update")
+        buttonBox.accepted.connect(dialog.accept)
+        buttonBox.rejected.connect(dialog.reject)
+        layout.addWidget(buttonBox)
+
+        return self._execDialog(dialog) == QtWidgets.QDialog.Accepted
+
+    def showInspectConfigsDialog(self, slmKey):
+        combo = getattr(self, f"{slmKey}_configCombo")
+        dialog = QtWidgets.QDialog(self)
+        slmName = self._slmNames.get(slmKey, slmKey)
+        dialog.setWindowTitle(f"Inspect {slmName} configs")
+        dialog.resize(760, 460)
+        dialogFont = self._applyInspectDialogFont(dialog)
+
+        mainLayout = QtWidgets.QHBoxLayout(dialog)
+
+        configList = QtWidgets.QListWidget()
+        configList.setMinimumWidth(220)
+        for index in range(combo.count()):
+            path = combo.itemData(index)
+            if not path:
+                continue
+            item = QtWidgets.QListWidgetItem(combo.itemText(index))
+            item.setData(QtCore.Qt.UserRole, path)
+            item.setToolTip(combo.itemData(index, QtCore.Qt.ToolTipRole) or "")
+            configList.addItem(item)
+        mainLayout.addWidget(configList, 0)
+
+        detailWidget = QtWidgets.QWidget()
+        detailLayout = QtWidgets.QVBoxLayout(detailWidget)
+        detailLayout.setContentsMargins(6, 0, 0, 0)
+
+        nameLabel = QtWidgets.QLabel()
+        nameFont = QtGui.QFont(dialogFont)
+        nameFont.setBold(True)
+        nameLabel.setFont(nameFont)
+        detailLayout.addWidget(nameLabel)
+
+        form = QtWidgets.QFormLayout()
+        createdLabel = QtWidgets.QLabel()
+        infoLabel = QtWidgets.QLabel()
+        infoLabel.setWordWrap(True)
+        form.addRow("Created:", createdLabel)
+        form.addRow("Info:", infoLabel)
+        detailLayout.addLayout(form)
+
+        dumpLabel = QtWidgets.QLabel("Config dump")
+        dumpFont = QtGui.QFont(dialogFont)
+        dumpFont.setBold(True)
+        dumpLabel.setFont(dumpFont)
+        detailLayout.addWidget(dumpLabel)
+
+        dumpEdit = QtWidgets.QPlainTextEdit()
+        dumpEdit.setReadOnly(True)
+        self._applyPlainTextEditFont(dumpEdit, dialogFont)
+        detailLayout.addWidget(dumpEdit, 1)
+
+        buttonBox = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Close)
+        buttonBox.rejected.connect(dialog.reject)
+        detailLayout.addWidget(buttonBox)
+
+        mainLayout.addWidget(detailWidget, 1)
+
+        def updateDetails(index):
+            item = configList.item(index)
+            if item is None:
+                nameLabel.setText("No configs")
+                createdLabel.setText("")
+                infoLabel.setText("")
+                dumpEdit.setPlainText("")
+                return
+
+            path = item.data(QtCore.Qt.UserRole)
+            metadata = self._read_config_metadata(path)
+            nameLabel.setText(os.path.basename(path))
+            createdLabel.setText(
+                format_creation_date(metadata.get("date")) if metadata.get("date") else "Unknown"
+            )
+            infoLabel.setText(metadata.get("info") or "")
+            dumpEdit.setPlainText(self._config_dump_text(path))
+
+        configList.currentRowChanged.connect(updateDetails)
+
+        selectedRow = 0
+        selectedPath = combo.currentData()
+        if selectedPath:
+            selectedPath = os.path.abspath(selectedPath)
+            for row in range(configList.count()):
+                itemPath = os.path.abspath(configList.item(row).data(QtCore.Qt.UserRole))
+                if itemPath == selectedPath:
+                    selectedRow = row
+                    break
+
+        if configList.count() > 0:
+            configList.setCurrentRow(selectedRow)
+        else:
+            updateDetails(-1)
+
+        self._execDialog(dialog)
+
+    def _config_tooltip_text(self, path):
+        lines = [os.path.basename(path)]
+        metadata = self._read_config_metadata(path)
+
+        date = metadata.get("date")
+        if date:
+            lines.append(f"Created: {format_creation_date(date)}")
+
+        info = metadata.get("info")
+        if info:
+            lines.append(str(info))
+
+        return "\n\n".join(lines)
+
+    def _read_config_metadata(self, path):
+        metadata = {"date": "", "info": ""}
+        try:
+            ext = os.path.splitext(path)[-1].lower()
+            if ext in (".h5", ".hdf5"):
+                with h5py.File(path, "r") as configFile:
+                    metadata["date"] = self._attr_to_text(configFile.attrs.get("date", ""))
+                    metadata["info"] = self._attr_to_text(configFile.attrs.get("info", ""))
+            elif ext == ".json":
+                metadata["info"] = "Legacy JSON configuration"
+        except Exception as e:
+            metadata["info"] = f"Could not read config metadata: {e}"
+        return metadata
+
+    def _config_dump_text(self, path):
+        try:
+            ext = os.path.splitext(path)[-1].lower()
+            if ext == ".json":
+                with open(path, "r", encoding="utf-8") as configFile:
+                    return json.dumps(json.load(configFile), indent=2, sort_keys=True)
+
+            if ext in (".h5", ".hdf5"):
+                lines = []
+                with h5py.File(path, "r") as configFile:
+                    lines.append("File attributes:")
+                    self._append_hdf5_attrs_dump(configFile, lines, indent="  ")
+
+                    if "parameters" in configFile:
+                        lines.append("")
+                        lines.append("Parameters:")
+                        self._append_hdf5_params_dump(configFile["parameters"], lines, indent="  ")
+
+                    otherGroups = [name for name in sorted(configFile.keys()) if name != "parameters"]
+                    if otherGroups:
+                        lines.append("")
+                        lines.append("Stored arrays and groups:")
+                        for name in otherGroups:
+                            self._append_hdf5_tree_dump(name, configFile[name], lines, indent="  ")
+
+                return "\n".join(lines)
+
+            return f"Unsupported config file type: {ext}"
+
+        except Exception as e:
+            return f"Could not read config:\n{e}"
+
+    def _append_hdf5_attrs_dump(self, obj, lines, indent=""):
+        for key in sorted(obj.attrs.keys()):
+            value = self._json_load_attr(obj.attrs[key])
+            lines.append(f"{indent}@{key}: {self._short_repr(value)}")
+
+    def _append_hdf5_params_dump(self, grp, lines, indent=""):
+        for key in sorted(grp.attrs.keys()):
+            value = self._json_load_attr(grp.attrs[key])
+            lines.append(f"{indent}{key}: {self._short_repr(value)}")
+
+        for key in sorted(grp.keys()):
+            lines.append(f"{indent}{key}:")
+            self._append_hdf5_params_dump(grp[key], lines, indent=f"{indent}  ")
+
+    def _append_hdf5_tree_dump(self, name, obj, lines, indent=""):
+        if isinstance(obj, h5py.Dataset):
+            lines.append(f"{indent}{name}: dataset shape={obj.shape} dtype={obj.dtype}")
+            return
+
+        lines.append(f"{indent}{name}:")
+        self._append_hdf5_attrs_dump(obj, lines, indent=f"{indent}  ")
+        for childName in sorted(obj.keys()):
+            self._append_hdf5_tree_dump(childName, obj[childName], lines, indent=f"{indent}  ")
+
+    def _config_change_summary(self, slmKey, path):
+        try:
+            savedParams = self._read_config_params(path)
+            currentParams = self._current_config_params(slmKey)
+            savedFlat = self._flatten_config_params(savedParams)
+            currentFlat = self._flatten_config_params(currentParams)
+
+            missing = object()
+            lines = []
+            for key in sorted(set(savedFlat.keys()) | set(currentFlat.keys())):
+                oldValue = savedFlat.get(key, missing)
+                newValue = currentFlat.get(key, missing)
+                if oldValue == newValue:
+                    continue
+                if oldValue is missing:
+                    lines.append(f"{key}: <not saved> => {self._short_repr(newValue)}")
+                elif newValue is missing:
+                    lines.append(f"{key}: {self._short_repr(oldValue)} => <removed>")
+                else:
+                    lines.append(
+                        f"{key}: {self._short_repr(oldValue)} => {self._short_repr(newValue)}"
+                    )
+
+            if not lines:
+                return "No parameter changes detected."
+
+            maxLines = 60
+            if len(lines) > maxLines:
+                extra = len(lines) - maxLines
+                lines = lines[:maxLines] + [f"... {extra} more changed values"]
+            return "\n".join(lines)
+
+        except Exception as e:
+            return f"Could not compare saved config with current values:\n{e}"
+
+    def _read_config_params(self, path):
+        ext = os.path.splitext(path)[-1].lower()
+        if ext == ".json":
+            with open(path, "r", encoding="utf-8") as configFile:
+                return json.load(configFile)
+
+        if ext in (".h5", ".hdf5"):
+            with h5py.File(path, "r") as configFile:
+                if "parameters" not in configFile:
+                    return {}
+                return self._read_hdf5_params(configFile["parameters"])
+
+        return {}
+
+    def _current_config_params(self, slmKey):
+        params = self.get_params().get(slmKey, {})
+        tabNames = self.get_tab_names(slmKey)
+        if tabNames:
+            params["tab_names"] = tabNames
+        return params
+
+    def _read_hdf5_params(self, grp):
+        params = {}
+        for key, value in grp.attrs.items():
+            params[key] = self._json_load_attr(value)
+        for key in grp:
+            params[key] = self._read_hdf5_params(grp[key])
+        return params
+
+    def _flatten_config_params(self, value, prefix=""):
+        if isinstance(value, dict):
+            flattened = {}
+            for key in sorted(value.keys()):
+                childPrefix = f"{prefix}.{key}" if prefix else str(key)
+                flattened.update(self._flatten_config_params(value[key], childPrefix))
+            return flattened
+        return {prefix: value}
+
+    def _json_load_attr(self, value):
+        text = self._attr_to_text(value)
+        try:
+            return json.loads(text)
+        except Exception:
+            return text
+
+    def _attr_to_text(self, value):
+        if isinstance(value, bytes):
+            return value.decode("utf-8", errors="replace")
+        if isinstance(value, np.generic):
+            value = value.item()
+        if value is None:
+            return ""
+        return str(value)
+
+    def _short_repr(self, value, maxLength=180):
+        try:
+            text = json.dumps(value, sort_keys=True)
+        except Exception:
+            text = repr(value)
+        if len(text) > maxLength:
+            return text[:maxLength - 3] + "..."
+        return text
+
+    def _applyInspectDialogFont(self, dialog):
+        font = QtGui.QFont(dialog.font())
+        font.setPointSize(self.inspectDialogFontPointSize)
+        dialog.setFont(font)
+        dialog.setStyleSheet(
+            f"QDialog QWidget {{ font-size: {self.inspectDialogFontPointSize}pt; }}"
+        )
+        return font
+
+    def _applyPlainTextEditFont(self, edit, font):
+        edit.setFont(font)
+        edit.document().setDefaultFont(font)
+
+    def _execDialog(self, dialog):
+        if hasattr(dialog, "exec_"):
+            return dialog.exec_()
+        return dialog.exec()
 
     # --------- aberration saving/loading -------- #
     

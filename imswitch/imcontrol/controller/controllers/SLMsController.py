@@ -1,6 +1,7 @@
 import glob
 import json
 import os
+import shutil
 import numpy as np
 from PIL import Image
 import traceback
@@ -9,10 +10,11 @@ import datetime
 
 from ..basecontrollers import ImConWidgetController, SetupModeMixin
 from imswitch.imcommon.model import initLogger
+from imswitch.imcontrol.model import configfiletools
 from imswitch.imcontrol.view.guitools import askForFilePath, JsonEditorDialog
 from imswitch.imcommon.view.guitools.dialogtools import askYesNoQuestion
 from imswitch.imcommon.framework import Signal, Thread, Worker, Mutex
-from imswitch.imcommon.model import dirtools, signaltools
+from imswitch.imcommon.model import dirtools, ostools, signaltools
 
 from ..patterndesigners.registries import PATTERNS_REGISTRY, ABERRATIONS_REGISTRY, TARGETS_REGISTRY
 from ..patterndesigners import cghComputations as cgh
@@ -117,6 +119,9 @@ class SLMsController(SetupModeMixin, ImConWidgetController):
         self._widget.sigSaveCgh.connect(self.on_save_cgh)
         self._widget.sigDeleteConfig.connect(self.on_delete_config)
         self._widget.sigRenameConfig.connect(self.on_rename_config)
+        self._widget.sigDuplicateConfig.connect(self.on_duplicate_config)
+        self._widget.sigSetStartupConfig.connect(self.on_set_startup_config)
+        self._widget.sigOpenConfigFolder.connect(self.on_open_config_folder)
 
         self._widget.sigSnapFeedback.connect(self.on_feedback_snap)
         self._widget.sigAnalysisFeedback.connect(self.on_feedback_analysis)
@@ -442,7 +447,10 @@ class SLMsController(SetupModeMixin, ImConWidgetController):
             if not new_path.endswith(".h5"):
                 new_path = new_path + ".h5"
             if os.path.isfile(old_path):
+                was_startup_config = self._is_startup_config(slmKey, old_path)
                 os.rename(old_path, new_path)
+                if was_startup_config:
+                    self._set_startup_config_filename(slmKey, os.path.basename(new_path))
                 self._widget.current_config_renamed(slmKey,new_path)
                 self.refresh_available_configs(slmKey)
             else:
@@ -455,12 +463,125 @@ class SLMsController(SetupModeMixin, ImConWidgetController):
                 msg_type="error",
                 message=f"Could not rename configuration:\n{e}"
             )
+
+    def on_duplicate_config(self, slmKey, source_path, new_name):
+        """Duplicate an SLM configuration file into the SLM config directory."""
+        try:
+            if not source_path or not os.path.isfile(source_path):
+                raise FileNotFoundError(f"Configuration file not found: {source_path}")
+
+            config_dir = self.get_slm_config_dir(slmKey)
+            extension = os.path.splitext(source_path)[1] or ".h5"
+            new_filename = os.path.basename(new_name.strip())
+            if not new_filename:
+                return
+            if not os.path.splitext(new_filename)[1]:
+                new_filename = new_filename + extension
+
+            new_path = os.path.join(config_dir, new_filename)
+            if os.path.exists(new_path):
+                raise FileExistsError(f"Configuration file already exists: {new_path}")
+
+            shutil.copy2(source_path, new_path)
+            self.refresh_available_configs(slmKey)
+
+        except Exception as e:
+            self.__logger.error(traceback.format_exc())
+            self._widget.show_message_box(
+                title="Error Duplicating Configuration",
+                msg_type="error",
+                message=f"Could not duplicate configuration:\n{e}"
+            )
+
+    def on_set_startup_config(self, slmKey, config_path):
+        """Persist the selected SLM config as the config loaded on next startup."""
+        try:
+            if not config_path or not os.path.isfile(config_path):
+                raise FileNotFoundError(f"Configuration file not found: {config_path}")
+
+            config_dir = os.path.abspath(self.get_slm_config_dir(slmKey))
+            config_path = os.path.abspath(config_path)
+            filename = os.path.basename(config_path)
+            startup_path = os.path.abspath(os.path.join(config_dir, filename))
+
+            if (os.path.normcase(startup_path) != os.path.normcase(config_path)
+                    or not os.path.isfile(startup_path)):
+                raise FileNotFoundError(
+                    f"Startup config must be in this SLM config folder: {config_dir}"
+                )
+
+            self._set_startup_config_filename(slmKey, filename)
+
+            slmName = self._slmNames.get(slmKey, slmKey)
+            self.__logger.info(f"Set startup config for {slmName}: {filename}")
+            self._widget.show_message_box(
+                title="Startup config",
+                msg_type="info",
+                message=f"'{filename}' will be loaded at startup for {slmName}."
+            )
+
+        except Exception as e:
+            self.__logger.error(traceback.format_exc())
+            self._widget.show_message_box(
+                title="Startup config",
+                msg_type="error",
+                message=f"Could not set startup config:\n{e}"
+            )
+
+    def _is_startup_config(self, slmKey, config_path_or_name):
+        startupConfig = self._get_startup_config_filename(slmKey)
+        return bool(startupConfig) and startupConfig == os.path.basename(config_path_or_name)
+
+    def _get_startup_config_filename(self, slmKey):
+        slmInfo = self._slmInfos.get(slmKey)
+        managerProperties = getattr(slmInfo, "managerProperties", None) or {}
+        return managerProperties.get("startConfig")
+
+    def _set_startup_config_filename(self, slmKey, filename):
+        slmName = self._slmNames.get(slmKey)
+        slmInfos = [
+            self._slmInfos.get(slmKey),
+            getattr(self._setupInfo, "slms", {}).get(slmName)
+        ]
+
+        seen = set()
+        for slmInfo in slmInfos:
+            if slmInfo is None or id(slmInfo) in seen:
+                continue
+            seen.add(id(slmInfo))
+
+            managerProperties = getattr(slmInfo, "managerProperties", None)
+            if managerProperties is None:
+                managerProperties = {}
+                object.__setattr__(slmInfo, "managerProperties", managerProperties)
+
+            if filename:
+                managerProperties["startConfig"] = filename
+            else:
+                managerProperties.pop("startConfig", None)
+
+        configfiletools.saveSetupInfo(configfiletools.loadOptions()[0], self._setupInfo)
+
+    def on_open_config_folder(self, slmKey):
+        """Open this SLM's configuration directory in the OS file browser."""
+        try:
+            ostools.openFolderInOS(self.get_slm_config_dir(slmKey))
+        except Exception as e:
+            self.__logger.error(traceback.format_exc())
+            self._widget.show_message_box(
+                title="Open SLM Config Folder",
+                msg_type="error",
+                message=f"Could not open configuration folder:\n{e}"
+            )
     
     def on_delete_config(self, slmKey, path):
         """Delete SLM configuration file."""
         try:
             if os.path.isfile(path):
+                was_startup_config = self._is_startup_config(slmKey, path)
                 os.remove(path)
+                if was_startup_config:
+                    self._set_startup_config_filename(slmKey, None)
                 self._widget.current_config_deleted(slmKey)
                 self.refresh_available_configs(slmKey)
             else:

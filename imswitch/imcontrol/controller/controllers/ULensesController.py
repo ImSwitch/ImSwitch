@@ -1,20 +1,50 @@
 import numpy as np
 
 from ..basecontrollers import ImConWidgetController
+from imswitch.imcommon.model import initLogger
 
+try:
+    from imswitch.imreconstruct.model.localizer import localizer
+    LOCALIZER_AVAILABLE = True
+except:
+    LOCALIZER_AVAILABLE = False
 
 class ULensesController(ImConWidgetController):
     """ Linked to ULensesWidget. """
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.__logger = initLogger(self, tryInheritParent=True)
 
         # Connect ULensesWidget signals
         self._widget.sigULensesClicked.connect(self.updateGrid)
         self._widget.sigUShowLensesChanged.connect(self.toggleULenses)
+        self._widget.sigLocalizeBtnClicked.connect(self.localize)
+    
+    def localize(self):
+        if not LOCALIZER_AVAILABLE:
+            return
+        try: 
+            img_frame = self._commChannel.get_image()
+            loc_res = localizer(img_frame)
+        except Exception as e:
+            self.__logger.warning(f"Auto localization fail - use manual mode: {e}")
+            return
+        
 
+        _, _, px, _, _ = self._widget.getParameters()
+        x_period = round(loc_res.xp * px, 2)
+        x_offset = round(loc_res.xo, 2)
+        y_period = round(loc_res.yp * px, 2)
+        y_offset = round(loc_res.yo, 2)
+
+        self._widget.setParameters(x=x_offset,y=y_offset,px=px,upx=x_period,upy=y_period)
+        self.updateGrid()
+
+        
     def updateGrid(self):
         """ Updates plot with new parameters. """
+
         x, y, px, upx, upy = self._widget.getParameters()
         size_x, size_y = self._master.detectorsManager.execOnCurrent(lambda c: c.shape)
         pattern_x = np.arange(x, size_x, upx / px)

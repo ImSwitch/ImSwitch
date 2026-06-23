@@ -10,16 +10,18 @@ class ULensesWidget(NapariHybridWidget):
 
     sigULensesClicked = QtCore.Signal()
     sigUShowLensesChanged = QtCore.Signal(bool)  # (enabled)
+    sigLocalizeBtnClicked = QtCore.Signal()
 
     def __post_init__(self):
         # Graphical Elements
         self.ulensesButton = guitools.BetterPushButton('uLenses')
         self.ulensesCheck = QtWidgets.QCheckBox('Show uLenses')
+        self.localizeBtn = guitools.BetterPushButton('Auto Localize')
         self.xEdit = QtWidgets.QLineEdit('0')
         self.yEdit = QtWidgets.QLineEdit('0')
-        self.pxEdit = QtWidgets.QLineEdit('157.5')
-        self.upxEdit = QtWidgets.QLineEdit('1182')
-        self.upyEdit = QtWidgets.QLineEdit('1182')
+        self.pxEdit = QtWidgets.QLineEdit('77')
+        self.upxEdit = QtWidgets.QLineEdit('849')
+        self.upyEdit = QtWidgets.QLineEdit('847')
 
         # Vispy visual to render in napari
         self.ulensesPlot = naparitools.VispyScatterVisual(color='red', symbol='x')
@@ -41,10 +43,27 @@ class ULensesWidget(NapariHybridWidget):
         ulensesLayout.addWidget(self.yEdit, 4, 1)
         ulensesLayout.addWidget(self.ulensesButton, 5, 0)
         ulensesLayout.addWidget(self.ulensesCheck, 5, 1)
+        ulensesLayout.addWidget(self.localizeBtn, 5, 2)
 
         # Connect signals
         self.ulensesButton.clicked.connect(self.sigULensesClicked)
         self.ulensesCheck.toggled.connect(self.sigUShowLensesChanged)
+        self.localizeBtn.clicked.connect(self.sigLocalizeBtnClicked)
+
+    def setParameters(self, x=None,y=None,px=None,upx=None,upy=None):
+        """ Programatically updates parameters"""
+        if x is not None:
+            self.xEdit.setText(str(x))
+        if y is not None:
+            self.yEdit.setText(str(y))
+        if px is not None:
+            self.pxEdit.setText(str(px))
+        if upx is not None:
+            self.upxEdit.setText(str(upx))
+        if upy is not None:
+            self.upyEdit.setText(str(upy))
+        
+
 
     def getParameters(self):
         """ Returns the X offset, Y offset, pixel size, and periodicity

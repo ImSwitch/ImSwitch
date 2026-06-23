@@ -74,6 +74,7 @@ class ImConMainView(QtWidgets.QMainWindow):
             'AlignXY': _DockInfo(name='Rotational Alignment Tool', yPosition=3),
             'ULenses': _DockInfo(name='uLenses Tool', yPosition=3),
             'FFT': _DockInfo(name='FFT Tool', yPosition=3),
+            'FociAffine': _DockInfo(name='Foci Affine Alignment', yPosition=3),
             'Watcher': _DockInfo(name='File Watcher', yPosition=3),
             'Tiling': _DockInfo(name='Tiling', yPosition=3),
             'Et': _DockInfo(name='Et', yPosition=3)

@@ -8,6 +8,7 @@ from .ConsoleWidget import ConsoleWidget
 from .EtSTEDWidget import EtSTEDWidget
 from .EtMonalisaWidget import EtMonalisaWidget
 from .FFTWidget import FFTWidget
+from .FociAffineWidget import FociAffineWidget
 from .FocusLockWidget import FocusLockWidget
 from .ImageWidget import ImageWidget
 from .LaserWidget import LaserWidget

@@ -65,6 +65,7 @@ class ViewSetupInfo(SetupInfo):
     - ``AlignmentLine`` (line alignment tool widget)
     - ``uLenses`` (uLenses tool widget; requires ``Image`` widget)
     - ``FFT`` (FFT tool widget)
+    - ``FociAffine`` (foci affine alignment widget; requires ``Image`` widget)
     - ``Console`` (Python console widget)
     - ``EtSTED`` (etSTED widget)
     - ``Rotator`` (Rotator widget; requires "Rotator" field to be defined)

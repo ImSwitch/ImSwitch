@@ -48,7 +48,7 @@ class CameraTIS:
         # TODO: do this smarter, as I can just take every 3rd value instead of creating a reshaped
         #       3D array and taking the first plane of that
         frame = np.reshape(frame, (height, width, depth))[:, :, 0]
-        frame = np.transpose(frame)
+        # frame = np.transpose(frame)
         return frame
 
     def setROI(self, hpos, vpos, hsize, vsize):

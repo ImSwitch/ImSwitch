@@ -162,6 +162,7 @@ class ImRecMainViewController(ImRecWidgetController):
         self.processorWorker.sigTriggerUIRefresh.connect(self.triggerUIRefresh)
         self.processorWorker.sigMoveTimeSlider.connect(self.moveTimeSlider)
         self.processorThread.start()
+        self._commChannel.sigIncProcessorWorkerTimepoint.connect(self.processorWorker.inc_timepoint) 
         self._commChannel.sigLiveChunkReady.connect(self.processorWorker.processChunk)
         try:
             self._commChannel.sigStopLiveStream.disconnect(self.stopLiveStream)
@@ -171,10 +172,10 @@ class ImRecMainViewController(ImRecWidgetController):
         self._logger.debug("[setupLiveStream] >> Live Stream initialized successfully")
 
     @QtCore.Slot(int)
-    def moveTimeSlider(self, timeIndex: int): 
+    def moveTimeSlider(self, timepoint: int): 
         #        0  1  2  3  4  5
         # axes: (D, B, T, Z, Y, X)
-        self.reconWidget.napariViewer.dims.set_current_step(2, timeIndex)
+        self.reconWidget.napariViewer.dims.set_current_step(2, timepoint)
 
     def triggerUIRefresh(self):
         self.reconWidget.sigUpdateImage.emit(self.liveReconObj.reconstructed)

@@ -46,6 +46,7 @@ class ZarrStreamWorker(QtCore.QObject):
                 if z_arr is not None: 
                     z_arr.store.close()
                 z_arr_path = self._find_zarr_array(path)
+                 
                 z_arr = zarr.open(z_arr_path, mode='r')
 
                 curr_num_frames = z_arr.shape[0]
@@ -74,6 +75,10 @@ class ZarrStreamWorker(QtCore.QObject):
     def stop(self): 
         self.running = False
         self.num_time_points_proc = 0
+
+    @QtCore.Slot(int)
+    def dec_num_timepoints(self, dec_val: int): 
+        self.num_time_points -= dec_val
 
     def _find_zarr_array(self, zarr_path: str) -> Union[str, None]:
         for f in os.listdir(zarr_path):

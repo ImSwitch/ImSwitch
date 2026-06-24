@@ -26,10 +26,12 @@ class CommunicationChannel(SignalInterface):
     
     sigSetupLiveStream = Signal(str, object, np.ndarray, list)     # (recon_obj_name, Processor, dataBuffer, [reconRows, reconCols])
     sigLiveChunkReady = Signal(int, int)                           # (startChunkIndex, endChunkIndex)
-    sigSaveRecImage = Signal(int)                                  # (timePointIndex)
+    sigSaveRecImage = Signal(int)                                  # (timepointIndex)
     sigStopLiveStream = Signal()
     sigProcessingFinished = Signal()
+    sigIncProcessorWorkerTimepoint = Signal(int)                                  # (timepointIndex)
     finish = Signal()
+
 
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

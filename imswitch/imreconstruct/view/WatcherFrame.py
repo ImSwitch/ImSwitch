@@ -14,6 +14,7 @@ class WatcherFrame(QtWidgets.QFrame):
 
     sigWatchChanged = QtCore.Signal(bool)  
     sigChangeFolder = QtCore.Signal() 
+    sigReset = QtCore.Signal()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -26,6 +27,8 @@ class WatcherFrame(QtWidgets.QFrame):
         self.liveModeCheck = QtWidgets.QCheckBox("Start File Watcher")
         self.liveModeCheck.setToolTip("Stream frames to Python GaussProcessor in real-time")
 
+        self.resetButton = QtWidgets.QPushButton("Reset File Watcher")
+
         self.listWidget = QtWidgets.QListWidget()
         #self.updateFileList()
         layout = QtWidgets.QGridLayout()
@@ -34,10 +37,11 @@ class WatcherFrame(QtWidgets.QFrame):
         layout.addWidget(self.folderEdit, 0, 1)
         layout.addWidget(self.browseFolderButton, 0, 0)
         layout.addWidget(self.listWidget, 1, 0, 1, 2)
+        layout.addWidget(self.resetButton, 2, 1)
         layout.addWidget(self.liveModeCheck, 2, 0)
 
         self.liveModeCheck.toggled.connect(self.sigWatchChanged)
-
+        self.resetButton.clicked.connect(self.sigReset)
         self.browseFolderButton.clicked.connect(self.browse)
 
     def isLiveMode(self):

@@ -62,7 +62,7 @@ class ZarrInitWorker(QtCore.QObject):
         try:
             z_arr = None
             imswitch_meta = None
-            while z_arr is None or imswitch_meta is None:
+            while z_arr is None and imswitch_meta is None:
                 if not self.running:
                     break
 
@@ -71,14 +71,15 @@ class ZarrInitWorker(QtCore.QObject):
                     z_arr = zarr.open(self.z_arr_path)
                     imswitch_meta = z_arr.attrs.get("ImswitchData", None)
                     if imswitch_meta is None:
-                        QtCore.QThread.mslee(200)
+                        imswitch_meta = z_arr.attrs.get("ImSwitchData", None)
+                        if imswitch_meta is None:
+                            QtCore.QThread.mslee(200)
                         continue
                 except:
                     z_arr = None
                     imswitch_meta = None
                     QtCore.QThread.msleep(200)
-
-            imswitch_meta = z_arr.attrs.get("ImswitchData", None)
+        
             axis_startpos = np.array(imswitch_meta["ScanStage:axis_startpos"]).flatten()
             x0, y0, _ = axis_startpos
             x1, y1, _ = imswitch_meta["ScanStage:axis_length"]

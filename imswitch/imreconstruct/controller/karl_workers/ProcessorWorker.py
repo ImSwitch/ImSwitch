@@ -29,7 +29,7 @@ class ProcessorWorker(QtCore.QObject):
         self.recon_obj = recon_obj
         self._commChannel = _commChannel
         self.refresh_rate = int(np.sqrt(len(self.processor.frame_inds)))
-        self.time_index = 0        
+        self.timepoint = 0        
         self.cp = None
         if cupy_available: 
             try:
@@ -50,13 +50,18 @@ class ProcessorWorker(QtCore.QObject):
             chunk = self.cp.asarray(chunk)
         proc_pixels = self.processor.process_chunk(chunk)
         pixel_indices = self.processor.frame_inds[start:end]
-        flat_recon = self.recon_obj.reconstructed[0, 0, self.time_index, 0].reshape(-1)
+        flat_recon = self.recon_obj.reconstructed[0, 0, self.timepoint, 0].reshape(-1)
         flat_recon[pixel_indices.ravel()] = proc_pixels.ravel()
        
         # if end % self.refresh_rate == 0:
             # self.sigTriggerUIRefresh.emit()
+        
         if end >= self.processor.num_frames_in_stack: 
-            self.sigMoveTimeSlider.emit(self.time_index)
+            self.sigMoveTimeSlider.emit(self.timepoint)
             self.sigTriggerUIRefresh.emit()
             self._commChannel.sigProcessingFinished.emit()   
-            self.time_index += 1 
+            self.timepoint += 1 
+
+    @QtCore.Slot(int)
+    def inc_timepoint(self, inc_val: int):
+        self.timepoint += inc_val 

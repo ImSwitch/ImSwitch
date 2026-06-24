@@ -36,11 +36,14 @@ class WatcherFrameController(ImRecWidgetController):
     sigStartFileWatcher = QtCore.Signal() 
     sigRunInitWorker = QtCore.Signal()
     sigRunZarrStream = QtCore.Signal(str)
+    sigDecNumTimepoints = QtCore.Signal(int)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._widget.sigWatchChanged.connect(self.toggle_watch)
+        self._widget.sigReset.connect(self.stop_all_workers) 
         self._logger = initLogger(self, tryInheritParent=False)
+
         self.root_path = None
 
         self.directory_watcher = None 
@@ -53,6 +56,7 @@ class WatcherFrameController(ImRecWidgetController):
         self.file_watcher_thread = None 
         self.file_queue = []
         self.file_watcher_busy = False
+        self.prev_file = "00"
 
         self.zarr_init_worker = None 
         self.zarr_init_thread = None
@@ -71,7 +75,11 @@ class WatcherFrameController(ImRecWidgetController):
             self.stop_all_workers()
             #self.directory_queue.clear()
             #self.directory_index = 0
-            self.file_queue.clear()
+
+    def clear_queues(self):
+        self.directory_queue.clear() 
+        self.file_queue.clear()
+        self.directory_index = 0
 
     def uncheck_button(self):
         button = self._widget.liveModeCheck
@@ -102,7 +110,7 @@ class WatcherFrameController(ImRecWidgetController):
     def handle_new_directory(self, new_dir_path: str):
         if new_dir_path not in self.directory_queue: 
             self.directory_queue.append(new_dir_path)
-            self._logger.debug(f"[handle_new_directory] >> Added folder: {new_dir_path}")
+            self._logger.debug(f"[handle_new_directory] >> Added folder: {new_dir_path}") 
             if not self.file_watcher_busy:
                 self.set_file_watcher_directory()
 
@@ -111,7 +119,9 @@ class WatcherFrameController(ImRecWidgetController):
             self.file_watcher_busy = True 
             self.directory_path = self.directory_queue[self.directory_index]
             self.directory_index += 1
-            self._logger.debug(f"[set_file_watcher_directory] >> Loading Directory [{self.directory_index}]: {self.directory_path}")
+            self._logger.debug(
+                f"[set_file_watcher_directory] >> Loading Directory ({self.directory_index}): {self.directory_path}"
+            )
             self.start_file_watcher(self.directory_path)
 
     def start_file_watcher(self, directory_path: str):
@@ -143,22 +153,23 @@ class WatcherFrameController(ImRecWidgetController):
         if new_file_path not in self.file_queue:
             self.file_queue.append(new_file_path)
             self.file_queue.sort()
-            # self._logger.debug(f"[handle_new_file] >> Added file to queue: {new_file_path}")
             if self.zarr_init_worker is None and self.zarr_stream_worker is None: 
                 self._logger.debug("[handle_new_file] >> Starting INIT")
                 self.start_zarr_init_worker(new_file_path)
             elif self.zarr_stream_worker is not None: 
                 self._logger.debug("[handle_new_file] >> Starting processing next file")
-                self.process_next_stream_file()
+                self.process_next_file()
             else:
                 # zarr_init_worker is currently running! 
                 pass 
 
-    def change_directory(self):
+    def check_for_new_directory(self):
+        self._logger.debug("[check_for_new_directory] >> Checking for new directory") 
         self.stop_file_watcher()
         self.stop_zarr_init_worker()
         self.stop_zarr_stream()
         self.file_queue.clear()
+        self.prev_file = "00"
         self.file_watcher_busy = False 
         self.set_file_watcher_directory() 
 
@@ -168,16 +179,41 @@ class WatcherFrameController(ImRecWidgetController):
             return
         if self.zarr_stream_worker.num_time_points_proc >= self.zarr_stream_worker.num_time_points:
             self._logger.debug("[handle_processing_finished] >> Directory Finished")
-            self.change_directory() 
+            self.check_for_new_directory() 
         else:
             self._logger.debug("[handle_processing_finished] >> File Finished")
-            self.process_next_stream_file() 
+            self.process_next_file() 
     
-    def process_next_stream_file(self):
+    def process_next_file(self):
         if self.file_queue:
             next_file = self.file_queue.pop(0)
-            self._logger.debug(f"[process_next_stream_file] >> Streaming: {next_file}")
+            prev_file = self.prev_file
+            self.check_for_skipped_scan(prev_file, next_file)
+            self.prev_file = next_file
+            self._logger.debug(f"[process_next_file] >> Streaming: {next_file}") 
             self.sigRunZarrStream.emit(next_file)
+
+    def check_for_skipped_scan(self, prev_file: str, next_file: str):
+        if prev_file == "00":
+            # init case: check if we skipped the 00 scan (first timepoint)
+            prev_file_scan_num = -1 
+        else:  
+            prev_file_scan_num = self.extract_scan_number(prev_file)
+        next_file_scan_num = self.extract_scan_number(next_file) 
+        delta = np.abs((next_file_scan_num - prev_file_scan_num)) - 1 
+        if delta > 0:
+            next_file_stp = next_file.replace("\\", "/").split("/")[-1]
+            prev_file_stp = prev_file.replace("\\", "/").split("/")[-1]
+            self._logger.debug(
+                f"[process_next_file] >> Number of timepoints skipped between {prev_file_stp} and {next_file_stp}: {delta}"
+            )
+            self.sigDecNumTimepoints.emit(delta)
+            self._commChannel.sigIncProcessorWorkerTimepoint.emit(delta)
+
+    def extract_scan_number(self, path: str) -> int: 
+        start = path.rfind("scan") + len("scan") 
+        end = path.rfind("_CAM")
+        return int(path[start:end])
 
     def start_zarr_init_worker(self, init_file: str):
         self.stop_zarr_init_worker()
@@ -213,7 +249,8 @@ class WatcherFrameController(ImRecWidgetController):
         self.zarr_stream_thread = QtCore.QThread() 
         self.zarr_stream_worker.moveToThread(self.zarr_stream_thread)
         self.sigRunZarrStream.connect(self.zarr_stream_worker.run)
-        self.zarr_stream_worker.sigFinishedDirectory.connect(self.change_directory)  
+        self.sigDecNumTimepoints.connect(self.zarr_stream_worker.dec_num_timepoints)
+        self.zarr_stream_worker.sigFinishedDirectory.connect(self.check_for_new_directory)  
         try:
             self._commChannel.sigProcessingFinished.disconnect(self.handle_processing_finished)
         except TypeError:
@@ -224,7 +261,7 @@ class WatcherFrameController(ImRecWidgetController):
             [stream_args.recon_rows, stream_args.recon_cols, stream_args.num_time_points]
         )
         self.zarr_stream_thread.start()
-        self.process_next_stream_file()
+        self.process_next_file()
 
     def stop_zarr_stream(self):
         if self.zarr_stream_worker:
@@ -244,9 +281,14 @@ class WatcherFrameController(ImRecWidgetController):
             pass
         self.stop_directory_watcher() 
         self.stop_file_watcher()
+        self.file_watcher_busy = False
         self.stop_zarr_init_worker()
         self.stop_zarr_stream()
+        self.clear_queues()
+        self.uncheck_button()
+        self.prev_file = "00"
         self._logger.debug(f"[stop_all_workers] >> All workers stopped and terminated")
+
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

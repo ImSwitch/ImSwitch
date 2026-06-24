@@ -965,9 +965,11 @@ class SLMsController(SetupModeMixin, ImConWidgetController):
         target_params = cgh_params.get(target_type, None)
         try:
             self.sync_target(slmKey, secKey)
-            target_array =  self._targets.get(slmKey).get(secKey).array
-            feedback_count = self._targets.get(slmKey).get(secKey).feedback_count
-            cgh_name = self._targets.get(slmKey).get(secKey).name
+            target = self._targets.get(slmKey).get(secKey)
+            target_array = target.array
+            feedback_count = target.feedback_count
+            cgh_name = target.name
+            target_params = dict(target.params)
         except Exception as e:
             self._widget.on_cgh_computation_result(slmKey, secKey,success=False, msg=e)
             self.__logger.error(traceback.format_exc())

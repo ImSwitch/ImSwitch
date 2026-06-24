@@ -782,6 +782,7 @@ class SLMsWidget(Widget):
         grid = QtWidgets.QGridLayout()
         counter = QtWidgets.QLabel("Feedback Rounds: 0")
         counter.setStyleSheet("color: #888;")
+        setattr(self, f"{slmKey}_{secKey}_cgh_{target_name}_feedback_counter", counter)
         setattr(self, f"{slmKey}_{secKey}_cgh_feedback_counter", counter)
         resetbtn = BetterPushButton("Reset")
         setattr(self, f"{slmKey}_{secKey}_cgh_reset", resetbtn)
@@ -1157,6 +1158,7 @@ class SLMsWidget(Widget):
             return
 
         # --- Restore according to widget type ---
+        combo_idx = -1
         try:
             with QtCore.QSignalBlocker(widget): # block signals to avoid triggering updates
                 if ptype == "lineedit":
@@ -1167,9 +1169,15 @@ class SLMsWidget(Widget):
 
                 elif ptype == "combo":
                     # try to set by text if available
-                    idx = widget.findText(str(val))
-                    if idx >= 0:
-                        widget.setCurrentIndex(idx)
+                    combo_idx = widget.findText(str(val))
+                    if combo_idx < 0:
+                        clean_val = clean_attr_name(str(val))
+                        for idx in range(widget.count()):
+                            if clean_attr_name(widget.itemText(idx)) == clean_val:
+                                combo_idx = idx
+                                break
+                    if combo_idx >= 0:
+                        widget.setCurrentIndex(combo_idx)
 
                 elif ptype == "radio":
                     widget.setChecked(bool(val))
@@ -1178,6 +1186,16 @@ class SLMsWidget(Widget):
             self.__logger.warning(
                 f"Failed to set {full_attrname} ({ptype}) value: {val}. Error: {e}"
             )
+            return
+
+        if (
+            ptype == "combo"
+            and attrname == "cgh_general_target_type"
+            and combo_idx >= 0
+        ):
+            stack = getattr(self, f"{slmKey}_{secKey}_cghParamStack", None)
+            if stack is not None:
+                stack.setCurrentIndex(combo_idx)
 
     def get_widget_value(self, slmKey, secKey, attrname, ptype):
         
@@ -1360,15 +1378,30 @@ class SLMsWidget(Widget):
             self.show_message_box(title="CGH computation failed", message=msg,msg_type="error")
 
     def on_feedback_reset(self,slmKey,secKey,emitSig=True):
-        lbl = getattr(self,f"{slmKey}_{secKey}_cgh_feedback_counter")
-        lbl.setText("Feedback Rounds: 0")
+        lbl = self._get_current_feedback_counter(slmKey, secKey)
+        if lbl is not None:
+            lbl.setText("Feedback Rounds: 0")
         if emitSig:
             self.sigResetFeedback.emit(slmKey,secKey)
     
     def update_feedback_count(self,slmKey,secKey,feedback_count):
-        if hasattr(self,f"{slmKey}_{secKey}_cgh_feedback_counter"):
-            lbl = getattr(self,f"{slmKey}_{secKey}_cgh_feedback_counter")
+        lbl = self._get_current_feedback_counter(slmKey, secKey)
+        if lbl is not None:
             lbl.setText(f"Feedback Rounds: {feedback_count}")
+
+    def _get_current_feedback_counter(self, slmKey, secKey):
+        cgh_params = self.get_cgh_params(slmKey, secKey) or {}
+        target_type = cgh_params.get("cgh_general", {}).get("target_type")
+        if target_type:
+            target_lbl = getattr(
+                self,
+                f"{slmKey}_{secKey}_cgh_{target_type}_feedback_counter",
+                None,
+            )
+            if target_lbl is not None:
+                return target_lbl
+
+        return getattr(self, f"{slmKey}_{secKey}_cgh_feedback_counter", None)
     
     
     # --------- Config related -------- #

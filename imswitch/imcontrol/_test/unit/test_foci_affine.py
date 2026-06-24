@@ -3,6 +3,7 @@ import pytest
 
 from imswitch.imcontrol.model.foci_affine import (
     FociAffineCalibration,
+    autolocalize_grid_parameters,
     calibrate_foci_affine,
     order_grid_points,
     pixel_affine_to_napari_world_affine,
@@ -10,6 +11,14 @@ from imswitch.imcontrol.model.foci_affine import (
     load_calibration,
     xy_affine_to_napari_yx,
 )
+
+
+class _Localization:
+    def __init__(self, *, nx_c, ny_c, xp, yp):
+        self.nx_c = nx_c
+        self.ny_c = ny_c
+        self.xp = xp
+        self.yp = yp
 
 
 def test_xy_affine_to_napari_yx_swaps_coordinate_order():
@@ -94,6 +103,25 @@ def test_order_grid_points_rejects_wrong_count():
 
     with pytest.raises(ValueError, match="Expected 4 points"):
         order_grid_points(points_xy, n_rows=2, n_cols=2)
+
+
+def test_autolocalize_grid_parameters_maps_localizer_output():
+    reference = _Localization(nx_c=5, ny_c=4, xp=16.0, yp=18.0)
+    moving = _Localization(nx_c=5, ny_c=4, xp=15.0, yp=17.0)
+
+    n_rows, n_cols, min_distance = autolocalize_grid_parameters(reference, moving)
+
+    assert n_rows == 4
+    assert n_cols == 5
+    assert min_distance == 7
+
+
+def test_autolocalize_grid_parameters_rejects_mismatched_counts():
+    reference = _Localization(nx_c=5, ny_c=4, xp=16.0, yp=18.0)
+    moving = _Localization(nx_c=6, ny_c=4, xp=15.0, yp=17.0)
+
+    with pytest.raises(ValueError, match="disagree"):
+        autolocalize_grid_parameters(reference, moving)
 
 
 def test_calibrate_foci_affine_synthetic_grid():

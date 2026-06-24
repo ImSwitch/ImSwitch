@@ -13,21 +13,21 @@ class FociAffineWidget(Widget):
     sigLoadCalibrationClicked = QtCore.Signal()
     sigSaveCalibrationClicked = QtCore.Signal()
     sigClearCalibrationClicked = QtCore.Signal()
+    sigSetStartupCalibrationClicked = QtCore.Signal()
+    sigVisualizeClicked = QtCore.Signal()
     sigApplyAffineToggled = QtCore.Signal(bool)
-    sigShowLocalizationToggled = QtCore.Signal(bool)
-    sigShowTransformedPointsToggled = QtCore.Signal(bool)
-    sigShowResidualVectorsToggled = QtCore.Signal(bool)
-    sigClearLocalizationClicked = QtCore.Signal()
+    sigTargetLayerChanged = QtCore.Signal()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.snapReferenceButton = guitools.BetterPushButton('Snap reference')
-        self.snapMovingButton = guitools.BetterPushButton('Snap moving')
+        self.snapReferenceButton = guitools.BetterPushButton('Snap Reference')
+        self.snapMovingButton = guitools.BetterPushButton('Snap Moving')
         self.referenceStatusLabel = QtWidgets.QLabel('Reference: not acquired')
         self.movingStatusLabel = QtWidgets.QLabel('Moving: not acquired')
 
         self._parameters = {
+            "autolocalize": True,
             "n_rows": 10,
             "n_cols": 10,
             "min_distance": 10,
@@ -36,28 +36,31 @@ class FociAffineWidget(Widget):
             "gaussian_sigma": 1.0,
             "residual_threshold": 2.0,
         }
-        self.editParametersButton = guitools.BetterPushButton('Edit parameters')
+        self.editParametersButton = guitools.BetterPushButton('Edit Parameters')
 
         self.calibrateButton = guitools.BetterPushButton('Calibrate')
+        self.visualizeButton = guitools.BetterPushButton('Visualize')
         self.loadCalibrationButton = guitools.BetterPushButton('Load')
         self.loadCalibrationButton.setToolTip('Load calibration')
         self.saveCalibrationButton = guitools.BetterPushButton('Save')
         self.saveCalibrationButton.setToolTip('Save calibration')
         self.clearCalibrationButton = guitools.BetterPushButton('Clear')
         self.clearCalibrationButton.setToolTip('Clear calibration')
+        self.setStartupCalibrationButton = guitools.BetterPushButton('Set as startup calib')
+        self.setStartupCalibrationButton.setToolTip(
+            'Load this calibration automatically at startup'
+        )
+        self.setStartupCalibrationButton.setEnabled(False)
 
-        self.applyAffineCheck = QtWidgets.QCheckBox('Apply affine')
+        self.applyAffineCheck = QtWidgets.QCheckBox('Apply Affine')
         self.applyAffineCheck.setEnabled(False)
-        self.targetLabel = QtWidgets.QLabel('Target: all live layers')
-
-        self.showLocalizationCheck = QtWidgets.QCheckBox('Show localization')
-        self.showTransformedPointsCheck = QtWidgets.QCheckBox('Show transformed points')
-        self.showResidualVectorsCheck = QtWidgets.QCheckBox('Show residual vectors')
-        self.clearLocalizationButton = guitools.BetterPushButton('Clear overlay')
-        self.clearLocalizationButton.setToolTip('Clear localization overlay')
+        self.targetLayerCombo = QtWidgets.QComboBox()
+        self.targetLayerCombo.addItem('all layers')
+        self.targetLayerCombo.setMinimumWidth(140)
 
         self.calibrationStatusLabel = QtWidgets.QLabel('No calibration loaded')
-        self.residualSummaryLabel = QtWidgets.QLabel('Residuals: n/a')
+        self.calibrationStatusLabel.setWordWrap(False)
+        self._residualSummary = 'Residuals: n/a'
 
         self._setupLayout()
         self._connectSignals()
@@ -66,40 +69,30 @@ class FociAffineWidget(Widget):
         layout = QtWidgets.QVBoxLayout()
         self.setLayout(layout)
 
-        snapLayout = QtWidgets.QGridLayout()
-        snapLayout.addWidget(QtWidgets.QLabel('Reference image'), 0, 0)
-        snapLayout.addWidget(self.snapReferenceButton, 0, 1)
-        snapLayout.addWidget(self.referenceStatusLabel, 1, 0, 1, 2)
-        snapLayout.addWidget(QtWidgets.QLabel('Moving image'), 2, 0)
-        snapLayout.addWidget(self.snapMovingButton, 2, 1)
-        snapLayout.addWidget(self.movingStatusLabel, 3, 0, 1, 2)
-        layout.addLayout(snapLayout)
-
-        layout.addWidget(self.editParametersButton)
-
-        calibrationLayout = QtWidgets.QHBoxLayout()
-        calibrationLayout.addWidget(self.calibrateButton)
-        calibrationLayout.addWidget(self.loadCalibrationButton)
-        calibrationLayout.addWidget(self.saveCalibrationButton)
-        calibrationLayout.addWidget(self.clearCalibrationButton)
-        layout.addLayout(calibrationLayout)
-
-        applyLayout = QtWidgets.QHBoxLayout()
-        applyLayout.addWidget(self.applyAffineCheck)
-        applyLayout.addWidget(self.targetLabel)
-        applyLayout.addStretch()
-        layout.addLayout(applyLayout)
-
-        visualizationLayout = QtWidgets.QHBoxLayout()
-        visualizationLayout.addWidget(self.showLocalizationCheck)
-        visualizationLayout.addWidget(self.showTransformedPointsCheck)
-        visualizationLayout.addWidget(self.showResidualVectorsCheck)
-        visualizationLayout.addWidget(self.clearLocalizationButton)
-        layout.addLayout(visualizationLayout)
+        actionLayout = QtWidgets.QGridLayout()
+        actionLayout.addWidget(QtWidgets.QLabel('Reference image'), 0, 0)
+        actionLayout.addWidget(self.snapReferenceButton, 0, 1)
+        actionLayout.addWidget(self.referenceStatusLabel, 0, 2)
+        actionLayout.addWidget(QtWidgets.QLabel('Moving image'), 1, 0)
+        actionLayout.addWidget(self.snapMovingButton, 1, 1)
+        actionLayout.addWidget(self.movingStatusLabel, 1, 2)
+        actionLayout.addWidget(self.calibrateButton, 2, 0)
+        actionLayout.addWidget(self.visualizeButton, 2, 1)
+        actionLayout.addWidget(self.editParametersButton, 2, 2)
+        actionLayout.addWidget(self.loadCalibrationButton, 3, 0)
+        actionLayout.addWidget(self.saveCalibrationButton, 3, 1)
+        actionLayout.addWidget(self.clearCalibrationButton, 3, 2)
+        actionLayout.setColumnStretch(0, 1)
+        actionLayout.setColumnStretch(1, 1)
+        actionLayout.setColumnStretch(2, 1)
+        layout.addLayout(actionLayout)
 
         statusLayout = QtWidgets.QHBoxLayout()
         statusLayout.addWidget(self.calibrationStatusLabel, 1)
-        statusLayout.addWidget(self.residualSummaryLabel, 1)
+        statusLayout.addWidget(self.applyAffineCheck)
+        statusLayout.addWidget(QtWidgets.QLabel('Target:'))
+        statusLayout.addWidget(self.targetLayerCombo)
+        statusLayout.addWidget(self.setStartupCalibrationButton)
         layout.addLayout(statusLayout)
         layout.addStretch()
 
@@ -111,11 +104,14 @@ class FociAffineWidget(Widget):
         self.loadCalibrationButton.clicked.connect(self.sigLoadCalibrationClicked)
         self.saveCalibrationButton.clicked.connect(self.sigSaveCalibrationClicked)
         self.clearCalibrationButton.clicked.connect(self.sigClearCalibrationClicked)
+        self.setStartupCalibrationButton.clicked.connect(
+            self.sigSetStartupCalibrationClicked
+        )
+        self.visualizeButton.clicked.connect(self.sigVisualizeClicked)
         self.applyAffineCheck.toggled.connect(self.sigApplyAffineToggled)
-        self.showLocalizationCheck.toggled.connect(self.sigShowLocalizationToggled)
-        self.showTransformedPointsCheck.toggled.connect(self.sigShowTransformedPointsToggled)
-        self.showResidualVectorsCheck.toggled.connect(self.sigShowResidualVectorsToggled)
-        self.clearLocalizationButton.clicked.connect(self.sigClearLocalizationClicked)
+        self.targetLayerCombo.currentIndexChanged.connect(
+            lambda *_: self.sigTargetLayerChanged.emit()
+        )
 
     def setReferenceStatus(self, text):
         self.referenceStatusLabel.setText(str(text))
@@ -128,16 +124,19 @@ class FociAffineWidget(Widget):
 
     def setResidualSummary(self, mean_px=None, median_px=None, max_px=None, n_points=None):
         if n_points is None:
-            self.residualSummaryLabel.setText('Residuals: n/a')
+            self._residualSummary = 'Residuals: n/a'
+            self.calibrationStatusLabel.setToolTip(self._residualSummary)
             return
 
-        self.residualSummaryLabel.setText(
+        self._residualSummary = (
             f'Residuals: mean {mean_px:.3f} px, median {median_px:.3f} px, '
             f'max {max_px:.3f} px, n {n_points}'
         )
+        self.calibrationStatusLabel.setToolTip(self._residualSummary)
 
     def setApplyEnabled(self, enabled):
         self.applyAffineCheck.setEnabled(bool(enabled))
+        self.setStartupCalibrationButton.setEnabled(bool(enabled))
 
     def setApplyChecked(self, checked):
         previous = self.applyAffineCheck.blockSignals(True)
@@ -146,10 +145,28 @@ class FociAffineWidget(Widget):
         finally:
             self.applyAffineCheck.blockSignals(previous)
 
-    def setVisualizationChecked(self, localization=None, transformed=None, residuals=None):
-        self._setCheckWithoutSignal(self.showLocalizationCheck, localization)
-        self._setCheckWithoutSignal(self.showTransformedPointsCheck, transformed)
-        self._setCheckWithoutSignal(self.showResidualVectorsCheck, residuals)
+    def setTargetLayerNames(self, names):
+        names = [str(name) for name in names]
+        current = self.getTargetLayerName()
+
+        previous = self.targetLayerCombo.blockSignals(True)
+        try:
+            self.targetLayerCombo.clear()
+            self.targetLayerCombo.addItem('all layers')
+            self.targetLayerCombo.addItems(names)
+
+            if current in names:
+                self.targetLayerCombo.setCurrentText(current)
+            else:
+                self.targetLayerCombo.setCurrentIndex(0)
+        finally:
+            self.targetLayerCombo.blockSignals(previous)
+
+    def getTargetLayerName(self):
+        if self.targetLayerCombo.currentIndex() <= 0:
+            return None
+
+        return self.targetLayerCombo.currentText()
 
     def getGridShape(self):
         return int(self._parameters["n_rows"]), int(self._parameters["n_cols"])
@@ -164,6 +181,9 @@ class FociAffineWidget(Widget):
 
     def getResidualThreshold(self):
         return float(self._parameters["residual_threshold"])
+
+    def getAutolocalizeEnabled(self):
+        return bool(self._parameters.get("autolocalize", False))
 
     def _editParameters(self):
         updated = guitools.JsonEditorDialog.edit_params(
@@ -185,6 +205,7 @@ class FociAffineWidget(Widget):
 
     def _normalizeParameters(self, params):
         normalized = {
+            "autolocalize": bool(params.get("autolocalize", True)),
             "n_rows": int(params["n_rows"]),
             "n_cols": int(params["n_cols"]),
             "min_distance": int(params["min_distance"]),
@@ -208,17 +229,6 @@ class FociAffineWidget(Widget):
             raise ValueError('residual_threshold must be greater than 0')
 
         return normalized
-
-    def _setCheckWithoutSignal(self, checkbox, checked):
-        if checked is None:
-            return
-
-        previous = checkbox.blockSignals(True)
-        try:
-            checkbox.setChecked(bool(checked))
-        finally:
-            checkbox.blockSignals(previous)
-
 
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

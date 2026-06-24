@@ -205,6 +205,30 @@ def calibrate_foci_affine(
     )
 
 
+def autolocalize_grid_parameters(reference_localization, moving_localization):
+    """Return n_rows, n_cols, min_distance from two localizer results."""
+    ref_rows, ref_cols = _localizer_grid_shape(reference_localization)
+    mov_rows, mov_cols = _localizer_grid_shape(moving_localization)
+
+    if (ref_rows, ref_cols) != (mov_rows, mov_cols):
+        raise ValueError(
+            "reference and moving localization disagree: "
+            f"reference {ref_rows}x{ref_cols}, moving {mov_rows}x{mov_cols}"
+        )
+
+    periods = [
+        float(reference_localization.xp),
+        float(reference_localization.yp),
+        float(moving_localization.xp),
+        float(moving_localization.yp),
+    ]
+    if any(period <= 0 for period in periods):
+        raise ValueError("localized grid periods must be positive")
+
+    min_distance = max(1, int(0.5 * min(periods)))
+    return ref_rows, ref_cols, min_distance
+
+
 def xy_affine_to_napari_yx(H_xy):
     """Convert homogeneous x/y affine coordinates to napari y/x data coordinates."""
     H_xy = _as_homogeneous_affine(H_xy)
@@ -302,6 +326,16 @@ def _as_homogeneous_affine(affine):
         return affine
 
     raise ValueError(f"Expected affine shape (3, 3) or (2, 3), got {affine.shape}")
+
+
+def _localizer_grid_shape(localization):
+    n_rows = int(localization.ny_c)
+    n_cols = int(localization.nx_c)
+
+    if n_rows < 1 or n_cols < 1:
+        raise ValueError(f"localized grid shape must be positive, got {n_rows}x{n_cols}")
+
+    return n_rows, n_cols
 
 
 def _estimate_grid_axes(points_xy, n_rows: int, n_cols: int) -> Tuple[np.ndarray, np.ndarray]:

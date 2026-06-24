@@ -365,6 +365,23 @@ class FlipMirrorInfo:
     """Optional manager-specific properties."""
 
 
+@dataclass(frozen=True)
+class FociAffineCalibrationSetupInfo:
+    auto_load: bool = False
+    """Whether the foci affine calibration should be loaded at startup."""
+
+    calibration_file: Optional[str] = None
+    """Path to the .npz foci affine calibration file."""
+
+
+@dataclass(frozen=True)
+class CalibrationsInfo:
+    foci_affine: FociAffineCalibrationSetupInfo = field(
+        default_factory=FociAffineCalibrationSetupInfo
+    )
+    """Foci affine display calibration startup settings."""
+
+
 @dataclass_json(undefined=Undefined.INCLUDE)
 @dataclass
 class SetupInfo:
@@ -425,6 +442,9 @@ class SetupInfo:
 
     flipMirrors: Optional[Dict[str, FlipMirrorInfo]] = field(default_factory=lambda: None)
     """Motorized flip mirror settings."""
+
+    calibrations: CalibrationsInfo = field(default_factory=CalibrationsInfo)
+    """Calibration startup settings."""
 
     _catchAll: CatchAll = None
 

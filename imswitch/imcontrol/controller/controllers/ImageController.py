@@ -126,6 +126,12 @@ class ImageController(LiveUpdatedController):
     def clearAllLiveLayersAffine(self):
         self._widget.clearAllLiveLayersAffine()
 
+    def setLiveLayerAffine(self, name, affine):
+        self._widget.setLiveLayerAffine(name, affine)
+
+    def clearLiveLayerAffine(self, name):
+        self._widget.clearLiveLayerAffine(name)
+
     def setExposure(self, exp):
         detectorName = self._master.detectorsManager.getAllDeviceNames()[0]
         self.__logger.debug(f"Change exposure of {detectorName}, to {str(exp)}")

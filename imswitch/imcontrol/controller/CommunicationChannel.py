@@ -202,6 +202,18 @@ class CommunicationChannel(SignalInterface):
         else:
             raise RuntimeError('Required image widget not available')
 
+    def setLiveLayerAffine(self, name, affine):
+        if 'Image' in self.__main.controllers:
+            self.__main.controllers['Image'].setLiveLayerAffine(name, affine)
+        else:
+            raise RuntimeError('Required image widget not available')
+
+    def clearLiveLayerAffine(self, name):
+        if 'Image' in self.__main.controllers:
+            self.__main.controllers['Image'].clearLiveLayerAffine(name)
+        else:
+            raise RuntimeError('Required image widget not available')
+
     def getNumCamTTL(self):
         if 'Scan' in self.__main.controllers:
             return self.__main.controllers['Scan'].getNumCamTTL()

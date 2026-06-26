@@ -56,6 +56,32 @@ class SerialDacZManager(PositionerManager):
         self._prompt = props.get("prompt", ">>>").encode()
         self._dac_command = props.get("dac_command", "dac.SetDac({voltage})")
 
+        self._ser = None
+        self._is_available = False
+        self._connection_error = None
+
+        try:
+            self._connect_and_initialize(initial_position)
+        except Exception as exc:
+            self._connection_error = str(exc)
+            self.__logger.warning(
+                f"Serial DAC Z manager unavailable on {self._port}: {exc}"
+            )
+            self._close_serial_safely()
+            return
+
+        self._is_available = True
+        self.__logger.info("Serial DAC Z manager initialized")
+
+    @property
+    def isAvailable(self) -> bool:
+        return self._is_available
+
+    @property
+    def connectionError(self):
+        return self._connection_error
+
+    def _connect_and_initialize(self, initial_position):
         self.__logger.info(
             f"Opening serial DAC Z connection on {self._port} "
             f"at {self._baudrate} baud"
@@ -80,19 +106,32 @@ class SerialDacZManager(PositionerManager):
 
         self._send_voltage(self._position_to_voltage(initial_position))
 
-        self.__logger.info("Serial DAC Z manager initialized")
-
     def move(self, dist, axis=None):
         self._check_axis(axis)
+        if not self.isAvailable:
+            return self._position[self._axis]
+
         new_position = self._position[self._axis] + float(dist)
         return self.setPosition(new_position, self._axis)
 
     def setPosition(self, position, axis=None):
         self._check_axis(axis)
+        if not self.isAvailable:
+            return self._position[self._axis]
 
         position = float(position)
         voltage = self._position_to_voltage(position)
-        self._send_voltage(voltage)
+
+        try:
+            self._send_voltage(voltage)
+        except Exception as exc:
+            self._connection_error = str(exc)
+            self._is_available = False
+            self.__logger.warning(
+                f"Serial DAC Z communication failed on {self._port}: {exc}"
+            )
+            self._close_serial_safely()
+            return self._position[self._axis]
 
         self._position[self._axis] = position
         return position
@@ -107,16 +146,20 @@ class SerialDacZManager(PositionerManager):
 
     def finalize(self):
         try:
-            if self._safe_voltage_on_close is not None:
+            if self.isAvailable and self._safe_voltage_on_close is not None:
                 self._send_voltage(self._safe_voltage_on_close)
         except Exception:
             pass
 
+        self._close_serial_safely()
+
+    def _close_serial_safely(self):
         try:
-            if hasattr(self, "_ser") and self._ser.is_open:
+            if self._ser is not None and self._ser.is_open:
                 self._ser.close()
         except Exception:
             pass
+        self._is_available = False
 
     def _check_axis(self, axis):
         if axis is not None and axis != self._axis:

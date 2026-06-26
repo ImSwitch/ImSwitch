@@ -81,7 +81,7 @@ def _estimate_period(
     target_freq = 2 / period_guess
     tol = 0.05
     abs_fft[fft_freqs < target_freq - tol] = 0
-    abs_fft[fft_freqs > target_freq + tol] = 0
+    #abs_fft[fft_freqs > target_freq + tol] = 0
 
     # --- Peak Identification ---
     peaks = find_peaks(abs_fft, prominence=[0, np.inf], width=0, height=0)

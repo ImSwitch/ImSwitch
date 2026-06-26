@@ -26,6 +26,8 @@ class RecordingController(ImConWidgetController):
 
         self.settingAttr = False
         self.recording = False
+        self.recNumber = 0 
+        self.currFolder = None 
         self.doneScan = False
         self.endedRecording = False
         self.lapseCurrent = -1
@@ -147,11 +149,31 @@ class RecordingController(ImConWidgetController):
         if checked and not self.recording:
             self.updateRecAttrs(isSnapping=False)
 
+            # get folder path and create it if it doesn't exist 
             folder = self._widget.getRecFolder()
             if not os.path.exists(folder):
                 os.makedirs(folder)
             time.sleep(0.01)
-            self.savename = os.path.join(folder, self.getFileName()) + '_rec'
+
+            # changed folder => reset recNumber 
+            if self.currFolder is not None and self.currFolder != folder:
+                self.recNumber = 0 
+            
+            self.currFolder = folder 
+
+            fileName = self.getFileName() 
+
+            print(fileName)
+
+            recNumbers = [int(d[d.rfind("_") + 1:]) for d in os.listdir(folder) 
+                          if fileName == d[:-2] and os.path.isdir(os.path.join(folder, d))]
+            if recNumbers:
+                self.recNumber = max(recNumbers) + 1
+                recNumbers.clear()
+            else:
+                self.recNumber = 0
+            self.savename = os.path.join(folder, fileName + f"_{self.recNumber}", fileName + "_rec")
+            self.recNumber += 1 
 
             if self.recMode == RecMode.ScanOnce:
                 self._commChannel.sigScanStarting.emit()  # To get correct values from sharedAttrs
@@ -169,7 +191,6 @@ class RecordingController(ImConWidgetController):
                 'singleMultiDetectorFile': (len(detectorsBeingCaptured) > 1 and
                                             self._widget.getMultiDetectorSingleFile())
             }
-
 
             self._logger.debug(f"numScanPositions = {self._commChannel.getNumScanPositions()}")
 
@@ -215,7 +236,7 @@ class RecordingController(ImConWidgetController):
 
         if not self.recordingArgs['singleLapseFile']:
             lapseCurrentStr = str(self.lapseCurrent).zfill(len(str(self.lapseTotal)))
-            self.recordingArgs['savename'] = f'{self.savename}_scan__{lapseCurrentStr}_'
+            self.recordingArgs['savename'] = f'{self.savename}_scan_{lapseCurrentStr}'
 
         if isFirstLapse:
             self._commChannel.sigScanStarting.emit()  # To get updated values from sharedAttrs

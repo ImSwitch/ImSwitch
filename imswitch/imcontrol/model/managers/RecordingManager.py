@@ -620,8 +620,6 @@ class RecordingWorker(Worker):
             else:
                 fileDests[detectorName] = filePaths[detectorName]
 
-                logger.debug(f"fileDests[detectorName] () = {fileDests[detectorName]}")
-
             if singleMultiDetectorFile and len(files) > 0:
                 files[detectorName] = list(files.values())[0]
             else:
@@ -629,7 +627,6 @@ class RecordingWorker(Worker):
                     files[detectorName] = h5py.File(fileDests[detectorName],
                                                     'a' if singleLapseFile else 'w-')
                 elif self.saveFormat == SaveFormat.ZARR:
-                    logger.debug(f"_getFiles(): elif self.saveFormat == SaveFormat.zarr")
                     self.store = zarr.storage.DirectoryStore(fileDests[detectorName])
                     files[detectorName] = zarr.group(store=self.store, overwrite=True)
 

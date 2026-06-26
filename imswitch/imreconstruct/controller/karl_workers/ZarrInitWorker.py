@@ -73,7 +73,7 @@ class ZarrInitWorker(QtCore.QObject):
                     if imswitch_meta is None:
                         imswitch_meta = z_arr.attrs.get("ImSwitchData", None)
                         if imswitch_meta is None:
-                            QtCore.QThread.mslee(200)
+                            QtCore.QThread.msleep(200)
                         continue
                 except:
                     z_arr = None

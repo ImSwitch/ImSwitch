@@ -102,6 +102,9 @@ class ImageController(LiveUpdatedController):
     def getLiveLayerNames(self):
         return self._widget.getLiveLayerNames()
 
+    def getDisplayLayerNames(self):
+        return self._widget.getDisplayLayerNames()
+
     def getLiveImage(self, name):
         return self._widget.getLiveImage(name)
 
@@ -131,6 +134,18 @@ class ImageController(LiveUpdatedController):
 
     def clearLiveLayerAffine(self, name):
         self._widget.clearLiveLayerAffine(name)
+
+    def setDisplayLayerAffine(self, name, affine):
+        self._widget.setDisplayLayerAffine(name, affine)
+
+    def clearDisplayLayerAffine(self, name):
+        self._widget.clearDisplayLayerAffine(name)
+
+    def setAllDisplayLayerAffines(self, affine):
+        self._widget.setAllDisplayLayerAffines(affine)
+
+    def clearAllDisplayLayerAffines(self):
+        self._widget.clearAllDisplayLayerAffines()
 
     def setExposure(self, exp):
         detectorName = self._master.detectorsManager.getAllDeviceNames()[0]

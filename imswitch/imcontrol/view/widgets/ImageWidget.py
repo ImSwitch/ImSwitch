@@ -103,6 +103,9 @@ class ImageWidget(QtWidgets.QWidget):
     def getNapariLayerNames(self):
         return [layer.name for layer in self.napariViewer.layers]
 
+    def getDisplayLayerNames(self):
+        return self.getNapariLayerNames()
+
     def getLiveLayerNames(self):
         return list(self.imgLayers.keys())
 
@@ -149,6 +152,41 @@ class ImageWidget(QtWidgets.QWidget):
 
     def clearNapariLayerAffine(self, layer_name):
         self.setNapariLayerAffine(layer_name, np.eye(3))
+
+    def setDisplayLayerAffine(self, layer_name, affine):
+        live_name = self._liveLayerNameFromNapariLayerName(layer_name)
+        if live_name is not None:
+            self.setLiveLayerAffine(live_name, affine)
+            return
+
+        layer = self.napariViewer.layers[layer_name]
+        layer.affine = pixel_affine_to_napari_world_affine(affine, layer.scale)
+        layer.refresh()
+
+    def clearDisplayLayerAffine(self, layer_name):
+        live_name = self._liveLayerNameFromNapariLayerName(layer_name)
+        if live_name is not None:
+            self.clearLiveLayerAffine(live_name)
+            return
+
+        self.clearNapariLayerAffine(layer_name)
+
+    def setAllDisplayLayerAffines(self, affine):
+        self._allLiveLayerAffinePxYX = np.asarray(affine, dtype=float)
+        for layer_name in self.getDisplayLayerNames():
+            self.setDisplayLayerAffine(layer_name, affine)
+
+    def clearAllDisplayLayerAffines(self):
+        self._allLiveLayerAffinePxYX = None
+        for layer_name in self.getDisplayLayerNames():
+            self.clearDisplayLayerAffine(layer_name)
+
+    def _liveLayerNameFromNapariLayerName(self, layer_name):
+        for live_name, layer in self.imgLayers.items():
+            if layer.name == layer_name:
+                return live_name
+
+        return None
 
     def _applyStoredLiveLayerAffine(self, name):
         if name not in self.imgLayers:

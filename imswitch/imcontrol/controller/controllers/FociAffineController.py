@@ -116,7 +116,7 @@ class FociAffineController(ImConWidgetController):
         self._refreshTargetLayers()
 
         if self.applyAffineEnabled:
-            self._applyCalibrationToLiveLayers()
+            self._applyCalibrationToTargetLayers()
 
     def loadCalibration(self):
         path = guitools.askForFilePath(
@@ -222,7 +222,7 @@ class FociAffineController(ImConWidgetController):
         self._refreshTargetLayers()
 
         if self.applyAffineEnabled:
-            self._applyCalibrationToLiveLayers()
+            self._applyCalibrationToTargetLayers()
 
         return True
 
@@ -316,7 +316,7 @@ class FociAffineController(ImConWidgetController):
         self.applyAffineEnabled = bool(enabled)
 
         if not self.applyAffineEnabled:
-            self._commChannel.clearAllLiveLayerAffines()
+            self._commChannel.clearAllDisplayLayerAffines()
             return
 
         if self.calibration is None:
@@ -325,11 +325,11 @@ class FociAffineController(ImConWidgetController):
             self._widget.setCalibrationStatus('No calibration loaded')
             return
 
-        self._applyCalibrationToLiveLayers()
+        self._applyCalibrationToTargetLayers()
 
     def targetLayerChanged(self):
         if self.applyAffineEnabled and self.calibration is not None:
-            self._applyCalibrationToLiveLayers()
+            self._applyCalibrationToTargetLayers()
 
     def visualize(self):
         if self.calibration is None:
@@ -359,24 +359,24 @@ class FociAffineController(ImConWidgetController):
         self.visualizationDialog = dialog
         self.visualizationDialog.show()
 
-    def _applyCalibrationToLiveLayers(self):
+    def _applyCalibrationToTargetLayers(self):
         target_layer = self._widget.getTargetLayerName()
         self._refreshTargetLayers()
         affine = self.calibration.matrix_yx_napari
-        live_layers = self._commChannel.getLiveImageLayerNames()
+        display_layers = self._commChannel.getDisplayImageLayerNames()
 
-        self._commChannel.clearAllLiveLayerAffines()
+        self._commChannel.clearAllDisplayLayerAffines()
         if target_layer is None:
-            self._commChannel.setAllLiveLayerAffines(affine)
+            self._commChannel.setAllDisplayLayerAffines(affine)
             return
 
-        if target_layer not in live_layers:
+        if target_layer not in display_layers:
             self.__logger.warning(f'Foci affine target layer unavailable: {target_layer}')
             self.applyAffineEnabled = False
             self._widget.setApplyChecked(False)
             return
 
-        self._commChannel.setLiveLayerAffine(target_layer, affine)
+        self._commChannel.setDisplayLayerAffine(target_layer, affine)
 
     def _resolveCalibrationParameters(self):
         manual_n_rows, manual_n_cols = self._widget.getGridShape()
@@ -467,12 +467,12 @@ class FociAffineController(ImConWidgetController):
 
     def _refreshTargetLayers(self):
         try:
-            live_layers = self._commChannel.getLiveImageLayerNames()
+            display_layers = self._commChannel.getDisplayImageLayerNames()
         except Exception as e:
             self.__logger.debug(f'Could not refresh foci affine target layers: {e}')
-            live_layers = []
+            display_layers = []
 
-        self._widget.setTargetLayerNames(live_layers)
+        self._widget.setTargetLayerNames(display_layers)
 
     def _createVisualizationDialog(self):
         dialog = QtWidgets.QDialog(self._widget)

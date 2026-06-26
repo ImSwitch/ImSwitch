@@ -154,6 +154,12 @@ class CommunicationChannel(SignalInterface):
         else:
             raise RuntimeError('Required image widget not available')
 
+    def getDisplayImageLayerNames(self):
+        if 'Image' in self.__main.controllers:
+            return self.__main.controllers['Image'].getDisplayLayerNames()
+        else:
+            raise RuntimeError('Required image widget not available')
+
     def getLiveImageLayerData(self, name):
         if 'Image' in self.__main.controllers:
             return self.__main.controllers['Image'].getLiveImage(name)
@@ -211,6 +217,30 @@ class CommunicationChannel(SignalInterface):
     def clearLiveLayerAffine(self, name):
         if 'Image' in self.__main.controllers:
             self.__main.controllers['Image'].clearLiveLayerAffine(name)
+        else:
+            raise RuntimeError('Required image widget not available')
+
+    def setDisplayLayerAffine(self, name, affine):
+        if 'Image' in self.__main.controllers:
+            self.__main.controllers['Image'].setDisplayLayerAffine(name, affine)
+        else:
+            raise RuntimeError('Required image widget not available')
+
+    def clearDisplayLayerAffine(self, name):
+        if 'Image' in self.__main.controllers:
+            self.__main.controllers['Image'].clearDisplayLayerAffine(name)
+        else:
+            raise RuntimeError('Required image widget not available')
+
+    def setAllDisplayLayerAffines(self, affine):
+        if 'Image' in self.__main.controllers:
+            self.__main.controllers['Image'].setAllDisplayLayerAffines(affine)
+        else:
+            raise RuntimeError('Required image widget not available')
+
+    def clearAllDisplayLayerAffines(self):
+        if 'Image' in self.__main.controllers:
+            self.__main.controllers['Image'].clearAllDisplayLayerAffines()
         else:
             raise RuntimeError('Required image widget not available')
 

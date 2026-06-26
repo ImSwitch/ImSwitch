@@ -23,10 +23,6 @@ class LeicaStandController(SetupModeMixin, ImConWidgetController):
             self._widget.setConnected(False)
             return
 
-        if getattr(stand_manager, "mocker", False):
-            self._widget.setConnected(False)
-            return
-
         self._manager = getattr(stand_manager, "_subManager", None)
 
         if self._manager is None:

@@ -72,6 +72,11 @@ class PositionerManager(ABC):
         """ Whether the positioner position should be updated live. """
         return self.__liveUpdate
 
+    @property
+    def isAvailable(self) -> bool:
+        """Whether this positioner should be exposed to UI/controllers."""
+        return True
+
     @abstractmethod
     def move(self, dist: float, axis: str):
         """ Moves the positioner by the specified distance and returns the new

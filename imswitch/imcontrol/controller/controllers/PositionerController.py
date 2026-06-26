@@ -26,9 +26,8 @@ class PositionerController(ImConWidgetController):
             if not pManager.forPositioning:
                 continue
 
-            if pName == 'Stage':
-                if self._master.positionersManager[pName].device is None:
-                    continue
+            if not pManager.isAvailable:
+                continue
 
             if pManager.joystick:
                 self._widget.addJoystick(pName)
@@ -81,7 +80,7 @@ class PositionerController(ImConWidgetController):
         for _, pManager in self._master.positionersManager:
             if not pManager.forPositioning:
                 continue
-            if getattr(pManager, 'device', True) is None:
+            if not pManager.isAvailable:
                 continue
             if getattr(pManager, 'liveUpdate', False):
                 return True
@@ -101,7 +100,7 @@ class PositionerController(ImConWidgetController):
         for pName, pManager in self._master.positionersManager:
             if not pManager.forPositioning:
                 continue
-            if getattr(pManager, 'device', True) is None:
+            if not pManager.isAvailable:
                 continue
             if not getattr(pManager, 'liveUpdate', False):
                 continue

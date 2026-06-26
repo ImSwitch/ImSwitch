@@ -132,6 +132,10 @@ class PIStageManager(PositionerManager, SignalInterface):
             self.X.CloseDaisyChain()
             self.__logger.debug('PIstage connection closed, joystick activated')
 
+    @property
+    def isAvailable(self) -> bool:
+        return self.device is not None
+
     def connect(self):
         self.__logger.debug('Connecting PI stage...')
         self.X.OpenUSBDaisyChain(description=self.usb_description)

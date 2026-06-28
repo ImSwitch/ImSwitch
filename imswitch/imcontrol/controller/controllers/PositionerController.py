@@ -35,11 +35,11 @@ class PositionerController(ImConWidgetController):
             speed = hasattr(pManager, 'speed')
             self._widget.addPositioner(pName, pManager.axes, speed, pManager.joystick)
             for axis in pManager.axes:
-                self.setSharedAttr(pName, axis, _positionAttr, pManager.position[axis])
+                position = pManager.position[axis]
+                self.setSharedAttr(pName, axis, _positionAttr, position)
+                self._widget.updatePosition(pName, axis, position)
                 if speed:
                     self.setSharedAttr(pName, axis, _positionAttr, pManager.speed)
-                if pName == 'Stage':
-                    self.updatePosition(pName, axis)
 
             if pManager.joystick:
                 # Set joystick checkbox status for first start
@@ -150,13 +150,25 @@ class PositionerController(ImConWidgetController):
 
     def move(self, positionerName, axis, dist):
         """ Moves positioner by dist micrometers in the specified axis. """
-        self._master.positionersManager[positionerName].move(dist, axis)
-        self.updatePosition(positionerName, axis)
+        result = self._master.positionersManager[positionerName].move(dist, axis)
+        liveUpdate = getattr(self._master.positionersManager[positionerName],'liveUpdate')
+        if not liveUpdate:
+            # if result is a valid position we apply it immediately 
+            success=self._applyPositionResult(positionerName, axis, result)
+            # otherwise we go through manager's update position path
+            if not success:
+                self.updatePosition(positionerName, axis)
 
     def setPos(self, positionerName, axis, position):
         """ Moves the positioner to the specified position in the specified axis. """
-        self._master.positionersManager[positionerName].setPosition(position, axis)
-        self.updatePosition(positionerName, axis)
+        result = self._master.positionersManager[positionerName].setPosition(position, axis)
+        liveUpdate = getattr(self._master.positionersManager[positionerName],'liveUpdate')
+        if not liveUpdate:
+            # if result is a valid position we apply it immediately 
+            success=self._applyPositionResult(positionerName, axis, result)
+            # otherwise we go through manager's update position path
+            if not success:
+                self.updatePosition(positionerName, axis)
 
     def stepUp(self, positionerName, axis):
         self.move(positionerName, axis, self._widget.getStepSize(positionerName, axis))
@@ -188,6 +200,17 @@ class PositionerController(ImConWidgetController):
             self._widget.updatePosition(positionerName, axis, newPos)
             self.setSharedAttr(positionerName, axis, _positionAttr, newPos)
 
+
+    def _applyPositionResult(self, positionerName, axis, result):
+        """ Apply directly the result if it is a valid position, without passing
+        by manager's udpatePosition. """
+        if not isinstance(result, dict) or axis not in result:
+            return False
+
+        newPos = result[axis]
+        self._widget.updatePosition(positionerName, axis, newPos)
+        self.setSharedAttr(positionerName, axis, _positionAttr, newPos)
+        return True
 
 
     def attrChanged(self, key, value):

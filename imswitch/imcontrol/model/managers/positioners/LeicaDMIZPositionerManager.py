@@ -57,11 +57,28 @@ class LeicaDMIZPositionerManager(PositionerManager):
             )
             return
 
+        if not self._hardware.has_z_position_um():
+            self._connectionError = "Leica DMI Z micrometer conversion is unavailable."
+            self.__logger.warning(
+                "Leica DMI Z positioner unavailable: no calibration LUT is "
+                "configured and command 71042 did not return a valid Z "
+                "conversion factor."
+            )
+            return
+
         self.updatePosition()
 
     @property
     def isAvailable(self) -> bool:
-        return bool(self._hardware is not None and self._hardware.isConnected())
+        return bool(
+            self._hardware is not None
+            and self._hardware.isConnected()
+            and self._hardware.has_z_position_um()
+        )
+
+    @property
+    def resetOnClose(self) -> bool:
+        return False
 
     @property
     def connectionError(self):
@@ -74,21 +91,21 @@ class LeicaDMIZPositionerManager(PositionerManager):
         if not self.isAvailable:
             return self._position
 
-        return self._call_hardware("move_z_relative_device_units", dist)
+        return self._call_hardware("move_z_relative_um", dist)
 
     def setPosition(self, position, axis=None):
         self._check_axis(axis)
         if not self.isAvailable:
             return self._position
 
-        return self._call_hardware("set_z_position_device_units", position)
+        return self._call_hardware("set_z_position_um", position)
 
     def updatePosition(self):
         if not self.isAvailable:
             return self._position
 
         position = self._call_hardware(
-            "get_z_position_device_units",
+            "get_z_position_um",
             updatePosition=False,
         )
         if position is not None:

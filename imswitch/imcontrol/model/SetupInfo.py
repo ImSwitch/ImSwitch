@@ -382,6 +382,12 @@ class CalibrationsInfo:
     """Foci affine display calibration startup settings."""
 
 
+@dataclass
+class ShortcutsInfo:
+    positioners: Dict[str, Any] = field(default_factory=dict)
+    """Positioner widget keyboard shortcut settings."""
+
+
 @dataclass_json(undefined=Undefined.INCLUDE)
 @dataclass
 class SetupInfo:
@@ -445,6 +451,9 @@ class SetupInfo:
 
     calibrations: CalibrationsInfo = field(default_factory=CalibrationsInfo)
     """Calibration startup settings."""
+
+    shortcuts: ShortcutsInfo = field(default_factory=ShortcutsInfo)
+    """Keyboard shortcut settings."""
 
     _catchAll: CatchAll = None
 

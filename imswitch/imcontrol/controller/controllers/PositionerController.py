@@ -24,6 +24,9 @@ class PositionerController(ImConWidgetController):
         self._positionerShortcutSettings = {}
         self._positionerShortcuts = []
         self._shortcutsDirty = False
+        self._joystickAutoReenableTimers = {}
+        self._joystickAutoReenablePendingAxes = {}
+        self._joystickAutoReenablePollIntervalMs = 200
 
         savedShortcutSettings = self._loadPositionerShortcutSettingsFromSetup()
         savedMovementShortcuts = savedShortcutSettings.get(
@@ -43,6 +46,12 @@ class PositionerController(ImConWidgetController):
         )
         self._joystickShortcut = self._normalizeFullShortcut(
             savedShortcutSettings.get('joystickToggle', '')
+        )
+        self._joystickAutoReenable = bool(
+            savedShortcutSettings.get('joystickAutoReenable', True)
+        )
+        self._joystickAutoReenableDelayS = self._normalizeJoystickAutoReenableDelayS(
+            savedShortcutSettings.get('joystickAutoReenableDelayS', 5.0)
         )
 
         self.__logger = initLogger(self, tryInheritParent=True)
@@ -187,6 +196,8 @@ class PositionerController(ImConWidgetController):
                     'modeToggle': self._modeToggleShortcut,
                     'joystickAvailable': self._getJoystickPositionerName() is not None,
                     'joystickToggle': self._joystickShortcut,
+                    'joystickAutoReenable': self._joystickAutoReenable,
+                    'joystickAutoReenableDelayS': self._joystickAutoReenableDelayS,
                     'movement': self._positionerShortcutSettings
                 },
                 settingsValidator=self._validatePositionerSettingsShortcuts
@@ -217,6 +228,14 @@ class PositionerController(ImConWidgetController):
             self._joystickShortcut = self._normalizeFullShortcut(
                 settings.get('joystickToggle', self._joystickShortcut)
             )
+            self._joystickAutoReenable = bool(
+                settings.get('joystickAutoReenable', self._joystickAutoReenable)
+            )
+            self._joystickAutoReenableDelayS = self._normalizeJoystickAutoReenableDelayS(
+                settings.get('joystickAutoReenableDelayS', self._joystickAutoReenableDelayS)
+            )
+            if not self._joystickAutoReenable:
+                self._cancelAllJoystickAutoReenable()
             self._updatePositionerShortcutSettings(
                 settings.get('movement', settings.get('shortcuts', {}))
             )
@@ -279,6 +298,8 @@ class PositionerController(ImConWidgetController):
             'coarseStepMultiplier': self._coarseStepMultiplier,
             'modeToggle': self._modeToggleShortcut,
             'joystickToggle': self._joystickShortcut,
+            'joystickAutoReenable': self._joystickAutoReenable,
+            'joystickAutoReenableDelayS': self._joystickAutoReenableDelayS,
             'movement': self._positionerShortcutSettings
         }
 
@@ -627,6 +648,14 @@ class PositionerController(ImConWidgetController):
 
         return max(1.0, min(1000.0, multiplier))
 
+    def _normalizeJoystickAutoReenableDelayS(self, delayS):
+        try:
+            delayS = float(delayS)
+        except (TypeError, ValueError):
+            return 5.0
+
+        return max(1.0, min(10.0, delayS))
+
     def _shortcutCompareKey(self, sequence):
         try:
             text = sequence.toString(QtGui.QKeySequence.PortableText)
@@ -669,6 +698,7 @@ class PositionerController(ImConWidgetController):
         if not hasattr(pManager, "setJoystickEnabled"):
             return
 
+        self._cancelJoystickAutoReenable(pName)
         pManager.setJoystickEnabled(enabled)
 
     def setJoystickCheckStatus(self, state:bool):
@@ -683,6 +713,8 @@ class PositionerController(ImConWidgetController):
     def closeEvent(self):
         if hasattr(self, '_liveUpdateTimer') and self._liveUpdateTimer.isActive():
             self._liveUpdateTimer.stop()
+        if hasattr(self, '_joystickAutoReenableTimers'):
+            self._cancelAllJoystickAutoReenable()
         if hasattr(self, '_shortcutsDirty'):
             self._savePositionerShortcutSettingsToSetup()
         if hasattr(self, '_positionerShortcuts'):
@@ -701,6 +733,7 @@ class PositionerController(ImConWidgetController):
     def move(self, positionerName, axis, dist):
         """ Moves positioner by dist micrometers in the specified axis. """
         pManager = self._master.positionersManager[positionerName]
+        shouldAutoReenableJoystick = self._shouldAutoReenableJoystickAfterMove(pManager)
         result = pManager.move(dist, axis)
         if not self._isLiveUpdateEnabled(positionerName, pManager):
             # if result is a valid position we apply it immediately
@@ -708,10 +741,12 @@ class PositionerController(ImConWidgetController):
             # otherwise we go through manager's update position path
             if not success:
                 self.updatePosition(positionerName, axis)
+        self._scheduleJoystickAutoReenable(positionerName, axis, shouldAutoReenableJoystick)
 
     def setPos(self, positionerName, axis, position):
         """ Moves the positioner to the specified position in the specified axis. """
         pManager = self._master.positionersManager[positionerName]
+        shouldAutoReenableJoystick = self._shouldAutoReenableJoystickAfterMove(pManager)
         result = pManager.setPosition(position, axis)
         if not self._isLiveUpdateEnabled(positionerName, pManager):
             # if result is a valid position we apply it immediately
@@ -719,6 +754,7 @@ class PositionerController(ImConWidgetController):
             # otherwise we go through manager's update position path
             if not success:
                 self.updatePosition(positionerName, axis)
+        self._scheduleJoystickAutoReenable(positionerName, axis, shouldAutoReenableJoystick)
 
     def stepUp(self, positionerName, axis):
         stepSize = self._widget.getStepSize(positionerName, axis) * self._getStepModeMultiplier()
@@ -763,6 +799,99 @@ class PositionerController(ImConWidgetController):
         self._widget.updatePosition(positionerName, axis, newPos)
         self.setSharedAttr(positionerName, axis, _positionAttr, newPos)
         return True
+
+    def _shouldAutoReenableJoystickAfterMove(self, pManager):
+        return bool(
+            self._joystickAutoReenable
+            and getattr(pManager, 'joystick', False)
+            and getattr(pManager, 'isAvailable', True)
+            and hasattr(pManager, 'setJoystickEnabled')
+            and getattr(pManager, 'joystickStatus', False)
+        )
+
+    def _scheduleJoystickAutoReenable(self, positionerName, axis, shouldAutoReenable):
+        if not shouldAutoReenable:
+            return
+
+        pManager = self._master.positionersManager[positionerName]
+        if getattr(pManager, 'joystickStatus', False):
+            return
+
+        pendingAxes = self._joystickAutoReenablePendingAxes.setdefault(positionerName, set())
+        if axis == 'all':
+            pendingAxes.update(pManager.axes)
+        else:
+            pendingAxes.add(axis)
+
+        timer = self._joystickAutoReenableTimers.get(positionerName)
+        if timer is None:
+            timer = QtCore.QTimer()
+            timer.setSingleShot(True)
+            timer.timeout.connect(
+                lambda positionerName=positionerName:
+                self._checkJoystickAutoReenable(positionerName)
+            )
+            self._joystickAutoReenableTimers[positionerName] = timer
+
+        timer.start(int(self._joystickAutoReenableDelayS * 1000))
+
+    def _checkJoystickAutoReenable(self, positionerName):
+        if positionerName not in self._joystickAutoReenablePendingAxes:
+            return
+        if not self._joystickAutoReenable:
+            self._cancelJoystickAutoReenable(positionerName)
+            return
+
+        pManager = self._master.positionersManager[positionerName]
+        if getattr(pManager, 'joystickStatus', False):
+            self._cancelJoystickAutoReenable(positionerName)
+            return
+        if not getattr(pManager, 'isAvailable', True):
+            self._cancelJoystickAutoReenable(positionerName)
+            return
+
+        pendingAxes = self._joystickAutoReenablePendingAxes.get(positionerName, set())
+        movementFinished = self._isMovementFinished(pManager, pendingAxes)
+        if movementFinished is False:
+            self._joystickAutoReenableTimers[positionerName].start(
+                self._joystickAutoReenablePollIntervalMs
+            )
+            return
+
+        self._cancelJoystickAutoReenable(positionerName)
+        self.requestJoystickStatus(True, positionerName)
+        self.setJoystickCheckStatus(getattr(pManager, 'joystickStatus', True))
+
+    def _isMovementFinished(self, pManager, axes):
+        isMovementFinished = getattr(pManager, 'isMovementFinished', None)
+        if not callable(isMovementFinished):
+            return None
+
+        for axis in axes:
+            try:
+                axisFinished = isMovementFinished(axis)
+            except Exception as e:
+                self.__logger.debug(
+                    f'Could not query movement status for {pManager.name} axis {axis}: {e}'
+                )
+                return None
+
+            if axisFinished is None:
+                return None
+            if not axisFinished:
+                return False
+
+        return True
+
+    def _cancelJoystickAutoReenable(self, positionerName):
+        timer = self._joystickAutoReenableTimers.get(positionerName)
+        if timer is not None and timer.isActive():
+            timer.stop()
+        self._joystickAutoReenablePendingAxes.pop(positionerName, None)
+
+    def _cancelAllJoystickAutoReenable(self):
+        for positionerName in list(self._joystickAutoReenableTimers):
+            self._cancelJoystickAutoReenable(positionerName)
 
 
     def attrChanged(self, key, value):

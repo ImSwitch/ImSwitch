@@ -189,6 +189,45 @@ class PIStageManager(PositionerManager, SignalInterface):
         self._position["X"] = self.X.qPOS(1)[1] * 1000
         self._position["Y"] = self.Y.qPOS(1)[1] * 1000
 
+    def isMovementFinished(self, axis=None):
+        if self.device is None:
+            return None
+
+        axes = self.axes if axis in (None, 'all') else [axis]
+        movementFinished = []
+        for axisName in axes:
+            controller = self._getAxisController(axisName)
+            if controller is None:
+                return None
+
+            axisFinished = self._isControllerMovementFinished(controller)
+            if axisFinished is None:
+                return None
+
+            movementFinished.append(axisFinished)
+
+        return all(movementFinished) if movementFinished else None
+
+    def _getAxisController(self, axis):
+        if axis == 'X':
+            return self.X
+        if axis == 'Y':
+            return self.Y
+        return None
+
+    def _isControllerMovementFinished(self, controller):
+        try:
+            if controller.HasqONT():
+                return all(bool(value) for value in controller.qONT(1).values())
+
+            if controller.HasIsMoving():
+                return not any(bool(value) for value in controller.IsMoving(1).values())
+        except Exception as e:
+            self.__logger.debug(f'Could not query PI movement status: {e}')
+            return None
+
+        return None
+
     def setJoystickEnabled(self, enabled: bool):
         if enabled:
             self.activate_joystick()

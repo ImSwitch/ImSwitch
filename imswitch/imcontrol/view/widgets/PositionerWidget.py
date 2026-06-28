@@ -260,26 +260,23 @@ class PositionerWidget(Widget):
         coarseMultiplierSpinBox.setSingleStep(0.5)
         coarseMultiplierSpinBox.setValue(float(shortcutSettings.get('coarseStepMultiplier', 5.0)))
 
-        generalGrid.addWidget(QtWidgets.QLabel('Movement prefix'), 1, 0)
-        generalGrid.addWidget(movementPrefixCombo, 1, 1)
+        modeToggleShortcut = self._makeShortcutEditor(shortcutSettings.get('modeToggle', ''))
+        generalGrid.addWidget(QtWidgets.QLabel('Coarse/Fine shortcut'), 1, 0)
+        generalGrid.addWidget(modeToggleShortcut, 1, 1)
         generalGrid.addWidget(QtWidgets.QLabel('Coarse multiplier'), 1, 2)
         generalGrid.addWidget(coarseMultiplierSpinBox, 1, 3)
-
-        modeToggleShortcut = self._makeShortcutEditor(shortcutSettings.get('modeToggle', ''))
-        generalGrid.addWidget(QtWidgets.QLabel('Coarse/Fine shortcut'), 2, 0)
-        generalGrid.addWidget(modeToggleShortcut, 2, 1)
-        joystickShortcut = self._makeShortcutEditor(shortcutSettings.get('joystickToggle', ''))
-        joystickShortcut.setEnabled(bool(shortcutSettings.get('joystickAvailable', False)))
-        generalGrid.addWidget(QtWidgets.QLabel('Joystick shortcut'), 2, 2)
-        generalGrid.addWidget(joystickShortcut, 2, 3)
-        generalGrid.setColumnStretch(6, 1)
+        generalGrid.setColumnStretch(4, 1)
         layout.addLayout(generalGrid)
 
+        self._addSettingsSectionTitle(layout, 'Positioner Shortcuts')
+
         settingsGrid = QtWidgets.QGridLayout()
-        settingsGrid.addWidget(QtWidgets.QLabel('Positioner'), 0, 0)
-        settingsGrid.addWidget(QtWidgets.QLabel('+ shortcut'), 0, 1)
-        settingsGrid.addWidget(QtWidgets.QLabel('- shortcut'), 0, 2)
-        settingsGrid.addWidget(QtWidgets.QLabel('Live update'), 0, 3)
+        settingsGrid.addWidget(QtWidgets.QLabel('Movement prefix'), 0, 0)
+        settingsGrid.addWidget(movementPrefixCombo, 0, 1)
+        settingsGrid.addWidget(QtWidgets.QLabel('Positioner'), 1, 0)
+        settingsGrid.addWidget(QtWidgets.QLabel('+ shortcut'), 1, 1)
+        settingsGrid.addWidget(QtWidgets.QLabel('- shortcut'), 1, 2)
+        settingsGrid.addWidget(QtWidgets.QLabel('Live update'), 1, 3)
 
         liveUpdateChecks = {}
         shortcutEditors = {}
@@ -287,7 +284,7 @@ class PositionerWidget(Widget):
             'movement',
             shortcutSettings.get('positioners', {})
         )
-        row = 1
+        row = 2
         for positionerName, axes in self._positionerAxes.items():
             settings = positionerSettings.get(positionerName, {})
             liveUpdateAvailable = bool(settings.get('liveUpdateAvailable', False))
@@ -321,6 +318,42 @@ class PositionerWidget(Widget):
 
         layout.addLayout(settingsGrid)
 
+        self._addSettingsSectionTitle(layout, 'Joystick')
+
+        joystickGrid = QtWidgets.QGridLayout()
+        joystickShortcut = self._makeShortcutEditor(shortcutSettings.get('joystickToggle', ''))
+        joystickAvailable = bool(shortcutSettings.get('joystickAvailable', False))
+        joystickShortcut.setEnabled(joystickAvailable)
+        joystickGrid.addWidget(QtWidgets.QLabel('Joystick shortcut'), 0, 0)
+        joystickGrid.addWidget(joystickShortcut, 0, 1)
+
+        joystickAutoReenableCheck = QtWidgets.QCheckBox('Joystick automatic re-enabling')
+        joystickAutoReenableCheck.setEnabled(joystickAvailable)
+        joystickAutoReenableCheck.setChecked(
+            bool(shortcutSettings.get('joystickAutoReenable', True))
+        )
+        joystickAutoReenableDelaySpinBox = QtWidgets.QDoubleSpinBox()
+        joystickAutoReenableDelaySpinBox.setRange(1.0, 10.0)
+        joystickAutoReenableDelaySpinBox.setDecimals(1)
+        joystickAutoReenableDelaySpinBox.setSingleStep(0.5)
+        joystickAutoReenableDelaySpinBox.setSuffix(' s')
+        joystickAutoReenableDelaySpinBox.setValue(
+            float(shortcutSettings.get('joystickAutoReenableDelayS', 5.0))
+        )
+        joystickAutoReenableDelaySpinBox.setEnabled(
+            joystickAvailable and joystickAutoReenableCheck.isChecked()
+        )
+        joystickAutoReenableCheck.toggled.connect(
+            lambda checked: joystickAutoReenableDelaySpinBox.setEnabled(
+                joystickAvailable and checked
+            )
+        )
+        joystickGrid.addWidget(joystickAutoReenableCheck, 1, 0, 1, 2)
+        joystickGrid.addWidget(QtWidgets.QLabel('Debounce time'), 1, 2)
+        joystickGrid.addWidget(joystickAutoReenableDelaySpinBox, 1, 3)
+        joystickGrid.setColumnStretch(4, 1)
+        layout.addLayout(joystickGrid)
+
         def collectSettings():
             shortcuts = {}
             for positionerName, axisEditors in shortcutEditors.items():
@@ -341,6 +374,12 @@ class PositionerWidget(Widget):
                 'coarseStepMultiplier': coarseMultiplierSpinBox.value(),
                 'modeToggle': self._shortcutEditorText(modeToggleShortcut),
                 'joystickToggle': self._shortcutEditorText(joystickShortcut),
+                'joystickAutoReenable': (
+                    joystickAutoReenableCheck.isChecked()
+                    if joystickAvailable else
+                    bool(shortcutSettings.get('joystickAutoReenable', True))
+                ),
+                'joystickAutoReenableDelayS': joystickAutoReenableDelaySpinBox.value(),
                 'movement': shortcuts
             }
 
@@ -363,6 +402,28 @@ class PositionerWidget(Widget):
 
         if dialog.exec_() == QtWidgets.QDialog.Accepted:
             self.sigSettingsChanged.emit(acceptedSettings)
+
+    def _addSettingsSectionTitle(self, layout, title):
+        container = QtWidgets.QWidget()
+        sectionLayout = QtWidgets.QHBoxLayout(container)
+        sectionLayout.setContentsMargins(0, 8, 0, 4)
+        sectionLayout.setSpacing(8)
+
+        leftLine = QtWidgets.QFrame()
+        leftLine.setFrameShape(QtWidgets.QFrame.HLine)
+        leftLine.setFrameShadow(QtWidgets.QFrame.Sunken)
+
+        rightLine = QtWidgets.QFrame()
+        rightLine.setFrameShape(QtWidgets.QFrame.HLine)
+        rightLine.setFrameShadow(QtWidgets.QFrame.Sunken)
+
+        label = QtWidgets.QLabel(title)
+        label.setStyleSheet('font-weight: bold;')
+
+        sectionLayout.addWidget(leftLine, 1)
+        sectionLayout.addWidget(label)
+        sectionLayout.addWidget(rightLine, 1)
+        layout.addWidget(container)
 
     def _makePrefixCombo(self, currentPrefix):
         combo = QtWidgets.QComboBox()

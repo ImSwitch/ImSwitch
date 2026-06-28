@@ -69,7 +69,7 @@ class PositionerManager(ABC):
         return self.__joystick
     @property
     def liveUpdate(self) -> bool:
-        """ Whether the positioner position should be updated live. """
+        """ Whether live position updates are available for this positioner. """
         return self.__liveUpdate
 
     @property

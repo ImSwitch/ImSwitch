@@ -94,7 +94,7 @@ class PositionerInfo(DeviceInfo):
     """ Whether the positioner is connected to a joystick. """
 
     liveUpdate: bool = False
-    """ Whether the positioner position should be updated live. """
+    """ Whether live position updates are available for this positioner. """
 
 
 

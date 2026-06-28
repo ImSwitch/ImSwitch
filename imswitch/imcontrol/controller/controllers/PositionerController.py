@@ -18,6 +18,8 @@ class PositionerController(ImConWidgetController):
 
         self.settingAttr = False
         self._previousJoystickState = None
+        self._liveUpdateAvailable = {}
+        self._liveUpdateEnabled = {}
 
         self.__logger = initLogger(self, tryInheritParent=True)
 
@@ -28,6 +30,9 @@ class PositionerController(ImConWidgetController):
 
             if not pManager.isAvailable:
                 continue
+
+            self._liveUpdateAvailable[pName] = bool(getattr(pManager, 'liveUpdate', False))
+            self._liveUpdateEnabled[pName] = self._liveUpdateAvailable[pName]
 
             if pManager.joystick:
                 self._widget.addJoystick(pName)
@@ -59,6 +64,8 @@ class PositionerController(ImConWidgetController):
                     )
         
         self._widget.sigJoystickToggled.connect(self.requestJoystickStatus)
+        self._widget.sigSettingsClicked.connect(self.openSettingsDialog)
+        self._widget.sigSettingsChanged.connect(self.applySettings)
         self._updateLiveTimerState()
         self._refreshLiveUpdatedPositioners()
 
@@ -77,12 +84,12 @@ class PositionerController(ImConWidgetController):
         self.setJoystickCheckStatus(enabled)
 
     def _hasLiveUpdatePositioner(self):
-        for _, pManager in self._master.positionersManager:
+        for pName, pManager in self._master.positionersManager:
             if not pManager.forPositioning:
                 continue
             if not pManager.isAvailable:
                 continue
-            if getattr(pManager, 'liveUpdate', False):
+            if self._isLiveUpdateEnabled(pName, pManager):
                 return True
         return False
 
@@ -102,10 +109,54 @@ class PositionerController(ImConWidgetController):
                 continue
             if not pManager.isAvailable:
                 continue
-            if not getattr(pManager, 'liveUpdate', False):
+            if not self._isLiveUpdateEnabled(pName, pManager):
                 continue
 
             self.updatePosition(pName, 'all')
+
+    def _isLiveUpdateEnabled(self, positionerName, pManager=None):
+        if pManager is None:
+            pManager = self._master.positionersManager[positionerName]
+
+        return bool(
+            getattr(pManager, 'liveUpdate', False)
+            and self._liveUpdateAvailable.get(positionerName, False)
+            and self._liveUpdateEnabled.get(positionerName, False)
+        )
+
+    def openSettingsDialog(self):
+        positionerSettings = {}
+        for pName, pManager in self._master.positionersManager:
+            if not pManager.forPositioning:
+                continue
+            if not pManager.isAvailable:
+                continue
+
+            positionerSettings[pName] = {
+                'liveUpdateAvailable': self._liveUpdateAvailable.get(pName, False),
+                'liveUpdateEnabled': self._liveUpdateEnabled.get(pName, False),
+            }
+
+        self._widget.showSettingsDialog(
+            self._liveUpdateIntervalMs,
+            positionerSettings,
+        )
+
+    def applySettings(self, liveUpdateIntervalMs, liveUpdateEnabled):
+        self._liveUpdateIntervalMs = max(100, min(2000, int(liveUpdateIntervalMs)))
+        self._liveUpdateTimer.setInterval(self._liveUpdateIntervalMs)
+
+        for pName, enabled in liveUpdateEnabled.items():
+            if not self._liveUpdateAvailable.get(pName, False):
+                self._liveUpdateEnabled[pName] = False
+                continue
+
+            self._liveUpdateEnabled[pName] = bool(enabled)
+
+        if self._hasLiveUpdatePositioner():
+            self._liveUpdateTimer.start()
+        else:
+            self._liveUpdateTimer.stop()
 
     def setJoystickStatusAfterRec(self, pName):
         if self._previousJoystickState:
@@ -150,22 +201,22 @@ class PositionerController(ImConWidgetController):
 
     def move(self, positionerName, axis, dist):
         """ Moves positioner by dist micrometers in the specified axis. """
-        result = self._master.positionersManager[positionerName].move(dist, axis)
-        liveUpdate = getattr(self._master.positionersManager[positionerName],'liveUpdate')
-        if not liveUpdate:
-            # if result is a valid position we apply it immediately 
-            success=self._applyPositionResult(positionerName, axis, result)
+        pManager = self._master.positionersManager[positionerName]
+        result = pManager.move(dist, axis)
+        if not self._isLiveUpdateEnabled(positionerName, pManager):
+            # if result is a valid position we apply it immediately
+            success = self._applyPositionResult(positionerName, axis, result)
             # otherwise we go through manager's update position path
             if not success:
                 self.updatePosition(positionerName, axis)
 
     def setPos(self, positionerName, axis, position):
         """ Moves the positioner to the specified position in the specified axis. """
-        result = self._master.positionersManager[positionerName].setPosition(position, axis)
-        liveUpdate = getattr(self._master.positionersManager[positionerName],'liveUpdate')
-        if not liveUpdate:
-            # if result is a valid position we apply it immediately 
-            success=self._applyPositionResult(positionerName, axis, result)
+        pManager = self._master.positionersManager[positionerName]
+        result = pManager.setPosition(position, axis)
+        if not self._isLiveUpdateEnabled(positionerName, pManager):
+            # if result is a valid position we apply it immediately
+            success = self._applyPositionResult(positionerName, axis, result)
             # otherwise we go through manager's update position path
             if not success:
                 self.updatePosition(positionerName, axis)

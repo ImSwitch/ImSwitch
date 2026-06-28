@@ -58,10 +58,7 @@ class PositionerController(ImConWidgetController):
 
         # Set up positioners
         for pName, pManager in self._master.positionersManager:
-            if not pManager.forPositioning:
-                continue
-
-            if not pManager.isAvailable:
+            if not self._isPositionerShownInWidget(pManager):
                 continue
 
             self._liveUpdateAvailable[pName] = bool(getattr(pManager, 'liveUpdate', False))
@@ -131,11 +128,16 @@ class PositionerController(ImConWidgetController):
     def _onManagerJoystickStatusChanged(self, pName, enabled):
         self.setJoystickCheckStatus(enabled)
 
+    def _isPositionerShownInWidget(self, pManager):
+        return bool(
+            pManager.forPositioning
+            and pManager.isAvailable
+            and not getattr(pManager, 'hide', False)
+        )
+
     def _hasLiveUpdatePositioner(self):
         for pName, pManager in self._master.positionersManager:
-            if not pManager.forPositioning:
-                continue
-            if not pManager.isAvailable:
+            if not self._isPositionerShownInWidget(pManager):
                 continue
             if self._isLiveUpdateEnabled(pName, pManager):
                 return True
@@ -153,9 +155,7 @@ class PositionerController(ImConWidgetController):
 
     def _refreshLiveUpdatedPositioners(self):
         for pName, pManager in self._master.positionersManager:
-            if not pManager.forPositioning:
-                continue
-            if not pManager.isAvailable:
+            if not self._isPositionerShownInWidget(pManager):
                 continue
             if not self._isLiveUpdateEnabled(pName, pManager):
                 continue
@@ -175,9 +175,7 @@ class PositionerController(ImConWidgetController):
     def openSettingsDialog(self):
         positionerSettings = {}
         for pName, pManager in self._master.positionersManager:
-            if not pManager.forPositioning:
-                continue
-            if not pManager.isAvailable:
+            if not self._isPositionerShownInWidget(pManager):
                 continue
 
             positionerSettings[pName] = {
@@ -432,7 +430,7 @@ class PositionerController(ImConWidgetController):
             except Exception:
                 continue
 
-            if not pManager.forPositioning or not pManager.isAvailable:
+            if not self._isPositionerShownInWidget(pManager):
                 continue
 
             for axis in pManager.axes:
@@ -557,9 +555,7 @@ class PositionerController(ImConWidgetController):
 
     def _getJoystickPositionerName(self):
         for pName, pManager in self._master.positionersManager:
-            if not pManager.forPositioning:
-                continue
-            if not pManager.isAvailable:
+            if not self._isPositionerShownInWidget(pManager):
                 continue
             if not getattr(pManager, 'joystick', False):
                 continue
@@ -781,11 +777,13 @@ class PositionerController(ImConWidgetController):
         if axis == 'all':
             for axisName in self._master.positionersManager[positionerName].axes:
                 newPos = self._master.positionersManager[positionerName].position[axisName]
-                self._widget.updatePosition(positionerName, axisName, newPos)
+                if self._isPositionerShownInWidget(pManager):
+                    self._widget.updatePosition(positionerName, axisName, newPos)
                 self.setSharedAttr(positionerName, axisName, _positionAttr, newPos)
         else:
             newPos = self._master.positionersManager[positionerName].position[axis]
-            self._widget.updatePosition(positionerName, axis, newPos)
+            if self._isPositionerShownInWidget(pManager):
+                self._widget.updatePosition(positionerName, axis, newPos)
             self.setSharedAttr(positionerName, axis, _positionAttr, newPos)
 
 
@@ -796,7 +794,9 @@ class PositionerController(ImConWidgetController):
             return False
 
         newPos = result[axis]
-        self._widget.updatePosition(positionerName, axis, newPos)
+        pManager = self._master.positionersManager[positionerName]
+        if self._isPositionerShownInWidget(pManager):
+            self._widget.updatePosition(positionerName, axis, newPos)
         self.setSharedAttr(positionerName, axis, _positionAttr, newPos)
         return True
 

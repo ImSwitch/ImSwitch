@@ -96,6 +96,9 @@ class PositionerInfo(DeviceInfo):
     liveUpdate: bool = False
     """ Whether live position updates are available for this positioner. """
 
+    hide: bool = False
+    """ Whether the positioner should be hidden from the manual positioner widget. """
+
 
 
 

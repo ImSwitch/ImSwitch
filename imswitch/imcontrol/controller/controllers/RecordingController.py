@@ -158,15 +158,17 @@ class RecordingController(ImConWidgetController):
             # changed folder => reset recNumber 
             if self.currFolder is not None and self.currFolder != folder:
                 self.recNumber = 0 
-            
             self.currFolder = folder 
 
             fileName = self.getFileName() 
+            recNumbers = []
+            for d in os.listdir(folder): 
+                dAbs = os.path.join(folder, d)
+                if fileName == d[:-2] and os.path.isdir(dAbs): 
+                    recNumbers.append(int(d[d.rfind("_") + 1:]))
 
-            print(fileName)
+            self._logger.debug(f"[toggleRec] >> recNumbers = {recNumbers}")
 
-            recNumbers = [int(d[d.rfind("_") + 1:]) for d in os.listdir(folder) 
-                          if fileName == d[:-2] and os.path.isdir(os.path.join(folder, d))]
             if recNumbers:
                 self.recNumber = max(recNumbers) + 1
                 recNumbers.clear()
@@ -236,7 +238,7 @@ class RecordingController(ImConWidgetController):
 
         if not self.recordingArgs['singleLapseFile']:
             lapseCurrentStr = str(self.lapseCurrent).zfill(len(str(self.lapseTotal)))
-            self.recordingArgs['savename'] = f'{self.savename}_scan_{lapseCurrentStr}'
+            self.recordingArgs['savename'] = f'{self.savename}_scan{lapseCurrentStr}'
 
         if isFirstLapse:
             self._commChannel.sigScanStarting.emit()  # To get updated values from sharedAttrs

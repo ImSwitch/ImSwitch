@@ -1,5 +1,6 @@
 # type: ignore
 
+
 from qtpy import QtCore
 import numpy as np
 
@@ -13,6 +14,7 @@ class ProcessorWorker(QtCore.QObject):
     sigTriggerUIRefresh = QtCore.Signal()
     sigSaveChunk = QtCore.Signal(np.ndarray, np.ndarray, int)
     sigMoveTimeSlider = QtCore.Signal(int)    
+    sigSaveReconTimepoint = QtCore.Signal(np.ndarray, int)
     sigProcessingFinished = QtCore.Signal()
 
     def __init__(
@@ -58,10 +60,11 @@ class ProcessorWorker(QtCore.QObject):
         
         if end >= self.processor.num_frames_in_stack: 
             self.sigMoveTimeSlider.emit(self.timepoint)
+            self.sigSaveReconTimepoint.emit(self.recon_obj.reconstructed[0, 0, self.timepoint, 0], self.timepoint)
             self.sigTriggerUIRefresh.emit()
-            self._commChannel.sigProcessingFinished.emit()   
+            self._commChannel.sigProcessingFinished.emit()
             self.timepoint += 1 
 
     @QtCore.Slot(int)
-    def inc_timepoint(self, inc_val: int):
+    def increment_timepoint(self, inc_val: int):
         self.timepoint += inc_val 

@@ -16,6 +16,7 @@ from .ScanParamsController import ScanParamsController
 from .basecontrollers import ImRecWidgetController
 
 from imswitch.imreconstruct.controller.karl_workers.ProcessorWorker import ProcessorWorker
+from imswitch.imreconstruct.controller.karl_workers.SaveWorker import SaveWorker
 
 import copy
 import os
@@ -37,10 +38,6 @@ except:
 
 
 class ImRecMainViewController(ImRecWidgetController):
-
-    # TODO: check the termination of the processor worker and thread
-    #       see if it can be simplified
-
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -100,8 +97,9 @@ class ImRecMainViewController(ImRecWidgetController):
         self._commChannel.sigCurrentDataChanged.connect(self.currentDataChanged)
         self._commChannel.sigScanParamsUpdated.connect(self.scanParamsUpdated)
         self._commChannel.sigReconstruct.connect(self.reconstruct)
+        self._commChannel.sigSetupSavePath.connect(self.setupSavePath)
         self._commChannel.sigSetupLiveStream.connect(self.setupLiveStream)
-        
+
         self._widget.sigSaveReconstruction.connect(lambda: self.saveCurrent('reconstruction'))
         self._widget.sigSaveReconstructionAll.connect(lambda: self.saveAll('reconstruction'))
         self._widget.sigSaveCoeffs.connect(lambda: self.saveCurrent('coefficients'))
@@ -124,6 +122,9 @@ class ImRecMainViewController(ImRecWidgetController):
 
         self.reconObjects = []
 
+        self.saveRootPath = None 
+        self.reconObjName = None
+
         self.updatePattern()
         self.updateScanParams()
         
@@ -131,19 +132,28 @@ class ImRecMainViewController(ImRecWidgetController):
             self._logger.debug("[__init__] >> CuPy available => Defaulting to GPU processing")
         else: 
             self._logger.debug("[__init__] >> CuPy NOT available => Defaulting to CPU processing")
- 
+
+    @QtCore.Slot(str) 
+    def setupSavePath(self, rootPath: str):
+        i = rootPath.replace("\\", "/").rfind("/")
+        saveDirName = rootPath[i + 1:] + "_recon"
+        saveRootPath = os.path.join(rootPath[:i], saveDirName)
+        if not os.path.isdir(saveRootPath):
+            os.mkdir(saveRootPath) 
+        self.saveRootPath = saveRootPath
 
     @QtCore.Slot(str, Processor, np.ndarray, list)
     def setupLiveStream(
             self, 
-            recon_obj_name: str, 
+            reconObjName: str, 
             processor: Processor,
             rawData: np.ndarray,
             reconObjArgs: list, 
     ):       
         self.stopLiveStream()
+        
         self.liveReconObj = ReconObj(
-            recon_obj_name, 
+            reconObjName, 
             self._scanParDict,
             self._widget.r_l_text, 
             self._widget.u_d_text, 
@@ -153,41 +163,68 @@ class ImRecMainViewController(ImRecWidgetController):
             self._widget.n_text,
             *reconObjArgs 
         )            
-        self._widget.addNewData(self.liveReconObj, recon_obj_name) 
+        self._widget.addNewData(self.liveReconObj, reconObjName) 
+
+        dirName = reconObjName + "_recon"
+        savePath = os.path.join(self.saveRootPath, dirName)
+        if not os.path.isdir(savePath): 
+            os.mkdir(savePath)  
+
+        self._logger.debug(f"[setupLiveStream] >> savePath = {savePath}")
+
+        self.saveWorker = SaveWorker(savePath, dirName) 
+        self.saveWorkerThread = QtCore.QThread()
+        self.saveWorker.sigSaveReconTimepoint.connect(self.saveWorker.save_recon_timepoint)
+        self.saveWorker.moveToThread(self.saveWorkerThread)
+
         self.processorWorker = ProcessorWorker(
             processor, rawData, self.liveReconObj, self._commChannel, CUPY_AVAILABLE
-        ) 
+        )
         self.processorThread = QtCore.QThread()
         self.processorWorker.moveToThread(self.processorThread)
         self.processorWorker.sigTriggerUIRefresh.connect(self.triggerUIRefresh)
         self.processorWorker.sigMoveTimeSlider.connect(self.moveTimeSlider)
+        self.processorWorker.sigSaveReconTimepoint.connect(self.saveReconTimepoint) 
         self.processorThread.start()
-        self._commChannel.sigIncProcessorWorkerTimepoint.connect(self.processorWorker.inc_timepoint) 
+       
+        self._commChannel.sigIncProcessorWorkerTimepoint.connect(self.processorWorker.increment_timepoint) 
         self._commChannel.sigLiveChunkReady.connect(self.processorWorker.processChunk)
-        try:
-            self._commChannel.sigStopLiveStream.disconnect(self.stopLiveStream)
-        except TypeError:
-            pass
         self._commChannel.sigStopLiveStream.connect(self.stopLiveStream)
+        
         self._logger.debug("[setupLiveStream] >> Live Stream initialized successfully")
 
     @QtCore.Slot(int)
     def moveTimeSlider(self, timepoint: int): 
-        #        0  1  2  3  4  5
-        # axes: (D, B, T, Z, Y, X)
+        # axes: (D, B, T, Z, Y, X) : (0, 1, 2, 3, 4, 5)
         self.reconWidget.napariViewer.dims.set_current_step(2, timepoint)
+
+    @QtCore.Slot(np.ndarray, int)
+    def saveReconTimepoint(self, recon_data: np.ndarray, timepoint: int):
+        self.saveWorker.sigSaveReconTimepoint.emit(recon_data, timepoint)
 
     def triggerUIRefresh(self):
         self.reconWidget.sigUpdateImage.emit(self.liveReconObj.reconstructed)
 
-    def stopLiveStream(self): 
+    def stopSaveWorker(self): 
+        if hasattr(self, "saveWorker") and self.saveWorker is not None: 
+            self.saveWorker.deleteLater()
+        
+        if hasattr(self, "saveWorkerThread") and self.saveWorkerThread is not None: 
+            self.saveWorkerThread.quit() 
+            self.saveWorkerThread.wait() 
+            self.saveWorkerThread = None 
+            self.saveWorker = None             
+
+    def stopProcessorWorker(self): 
         try: 
             self._commChannel.sigLiveChunkReady.disconnect(self.processorWorker.processChunk)
         except (TypeError, AttributeError):
-            pass 
+            pass
+        
         if hasattr(self, "processorWorker") and self.processorWorker is not None:
             self.processorWorker.deleteLater()
             self.processorWorker = None
+       
         if hasattr(self, "processorThread") and self.processorThread is not None:
             if self.processorThread.isRunning():
                 self.processorThread.quit()
@@ -198,6 +235,10 @@ class ImRecMainViewController(ImRecWidgetController):
                     self.processorThread.terminate()
                     self.processorThread.wait()
             self.processorThread = None
+
+    def stopLiveStream(self): 
+        self.stopSaveWorker() 
+        self.stopProcessorWorker()
         self._logger.debug("[stopLiveStream] >> Processor pipeline cleared.")
 
     def dataFolderChanged(self, dataFolder):

@@ -77,7 +77,7 @@ class ZarrStreamWorker(QtCore.QObject):
         self.num_time_points_proc = 0
 
     @QtCore.Slot(int)
-    def dec_num_timepoints(self, dec_val: int): 
+    def decrement_num_timepoints(self, dec_val: int): 
         self.num_time_points -= dec_val
 
     def _find_zarr_array(self, zarr_path: str) -> Union[str, None]:

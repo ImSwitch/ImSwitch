@@ -161,6 +161,7 @@ class ImRecMainViewController(ImRecWidgetController):
             self._widget.timepoints_text, 
             self._widget.p_text, 
             self._widget.n_text,
+            live_mode=True,
             *reconObjArgs 
         )            
         self._widget.addNewData(self.liveReconObj, reconObjName) 

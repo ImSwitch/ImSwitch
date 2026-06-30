@@ -194,9 +194,10 @@ class WatcherFrameController(ImRecWidgetController):
         if self.file_queue:
             next_file = self.file_queue.pop(0)
             prev_file = self.prev_file
-            self.check_for_skipped_scan(prev_file, next_file)
-            self.prev_file = next_file
-            self._logger.debug(f"[process_next_file] >> Streaming: {next_file}") 
+            if "scan" in next_file:
+                self.check_for_skipped_scan(prev_file, next_file)
+                self.prev_file = next_file
+            self._logger.debug(f"[process_next_file] >> Streaming: {next_file}")
             self.sigRunZarrStream.emit(next_file)
 
     def check_for_skipped_scan(self, prev_file: str, next_file: str):

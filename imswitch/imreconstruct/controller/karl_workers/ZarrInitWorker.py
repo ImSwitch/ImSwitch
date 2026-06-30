@@ -84,8 +84,8 @@ class ZarrInitWorker(QtCore.QObject):
             x0, y0, _ = axis_startpos
             x1, y1, _ = imswitch_meta["ScanStage:axis_length"]
             dx, dy, _ = imswitch_meta["ScanStage:axis_step_size"]
-            self.nx_s = int(np.ceil((x1 - x0) / dx)) + 1
-            self.ny_s = int(np.ceil((y1 - y0) / dy)) + 1
+            self.nx_s = int(np.ceil((x1 - x0) / dx))
+            self.ny_s = int(np.ceil((y1 - y0) / dy))
             self.num_frames_in_stack = self.nx_s * self.ny_s
             self.num_time_points = imswitch_meta["Rec:LapseTime"]
 

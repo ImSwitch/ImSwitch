@@ -1,45 +1,49 @@
+# type: ignore
+
+
 from qtpy import QtCore, QtWidgets
 
 from imswitch.imcontrol.view import guitools
+
 import os
 
 
 class WatcherFrame(QtWidgets.QFrame):
-    """Frame for reconstructing files from a folder automatically."""
+    
+    """ Frame for reconstructing files from a folder automatically. """
 
-    sigWatchChanged = QtCore.Signal(bool)  # type: ignore (enabled)
-    sigChangeFolder = QtCore.Signal() # type: ignore
+    sigWatchChanged = QtCore.Signal(bool)  
+    sigChangeFolder = QtCore.Signal() 
+    sigReset = QtCore.Signal()
+    sigSkipDirectory = QtCore.Signal()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.path = ''
         self.folderEdit = QtWidgets.QLineEdit(self.path)
-
         self.browseFolderButton = guitools.BetterPushButton('Browse')
-        self.watchCheck = QtWidgets.QCheckBox('Watch and run')
-
-        self.liveModeCheck = QtWidgets.QCheckBox("Live Reconstruction")
+        self.liveModeCheck = QtWidgets.QCheckBox("Start File Watcher")
         self.liveModeCheck.setToolTip("Stream frames to Python GaussProcessor in real-time")
-
+        self.skipDirectoryButton = QtWidgets.QPushButton("Skip Directory")
+        self.resetButton = QtWidgets.QPushButton("Reset")
         self.listWidget = QtWidgets.QListWidget()
-        #self.updateFileList()
+        # self.updateFileList()
         layout = QtWidgets.QGridLayout()
         self.setLayout(layout)
 
         layout.addWidget(self.folderEdit, 0, 1)
         layout.addWidget(self.browseFolderButton, 0, 0)
         layout.addWidget(self.listWidget, 1, 0, 1, 2)
-        layout.addWidget(self.watchCheck, 2, 0)
-
-        layout.addWidget(self.liveModeCheck, 2, 1)
-
-        self.watchCheck.toggled.connect(self.sigWatchChanged)
+        layout.addWidget(self.liveModeCheck, 2, 0)
+        layout.addWidget(self.skipDirectoryButton, 2, 1)
+        layout.addWidget(self.resetButton, 2, 2)
 
         self.liveModeCheck.toggled.connect(self.sigWatchChanged)
-
+        self.resetButton.clicked.connect(self.sigReset)
+        self.skipDirectoryButton.clicked.connect(self.sigSkipDirectory)
         self.browseFolderButton.clicked.connect(self.browse)
-
+    
     def isLiveMode(self):
         return self.liveModeCheck.isChecked()
     

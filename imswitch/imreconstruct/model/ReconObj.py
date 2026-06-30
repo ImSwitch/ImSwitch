@@ -17,7 +17,6 @@ class ReconObj:
             timepoints_text, 
             p_text, 
             n_text, 
-            recImageArgs = None,
             *args, 
             **kwargs
     ):
@@ -28,34 +27,42 @@ class ReconObj:
         self.timepoints_text = timepoints_text
         self.p_text = p_text
         self.n_text = n_text
+        
         self.name = name
         self.coeffs = None
         self.reconstructed = None
-        self.flatReconView = None
+        
         self.scanParDict = scanParDict.copy()
+        
+        self.dispLevels = None
+        
         self.reconRows = None 
         self.reconCols = None 
-        self.dispLevels = None
-        if recImageArgs is not None:
-            self.reconRows = recImageArgs["ny_c"] * recImageArgs["ny_s"]
-            self.reconCols = recImageArgs["nx_c"] * recImageArgs["nx_s"]
+        
+        if args is not None:
+            self.reconRows = args[0] 
+            self.reconCols = args[1] 
+
+            if len(args) == 3:
+                self.numTimepoints = args[2]
+            else: 
+                self.numTimepoints = 1
+                
             self.scanParDict["range"] = [float(self.reconCols), float(self.reconRows)]
             self.scanParDict["start"] = [0.0, 0.0]
             self.scanParDict["stop"] = self.scanParDict["range"]
-            # self.reconstructed.shape = (Dataset, Base, Time, Z, Y, X); transpose_order = [0, 1, 2, 3, 5, 4] 
-            self.reconstructed = np.zeros((1, 1, 1, 1, self.reconRows, self.reconCols), dtype=np.float32)
-            self.flatReconView = self.reconstructed[0, 0, 0, 0].reshape(-1)
+            
+            # (Dataset, Base, Time, Z, Y, X) | transpose_order = [0, 1, 2, 3, 5, 4] 
+            self.reconstructed = np.zeros((
+                1, 1, self.numTimepoints, 1, self.reconRows, self.reconCols), dtype=np.float32
+            )
             self.reconstructed[0, 0, 0, 0, 0, 0] = 1e-8 
+
             self.dispLevels = [0.0, 100.0]
-            self.__logger.debug(f"[__init__] >> Reconstructed Image Array initialized: (height, widght) = ({self.reconRows}, {self.reconCols})")
     
-
-    def addLiveFrame(self, flatCoeffs, frameIndices): 
-        self.flatReconView[frameIndices] = flatCoeffs
-
-
-    def addLiveChunk(self, chunkCoeffs, chunkIndices):
-        self.flatReconView[chunkIndices.ravel()] = chunkCoeffs.ravel()
+            self.__logger.debug(
+                f"[__init__] >> Rec Array init: (H, W) = ({self.reconRows}, {self.reconCols})"
+            )
 
 
     def setDispLevels(self, levels):

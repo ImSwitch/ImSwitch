@@ -1,84 +1,70 @@
 # type: ignore
 
+
 from qtpy import QtCore
 import numpy as np
 
 
 class ProcessorWorker(QtCore.QObject): 
     
-    numFramesProcessed = QtCore.Signal(int)       
+    """
+    ... 
+    """
+
     sigTriggerUIRefresh = QtCore.Signal()
     sigSaveChunk = QtCore.Signal(np.ndarray, np.ndarray, int)
+    sigMoveTimeSlider = QtCore.Signal(int)    
+    sigSaveReconTimepoint = QtCore.Signal(np.ndarray, int)
+    sigProcessingFinished = QtCore.Signal()
 
     def __init__(
             self,
-            processor, 
-            reconObj, 
-            rawDataBuffer,
-            cupyAvailable = False,
-            _commChannel = None
+            processor: object, 
+            raw_data: np.ndarray,
+            recon_obj: object, 
+            _commChannel: object, 
+            cupy_available: bool = False
     ):
         super().__init__()
-        self._commChannel = _commChannel
         self.processor = processor
-        self.reconObj = reconObj
-        self.rawDataBuffer = rawDataBuffer
-        self.timePointIndex = 0
-        self.cupyAvailable = cupyAvailable
+        self.raw_data = raw_data
+        self.recon_obj = recon_obj
+        self._commChannel = _commChannel
+        self.refresh_rate = int(np.sqrt(len(self.processor.frame_inds)))
+        self.timepoint = 0        
         self.cp = None
-        if self.cupyAvailable:
+        if cupy_available: 
             try:
                 import cupy as cp
                 self.cp = cp
             except ImportError:
-                print("WARNING [ProcessorWorker] [__init__] >> GPU requested but CuPy not found => Defaulting to CPU processing")
-
-
-    @QtCore.Slot(int)
-    def processFrame(self, frameIndex): 
-        if QtCore.QThread.currentThread().isInterruptionRequested():
-            # thread closing => no processing
-            return
-        
-        frame = self.rawDataBuffer[frameIndex]
-        if self.cupyAvailable and self.cp: 
-            frame = self.cp.asarray(frame)             
-
-        coeffs = self.processor.process_frame(frame)
-        frame_indices = self.processor.frame_inds[frameIndex]
-        self.reconObj.addLiveFrame(coeffs, frame_indices)
-        
-        refreshRate = int(np.sqrt(len(frame_indices)))
-        if frameIndex % refreshRate == 0 or frameIndex == self.processor.num_frames_in_stack - 1: 
-            self.sigTriggerUIRefresh.emit()
-            
-        self.numFramesProcessed.emit(frameIndex)
-
+                print("ERROR [ProcessorWorker] [__init__] >> Error when trying to import CuPy")
+                return
 
     @QtCore.Slot(int, int)
-    def processChunk(self, startChunkIndex, endChunkIndex):        
+    def processChunk(self, start, end):        
         if QtCore.QThread.currentThread().isInterruptionRequested():
-            # thread closing => no processing
+            # thread closing => exit processing 
             return
         
-        chunk = self.rawDataBuffer[startChunkIndex:endChunkIndex]
-        if self.cupyAvailable and self.cp:
+        chunk = self.raw_data[start:end] 
+        if self.cp != None:
             chunk = self.cp.asarray(chunk)
+        proc_pixels = self.processor.process_chunk(chunk)
+        pixel_indices = self.processor.frame_inds[start:end]
+        flat_recon = self.recon_obj.reconstructed[0, 0, self.timepoint, 0].reshape(-1)
+        flat_recon[pixel_indices.ravel()] = proc_pixels.ravel()
+       
+        # if end % self.refresh_rate == 0:
+            # self.sigTriggerUIRefresh.emit()
         
-        chunkCoeffs = self.processor.process_chunk(chunk)
-        chunkIndices = self.processor.frame_inds[startChunkIndex:endChunkIndex]
-        
-        self.reconObj.addLiveChunk(chunkCoeffs, chunkIndices)
-        numFrames = endChunkIndex 
-        self.numFramesProcessed.emit(numFrames)
-
-        refreshRate = int(np.sqrt(chunkIndices.shape[1]))
-        if numFrames % refreshRate == 0 or numFrames >= self.processor.num_frames_in_stack - 1:
+        if end >= self.processor.num_frames_in_stack: 
+            self.sigMoveTimeSlider.emit(self.timepoint)
+            self.sigSaveReconTimepoint.emit(self.recon_obj.reconstructed[0, 0, self.timepoint, 0], self.timepoint)
             self.sigTriggerUIRefresh.emit()
+            self._commChannel.sigProcessingFinished.emit()
+            self.timepoint += 1 
 
-        # if numFrames >= self.processor.num_frames_in_stack - 1: 
-        #     self.sigTriggerUIRefresh.emit()
-        #     # --- SAVING RECONSTRUCTED DATA ---
-        #     data = self.reconObj.reconstructed[0, 0, 0, 0]
-        #     self._commChannel.sigSaveRecImage.emit(data, self.timePointIndex)
-        #     self.timePointIndex += 1 
+    @QtCore.Slot(int)
+    def increment_timepoint(self, inc_val: int):
+        self.timepoint += inc_val 

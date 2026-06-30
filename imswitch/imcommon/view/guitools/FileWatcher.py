@@ -1,81 +1,46 @@
 # type: ignore
 
+
 from os import listdir
-from os.path import join, isdir
+from os.path import join 
 from qtpy import QtCore
-import os
+from typing import List
+import zarr
 
 
-class FileWatcher(QtCore.QThread): 
+class FileWatcher(QtCore.QObject):
 
-    sigNewFiles = QtCore.Signal(list) 
+    """
+    ...
+    """
 
-    def __init__(self, path, extension=".tif", interval=1.0): 
+    sigFileFound = QtCore.Signal(str)    
+
+    def __init__(self, directory_path: str):
         super().__init__()
-        self.path = path
-        self.target_ext = extension.lower().lstrip('.')
-        self.extension = extension if extension.startswith('.') else '.' + extension
-        self.interval = interval 
-        self.running = True       
-        self.previous_files = set(self.filesInDirectory())    
-
+        self.directory_path = directory_path
+        self.seen_files = set()
+        self.running = True
 
     def run(self):
-        """ Watches for new files """
         while self.running: 
-            current_files = set(self.filesInDirectory())
-            new_files = list(current_files - self.previous_files) # set subtraction
+            try: 
+                self._check_for_files()
+            except Exception as e:
+                print(f"[FileWatcher] [run] >> Error scanning directory: {e}") 
             
-            if new_files:
-                self.previous_files.update(new_files)
-                self.sigNewFiles.emit(new_files) 
+            QtCore.QThread.msleep(200) 
 
-            # files deleted => remove them from memory and allow them to be re-detected
-            if len(self.previous_files) > len(current_files): 
-                self.previous_files = self.previous_files.intersection(current_files)
-
-            # QtCore.QThread.msleep() method
-            self.msleep(int(self.interval * 1000))
-    
-
-    def stop(self): 
+    def stop(self):
         self.running = False
 
+    def _check_for_files(self):
+        for f in listdir(self.directory_path):
+            f_abs = join(self.directory_path, f)
+            if f.lower().endswith(".zarr") and f_abs not in self.seen_files:
+                self.seen_files.add(f_abs)
+                self.sigFileFound.emit(f_abs)
 
-    def filesInDirectory(self):
-        """ Returns a list of files/folders in the directory that match the supported image extensions. """
-        target_ext = self.extension.lower().lstrip('.')
-        all_items = listdir(self.path)
-        matches = []
-
-        for f in all_items:
-            full_path = join(self.path, f)
-            f_lower = f.lower()
-
-            if f_lower.endswith(".zarr") and isdir(full_path):
-                if f not in matches: # avoid duplicates   
-                    matches.append(f)
-
-            elif target_ext in ["h5", "hdf5"] and f_lower.endswith((".h5", ".hdf5")):
-                matches.append(f) 
-
-            elif target_ext in ["tif", "tiff"]: 
-                matches.append(f)  
-         
-        return matches
-
-
-    def addToLog(self, filename, info_list): 
-        """ Specifically kept for WatcherController's script logging. """
-        log_path = os.path.join(self.path, "watcher_log.txt")
-        try:
-            with open(log_path, 'a') as f:
-                # append line at the end of the log file
-                line = f"{filename} >> " + " >> ".join(info_list) + "\n"
-                f.write(line)
-        except Exception as e:
-            print(f"ERROR [FileWatcher] [addToLog] >> Can't add to log: {e}")
-        
 
 # Adapted from https://towardsdatascience.com/implementing-a-file-watcher-in-python-73f8356a425d
 # Copyright (C) 2020-2021 ImSwitch developers

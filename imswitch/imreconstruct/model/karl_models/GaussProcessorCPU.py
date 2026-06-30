@@ -1,87 +1,112 @@
-import numpy as np 
-from .geometry import get_rectangles, get_interp_coords, get_1d_indices
-from typing import Dict, Tuple
+import numpy as np
+from .geometry import get_rectangles_coords, get_interp_coords, get_1d_indices
+from typing import Tuple
 
 
 class GaussProcessorCPU: 
     """
-    Processor for CPU-based image reconstruction using Gaussian 
-    least-squares weighting and bilinear interpolation.
+    Processor for GPU-accelerated image reconstruction using Gaussian least-squares weighting and bilinear interpolation.
+    
+    Args:
+        xp (float): X-axis period.
+        xo (float): X-axis offset.
+        yp (float): Y-axis period.
+        yo (float): Y-axis offset.
+        nx_c (int): Number of foci along x.
+        ny_c (int): Number of foci along y.
+        nx_s (int): Scanner steps along x.
+        ny_s (int): Scanner steps along y.
+        num_cols (int): Total number of columns in the frame.
+        num_rows (int): Total number of rows in the frame.
+        num_rects (int): Number of rectangles used to model the foci, which defaults to 3.
+        scan_ori (str): Scan orientation string, which defaults to "+x+y".
     """
-
     def __init__(
             self, 
-            args: Dict, 
+            xp: float, 
+            xo: float, 
+            yp: float, 
+            yo: float, 
+            nx_c: int, 
+            ny_c: int,
+            nx_s: int,
+            ny_s: int, 
+            num_rows: int,
+            num_cols: int,
+            num_rects: int = 3, 
             scan_ori: str = "+x+y"
-    ) -> None:
-        """
-        Initializes the CPU processor with scan parameters and pre-calculates 
-        interpolation coordinates and reconstruction weights.
-
-        Args:
-            args (Dict): Dictionary containing grid parameters (xp, xo, yp, yo, etc.).
-            scan_ori (str): String defining the scanning orientation (e.g., "+x+y").
-        """
-        self.num_rows = args["num_rows"]
-        self.num_cols = args["num_cols"]
-        self.num_foci = args["nx_c"] * args["ny_c"]
-        self.x_interp, self.y_interp = get_interp_coords(args)
-        self.lsq_weights, self.pts_per_focus = self._calculate_weights()
-        self.frame_inds = get_1d_indices(args, scan_ori)
-        self.num_frames_in_stack = args["nx_s"] * args["ny_s"]
+    ):
+        self.num_rows = num_rows
+        self.num_cols = num_cols
+        self.num_foci = nx_c * ny_c
+        self.num_rects = num_rects
+        self.scan_ori = scan_ori
+        self.x_interp, self.y_interp = get_interp_coords(xp, xo, yp, yo, nx_c, ny_c, num_rows, num_cols, num_rects)
+        self.lsq_weights, self.pts_per_focus = self._calculate_weights(num_rects)
+        self.frame_inds = get_1d_indices(nx_c, ny_c, nx_s, ny_s, scan_ori)
+        self.num_frames_in_stack = nx_s * ny_s
 
 
-    def _calculate_weights(self) -> Tuple[np.ndarray, int]: 
+    def _calculate_weights(self, num_rects: int) -> Tuple[np.ndarray, int]: 
         """
         Calculates the least-squares weights based on a Gaussian profile 
         to extract signal intensity from the background.
 
-        Returns:
-            Tuple[np.ndarray, int]: A Tuple containing the 1D weight array and 
-                                   the number of points per focus.
-        """
-        x_rec, y_rec = get_rectangles(num_rects=6)
-        sig = 2.0 
-    
-        gauss_vec = np.exp(-(x_rec**2 + y_rec**2) / (2 * sig**2))
-        bg_vec = np.ones(len(gauss_vec))
-        A = np.stack((gauss_vec, bg_vec))
-    
-        lsq_weights = np.linalg.pinv(A)[:, 0]
+        Args:
+            num_rects (int): Number of rectangles used to model the foci.
         
-        return lsq_weights, len(gauss_vec)
+        Returns:
+            Tuple[np.ndarray, int]: A Tuple containing the 1D weight array (CuPy) and the number of points per focus.
+        """
+        Xr, Yr = get_rectangles_coords(num_rects)
+        sigma = 2.0 
+        gauss_vec = np.exp(-(Xr**2 + Yr**2) / (2 * sigma**2))
+        bg_vec = np.ones(len(gauss_vec))
+        A_mat = np.stack((gauss_vec, bg_vec))
+        lsq_weights = np.linalg.pinv(A_mat)[:, 0] 
+        return np.array(lsq_weights), len(gauss_vec)
     
 
-    def process_frame(self, frame_CPU: np.ndarray) -> np.ndarray:
+    def process_frame(self, frame_cpu: np.ndarray) -> np.ndarray:
         """
         Performs bilinear interpolation on the input frame and applies 
         pre-calculated weights to reconstruct focus intensities.
 
         Args:
-            frame_CPU (np.ndarray): The 2D raw image frame to be processed.
+            frame_gpu (np.ndarray): The 2D raw image frame (already on GPU).
 
         Returns:
-            np.ndarray: 1D array of reconstructed intensity values for each focus.
+            np.ndarray: 1D array of reconstructed intensity values on the GPU.
         """
         x0 = np.clip(np.floor(self.x_interp).astype(np.int32), 0, self.num_cols - 1)
         x1 = np.clip(x0 + 1, 0, self.num_cols - 1)
+        
         y0 = np.clip(np.floor(self.y_interp).astype(np.int32), 0, self.num_rows - 1)
         y1 = np.clip(y0 + 1, 0, self.num_rows - 1)
         
         dx = self.x_interp - x0 
         dy = self.y_interp - y0
-
+        
         interp_vals = (
-            frame_CPU[y0, x0] * (1 - dx) * (1 - dy) 
-            + frame_CPU[y1, x0] * (1 - dx) * dy
-            + frame_CPU[y0, x1] * dx * (1 - dy)
-            + frame_CPU[y1, x1] * dx * dy
+            frame_cpu[y0, x0] * (1 - dx) * (1 - dy) 
+            + frame_cpu[y1, x0] * (1 - dx) * dy
+            + frame_cpu[y0, x1] * dx * (1 - dy)
+            + frame_cpu[y1, x1] * dx * dy
         ).reshape((self.num_foci, self.pts_per_focus))
 
         return np.dot(interp_vals, self.lsq_weights)
+    
+
+    def process_chunk(self, chunk_cpu: np.ndarray) -> np.ndarray:
+        """ 
+        Processes an entire 3D chunk (num_frames, Y, X) at once on the GPU. 
         
-    def process_chunk(self, chunk_CPU: np.ndarray) -> np.ndarray:
-        """ Processes an entire 3D chunk (num_frames, Y, X) at once on the CPU. """
+        Args:
+            chunk_cpu (np.ndarray): A sub-stack (chunk) of raw frames. 
+        
+        Returns:
+            np.ndarray: Processed pixels for each raw frame in the chunk.
+        """
         x0 = np.clip(np.floor(self.x_interp).astype(np.int32), 0, self.num_cols - 1)
         x1 = np.clip(x0 + 1, 0, self.num_cols - 1)
         y0 = np.clip(np.floor(self.y_interp).astype(np.int32), 0, self.num_rows - 1)
@@ -91,10 +116,32 @@ class GaussProcessorCPU:
         dy = self.y_interp - y0
     
         interp_vals = (
-            chunk_CPU[:, y0, x0] * (1 - dx) * (1 - dy) 
-            + chunk_CPU[:, y1, x0] * (1 - dx) * dy
-            + chunk_CPU[:, y0, x1] * dx * (1 - dy)
-            + chunk_CPU[:, y1, x1] * dx * dy
-        ).reshape((chunk_CPU.shape[0], self.num_foci, self.pts_per_focus))
+            chunk_cpu[:, y0, x0] * (1 - dx) * (1 - dy) 
+            + chunk_cpu[:, y1, x0] * (1 - dx) * dy
+            + chunk_cpu[:, y0, x1] * dx * (1 - dy)
+            + chunk_cpu[:, y1, x1] * dx * dy
+        ).reshape((-1, self.num_foci, self.pts_per_focus))
 
         return np.matmul(interp_vals, self.lsq_weights)
+    
+    
+    def update_frame_inds(
+            self,
+            nx_c: int, 
+            ny_c: int,
+            nx_s: int, 
+            ny_s: int, 
+            scan_ori: str
+    ): 
+        """ 
+        Updates the frame inds for the processor.
+        
+        Args:
+            nx_c (int): Number of foci along x.
+            ny_c (int): Number of foci along y.
+            nx_s (int): Scanner steps along x.
+            ny_s (int): Scanner steps along y.
+            scan_ori (str): Scan orientation string.
+        """
+        self.frame_inds = get_1d_indices(nx_c, ny_c, nx_s, ny_s, scan_ori)
+        

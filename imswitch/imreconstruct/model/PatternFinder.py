@@ -19,17 +19,15 @@ class PatternFinder:
         """ Finds the offsets and periods of the pattern in the image. """        
         if NEW_LOCALIZER_AVAILABLE:
             try:                
-                locRes = localizer(imageStack, plot=False) 
-                with open("loc_parms.json", 'w') as f: 
-                    f.write(json.dumps(locRes))
-
+                locRes = localizer(imageStack) 
+                
                 print(f"DEBUG [PatternFinder] [findPattern] >> Custom localizer succeeded")
-
+                
                 return [
-                    locRes["yo"], 
-                    locRes["xo"], 
-                    locRes["yp"], 
-                    locRes["xp"]
+                    locRes.yo,
+                    locRes.xo,
+                    locRes.yp,
+                    locRes.xp
                 ] 
             
             except Exception as e:

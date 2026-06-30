@@ -89,6 +89,9 @@ class ZarrInitWorker(QtCore.QObject):
             self.num_frames_in_stack = self.nx_s * self.ny_s
             self.num_time_points = imswitch_meta["Rec:LapseTime"]
 
+            if self.num_time_points == "null":
+                self.num_time_points = 1
+
             # zarr_dir_size = num_frames_in_stack + .zarray + .zattrs
             self.target_file_count = self.num_frames_in_stack + 2
 

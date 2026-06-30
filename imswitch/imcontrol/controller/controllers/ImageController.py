@@ -99,6 +99,54 @@ class ImageController(LiveUpdatedController):
         if self._shouldResetView:
             self.adjustFrame(image.shape, instantResetView=True)
 
+    def getLiveLayerNames(self):
+        return self._widget.getLiveLayerNames()
+
+    def getDisplayLayerNames(self):
+        return self._widget.getDisplayLayerNames()
+
+    def getLiveImage(self, name):
+        return self._widget.getLiveImage(name)
+
+    def getActiveImageLayerData(self):
+        return self._widget.getActiveImageLayerData()
+
+    def addOrUpdateImageLayer(self, name, image, **kwargs):
+        return self._widget.addOrUpdateImageLayer(name, image, **kwargs)
+
+    def addOrUpdatePointsLayer(self, name, points_yx, **kwargs):
+        return self._widget.addOrUpdatePointsLayer(name, points_yx, **kwargs)
+
+    def addOrUpdateShapesLayer(self, name, data, **kwargs):
+        return self._widget.addOrUpdateShapesLayer(name, data, **kwargs)
+
+    def removeNapariLayer(self, name):
+        self._widget.removeNapariLayer(name)
+
+    def setAllLiveLayersAffine(self, affine):
+        self._widget.setAllLiveLayersAffine(affine)
+
+    def clearAllLiveLayersAffine(self):
+        self._widget.clearAllLiveLayersAffine()
+
+    def setLiveLayerAffine(self, name, affine):
+        self._widget.setLiveLayerAffine(name, affine)
+
+    def clearLiveLayerAffine(self, name):
+        self._widget.clearLiveLayerAffine(name)
+
+    def setDisplayLayerAffine(self, name, affine):
+        self._widget.setDisplayLayerAffine(name, affine)
+
+    def clearDisplayLayerAffine(self, name):
+        self._widget.clearDisplayLayerAffine(name)
+
+    def setAllDisplayLayerAffines(self, affine):
+        self._widget.setAllDisplayLayerAffines(affine)
+
+    def clearAllDisplayLayerAffines(self):
+        self._widget.clearAllDisplayLayerAffines()
+
     def setExposure(self, exp):
         detectorName = self._master.detectorsManager.getAllDeviceNames()[0]
         self.__logger.debug(f"Change exposure of {detectorName}, to {str(exp)}")

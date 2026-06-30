@@ -7,6 +7,7 @@ from .ConsoleController import ConsoleController
 from .EtSTEDController import EtSTEDController
 from .EtMonalisaController import EtMonalisaController
 from .FFTController import FFTController
+from .FociAffineController import FociAffineController
 from .FocusLockController import FocusLockController
 from .ImageController import ImageController
 from .LaserController import LaserController
@@ -22,8 +23,12 @@ from .ScanControllerAdvanced import ScanControllerAdvanced
 from .RotationScanController import RotationScanController
 from .RotatorController import RotatorController
 from .SettingsController import SettingsController
+from .SetupModesController import SetupModesController
+from .SLMController import SLMController
 from .TilingController import TilingController
 from .ULensesController import ULensesController
 from .ViewController import ViewController
 from .WatcherController import WatcherController
 from .BFTimelapseController import BFTimelapseController
+from .FlipMirrorController import FlipMirrorController
+# from .EtController import EtController # Current prototype on old Monalisa machine needs rework and is not tracked currently.

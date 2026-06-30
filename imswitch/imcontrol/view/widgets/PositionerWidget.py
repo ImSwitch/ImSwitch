@@ -1,4 +1,4 @@
-from qtpy import QtCore, QtWidgets
+from qtpy import QtCore, QtGui, QtWidgets
 from imswitch.imcommon.model import initLogger
 from imswitch.imcontrol.view import guitools as guitools
 from .basewidgets import Widget
@@ -11,13 +11,101 @@ class PositionerWidget(Widget):
     sigStepUpClicked = QtCore.Signal(str, str)  # (positionerName, axis)
     sigStepDownClicked = QtCore.Signal(str, str)  # (positionerName, axis)
     sigsetSpeedClicked = QtCore.Signal()  # (speed)
+    sigSettingsClicked = QtCore.Signal()
+    sigSettingsChanged = QtCore.Signal(object)
+    sigStepModeChanged = QtCore.Signal(bool)  # True when coarse mode is selected
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.numPositioners = 0
+        self.numPositioners = 1
         self.pars = {}
+        self._positionerAxes = {}
         self.grid = QtWidgets.QGridLayout()
         self.setLayout(self.grid)
+
+        self._coarseMode = False
+        self._coarseStepMultiplier = 5.0
+        self.pars['StepModeContainer'] = QtWidgets.QWidget()
+        stepModeContainerLayout = QtWidgets.QHBoxLayout(self.pars['StepModeContainer'])
+        stepModeContainerLayout.setContentsMargins(0, 0, 0, 0)
+        stepModeContainerLayout.setSpacing(6)
+        self.pars['StepModeWidget'] = QtWidgets.QWidget()
+        stepModeLayout = QtWidgets.QHBoxLayout(self.pars['StepModeWidget'])
+        stepModeLayout.setContentsMargins(0, 0, 0, 0)
+        stepModeLayout.setSpacing(0)
+        self.pars['CoarseModeButton'] = guitools.BetterPushButton('Coarse')
+        self.pars['FineModeButton'] = guitools.BetterPushButton('Fine')
+        self.pars['CoarseModeButton'].setObjectName('coarseModeBtn')
+        self.pars['FineModeButton'].setObjectName('fineModeBtn')
+        self.pars['CoarseModeButton'].setCheckable(True)
+        self.pars['FineModeButton'].setCheckable(True)
+        self.pars['FineModeButton'].setChecked(True)
+        self.pars['CoarseModeButton'].setSizePolicy(
+            QtWidgets.QSizePolicy.Expanding,
+            QtWidgets.QSizePolicy.Fixed
+        )
+        self.pars['FineModeButton'].setSizePolicy(
+            QtWidgets.QSizePolicy.Expanding,
+            QtWidgets.QSizePolicy.Fixed
+        )
+        stepModeStyle = """
+        QPushButton {
+            padding: 2px 10px;
+            border: 1px solid rgba(255,255,255,60);
+        }
+
+        QPushButton#coarseModeBtn {
+            border-top-left-radius: 6px;
+            border-bottom-left-radius: 6px;
+        }
+
+        QPushButton#fineModeBtn {
+            border-top-right-radius: 6px;
+            border-bottom-right-radius: 6px;
+        }
+
+        QPushButton:hover {
+            border: 1px solid rgba(255,255,255,120);
+        }
+
+        QPushButton:checked {
+            background-color: rgba(120,180,255,120);
+            border: 1px solid rgba(120,180,255,200);
+        }
+        """
+        self.pars['CoarseModeButton'].setStyleSheet(stepModeStyle)
+        self.pars['FineModeButton'].setStyleSheet(stepModeStyle)
+        self._updateCoarseModeTooltip()
+        self._stepModeButtonGroup = QtWidgets.QButtonGroup(self)
+        self._stepModeButtonGroup.setExclusive(True)
+        self._stepModeButtonGroup.addButton(self.pars['CoarseModeButton'])
+        self._stepModeButtonGroup.addButton(self.pars['FineModeButton'])
+        stepModeLayout.addWidget(self.pars['CoarseModeButton'], 1)
+        stepModeLayout.addWidget(self.pars['FineModeButton'], 1)
+        self.pars['CoarseModeButton'].clicked.connect(lambda: self.sigStepModeChanged.emit(True))
+        self.pars['FineModeButton'].clicked.connect(lambda: self.sigStepModeChanged.emit(False))
+        stepModeContainerLayout.addStretch(1)
+        stepModeContainerLayout.addWidget(self.pars['StepModeWidget'], 1)
+        self.grid.addWidget(
+            self.pars['StepModeContainer'],
+            0,
+            5
+        )
+
+        self.pars['SettingsButton'] = guitools.BetterPushButton('Settings')
+        self.grid.addWidget(
+            self.pars['SettingsButton'],
+            0,
+            6,
+            alignment=QtCore.Qt.AlignRight
+        )
+        self.pars['SettingsButton'].clicked.connect(self.sigSettingsClicked.emit)
+
+        stepModeHeight = self.pars['SettingsButton'].sizeHint().height()
+        self.pars['StepModeContainer'].setFixedHeight(stepModeHeight)
+        self.pars['StepModeWidget'].setFixedHeight(stepModeHeight)
+        self.pars['CoarseModeButton'].setFixedHeight(stepModeHeight)
+        self.pars['FineModeButton'].setFixedHeight(stepModeHeight)
 
     def addJoystick(self, pName):
         # create and add check box
@@ -28,9 +116,9 @@ class PositionerWidget(Widget):
         self.joystickCheck.clicked.connect(
             lambda state: self.sigJoystickToggled.emit(state, pName)
         )
-        self.numPositioners += 1
 
     def addPositioner(self, positionerName, axes, speed, joystick):
+        self._positionerAxes[positionerName] = list(axes)
         for i in range(len(axes)):
             axis = axes[i]
             parNameSuffix = self._getParNameSuffix(positionerName, axis)
@@ -43,19 +131,36 @@ class PositionerWidget(Widget):
             self.pars['Position' + parNameSuffix].setTextFormat(QtCore.Qt.RichText)
             self.pars['UpButton' + parNameSuffix] = guitools.BetterPushButton('+')
             self.pars['DownButton' + parNameSuffix] = guitools.BetterPushButton('-')
+            self.pars['FineStepLabel' + parNameSuffix] = QtWidgets.QLabel('Fine Step')
             if positionerName == 'Stage':
                 self.pars['StepEdit' + parNameSuffix] = QtWidgets.QLineEdit('25')
             else:
                 self.pars['StepEdit' + parNameSuffix] = QtWidgets.QLineEdit('0.05')
 
-            self.pars['StepUnit' + parNameSuffix] = QtWidgets.QLabel(' µm')
+            self.pars['StepValuesWidget' + parNameSuffix] = QtWidgets.QWidget()
+            stepValuesLayout = QtWidgets.QHBoxLayout(self.pars['StepValuesWidget' + parNameSuffix])
+            stepValuesLayout.setContentsMargins(0, 0, 0, 0)
+            stepValuesLayout.setSpacing(6)
+            self.pars['CoarseStepPreview' + parNameSuffix] = QtWidgets.QLabel()
+            self.pars['StepUnit' + parNameSuffix] = QtWidgets.QLabel('µm')
+
+            self.pars['StepEdit' + parNameSuffix].setSizePolicy(
+                QtWidgets.QSizePolicy.Expanding,
+                QtWidgets.QSizePolicy.Fixed
+            )
+            self.pars['CoarseStepPreview' + parNameSuffix].setSizePolicy(
+                QtWidgets.QSizePolicy.Expanding,
+                QtWidgets.QSizePolicy.Fixed
+            )
+            stepValuesLayout.addWidget(self.pars['StepEdit' + parNameSuffix], 1)
+            stepValuesLayout.addWidget(self.pars['CoarseStepPreview' + parNameSuffix], 1)
 
             self.grid.addWidget(self.pars['Label' + parNameSuffix], self.numPositioners, 0)
             self.grid.addWidget(self.pars['Position' + parNameSuffix], self.numPositioners, 1)
             self.grid.addWidget(self.pars['UpButton' + parNameSuffix], self.numPositioners, 2)
             self.grid.addWidget(self.pars['DownButton' + parNameSuffix], self.numPositioners, 3)
-            self.grid.addWidget(QtWidgets.QLabel('Step'), self.numPositioners, 4)
-            self.grid.addWidget(self.pars['StepEdit' + parNameSuffix], self.numPositioners, 5)
+            self.grid.addWidget(self.pars['FineStepLabel' + parNameSuffix], self.numPositioners, 4)
+            self.grid.addWidget(self.pars['StepValuesWidget' + parNameSuffix], self.numPositioners, 5)
             self.grid.addWidget(self.pars['StepUnit' + parNameSuffix], self.numPositioners, 6)
 
             # Connect signals
@@ -65,6 +170,12 @@ class PositionerWidget(Widget):
             self.pars['DownButton' + parNameSuffix].clicked.connect(
                 lambda *args, axis=axis: self.sigStepDownClicked.emit(positionerName, axis)
             )
+            self.pars['StepEdit' + parNameSuffix].textChanged.connect(
+                lambda *args, positionerName=positionerName, axis=axis:
+                self._updateCoarseStepPreview(positionerName, axis)
+            )
+            self._updateCoarseStepPreview(positionerName, axis)
+            self._refreshStepModeStyles()
 
             if speed:
                 self.pars['Speed'] = QtWidgets.QLabel(f'<strong>{0:.2f} µm/s</strong>')
@@ -94,6 +205,7 @@ class PositionerWidget(Widget):
         specified number of micrometers. """
         parNameSuffix = self._getParNameSuffix(positionerName, axis)
         self.pars['StepEdit' + parNameSuffix].setText(stepSize)
+        self._updateCoarseStepPreview(positionerName, axis)
 
     def getSpeed(self):
         """ Returns the step size of the specified positioner axis in
@@ -108,6 +220,284 @@ class PositionerWidget(Widget):
     def updatePosition(self, positionerName, axis, position):
         parNameSuffix = self._getParNameSuffix(positionerName, axis)
         self.pars['Position' + parNameSuffix].setText(f'<strong>{position:.2f} µm</strong>')
+
+    def setStepMode(self, coarseMode):
+        self._coarseMode = bool(coarseMode)
+        self.pars['CoarseModeButton'].setChecked(self._coarseMode)
+        self.pars['FineModeButton'].setChecked(not self._coarseMode)
+        self._refreshStepModeStyles()
+
+    def setCoarseStepMultiplier(self, multiplier):
+        self._coarseStepMultiplier = float(multiplier)
+        self._updateCoarseModeTooltip()
+        for positionerName, axes in self._positionerAxes.items():
+            for axis in axes:
+                self._updateCoarseStepPreview(positionerName, axis)
+        self._refreshStepModeStyles()
+
+    def showSettingsDialog(self, liveUpdateIntervalMs, positionerSettings, shortcutSettings=None,
+                           settingsValidator=None):
+        shortcutSettings = shortcutSettings or {}
+        dialog = QtWidgets.QDialog(self)
+        dialog.setWindowTitle('Settings')
+
+        layout = QtWidgets.QVBoxLayout(dialog)
+
+        generalGrid = QtWidgets.QGridLayout()
+
+        intervalSpinBox = QtWidgets.QSpinBox()
+        intervalSpinBox.setRange(100, 2000)
+        intervalSpinBox.setSingleStep(50)
+        intervalSpinBox.setSuffix(' ms')
+        intervalSpinBox.setValue(int(liveUpdateIntervalMs))
+        generalGrid.addWidget(QtWidgets.QLabel('Live update interval'), 0, 0)
+        generalGrid.addWidget(intervalSpinBox, 0, 1)
+
+        movementPrefixCombo = self._makePrefixCombo(shortcutSettings.get('movementPrefix', 'Shift'))
+        coarseMultiplierSpinBox = QtWidgets.QDoubleSpinBox()
+        coarseMultiplierSpinBox.setRange(1.0, 1000.0)
+        coarseMultiplierSpinBox.setDecimals(2)
+        coarseMultiplierSpinBox.setSingleStep(0.5)
+        coarseMultiplierSpinBox.setValue(float(shortcutSettings.get('coarseStepMultiplier', 5.0)))
+
+        modeToggleShortcut = self._makeShortcutEditor(shortcutSettings.get('modeToggle', ''))
+        generalGrid.addWidget(QtWidgets.QLabel('Coarse/Fine shortcut'), 1, 0)
+        generalGrid.addWidget(modeToggleShortcut, 1, 1)
+        generalGrid.addWidget(QtWidgets.QLabel('Coarse multiplier'), 1, 2)
+        generalGrid.addWidget(coarseMultiplierSpinBox, 1, 3)
+        generalGrid.setColumnStretch(4, 1)
+        layout.addLayout(generalGrid)
+
+        self._addSettingsSectionTitle(layout, 'Positioner Shortcuts')
+
+        settingsGrid = QtWidgets.QGridLayout()
+        settingsGrid.addWidget(QtWidgets.QLabel('Movement prefix'), 0, 0)
+        settingsGrid.addWidget(movementPrefixCombo, 0, 1)
+        settingsGrid.addWidget(QtWidgets.QLabel('Positioner'), 1, 0)
+        settingsGrid.addWidget(QtWidgets.QLabel('+ shortcut'), 1, 1)
+        settingsGrid.addWidget(QtWidgets.QLabel('- shortcut'), 1, 2)
+        settingsGrid.addWidget(QtWidgets.QLabel('Live update'), 1, 3)
+
+        liveUpdateChecks = {}
+        shortcutEditors = {}
+        positionerShortcuts = shortcutSettings.get(
+            'movement',
+            shortcutSettings.get('positioners', {})
+        )
+        row = 2
+        for positionerName, axes in self._positionerAxes.items():
+            settings = positionerSettings.get(positionerName, {})
+            liveUpdateAvailable = bool(settings.get('liveUpdateAvailable', False))
+            liveUpdateEnabled = bool(settings.get('liveUpdateEnabled', False)) and liveUpdateAvailable
+            shortcutEditors[positionerName] = {}
+
+            liveUpdateCheck = QtWidgets.QCheckBox()
+            liveUpdateCheck.setEnabled(liveUpdateAvailable)
+            liveUpdateCheck.setChecked(liveUpdateEnabled)
+            liveUpdateChecks[positionerName] = liveUpdateCheck
+
+            for axisIndex, axis in enumerate(axes):
+                label = f'{positionerName} -- {axis}' if positionerName != axis else positionerName
+                settingsGrid.addWidget(QtWidgets.QLabel(label), row, 0)
+
+                axisShortcuts = positionerShortcuts.get(positionerName, {}).get(axis, {})
+                upShortcut = self._makeShortcutEditor(axisShortcuts.get('up', ''))
+                settingsGrid.addWidget(upShortcut, row, 1)
+
+                downShortcut = self._makeShortcutEditor(axisShortcuts.get('down', ''))
+                settingsGrid.addWidget(downShortcut, row, 2)
+                shortcutEditors[positionerName][axis] = {
+                    'up': upShortcut,
+                    'down': downShortcut
+                }
+
+                if axisIndex == 0:
+                    settingsGrid.addWidget(liveUpdateCheck, row, 3)
+
+                row += 1
+
+        layout.addLayout(settingsGrid)
+
+        self._addSettingsSectionTitle(layout, 'Joystick')
+
+        joystickGrid = QtWidgets.QGridLayout()
+        joystickShortcut = self._makeShortcutEditor(shortcutSettings.get('joystickToggle', ''))
+        joystickAvailable = bool(shortcutSettings.get('joystickAvailable', False))
+        joystickShortcut.setEnabled(joystickAvailable)
+        joystickGrid.addWidget(QtWidgets.QLabel('Joystick shortcut'), 0, 0)
+        joystickGrid.addWidget(joystickShortcut, 0, 1)
+
+        joystickAutoReenableCheck = QtWidgets.QCheckBox('Joystick automatic re-enabling')
+        joystickAutoReenableCheck.setEnabled(joystickAvailable)
+        joystickAutoReenableCheck.setChecked(
+            bool(shortcutSettings.get('joystickAutoReenable', True))
+        )
+        joystickAutoReenableDelaySpinBox = QtWidgets.QDoubleSpinBox()
+        joystickAutoReenableDelaySpinBox.setRange(1.0, 10.0)
+        joystickAutoReenableDelaySpinBox.setDecimals(1)
+        joystickAutoReenableDelaySpinBox.setSingleStep(0.5)
+        joystickAutoReenableDelaySpinBox.setSuffix(' s')
+        joystickAutoReenableDelaySpinBox.setValue(
+            float(shortcutSettings.get('joystickAutoReenableDelayS', 5.0))
+        )
+        joystickAutoReenableDelaySpinBox.setEnabled(
+            joystickAvailable and joystickAutoReenableCheck.isChecked()
+        )
+        joystickAutoReenableCheck.toggled.connect(
+            lambda checked: joystickAutoReenableDelaySpinBox.setEnabled(
+                joystickAvailable and checked
+            )
+        )
+        joystickGrid.addWidget(joystickAutoReenableCheck, 1, 0, 1, 2)
+        joystickGrid.addWidget(QtWidgets.QLabel('Debounce time'), 1, 2)
+        joystickGrid.addWidget(joystickAutoReenableDelaySpinBox, 1, 3)
+        joystickGrid.setColumnStretch(4, 1)
+        layout.addLayout(joystickGrid)
+
+        def collectSettings():
+            shortcuts = {}
+            for positionerName, axisEditors in shortcutEditors.items():
+                shortcuts[positionerName] = {}
+                for axis, editors in axisEditors.items():
+                    shortcuts[positionerName][axis] = {
+                        'up': self._shortcutEditorText(editors['up']),
+                        'down': self._shortcutEditorText(editors['down'])
+                    }
+
+            return {
+                'liveUpdateIntervalMs': intervalSpinBox.value(),
+                'liveUpdateEnabled': {
+                    positionerName: liveUpdateCheck.isChecked()
+                    for positionerName, liveUpdateCheck in liveUpdateChecks.items()
+                },
+                'movementPrefix': movementPrefixCombo.currentText(),
+                'coarseStepMultiplier': coarseMultiplierSpinBox.value(),
+                'modeToggle': self._shortcutEditorText(modeToggleShortcut),
+                'joystickToggle': self._shortcutEditorText(joystickShortcut),
+                'joystickAutoReenable': (
+                    joystickAutoReenableCheck.isChecked()
+                    if joystickAvailable else
+                    bool(shortcutSettings.get('joystickAutoReenable', True))
+                ),
+                'joystickAutoReenableDelayS': joystickAutoReenableDelaySpinBox.value(),
+                'movement': shortcuts
+            }
+
+        acceptedSettings = {}
+
+        def acceptSettings():
+            settings = collectSettings()
+            if settingsValidator is not None:
+                warning = settingsValidator(settings)
+                if warning:
+                    QtWidgets.QMessageBox.warning(dialog, 'Settings', warning)
+                    return
+
+            acceptedSettings.update(settings)
+            dialog.accept()
+
+        validateButton = guitools.BetterPushButton('Validate')
+        validateButton.clicked.connect(acceptSettings)
+        layout.addWidget(validateButton, alignment=QtCore.Qt.AlignRight)
+
+        if dialog.exec_() == QtWidgets.QDialog.Accepted:
+            self.sigSettingsChanged.emit(acceptedSettings)
+
+    def _addSettingsSectionTitle(self, layout, title):
+        container = QtWidgets.QWidget()
+        sectionLayout = QtWidgets.QHBoxLayout(container)
+        sectionLayout.setContentsMargins(0, 8, 0, 4)
+        sectionLayout.setSpacing(8)
+
+        leftLine = QtWidgets.QFrame()
+        leftLine.setFrameShape(QtWidgets.QFrame.HLine)
+        leftLine.setFrameShadow(QtWidgets.QFrame.Sunken)
+
+        rightLine = QtWidgets.QFrame()
+        rightLine.setFrameShape(QtWidgets.QFrame.HLine)
+        rightLine.setFrameShadow(QtWidgets.QFrame.Sunken)
+
+        label = QtWidgets.QLabel(title)
+        label.setStyleSheet('font-weight: bold;')
+
+        sectionLayout.addWidget(leftLine, 1)
+        sectionLayout.addWidget(label)
+        sectionLayout.addWidget(rightLine, 1)
+        layout.addWidget(container)
+
+    def _makePrefixCombo(self, currentPrefix):
+        combo = QtWidgets.QComboBox()
+        prefixes = ['Ctrl', 'Shift', 'Alt', 'Meta']
+        combo.addItems(prefixes)
+        if currentPrefix in prefixes:
+            combo.setCurrentText(currentPrefix)
+        return combo
+
+    def _makeShortcutEditor(self, shortcut):
+        if hasattr(QtWidgets, "QKeySequenceEdit"):
+            editor = QtWidgets.QKeySequenceEdit()
+            if hasattr(editor, "setMaximumSequenceLength"):
+                editor.setMaximumSequenceLength(1)
+            if shortcut:
+                editor.setKeySequence(QtGui.QKeySequence(shortcut))
+        else:
+            editor = QtWidgets.QLineEdit(shortcut or "")
+            editor.setPlaceholderText("Up")
+        return editor
+
+    def _shortcutEditorText(self, editor):
+        if hasattr(QtWidgets, "QKeySequenceEdit") and isinstance(editor, QtWidgets.QKeySequenceEdit):
+            sequence = editor.keySequence()
+            try:
+                return sequence.toString(QtGui.QKeySequence.NativeText).strip()
+            except TypeError:
+                return sequence.toString().strip()
+
+        return editor.text().strip()
+
+    def _updateCoarseStepPreview(self, positionerName, axis):
+        parNameSuffix = self._getParNameSuffix(positionerName, axis)
+        preview = self.pars.get('CoarseStepPreview' + parNameSuffix)
+        if preview is None:
+            return
+
+        try:
+            fineStep = float(self.pars['StepEdit' + parNameSuffix].text())
+            coarseStep = fineStep * self._coarseStepMultiplier
+            preview.setText(f'Coarse: {self._formatStepValue(coarseStep)}')
+        except ValueError:
+            preview.setText('Coarse: -')
+
+    def _refreshStepModeStyles(self):
+        fineLabelStyle = 'color: gray;' if self._coarseMode else ''
+        fineEditStyle = 'color: gray;' if self._coarseMode else ''
+        coarsePreviewStyle = (
+            'font-weight: bold; color: rgb(80, 140, 220);'
+            if self._coarseMode else
+            'color: gray;'
+        )
+
+        for positionerName, axes in self._positionerAxes.items():
+            for axis in axes:
+                parNameSuffix = self._getParNameSuffix(positionerName, axis)
+                fineLabel = self.pars.get('FineStepLabel' + parNameSuffix)
+                fineEdit = self.pars.get('StepEdit' + parNameSuffix)
+                coarsePreview = self.pars.get('CoarseStepPreview' + parNameSuffix)
+
+                if fineLabel is not None:
+                    fineLabel.setStyleSheet(fineLabelStyle)
+                if fineEdit is not None:
+                    fineEdit.setStyleSheet(fineEditStyle)
+                if coarsePreview is not None:
+                    coarsePreview.setStyleSheet(coarsePreviewStyle)
+
+    def _formatStepValue(self, value):
+        return f'{value:.6g}'
+
+    def _updateCoarseModeTooltip(self):
+        self.pars['CoarseModeButton'].setToolTip(
+            f'{self._formatStepValue(self._coarseStepMultiplier)}x'
+        )
 
     def _getParNameSuffix(self, positionerName, axis):
         return f'{positionerName}--{axis}'

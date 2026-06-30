@@ -4,7 +4,7 @@ import numpy as np
 import skimage
 from PyQt5.QtGui import QGuiApplication
 from PyQt5.QtWidgets import QLabel, QApplication
-from cupy import asfortranarray
+#from cupy import asfortranarray
 from matplotlib import pyplot as plt
 from qtpy import QtCore, QtGui
 

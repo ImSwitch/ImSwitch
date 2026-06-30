@@ -1,0 +1,18 @@
+{
+  "display": "RS232 Serial Device",
+  "category": "rs232devices",
+  "top": [],
+  "props": [
+    {"key": "port",             "label": "Port",             "type": "text",   "default": "COM3",  "req": true,  "grp": "Basic",    "tip": "e.g. COM3 or ASRL3::INSTR",  "opts": []},
+    {"key": "baudrate",         "label": "Baud Rate",        "type": "select", "default": "9600",  "req": true,  "grp": "Basic",    "tip": "",                           "opts": ["9600","19200","38400","57600","115200"]},
+    {"key": "bytesize",         "label": "Byte Size",        "type": "int",    "default": 8,       "req": false, "grp": "Advanced", "tip": "",                           "opts": []},
+    {"key": "parity",           "label": "Parity",           "type": "select", "default": "none",  "req": false, "grp": "Advanced", "tip": "",                           "opts": ["none","even","odd"]},
+    {"key": "stopbits",         "label": "Stop Bits",        "type": "select", "default": "1",     "req": false, "grp": "Advanced", "tip": "",                           "opts": ["1","2"]},
+    {"key": "encoding",         "label": "Encoding",         "type": "text",   "default": "ascii", "req": false, "grp": "Advanced", "tip": "",                           "opts": []},
+    {"key": "recv_termination", "label": "Recv Termination", "type": "select", "default": "\\n",   "req": false, "grp": "Advanced", "tip": "",                           "opts": ["\\n","\\r","\\r\\n"]},
+    {"key": "send_termination", "label": "Send Termination", "type": "select", "default": "\\n",   "req": false, "grp": "Advanced", "tip": "",                           "opts": ["\\n","\\r","\\r\\n"]},
+    {"key": "rtscts",           "label": "RTS/CTS",          "type": "text",   "default": "false", "req": false, "grp": "Advanced", "tip": "",                           "opts": []},
+    {"key": "dsrdtr",           "label": "DSR/DTR",          "type": "text",   "default": "false", "req": false, "grp": "Advanced", "tip": "",                           "opts": []},
+    {"key": "xonxoff",          "label": "XON/XOFF",         "type": "text",   "default": "false", "req": false, "grp": "Advanced", "tip": "",                           "opts": []}
+  ]
+}

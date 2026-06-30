@@ -408,8 +408,9 @@ class RecordingWorker(Worker):
                 nFramesPerDetector = {}
                 for detectorName in self.detectorNames:
                     nFramesPerDetector[detectorName] = recFrames * numCamTTL.get(detectorName, 1) 
-                maxFrames = max(nFramesPerDetector.values()) # constant: this value should never change 
-                
+                maxFrames = max(nFramesPerDetector.values())
+                # print(f"Aiming to capture {maxFrames} Frames", nFramesPerDetector, recFrames)
+
                 while (self.__recordingManager.record and
                        any([currentFrame[detectorName] < maxFrames
                             for detectorName in self.detectorNames])):

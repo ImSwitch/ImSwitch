@@ -1,5 +1,7 @@
+import copy
 import functools
 import os
+import traceback
 
 from abc import abstractmethod
 
@@ -32,6 +34,22 @@ class ImConWidgetController(WidgetController):
         super().__init__(*args, **kwargs)
 
 
+class SetupModeMixin:
+    """Mixin for controllers that can snapshot and restore setup-mode state.
+
+    The setup-mode backend discovers controllers implementing this mixin and
+    delegates component-specific serialization to them. Returned state must be
+    JSON-serializable. Applying state should return a list of warning strings
+    instead of raising for recoverable mismatches, such as missing hardware.
+    """
+
+    def getSetupModeState(self):
+        raise NotImplementedError
+
+    def applySetupModeState(self, state):
+        raise NotImplementedError
+
+
 class LiveUpdatedController(ImConWidgetController):
     """ Superclass for those controllers that will update the widgets with an
     upcoming frame from the camera.  Should be either active or not, and have
@@ -45,7 +63,7 @@ class LiveUpdatedController(ImConWidgetController):
         raise NotImplementedError
 
 
-class SuperScanController(ImConWidgetController):
+class SuperScanController(SetupModeMixin, ImConWidgetController):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Make non-overwritable functions
@@ -171,7 +189,7 @@ class SuperScanController(ImConWidgetController):
         for detector in self._setupInfo.detectors.keys():
             if self._master.scanManager.getTTLCycleSignalsDict(self._digitalParameterDict).get(detector,None) is not None:
                 ttl=self._master.scanManager.getTTLCycleSignalsDict(self._digitalParameterDict).get(detector).tolist()
-                numCamTTL[detector] = len ([i for i in range(len(ttl)-1) if ttl[i+1]-ttl[i] == 1])
+                numCamTTL[detector] = len([i for i in range(len(ttl)-1) if ttl[i+1]-ttl[i] == 1])
         return numCamTTL
 
     def getNumScanPositions(self):
@@ -269,6 +287,134 @@ class SuperScanController(ImConWidgetController):
     def sendScanParameters(self):
         self.getParameters()
         self._commChannel.sigSendScanParameters.emit(self._analogParameterDict, self._digitalParameterDict, self._positionersScan)
+
+    def getSetupModeState(self):
+        """Return the current scan parameter dictionaries for setup modes."""
+        self.getParameters()
+
+        mode = {
+            'repeatEnabled': (
+                self._widget.repeatEnabled() if hasattr(self._widget, 'repeatEnabled') else None
+            )
+        }
+
+        if hasattr(self._widget, 'isScanMode'):
+            mode['scanMode'] = self._widget.isScanMode()
+        if hasattr(self._widget, 'isContLaserMode'):
+            mode['contLaserMode'] = self._widget.isContLaserMode()
+
+        scanInfo = getattr(self._setupInfo, 'scan', None)
+
+        return {
+            'controller': type(self).__name__,
+            'scanWidgetType': getattr(scanInfo, 'scanWidgetType', None),
+            'analogParameterDict': copy.deepcopy(self._analogParameterDict),
+            'digitalParameterDict': copy.deepcopy(self._digitalParameterDict),
+            'positionersScan': list(self._positionersScan),
+            'mode': mode,
+        }
+
+    def applySetupModeState(self, state):
+        """Apply scan parameter dictionaries from a setup mode."""
+        warnings = []
+
+        if self.isRunning:
+            return ['Scan is currently running; scan parameters were not changed.']
+
+        if not isinstance(state, dict):
+            return ['Saved scan state is not a dictionary.']
+
+        savedWidgetType = state.get('scanWidgetType')
+        currentWidgetType = getattr(getattr(self._setupInfo, 'scan', None), 'scanWidgetType', None)
+        if savedWidgetType and currentWidgetType and savedWidgetType != currentWidgetType:
+            warnings.append(
+                f'Saved scan widget type "{savedWidgetType}" differs from current "{currentWidgetType}".'
+            )
+
+        analogParameterDict = copy.deepcopy(state.get('analogParameterDict', {}))
+        digitalParameterDict = copy.deepcopy(state.get('digitalParameterDict', {}))
+
+        if not isinstance(analogParameterDict, dict):
+            return warnings + ['Saved analog scan parameters are not a dictionary.']
+        if not isinstance(digitalParameterDict, dict):
+            return warnings + ['Saved digital scan parameters are not a dictionary.']
+
+        missingPositioners = self._getMissingScanDevices(
+            analogParameterDict.get('target_device', []),
+            set(self.positioners.keys())
+        )
+        if missingPositioners:
+            warnings.append(
+                f'Missing scan positioner(s): {", ".join(missingPositioners)}. Scan state was not applied.'
+            )
+            return warnings
+
+        scanDimDevices = analogParameterDict.get('scan_dim_target_device', [])
+        missingScanDims = self._getMissingScanDevices(scanDimDevices, set(self.positioners.keys()))
+        if missingScanDims:
+            warnings.append(
+                f'Missing scan dimension positioner(s): {", ".join(missingScanDims)}. Scan state was not applied.'
+            )
+            return warnings
+
+        missingTTLDevices = self._getMissingScanDevices(
+            digitalParameterDict.get('target_device', []),
+            set(self.TTLDevices.keys())
+        )
+        if missingTTLDevices:
+            warnings.append(
+                f'Missing TTL device(s): {", ".join(missingTTLDevices)}. Scan state was not applied.'
+            )
+            return warnings
+
+        self._analogParameterDict = analogParameterDict
+        self._digitalParameterDict = digitalParameterDict
+
+        positionersScan = state.get(
+            'positionersScan',
+            analogParameterDict.get('scan_dim_target_device', self._positionersScan)
+        )
+        if isinstance(positionersScan, (list, tuple)):
+            self._positionersScan = list(positionersScan)
+        elif positionersScan is not None:
+            warnings.append('Saved scan dimension selection is invalid; keeping the current selection.')
+
+        mode = state.get('mode', {}) or {}
+        try:
+            if mode.get('scanMode') is True and hasattr(self._widget, 'setScanMode'):
+                self._widget.setScanMode()
+            elif mode.get('contLaserMode') is True and hasattr(self._widget, 'setContLaserMode'):
+                self._widget.setContLaserMode()
+
+            if mode.get('repeatEnabled') is not None and hasattr(self._widget, 'setRepeatEnabled'):
+                self._widget.setRepeatEnabled(bool(mode['repeatEnabled']))
+
+            self.setParameters()
+            self.signalDict = None
+            self.scanInfoDict = None
+
+            try:
+                self.updateScanStageAttrs()
+                self.updateScanTTLAttrs()
+            except Exception:
+                self._logger.error('Failed to update shared scan attributes after setup-mode apply')
+                self._logger.error(traceback.format_exc())
+                warnings.append('Scan parameters were applied, but shared scan attributes could not be updated.')
+        except Exception as e:
+            self._logger.error('Failed to apply setup-mode scan state')
+            self._logger.error(traceback.format_exc())
+            warnings.append(f'Failed to apply scan state: {e}')
+
+        return warnings
+
+    def _getMissingScanDevices(self, deviceNames, availableNames):
+        missing = []
+        for deviceName in deviceNames or []:
+            if deviceName in (None, 'None'):
+                continue
+            if deviceName not in availableNames:
+                missing.append(str(deviceName))
+        return sorted(set(missing))
 
 _attrCategoryStage = 'ScanStage'
 _attrCategoryTTL = 'ScanTTL'

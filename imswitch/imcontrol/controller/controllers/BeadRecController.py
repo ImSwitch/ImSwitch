@@ -267,7 +267,7 @@ class BeadRecController(ImConWidgetController):
 
     def onEndedScan(self):
         self.ongoingScan=False
-        self.currentRunImgs[self.axialName] = np.resize(self.recIm, (self.dims[1] + 1,self.dims[0] + 1)) # we always store unscaled img
+        self.currentRunImgs[self.axialName] = np.resize(self.recIm, (self.dims[1],self.dims[0])) # we always store unscaled img
     
     def onAutoAxialToggled(self,state:bool = False):
         if state:
@@ -275,7 +275,7 @@ class BeadRecController(ImConWidgetController):
         else:
             self.autoAxial=False
     
-    def onNewAxialListBuffer(self,axialList:list):
+    def onNewAxialListBuffer(self, axialList:list):
         """ clean up self.currentRunImgs to not keep previous XZ/YZ and widget list """
         self.currentRunImgs={}
         self._widget.removeCurrentRunItems()
@@ -342,7 +342,7 @@ class BeadRecController(ImConWidgetController):
     
     def update(self):
         """"Updates image display with current recorded image self.recIm"""
-        self.imDisplay = np.resize(self.recIm, (self.dims[1] + 1,self.dims[0] + 1))
+        self.imDisplay = np.resize(self.recIm, (self.dims[1],self.dims[0]))
         if self._widget.scaleButton.isChecked():
             self.imDisplay = self.rescale(self.imDisplay)
         self._widget.updateImage(self.imDisplay)
@@ -392,7 +392,7 @@ class BeadWorker(Worker):
     
     def init1DArray(self):
         dims = np.array(self.__controller.dims)
-        N = (dims[0] + 1) * (dims[1] + 1)
+        N = (dims[0]) * (dims[1])
         self.__controller.recIm = np.zeros(N)
         return N
 

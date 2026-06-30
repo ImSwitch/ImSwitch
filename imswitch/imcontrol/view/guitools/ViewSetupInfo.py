@@ -50,6 +50,7 @@ class ViewSetupInfo(SetupInfo):
     - ``View`` (image controls widget)
     - ``Recording`` (recording widget)
     - ``Image`` (image display widget)
+    - ``SetupModes`` (general setup modes widget)
     - ``FocusLock`` (focus lock widget; requires ``focusLock`` field to be
       defined)
     - ``Autofocus`` (autofocus widget; requires ``focusLock`` field to be
@@ -64,6 +65,7 @@ class ViewSetupInfo(SetupInfo):
     - ``AlignmentLine`` (line alignment tool widget)
     - ``uLenses`` (uLenses tool widget; requires ``Image`` widget)
     - ``FFT`` (FFT tool widget)
+    - ``FociAffine`` (foci affine alignment widget; requires ``Image`` widget)
     - ``Console`` (Python console widget)
     - ``EtSTED`` (etSTED widget)
     - ``Rotator`` (Rotator widget; requires "Rotator" field to be defined)

@@ -1,9 +1,9 @@
-from qtpy import QtCore, QtGui, QtWidgets
+from qtpy import QtCore
 from imswitch.imcommon.model import initLogger
-from imswitch.imcontrol.controller.basecontrollers import ImConWidgetController
+from imswitch.imcontrol.controller.basecontrollers import ImConWidgetController, SetupModeMixin
 
 
-class LeicaStandController(ImConWidgetController):
+class LeicaStandController(SetupModeMixin, ImConWidgetController):
     """Click-driven controller for LeicaStandWidget."""
 
     FLUO_SHUTTER_DELAY_MS = 800
@@ -15,14 +15,11 @@ class LeicaStandController(ImConWidgetController):
         self._manager = None
         self._last_selected_fluo_cube_name = None
         self._current_mode = "FLUO"
+        self._current_port_side = "Left"
 
         stand_manager = getattr(self._master, "standManager", None)
 
         if stand_manager is None:
-            self._widget.setConnected(False)
-            return
-
-        if getattr(stand_manager, "mocker", False):
             self._widget.setConnected(False)
             return
 
@@ -39,14 +36,6 @@ class LeicaStandController(ImConWidgetController):
 
         self._connect_widget_signals()
         self._init_widget()
-        self._init_shortcuts()
-
-    def _init_shortcuts(self):
-        self._toggleModeShortcut = QtWidgets.QShortcut(
-            QtGui.QKeySequence("F2"),
-            self._widget
-        )
-        self._toggleModeShortcut.activated.connect(self.toggleMode)
 
     def toggleMode(self):
         if self._manager is None or not self._manager.isConnected():
@@ -77,8 +66,55 @@ class LeicaStandController(ImConWidgetController):
             self._widget.setCurrentCube(self._last_selected_fluo_cube_name)
 
         self._widget.setCurrentPortSide("Left")
+        self._current_port_side = "Left"
         self._widget.setMode(self._current_mode)
         self._widget.setConnected(self._manager.isConnected())
+
+    def getSetupModeState(self):
+        return {
+            "connected": bool(self._manager is not None and self._manager.isConnected()),
+            "mode": self._current_mode,
+            "lastSelectedFluoCubeName": self._last_selected_fluo_cube_name,
+            "portSide": self._current_port_side,
+        }
+
+    def applySetupModeState(self, state):
+        warnings = []
+
+        if self._manager is None:
+            return ["Leica stand manager is not available."]
+
+        if not self._manager.isConnected():
+            self._widget.setConnected(False)
+            return ["Leica stand is not connected."]
+
+        if not isinstance(state, dict):
+            return ["Saved Leica stand state is not a dictionary."]
+
+        cube_name = state.get("lastSelectedFluoCubeName")
+        if cube_name:
+            if cube_name not in self._cube_name_to_slot:
+                warnings.append(f'Leica fluorescence cube "{cube_name}" is not available.')
+            else:
+                self._last_selected_fluo_cube_name = cube_name
+                self._widget.setCurrentCube(cube_name)
+
+        mode = state.get("mode")
+        if mode == "FLUO":
+            self.setFluoMode()
+        elif mode == "CS":
+            self.setCSMode()
+        elif mode is not None:
+            warnings.append(f'Unknown Leica stand mode "{mode}".')
+
+        port_side = state.get("portSide")
+        if port_side in ("Left", "Right"):
+            self._widget.setCurrentPortSide(port_side)
+            self.setPortSideByName(port_side)
+        elif port_side is not None:
+            warnings.append(f'Unknown Leica stand port side "{port_side}".')
+
+        return warnings
 
     def _safe_call(self, func, *args):
         try:
@@ -122,13 +158,13 @@ class LeicaStandController(ImConWidgetController):
         self._safe_call(self._manager.setCameraPort)
 
         QtCore.QTimer.singleShot(
-            self.FLUO_SHUTTER_DELAY_MS, self._finishSetFluoMode
+            self.FLUO_SHUTTER_DELAY_MS, self._setILshutterON
         )
 
         self._current_mode = "FLUO"
         self._widget.setMode(self._current_mode)
 
-    def _finishSetFluoMode(self):
+    def _setILshutterON(self):
         if not self._manager.isConnected():
             self._widget.setConnected(False)
             return
@@ -151,6 +187,7 @@ class LeicaStandController(ImConWidgetController):
         self._safe_call(self._manager.setMagnScan)
 
         self._widget.setCurrentPortSide("Left")
+        self._current_port_side = "Left"
 
         self._current_mode = "CS"
         self._widget.setMode(self._current_mode)
@@ -164,6 +201,10 @@ class LeicaStandController(ImConWidgetController):
         if self._current_mode == "FLUO" and self._manager.isConnected():
             slot = self._cube_name_to_slot[cube_name]
             self._safe_call(self._manager.setCube, slot)
+            QtCore.QTimer.singleShot(
+                self.FLUO_SHUTTER_DELAY_MS, self._setILshutterON
+        )
+
 
     def setPortSideByName(self, value):
         if not self._manager.isConnected():
@@ -174,3 +215,6 @@ class LeicaStandController(ImConWidgetController):
             self._safe_call(self._manager.setMagnScan)
         elif value == "Right":
             self._safe_call(self._manager.setMagn1)
+
+        if value in ("Left", "Right"):
+            self._current_port_side = value

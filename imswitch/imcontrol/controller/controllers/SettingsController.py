@@ -6,7 +6,7 @@ import numpy as np
 from imswitch.imcommon.model import APIExport
 from imswitch.imcontrol.model import configfiletools
 from imswitch.imcontrol.view import guitools as guitools
-from ..basecontrollers import ImConWidgetController
+from ..basecontrollers import ImConWidgetController, SetupModeMixin
 
 
 @dataclass
@@ -26,7 +26,7 @@ class SettingsControllerParams:
     allDetectorsFrame: Any
 
 
-class SettingsController(ImConWidgetController):
+class SettingsController(SetupModeMixin, ImConWidgetController):
     """ Linked to SettingsWidget."""
 
     def __init__(self, *args, **kwargs):
@@ -425,6 +425,265 @@ class SettingsController(ImConWidgetController):
 
     def getCurrentParams(self):
         return self.allParams[self._master.detectorsManager.getCurrentDetectorName()]
+
+    def getSetupModeState(self):
+        detectors = {}
+        currentDetectorName = None
+
+        if self._master.detectorsManager.hasDevices():
+            try:
+                currentDetectorName = self._master.detectorsManager.getCurrentDetectorName()
+            except Exception:
+                currentDetectorName = None
+
+        for dName, dManager in self._master.detectorsManager:
+            if not dManager.forAcquisition:
+                continue
+
+            params = self.allParams.get(dName)
+
+            detectorParameters = {}
+            for parameterName, parameter in dManager.parameters.items():
+                detectorParameters[parameterName] = {
+                    "value": parameter.value,
+                    "editable": bool(parameter.editable),
+                }
+
+            frameMode = self._detectDetectorFrameMode(dManager, params)
+            detectors[dName] = {
+                "model": dManager.model,
+                "binning": dManager.binning,
+                "roi": [*dManager.frameStart, *dManager.shape],
+                "frameMode": frameMode,
+                "roiMode": frameMode,
+                "parameters": detectorParameters,
+            }
+
+        return {
+            "currentDetector": currentDetectorName,
+            "detectors": detectors,
+        }
+
+    def applySetupModeState(self, state):
+        warnings = []
+
+        if not self._master.detectorsManager.hasDevices():
+            return ["No detectors are available."]
+
+        if not isinstance(state, dict):
+            return ["Saved detector settings state is not a dictionary."]
+
+        savedDetectors = state.get("detectors", {})
+        if not isinstance(savedDetectors, dict):
+            return ["Saved detector entries are not a dictionary."]
+
+        availableDetectors = set(self._master.detectorsManager.getAllDeviceNames())
+
+        for detectorName, detectorState in savedDetectors.items():
+            if detectorName not in availableDetectors:
+                warnings.append(f'Detector "{detectorName}" is not available.')
+                continue
+
+            detector = self._master.detectorsManager[detectorName]
+            if not detector.forAcquisition:
+                warnings.append(f'Detector "{detectorName}" is not an acquisition detector.')
+                continue
+
+            if not isinstance(detectorState, dict):
+                warnings.append(f'Detector "{detectorName}" saved state is not a dictionary.')
+                continue
+
+            if "binning" in detectorState:
+                try:
+                    self.setDetectorBinning(detectorName, int(detectorState["binning"]))
+                except Exception as e:
+                    warnings.append(f'Failed to set detector "{detectorName}" binning: {e}')
+
+            roi = detectorState.get("roi")
+            frameMode = detectorState.get("roiMode", detectorState.get("frameMode"))
+            if roi is not None or frameMode is not None:
+                if not detector.croppable:
+                    warnings.append(f'Detector "{detectorName}" does not support ROI cropping.')
+                else:
+                    try:
+                        warnings.extend(self._applyDetectorFrameState(detector, detectorState))
+                    except Exception as e:
+                        warnings.append(f'Failed to set detector "{detectorName}" frame mode/ROI: {e}')
+
+            savedParameters = detectorState.get("parameters", {})
+            if not isinstance(savedParameters, dict):
+                warnings.append(f'Detector "{detectorName}" parameters are not a dictionary.')
+                continue
+
+            for parameterName, parameterState in savedParameters.items():
+                if parameterName not in detector.parameters:
+                    warnings.append(
+                        f'Detector "{detectorName}" parameter "{parameterName}" is not available.'
+                    )
+                    continue
+
+                currentParameter = detector.parameters[parameterName]
+                if not currentParameter.editable:
+                    continue
+
+                if isinstance(parameterState, dict):
+                    value = parameterState.get("value")
+                else:
+                    value = parameterState
+
+                try:
+                    def applyParameter(detector, parameterName=parameterName, value=value):
+                        detector.setParameter(parameterName, value)
+                        self.updateParamsFromDetector(detector=detector)
+
+                    self._master.detectorsManager.execOn(
+                        detectorName,
+                        applyParameter
+                    )
+                except Exception as e:
+                    warnings.append(
+                        f'Failed to set detector "{detectorName}" parameter "{parameterName}": {e}'
+                    )
+
+        currentDetector = state.get("currentDetector")
+        if currentDetector is not None:
+            if currentDetector in availableDetectors:
+                try:
+                    self._master.detectorsManager.setCurrentDetector(currentDetector)
+                except Exception as e:
+                    warnings.append(f'Failed to restore current detector "{currentDetector}": {e}')
+            else:
+                warnings.append(f'Saved current detector "{currentDetector}" is not available.')
+
+        try:
+            self.updateSharedAttrs()
+        except Exception as e:
+            warnings.append(f'Detector settings were applied, but shared attributes update failed: {e}')
+
+        return warnings
+
+    def _applyDetectorFrameState(self, detector, detectorState):
+        warnings = []
+        roi = detectorState.get("roi")
+        frameMode = detectorState.get("roiMode", detectorState.get("frameMode"))
+
+        resolvedFrameMode, resolvedROI, resolveWarnings = self._resolveDetectorFrameState(
+            detector, frameMode, roi
+        )
+        warnings.extend(resolveWarnings)
+
+        if resolvedROI is None:
+            return warnings
+
+        hpos, vpos, hsize, vsize = [int(value) for value in resolvedROI[:4]]
+
+        params = self.allParams.get(detector.name)
+        if params is not None:
+            self._ensureFrameModeChoice(params, resolvedFrameMode)
+            self._setFrameModeValue(params, resolvedFrameMode)
+            self._setFrameParamsWritable(params, resolvedFrameMode == 'Custom')
+            params.x0.setValue(hpos)
+            params.y0.setValue(vpos)
+            params.width.setValue(hsize)
+            params.height.setValue(vsize)
+
+        detector.crop(hpos, vpos, hsize, vsize)
+
+        if detector.name == self._master.detectorsManager.getCurrentDetectorName():
+            self._commChannel.sigAdjustFrame.emit(detector.shape)
+            self._widget.hideROI()
+
+        self.updateParamsFromDetector(detector=detector)
+        if params is not None:
+            self._setFrameModeValue(params, resolvedFrameMode)
+            self._setFrameParamsWritable(params, resolvedFrameMode == 'Custom')
+            self.updateFrameActionButtons(detector=detector)
+
+        return warnings
+
+    def _resolveDetectorFrameState(self, detector, frameMode, roi):
+        warnings = []
+
+        if frameMode == 'Full chip':
+            fullShape = detector.fullShape
+            return 'Full chip', [0, 0, fullShape[0], fullShape[1]], warnings
+
+        if frameMode and frameMode != 'Custom':
+            roiInfo = self._setupInfo.rois.get(frameMode)
+            if roiInfo is not None:
+                return frameMode, [roiInfo.x, roiInfo.y, roiInfo.w, roiInfo.h], warnings
+
+            warnings.append(
+                f'Detector "{detector.name}" frame mode "{frameMode}" is not available; '
+                'applying saved coordinates as Custom.'
+            )
+
+        if isinstance(roi, (list, tuple)) and len(roi) >= 4:
+            savedROI = [int(value) for value in roi[:4]]
+            fullChipROI = [0, 0, *detector.fullShape]
+            if savedROI == fullChipROI:
+                return 'Full chip', fullChipROI, warnings
+
+            for roiName, roiInfo in self._setupInfo.rois.items():
+                if savedROI == [roiInfo.x, roiInfo.y, roiInfo.w, roiInfo.h]:
+                    return roiName, savedROI, warnings
+
+            return 'Custom', roi, warnings
+
+        warnings.append(f'Detector "{detector.name}" ROI is invalid.')
+        return None, None, warnings
+
+    def _setFrameModeValue(self, params, frameMode):
+        disconnectedControllerSlot = False
+        try:
+            params.frameMode.sigValueChanged.disconnect(self.updateFrame)
+            disconnectedControllerSlot = True
+        except (TypeError, RuntimeError):
+            pass
+
+        try:
+            params.frameMode.setValue(frameMode)
+        finally:
+            if disconnectedControllerSlot:
+                params.frameMode.sigValueChanged.connect(self.updateFrame)
+
+    def _setFrameParamsWritable(self, params, writable):
+        params.x0.setWritable(writable)
+        params.y0.setWritable(writable)
+        params.width.setWritable(writable)
+        params.height.setWritable(writable)
+
+    def _ensureFrameModeChoice(self, params, frameMode):
+        limits = params.frameMode.opts.get('limits') or []
+        modeItems = list(limits.keys()) if isinstance(limits, dict) else list(limits)
+
+        if frameMode in modeItems:
+            return
+
+        newLimits = modeItems
+        insertIndex = max(0, len(newLimits) - 1)
+        newLimits.insert(insertIndex, frameMode)
+        params.frameMode.setLimits(newLimits)
+
+    def _detectDetectorFrameMode(self, detector, params):
+        if params is None:
+            return None
+
+        currentMode = params.frameMode.value()
+        currentROI = [*detector.frameStart, *detector.shape]
+        fullChipROI = [0, 0, *detector.fullShape]
+
+        if currentROI == fullChipROI:
+            return 'Full chip'
+
+        if currentMode and currentMode != 'Custom':
+            return currentMode
+
+        for roiName, roiInfo in self._setupInfo.rois.items():
+            if currentROI == [roiInfo.x, roiInfo.y, roiInfo.w, roiInfo.h]:
+                return roiName
+
+        return 'Custom'
 
     def getDetectorManagerFrameExecFunc(self):
         """ Returns the detector manager exec function that should be used for

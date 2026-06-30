@@ -5,6 +5,8 @@ from imswitch.imcommon.framework import Signal, Thread, Worker
 from imswitch.imcommon.model import initLogger
 from .DetectorManager import DetectorManager
 
+UpdateRateInPixels = 0.05 # update image every Xth pixel, depends on how efficient the data transfer code is.
+
 
 class APDManager(DetectorManager):
     """ DetectorManager that deals with an avalanche photodiode connected to a
@@ -112,7 +114,7 @@ class APDManager(DetectorManager):
 
     def getLatestFrame(self, is_save=True):
         S = int(getattr(self, "_linestep", 1))
-        if is_save and S > 1:
+        if is_save or S > 1:
             return self._image  # raw stack (1,S,Ny,Nx)
         return self._image_display  # always (1,Ny,Nx)
 
@@ -144,39 +146,36 @@ class APDManager(DetectorManager):
         n = min(len(pixels), Nx)
 
         if S > 1:
-            # raw buffer for 2D+linestep is typically: (1, S, Ny, Nx)
+            # raw buffer for 2D+linestep is typically: (1, S, Ny, Nx), but can be (1, S, Nz, Ny, Nx)
             y = y_expanded // S
             s = y_expanded % S
-            Ny = self._image[0].shape[-2]
-            if y >= Ny:
-                return
-            self._image[0, s, y, :n] = pixels[:n]
-            self.__currSlice = (s, y)
-            return
+        else:
+            y = y_expanded
+            s = None
 
         # ---- S == 1: could be 2D (1, Ny, Nx) OR 3D (1, Nz, Ny, Nx) (or higher) ----
-        if self._image.ndim == 3:
+        if np.squeeze(self._image).ndim == 2:
             # (1, Ny, Nx)
             Ny = self._image.shape[-2]
-            if y_expanded >= Ny:
+            if y >= Ny:
                 return
-            self._image[0, y_expanded, :n] = pixels[:n]
+            self._image[ y, :n] = pixels[:n]
             self.__currSlice = (y_expanded,)
+            if np.random.rand()<np.min((500/np.sum(self._image.shape), UpdateRateInPixels)): # update oa every Xth pixel, less for big datasets
+                self.sigImageUpdated.emit(self._image, True, self.scale)
             return
 
-        if self._image.ndim >= 4:
-            # (1, Nz, Ny, Nx) for Z stacks (and potentially more dims in front of Ny,Nx)
+        if np.squeeze(self._image).ndim >= 3:
+            # (Nz, Ny, Nx) for Z stacks (and potentially more dims in front of Ny,Nx)
             # pos[:-1] contains all outer indices (e.g. z), last is y
             outer = tuple(int(v) for v in pos[:-1])  # e.g. (z,) or (t,z,...) depending on scan
             # Build index into raw buffer:
             # raw layout is (1, ...outer..., y, x)
             # where y is always the second-to-last axis
-            y = y_expanded
-            Ny = self._image.shape[-2]
-            if y >= Ny:
-                return
-
-            idx = (0,) + outer + (y, slice(0, n))
+            if s is not None:
+                idx = (s,) + outer + (y, slice(0, n))
+            else:
+                idx = outer + (y, slice(0, n))
             self._image[idx] = pixels[:n]
             self.__currSlice = outer + (y,)
             return
@@ -189,24 +188,15 @@ class APDManager(DetectorManager):
           - 3D Z    : (Nx, Ny, Nz)   (S==1)
           - 3D Z + S: (Nx, Ny, Nz, S)
         Raw buffer is allocated as reversed + leading 1.
-        Display buffer is always (1, Ny, Nx).
         """
         img_dims = tuple(int(x) for x in img_dims)
 
-        # Use current linestep to interpret the last dimension
-        S = int(getattr(self, "_linestep", 1))
-        S = max(1, S)
-
-        img_dims_extra = tuple(reversed((*img_dims, 1)))
+        img_dims_extra = tuple(reversed(img_dims))
         if np.shape(self._image) != img_dims_extra:
             self._image = np.zeros(img_dims_extra)
             self.setShape(img_dims_extra)
 
-        # Always allocate display as 3D (1, Nz, Ny, Nx)
-        Nx = int(img_dims[0]) if len(img_dims) >= 1 else 1
-        Ny = int(img_dims[1]) if len(img_dims) >= 2 else 1
-        Nz = int(img_dims[2]) if len(img_dims) >= 3 else 1
-        self._image_display = np.zeros((1, Nz, Ny, Nx))
+        self._image_display = np.zeros(tuple([int(img_dims[i]) for i in range(max(len(img_dims), 2))]))
 
     def setParameter(self, name, value):
         pass
@@ -219,7 +209,7 @@ class APDManager(DetectorManager):
 
     def getChunk(self):
         if not self.__newFrameReady:
-            return np.empty((0, 0, 0))
+            return np.empty((0, 0))
         self.__newFrameReady = False
         return self._image_display.copy()  # already shape (1,Ny,Nx)
 
@@ -230,55 +220,33 @@ class APDManager(DetectorManager):
         """
         Called by ScanWorker.d3Step at the end of a full frame.
         Updates display buffer and triggers GUI redraw once per frame.
-
-        Works for:
-          - 2D acquisition: _image is (1, Y, X) or (Y, X)
-          - 3D acquisition: _image is (Z, Y, X) or (1, Z, Y, X) depending on your pipeline
         """
         if self._image_display.size == 0:
             return
 
         S = int(getattr(self, "_linestep", 1))
-
         if S > 1:
-            # Your existing logic: compute the “combined” display frame across linesteps
-            frame2d = self._compute_display_frame()
-        else:
-            im = np.asarray(self._image)
-
-            # raw buffer layout from initiateImage is reversed + leading 1
-            # Common cases:
-            # 2D: (1, Ny, Nx)
-            # 3D: (1, Nz, Ny, Nx)
-            if im.ndim == 3:
-                # (1, Ny, Nx)
-                frame2d = im[0]
-            elif im.ndim == 4:
-                # (1, Nz, Ny, Nx) -> max project over Z
-                frame2d = im[0]  # axis 0 is Z here
+            raw = np.squeeze(self._image)  # (S,..,Ny,Nx)
+            mode = getattr(self, "_linestep_view_mode", None)
+            if mode == "max":
+                im = np.nanmax(raw, axis=0)
+            elif mode == "slice":
+                idx = int(getattr(self, "_linestep_view_index", 0)) % raw.shape[0]
+                im = raw[idx]
+            elif mode == "sum":
+                im = np.nansum(raw, axis=0)
             else:
-                # fallback: take last two dims
-                frame2d = im.reshape((-1,) + im.shape[-2:])[-1]
+                im = raw
+        else:
+            im = np.squeeze(self._image)
 
-        # Write into display buffer (expected shape: (1, Y, X))
-        self._image_display[0] = frame2d
+        while im.ndim > self._image_display.ndim:
+            im = np.squeeze(im[0])
 
+        self._image_display = im
         self.updateLatestFrame(True)
         self.__newFrameReady = True
         self.sigNewFrame.emit()
-
-    def _compute_display_frame(self):
-        S = int(getattr(self, "_linestep", 1))
-        if S <= 1:
-            return self._image[0]
-        raw = self._image[0]  # (S,Ny,Nx)
-        mode = getattr(self, "_linestep_view_mode", "sum")
-        if mode == "max":
-            return np.nanmax(raw, axis=0)
-        if mode == "slice":
-            idx = int(getattr(self, "_linestep_view_index", 0)) % raw.shape[0]
-            return raw[idx]
-        return np.nansum(raw, axis=0)
 
     @property
     def shape(self):
@@ -351,6 +319,7 @@ class ScanWorker(Worker):
         self._frac_scan_det_rate = round(self._manager._detection_samplerate * scanInfoDict['scan_time_step'])
 
         # extract APD signals from signalDict
+        self._seq_signal = None  # set only if ttlmultiplying AND this device found in signalDict
         if self._manager._ttlmultiplying:
             for target in signalDict['TTLCycleSignalsDict'].keys():
                 if self._name == target:
@@ -360,35 +329,12 @@ class ScanWorker(Worker):
                     self._seq_signal[self._seq_signal == 0] = np.nan
                     break
 
-        # number of steps on each axis in image
-        img_dims_in = list(scanInfoDict["img_dims"])
-        axes = list(scanInfoDict.get("img_axes_with_linesteps", []))  # preferred
+        # img_dims contains physical scan axes only (no linestep); n_linesteps is separate.
+        scan_dims = list(scanInfoDict["img_dims"])
+        scan_axes = list(scanInfoDict.get("img_axes_phys", ["x", "y", "z"][:len(scan_dims)]))
+        self._linestep = max(1, int(scanInfoDict.get("n_linesteps", 1)))
 
-        # Fallback if axes not provided (older designers): assume linestep is last dim iff n_linesteps>1 and len matches
-        if not axes:
-            axes = list(scanInfoDict.get("img_axes_phys", []))
-            n_ls = int(scanInfoDict.get("n_linesteps", 1))
-            if n_ls > 1:
-                axes = axes + ["linestep"]
-
-        # Determine linestep size + index
-        linestep_idx = axes.index("linestep") if "linestep" in axes else None
-        if linestep_idx is not None:
-            self._linestep = int(img_dims_in[linestep_idx])
-        else:
-            self._linestep = int(scanInfoDict.get("n_linesteps", 1))
-        self._linestep = max(1, self._linestep)
-
-        # Build "scan recursion dims" (NO linestep axis here!)
-        if linestep_idx is not None:
-            scan_dims = [d for i, d in enumerate(img_dims_in) if i != linestep_idx]
-            scan_axes = [a for i, a in enumerate(axes) if i != linestep_idx]
-        else:
-            scan_dims = img_dims_in
-            scan_axes = axes
-
-        # We assume X/Y are present and Y is the slow scan axis
-        # (This matches your designer contract: img_axes_phys starts as ["x","y","z"...])
+        # Y is the slow scan axis
         y_idx = scan_axes.index("y") if "y" in scan_axes else 1
 
         # Loop dims: expand Y by linestep (Ny -> Ny*S), keep other dims unchanged
@@ -409,15 +355,15 @@ class ScanWorker(Worker):
         self._samples_total = round(scanInfoDict['scan_samples_total'] * self._frac_scan_det_rate)
         # samples to throw due to:
         self._throw_startzero = round(
-            scanInfoDict['scan_throw_startzero'] * self._frac_scan_det_rate)  # starting zero-padding
+            scanInfoDict.get('scan_throw_startzero', 0) * self._frac_scan_det_rate)  # starting zero-padding
         self._scan_pads_initpos = [round(initpos) * self._frac_scan_det_rate for initpos in
-                                   scanInfoDict['scan_pads_initpos']]  # smooth inital positioning times
-        self._throw_settling = round(scanInfoDict['scan_throw_settling'] * self._frac_scan_det_rate)  # settling time
+                                   scanInfoDict.get('scan_pads_initpos', [])]  # smooth inital positioning times
+        self._throw_settling = round(scanInfoDict.get('scan_throw_settling', 0) * self._frac_scan_det_rate)  # settling time
         self._throw_startacc = round(
-            scanInfoDict['scan_throw_startacc'] * self._frac_scan_det_rate)  # starting acceleration
+            scanInfoDict.get('scan_throw_startacc', 0) * self._frac_scan_det_rate)  # starting acceleration
 
-        self._phase_delay = int(scanInfoDict['phase_delay'])  # phase delay samples - galvo response time
-        self._smooth_axes = scanInfoDict['smooth_axes']
+        self._phase_delay = int(scanInfoDict.get('phase_delay', 0))  # phase delay samples - galvo response time
+        self._smooth_axes = scanInfoDict.get('smooth_axes', [False, False, False])
 
         # samples to throw due to smooth between d>2 step transitioning
         pad_initpos = self._scan_pads_initpos[0] if len(self._scan_pads_initpos) > 0 else 0
@@ -573,7 +519,7 @@ class ScanWorker(Worker):
             self._last_value = data[-1]
             # only take the first samples that corresponds to the samples during the line
             line_samples = data_cnts[:self._samples_d_scanstep[1]]
-            if self._manager._ttlmultiplying:
+            if self._manager._ttlmultiplying and self._seq_signal is not None:
                 ttl_seq = ttl_seq[:self._samples_d_scanstep[1]]
                 # mask with TTL sequence from ScanWidget, to say if detector should be on or not
                 line_samples = np.multiply(line_samples, 1 * ttl_seq)

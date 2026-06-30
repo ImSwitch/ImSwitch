@@ -8,6 +8,7 @@ from .ConsoleWidget import ConsoleWidget
 from .EtSTEDWidget import EtSTEDWidget
 from .EtMonalisaWidget import EtMonalisaWidget
 from .FFTWidget import FFTWidget
+from .FociAffineWidget import FociAffineWidget
 from .FocusLockWidget import FocusLockWidget
 from .ImageWidget import ImageWidget
 from .LaserWidget import LaserWidget
@@ -23,8 +24,12 @@ from .ScanWidgetAdvanced import ScanWidgetAdvanced
 from .RotationScanWidget import RotationScanWidget
 from .RotatorWidget import RotatorWidget
 from .SettingsWidget import SettingsWidget
+from .SetupModesWidget import SetupModesWidget
+from .SLMWidget import SLMWidget
 from .TilingWidget import TilingWidget
 from .ULensesWidget import ULensesWidget
 from .ViewWidget import ViewWidget
 from .WatcherWidget import WatcherWidget
 from .BFTimelapseWidget import BFTimelapseWidget
+from .FlipMirrorWidget import FlipMirrorWidget
+# from .EtWidget import EtWidget # Current prototype on old Monalisa machine needs rework, hardcoded paths, not tracked, etc. for now commented!

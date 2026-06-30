@@ -1,0 +1,15 @@
+{
+  "display": "Cobolt 06-01 Laser",
+  "category": "lasers",
+  "top": [
+    {"key": "analogChannel",  "label": "Analog Channel",  "type": "text",  "default": "null",  "req": false, "grp": "Basic", "tip": "", "opts": []},
+    {"key": "digitalLine",    "label": "Digital Line",    "type": "text",  "default": "null",  "req": false, "grp": "Basic", "tip": "", "opts": []},
+    {"key": "wavelength",     "label": "Wavelength (nm)", "type": "int",   "default": 561,    "req": true,  "grp": "Basic", "tip": "", "opts": []},
+    {"key": "valueRangeMin",  "label": "Min Value",       "type": "float", "default": 0.0,    "req": true,  "grp": "Basic", "tip": "", "opts": []},
+    {"key": "valueRangeMax",  "label": "Max Value",       "type": "float", "default": 200.0,  "req": true,  "grp": "Basic", "tip": "", "opts": []},
+    {"key": "valueRangeStep", "label": "Step",            "type": "float", "default": 1.0,    "req": true,  "grp": "Basic", "tip": "", "opts": []}
+  ],
+  "props": [
+    {"key": "digitalPorts", "label": "COM Port(s)", "type": "text", "default": "COM4", "req": true, "grp": "Basic", "tip": "Comma-sep: COM4,COM5", "opts": []}
+  ]
+}

@@ -59,7 +59,7 @@ class ImRecMainViewController(ImRecWidgetController):
         self._pattern = self._widget.getPatternParams()
         self._settingPatternParams = False
         self._scanParDict = {
-            'dimensions': [self._widget.r_l_text, self._widget.u_d_text, self._widget.b_f_text,
+            'dimensions': [self._widget.u_d_text, self._widget.r_l_text, self._widget.b_f_text,
                            self._widget.timepoints_text],
             'directions': [self._widget.p_text, self._widget.p_text, self._widget.p_text],
             'steps': ['35', '35', '1', '1'],

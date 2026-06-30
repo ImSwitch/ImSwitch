@@ -14,6 +14,7 @@ from . import controllers
 from .CommunicationChannel import CommunicationChannel
 from .MasterController import MasterController
 from .PickSetupController import PickSetupController
+from .SetupModeController import SetupModeController
 from .basecontrollers import ImConWidgetControllerFactory
 
 
@@ -57,9 +58,13 @@ class ImConMainController(MainController):
                 getattr(controllers, f'{widgetKey}Controller{self.__setupInfo.scan.scanWidgetType}')), widget
             )
 
+        self.setupModeController = SetupModeController(self.controllers, self.__setupInfo)
+        if 'SetupModes' in self.controllers:
+            self.controllers['SetupModes'].setSetupModeController(self.setupModeController)
+
         # Generate API
         self.__api = None
-        apiObjs = list(self.controllers.values()) + [self.__commChannel]
+        apiObjs = list(self.controllers.values()) + [self.setupModeController, self.__commChannel]
         self.__api = generateAPI(
             apiObjs,
             missingAttributeErrorMsg=lambda attr: f'The imcontrol API does either not have any'

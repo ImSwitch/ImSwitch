@@ -94,7 +94,10 @@ class PositionerInfo(DeviceInfo):
     """ Whether the positioner is connected to a joystick. """
 
     liveUpdate: bool = False
-    """ Whether the positioner position should be updated live. """
+    """ Whether live position updates are available for this positioner. """
+
+    hide: bool = False
+    """ Whether the positioner should be hidden from the manual positioner widget. """
 
 
 
@@ -206,6 +209,10 @@ class FocusLockInfo:
 
     piKi: float
     """ Default ki value of feedback loop. """
+
+    positionerAxis: Optional[Union[str, int]] = None
+    """ Positioner axis used for focus-lock movements. Defaults to ``"Z"`` if
+    available on the configured positioner, otherwise ``0``. """
 
 @dataclass(frozen=True)
 class AutofocusInfo:
@@ -340,6 +347,49 @@ class PyroServerInfo:
     port: Optional[int] = 54333
     active: Optional[bool] = False
 
+@dataclass(frozen=True)
+class FlipMirrorInfo:
+    managerName: str
+    """Manager class name."""
+
+    serial_number: str
+    """Serial number, used to find device and establish coneection."""
+
+    invert: bool = False
+    """If true, logical states 0/1 are swapped."""
+
+    initial_state: Optional[int] = None
+    """Optional state to move to at startup. Use null to keep current state."""
+    
+    state_names: Dict[str, str] = field(default_factory=dict)
+    """Optional display names for logical states 0 and 1."""
+
+    managerProperties: Dict[str, Any] = field(default_factory=dict)
+    """Optional manager-specific properties."""
+
+
+@dataclass(frozen=True)
+class FociAffineCalibrationSetupInfo:
+    auto_load: bool = False
+    """Whether the foci affine calibration should be loaded at startup."""
+
+    calibration_file: Optional[str] = None
+    """Path to the .npz foci affine calibration file."""
+
+
+@dataclass(frozen=True)
+class CalibrationsInfo:
+    foci_affine: FociAffineCalibrationSetupInfo = field(
+        default_factory=FociAffineCalibrationSetupInfo
+    )
+    """Foci affine display calibration startup settings."""
+
+
+@dataclass
+class ShortcutsInfo:
+    positioners: Dict[str, Any] = field(default_factory=dict)
+    """Positioner widget keyboard shortcut settings."""
+
 
 @dataclass_json(undefined=Undefined.INCLUDE)
 @dataclass
@@ -398,6 +448,15 @@ class SetupInfo:
     """ Pulse Streamer settings. """
 
     pyroServerInfo: PyroServerInfo = field(default_factory=PyroServerInfo)
+
+    flipMirrors: Optional[Dict[str, FlipMirrorInfo]] = field(default_factory=lambda: None)
+    """Motorized flip mirror settings."""
+
+    calibrations: CalibrationsInfo = field(default_factory=CalibrationsInfo)
+    """Calibration startup settings."""
+
+    shortcuts: ShortcutsInfo = field(default_factory=ShortcutsInfo)
+    """Keyboard shortcut settings."""
 
     _catchAll: CatchAll = None
 

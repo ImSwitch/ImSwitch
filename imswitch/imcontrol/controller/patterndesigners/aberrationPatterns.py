@@ -149,11 +149,12 @@ class ZernikeGenerator:
             elif noll == 4: term = np.sqrt(3) * (2 * rho**2 - 1)                    # Defocus
             elif noll == 5: term = np.sqrt(6) * rho**2 * np.sin(2*theta)            # Astigmatism (Oblique)
             elif noll == 6: term = np.sqrt(6) * rho**2 * np.cos(2*theta)            # Astigmatism (Vertical)
-            elif noll == 7: term = np.sqrt(8) * (3*rho**3 - 2*rho) * np.sin(theta)  # Coma (Vertical)
-            elif noll == 8: term = np.sqrt(8) * (3*rho**3 - 2*rho) * np.cos(theta)  # Coma (Horizontal)
+            # We remove the -2*rho term so we only apply the cubic 'shape'
+            elif noll == 7: term = np.sqrt(8) * (3 * rho ** 3) * np.sin(theta)       # Modified Coma
+            elif noll == 8: term = np.sqrt(8) * (3 * rho ** 3) * np.cos(theta)       # Modified Coma
             elif noll == 9: term = np.sqrt(8) * rho**3 * np.sin(3 * theta)          # Trefoil Y
             elif noll == 10: term = np.sqrt(8) * rho**3 * np.cos(3 * theta)         # Trefoil X
-            elif noll == 11:term = np.sqrt(5) * (6*rho**4 - 6*rho**2 + 1)           # Spherical
+            elif noll == 11:term = np.sqrt(5) * (6*rho**4 + 1)           # Spherical
             
             total_phase += c * term
 

@@ -133,12 +133,12 @@ class CoboltLaser:
 
     def turn_on(self):
         """Turn on the laser with the autostart sequence.The laser will await the TEC setpoints and pass a warm-up state"""
-        logger.info("Turning on laser")
+        # logger.info("Turning on laser")
         return self.send_cmd(f"@cob1")
 
     def turn_off(self):
         """Turn off the laser"""
-        logger.info("Turning off laser")
+        # logger.info("Turning off laser")
         return self.send_cmd(f"l0")
 
     def is_on(self):
@@ -178,14 +178,15 @@ class CoboltLaser:
                 self.send_cmd(f"slc {current / 1000}")
             else:
                 self.send_cmd(f"slc {current}")
-            logger.info(f"Entering constant current mode with I = {current} mA")
+            # logger.info(f"Entering constant current mode with I = {current} mA")
         else:
-            logger.info("Entering constant current mode")
+            # logger.info("Entering constant current mode")
+            pass
         return self.send_cmd(f"ci")
 
     def set_current(self, current: float):
         """Set laser current in mA"""
-        logger.info(f"Setting I = {current} mA")
+        # logger.info(f"Setting I = {current} mA")
         if not "-08-" in self.modelnumber or not "-06-" in self.modelnumber:
             current = current / 1000
         return self.send_cmd(f"slc {current}")
@@ -202,14 +203,15 @@ class CoboltLaser:
         """Enter constant power mode, power in mW"""
         if power != None:
             self.send_cmd(f"p {float(power) / 1000}")
-            logger.info(f"Entering constant power mode with P = {power} mW")
+            # logger.info(f"Entering constant power mode with P = {power} mW")
         else:
-            logger.info("Entering constant power mode")
+            # logger.info("Entering constant power mode")
+            pass
         return self.send_cmd(f"cp")
 
     def set_power(self, power: float):
         """Set laser power in mW"""
-        logger.info(f"Setting P = {power} mW")
+        # logger.info(f"Setting P = {power} mW")
         return self.send_cmd(f"p {float(power) / 1000}")
 
     def get_power(self):
@@ -242,7 +244,7 @@ class CoboltLaser:
         try:
             utf8_msg = message.encode()
             self.address.write(utf8_msg)
-            logger.debug(f"sent laser [{self}] message [{utf8_msg}]")
+            # logger.debug(f"sent laser [{self}] message [{utf8_msg}]")
         except Exception as e:
             raise RuntimeError("Error: write failed") from e
 
@@ -257,7 +259,8 @@ class CoboltLaser:
             raise RuntimeError(f"Syntax Error: No response on {message}")
         else:
             # print(message.replace("\r",""),received_string)
-            logger.debug(f"received from laser [{self}] message [{received_string}]")
+            # logger.debug(f"received from laser [{self}] message [{received_string}]")
+            pass
         return received_string
 
     def __enter__(self):
@@ -322,7 +325,7 @@ class Cobolt06(CoboltLaser):
 
     def set_modulation_power(self, power: float):
         """Set the modulation power in mW"""
-        logger.info(f"Setting modulation power = {power} mW")
+        # logger.info(f"Setting modulation power = {power} mW")
         return self.send_cmd(f"LASer:PowerModulation:POWer:SETPoint {power}")
 
     def get_modulation_power(self):
@@ -331,7 +334,7 @@ class Cobolt06(CoboltLaser):
 
     def set_modulation_current(self, current: float):
         """Set the modulation current in mA"""
-        logger.info(f"Setting modulation current = {current} mA")
+        # logger.info(f"Setting modulation current = {current} mA")
         return self.send_cmd(f"LASer:CurrentModulation:CURRent:HIGH:SETPoint {current}")
 
     def get_modulation_current(self):
@@ -453,7 +456,7 @@ class Cobolt06MLD(CoboltLaser):
         Args:
             power: modulation power (mW)
         """
-        logger.info(f"Entering modulation mode")
+        # logger.info(f"Entering modulation mode")
         if power != None:
             self.send_cmd(f"slmp {power}")
         return self.send_cmd("em")
@@ -481,7 +484,7 @@ class Cobolt06MLD(CoboltLaser):
 
     def set_modulation_power(self, power: float):
         """Set the modulation power in mW"""
-        logger.info(f"Setting modulation power = {power} mW")
+        # logger.info(f"Setting modulation power = {power} mW")
         return self.send_cmd(f"slmp {power}")
 
     def get_modulation_power(self):

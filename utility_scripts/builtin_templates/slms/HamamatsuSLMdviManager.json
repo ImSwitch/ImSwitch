@@ -1,0 +1,18 @@
+{
+  "display": "Hamamatsu SLM (DVI)",
+  "category": "slms",
+  "top": [
+    {"key": "monitorIdx",            "label": "Monitor Index",    "type": "int",   "default": 2,    "req": true,  "grp": "Basic",    "tip": "", "opts": []},
+    {"key": "serial_number",         "label": "Serial Number",    "type": "text",  "default": "",   "req": false, "grp": "Basic",    "tip": "", "opts": []},
+    {"key": "wavelength",            "label": "Wavelength (nm)",  "type": "int",   "default": 775,  "req": true,  "grp": "Basic",    "tip": "", "opts": []},
+    {"key": "width",                 "label": "Width (px)",       "type": "int",   "default": 792,  "req": true,  "grp": "Basic",    "tip": "", "opts": []},
+    {"key": "height",                "label": "Height (px)",      "type": "int",   "default": 600,  "req": true,  "grp": "Basic",    "tip": "", "opts": []},
+    {"key": "pixelSize",             "label": "Pixel Size (um)",  "type": "float", "default": 20.0, "req": true,  "grp": "Basic",    "tip": "", "opts": []},
+    {"key": "nSections",             "label": "N Sections",       "type": "int",   "default": 2,    "req": false, "grp": "Basic",    "tip": "", "opts": []},
+    {"key": "correctionPatternsDir", "label": "Correction Dir",   "type": "path",  "default": "",   "req": false, "grp": "Advanced", "tip": "", "opts": []}
+  ],
+  "props": [
+    {"key": "mockermode",  "label": "Mock Mode",        "type": "bool", "default": false, "req": false, "grp": "Basic", "tip": "", "opts": []},
+    {"key": "startConfig", "label": "Start Config Path","type": "path", "default": "",    "req": false, "grp": "Basic", "tip": "", "opts": []}
+  ]
+}

@@ -152,6 +152,9 @@ class LaserWidget(Widget):
         user. """
         self.laserModules[laserName].setEditable(editable)
 
+    def showLaserWarning(self, title, message):
+        QtWidgets.QMessageBox.warning(self, title, message)
+
     def setValue(self, laserName, value):
         """ Sets the value of the specified laser, in the units that the laser
         uses. """

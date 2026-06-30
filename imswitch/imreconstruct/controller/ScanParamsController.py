@@ -8,9 +8,9 @@ class ScanParamsController(ImRecWidgetController):
         super().__init__(*args, **kwargs)
 
         self._parDict = {
-            'dimensions': [self._widget.r_l_text, self._widget.u_d_text, self._widget.b_f_text,
+            'dimensions': [self._widget.u_d_text, self._widget.r_l_text, self._widget.b_f_text,
                            self._widget.timepoints_text],
-            'directions': [self._widget.p_text, self._widget.p_text, self._widget.p_text],
+            'directions': [self._widget.p_text, self._widget.n_text],
             'steps': ['35', '35', '1', '1'],
             'step_sizes': ['35', '35', '35', '1'],
             'unidirectional': True

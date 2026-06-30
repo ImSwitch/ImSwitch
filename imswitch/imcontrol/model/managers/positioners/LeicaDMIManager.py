@@ -33,6 +33,10 @@ class LeicaDMIManager(PositionerManager):
         cmd = '71003'
         print(self._rs232Manager.query(cmd))  # print serial no of dmi stand
 
+    @property
+    def resetOnClose(self):
+        return False
+
     def move(self, value, *args):
         """
         Legacy: Move by in device units

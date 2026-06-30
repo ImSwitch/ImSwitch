@@ -1,0 +1,28 @@
+{
+  "display": "Hamamatsu Camera",
+  "category": "detectors",
+  "top": [
+    {"key": "analogChannel",  "label": "Analog Channel",  "type": "text", "default": "null", "req": false, "grp": "Basic", "tip": "", "opts": []},
+    {"key": "digitalLine",    "label": "Digital Line",    "type": "text", "default": "null", "req": false, "grp": "Basic", "tip": "", "opts": []},
+    {"key": "forAcquisition", "label": "For Acquisition", "type": "bool", "default": true,   "req": true,  "grp": "Basic", "tip": "", "opts": []},
+    {"key": "forFocusLock",   "label": "For Focus Lock",  "type": "bool", "default": false,  "req": false, "grp": "Basic", "tip": "", "opts": []}
+  ],
+  "props": [
+    {"key": "cameraListIndex", "label": "Camera List Index", "type": "int", "default": 0, "req": true, "grp": "Basic", "tip": "0-based index", "opts": []}
+  ],
+  "nested": {
+    "hamamatsu": [
+      {"key": "readout_speed",    "label": "Readout Speed",     "type": "int",   "default": 3,    "req": true,  "grp": "Camera", "tip": "", "opts": []},
+      {"key": "trigger_active",   "label": "Trigger Active",    "type": "int",   "default": 1,    "req": false, "grp": "Camera", "tip": "", "opts": []},
+      {"key": "trigger_mode",     "label": "Trigger Mode",      "type": "int",   "default": 1,    "req": false, "grp": "Camera", "tip": "", "opts": []},
+      {"key": "trigger_polarity", "label": "Trigger Polarity",  "type": "int",   "default": 2,    "req": false, "grp": "Camera", "tip": "", "opts": []},
+      {"key": "trigger_source",   "label": "Trigger Source",    "type": "int",   "default": 2,    "req": false, "grp": "Camera", "tip": "", "opts": []},
+      {"key": "exposure_time",    "label": "Exposure (ms)",     "type": "float", "default": 10.0, "req": true,  "grp": "Camera", "tip": "", "opts": []},
+      {"key": "subarray_hpos",    "label": "H Pos (px)",        "type": "int",   "default": 0,    "req": false, "grp": "ROI",    "tip": "", "opts": []},
+      {"key": "subarray_hsize",   "label": "H Size (px)",       "type": "int",   "default": 2048, "req": false, "grp": "ROI",    "tip": "", "opts": []},
+      {"key": "subarray_vpos",    "label": "V Pos (px)",        "type": "int",   "default": 0,    "req": false, "grp": "ROI",    "tip": "", "opts": []},
+      {"key": "subarray_vsize",   "label": "V Size (px)",       "type": "int",   "default": 2048, "req": false, "grp": "ROI",    "tip": "", "opts": []},
+      {"key": "subarray_mode",    "label": "Subarray Mode",     "type": "int",   "default": 1,    "req": false, "grp": "ROI",    "tip": "", "opts": []}
+    ]
+  }
+}

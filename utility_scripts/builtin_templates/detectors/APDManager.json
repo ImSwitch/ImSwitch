@@ -1,0 +1,14 @@
+{
+  "display": "APD (Avalanche Photodiode)",
+  "category": "detectors",
+  "top": [
+    {"key": "analogChannel",  "label": "Analog Channel",  "type": "text", "default": "null", "req": false, "grp": "Basic", "tip": "", "opts": []},
+    {"key": "digitalLine",    "label": "Digital Line",    "type": "text", "default": "null", "req": false, "grp": "Basic", "tip": "", "opts": []},
+    {"key": "forAcquisition", "label": "For Acquisition", "type": "bool", "default": true,   "req": true,  "grp": "Basic", "tip": "", "opts": []},
+    {"key": "forFocusLock",   "label": "For Focus Lock",  "type": "bool", "default": false,  "req": false, "grp": "Basic", "tip": "", "opts": []}
+  ],
+  "props": [
+    {"key": "ctrInputLine", "label": "Counter Input", "type": "text", "default": "Dev1/ctr0", "req": true,  "grp": "DAQ", "tip": "e.g. Dev1/ctr0", "opts": []},
+    {"key": "terminal",     "label": "Terminal",      "type": "text", "default": "PFI0",      "req": true,  "grp": "DAQ", "tip": "e.g. PFI0",      "opts": []}
+  ]
+}

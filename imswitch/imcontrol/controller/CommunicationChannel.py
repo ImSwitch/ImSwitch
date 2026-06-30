@@ -108,6 +108,9 @@ class CommunicationChannel(SignalInterface):
 
     sigNewAxialListBuffer = Signal(list) # list of auto axial scans to do e.g. ["XZ","YZ"]
 
+    sigInitiateEt = Signal(bool)
+    sigClockWidefield = Signal()
+
     # useq-schema related signals
     sigSetXYPosition = Signal(float, float)
     sigSetZPosition = Signal(float)
@@ -142,6 +145,105 @@ class CommunicationChannel(SignalInterface):
         else:
             raise RuntimeError('Required image widget not available')
 
+    def hasImageController(self):
+        return 'Image' in self.__main.controllers
+
+    def getLiveImageLayerNames(self):
+        if 'Image' in self.__main.controllers:
+            return self.__main.controllers['Image'].getLiveLayerNames()
+        else:
+            raise RuntimeError('Required image widget not available')
+
+    def getDisplayImageLayerNames(self):
+        if 'Image' in self.__main.controllers:
+            return self.__main.controllers['Image'].getDisplayLayerNames()
+        else:
+            raise RuntimeError('Required image widget not available')
+
+    def getLiveImageLayerData(self, name):
+        if 'Image' in self.__main.controllers:
+            return self.__main.controllers['Image'].getLiveImage(name)
+        else:
+            raise RuntimeError('Required image widget not available')
+
+    def getActiveImageLayerData(self):
+        if 'Image' in self.__main.controllers:
+            return self.__main.controllers['Image'].getActiveImageLayerData()
+        else:
+            raise RuntimeError('Required image widget not available')
+
+    def addOrUpdateNapariImageLayer(self, name, image, **kwargs):
+        if 'Image' in self.__main.controllers:
+            return self.__main.controllers['Image'].addOrUpdateImageLayer(name, image, **kwargs)
+        else:
+            raise RuntimeError('Required image widget not available')
+
+    def addOrUpdateNapariPointsLayer(self, name, points_yx, **kwargs):
+        if 'Image' in self.__main.controllers:
+            return self.__main.controllers['Image'].addOrUpdatePointsLayer(name, points_yx, **kwargs)
+        else:
+            raise RuntimeError('Required image widget not available')
+
+    def addOrUpdateNapariShapesLayer(self, name, data, **kwargs):
+        if 'Image' in self.__main.controllers:
+            return self.__main.controllers['Image'].addOrUpdateShapesLayer(name, data, **kwargs)
+        else:
+            raise RuntimeError('Required image widget not available')
+
+    def removeNapariLayer(self, name):
+        if 'Image' in self.__main.controllers:
+            self.__main.controllers['Image'].removeNapariLayer(name)
+        else:
+            raise RuntimeError('Required image widget not available')
+
+    def setAllLiveLayerAffines(self, affine):
+        if 'Image' in self.__main.controllers:
+            self.__main.controllers['Image'].setAllLiveLayersAffine(affine)
+        else:
+            raise RuntimeError('Required image widget not available')
+
+    def clearAllLiveLayerAffines(self):
+        if 'Image' in self.__main.controllers:
+            self.__main.controllers['Image'].clearAllLiveLayersAffine()
+        else:
+            raise RuntimeError('Required image widget not available')
+
+    def setLiveLayerAffine(self, name, affine):
+        if 'Image' in self.__main.controllers:
+            self.__main.controllers['Image'].setLiveLayerAffine(name, affine)
+        else:
+            raise RuntimeError('Required image widget not available')
+
+    def clearLiveLayerAffine(self, name):
+        if 'Image' in self.__main.controllers:
+            self.__main.controllers['Image'].clearLiveLayerAffine(name)
+        else:
+            raise RuntimeError('Required image widget not available')
+
+    def setDisplayLayerAffine(self, name, affine):
+        if 'Image' in self.__main.controllers:
+            self.__main.controllers['Image'].setDisplayLayerAffine(name, affine)
+        else:
+            raise RuntimeError('Required image widget not available')
+
+    def clearDisplayLayerAffine(self, name):
+        if 'Image' in self.__main.controllers:
+            self.__main.controllers['Image'].clearDisplayLayerAffine(name)
+        else:
+            raise RuntimeError('Required image widget not available')
+
+    def setAllDisplayLayerAffines(self, affine):
+        if 'Image' in self.__main.controllers:
+            self.__main.controllers['Image'].setAllDisplayLayerAffines(affine)
+        else:
+            raise RuntimeError('Required image widget not available')
+
+    def clearAllDisplayLayerAffines(self):
+        if 'Image' in self.__main.controllers:
+            self.__main.controllers['Image'].clearAllDisplayLayerAffines()
+        else:
+            raise RuntimeError('Required image widget not available')
+
     def getNumCamTTL(self):
         if 'Scan' in self.__main.controllers:
             return self.__main.controllers['Scan'].getNumCamTTL()
@@ -165,6 +267,13 @@ class CommunicationChannel(SignalInterface):
             return self.__main.controllers['Scan'].getNumScanPositions()
         else:
             raise RuntimeError('Required scan widget not available')
+
+    def getNumCamTTL(self):
+        if 'Scan' in self.__main.controllers:
+            return self.__main.controllers['Scan'].getNumCamTTL()
+        else:
+            raise RuntimeError('Required scan widget not available')
+
     
     def getNextAxial(self):
         if 'Scan' in self.__main.controllers:

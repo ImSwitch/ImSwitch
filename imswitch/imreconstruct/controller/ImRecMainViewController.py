@@ -166,28 +166,23 @@ class ImRecMainViewController(ImRecWidgetController):
         )            
         self._widget.addNewData(self.liveReconObj, reconObjName) 
 
-        dirName = reconObjName + "_recon"
-        savePath = os.path.join(self.saveRootPath, dirName)
-        if not os.path.isdir(savePath): 
-            os.mkdir(savePath)  
-
-        self._logger.debug(f"[setupLiveStream] >> savePath = {savePath}")
-
-        self.saveWorker = SaveWorker(savePath, dirName) 
+        savePath = os.path.join(self.saveRootPath, reconObjName + "_recon")
+        reconData = self.liveReconObj.reconstructed[0, 0, :, 0, :, :] # reconData -> (T, Y, X)
+        self.saveWorker = SaveWorker(savePath, reconData)
         self.saveWorkerThread = QtCore.QThread()
-        self.saveWorker.sigSaveReconTimepoint.connect(self.saveWorker.save_recon_timepoint)
         self.saveWorker.moveToThread(self.saveWorkerThread)
+        self.saveWorkerThread.start()
 
         self.processorWorker = ProcessorWorker(
-            processor, rawData, self.liveReconObj, self._commChannel, CUPY_AVAILABLE
+            processor, rawData, self.liveReconObj.reconstructed, self._commChannel, CUPY_AVAILABLE
         )
         self.processorThread = QtCore.QThread()
         self.processorWorker.moveToThread(self.processorThread)
         self.processorWorker.sigTriggerUIRefresh.connect(self.triggerUIRefresh)
         self.processorWorker.sigMoveTimeSlider.connect(self.moveTimeSlider)
-        self.processorWorker.sigSaveReconTimepoint.connect(self.saveReconTimepoint) 
         self.processorThread.start()
-       
+
+        self._commChannel.sigSaveRecons.connect(self.saveWorker.save_recons)
         self._commChannel.sigIncProcessorWorkerTimepoint.connect(self.processorWorker.increment_timepoint) 
         self._commChannel.sigLiveChunkReady.connect(self.processorWorker.processChunk)
         self._commChannel.sigStopLiveStream.connect(self.stopLiveStream)
@@ -198,16 +193,16 @@ class ImRecMainViewController(ImRecWidgetController):
     def moveTimeSlider(self, timepoint: int): 
         # axes: (D, B, T, Z, Y, X) : (0, 1, 2, 3, 4, 5)
         self.reconWidget.napariViewer.dims.set_current_step(2, timepoint)
-
-    @QtCore.Slot(np.ndarray, int)
-    def saveReconTimepoint(self, recon_data: np.ndarray, timepoint: int):
-        self.saveWorker.sigSaveReconTimepoint.emit(recon_data, timepoint)
-
+    
     def triggerUIRefresh(self):
         self.reconWidget.sigUpdateImage.emit(self.liveReconObj.reconstructed)
 
     def stopSaveWorker(self): 
-        if hasattr(self, "saveWorker") and self.saveWorker is not None: 
+        # save recons before stopping  
+        self._commChannel.sigSaveRecons.emit() 
+        QtCore.QThread.msleep(100)
+
+        if hasattr(self, "saveWorker") and self.saveWorker is not None:  
             self.saveWorker.deleteLater()
         
         if hasattr(self, "saveWorkerThread") and self.saveWorkerThread is not None: 

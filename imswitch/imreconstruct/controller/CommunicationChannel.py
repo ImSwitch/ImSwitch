@@ -27,7 +27,7 @@ class CommunicationChannel(SignalInterface):
     sigSetupSavePath= Signal(str)                                  # (rootMonitorPath) 
     sigSetupLiveStream = Signal(str, object, np.ndarray, list)     # (recon_obj_name, Processor, dataBuffer, [reconRows, reconCols])
     sigLiveChunkReady = Signal(int, int)                           # (startChunkIndex, endChunkIndex)
-    sigSaveRecImage = Signal(int)                                  # (timepointIndex)
+    sigSaveRecons = Signal()                                   
     sigStopLiveStream = Signal()
     sigProcessingFinished = Signal()
     sigIncProcessorWorkerTimepoint = Signal(int)                   # (timepointIndex)

@@ -10,9 +10,7 @@ from typing import Union
 
 class ZarrStreamWorker(QtCore.QObject):
     
-    """
-    ... 
-    """
+    """ Extracts and stores raw data in a buffer which the ProcessorWorker can access and process. """
    
     sigChunkLoaded = QtCore.Signal(np.ndarray) 
     sigZarrFileFinished = QtCore.Signal()

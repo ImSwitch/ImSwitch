@@ -40,11 +40,7 @@ class ZarrInitWorker(QtCore.QObject):
     scan orientation detection, and returning the necessary arguments for the zarr streaming
     and zarr processing.
     """
-
-    # TODO: if the program gets stuck in the zarr init worker, we need a proper way terminating it
-    #       currently the worker does not properly shutdown if it gets stuck
-    #       replace the self.monitor_timer with a loop instead? since it can't be stopped from another thread
-
+    
     sigInitComplete = QtCore.Signal(StreamArgs)
 
     def __init__(self, path: str):
@@ -84,8 +80,8 @@ class ZarrInitWorker(QtCore.QObject):
             x0, y0, _ = axis_startpos
             x1, y1, _ = imswitch_meta["ScanStage:axis_length"]
             dx, dy, _ = imswitch_meta["ScanStage:axis_step_size"]
-            self.nx_s = int(np.ceil((x1 - x0) / dx))
-            self.ny_s = int(np.ceil((y1 - y0) / dy))
+            self.nx_s = int(np.ceil((x1 - x0) / dx)) 
+            self.ny_s = int(np.ceil((y1 - y0) / dy)) 
             self.num_frames_in_stack = self.nx_s * self.ny_s
             self.num_time_points = imswitch_meta["Rec:LapseTime"]
 
@@ -110,7 +106,6 @@ class ZarrInitWorker(QtCore.QObject):
         self.running = False
 
     def _check_stream_progress(self):
-        # use a loop here instead?
         try:
             file_count = sum(1 for entry in os.scandir(self.z_arr_path) if entry.is_file())
             if file_count >= self.target_file_count:
@@ -125,6 +120,7 @@ class ZarrInitWorker(QtCore.QObject):
 		
     def _get_stream_args(self, data: np.ndarray) -> StreamArgs:
         loc_result = localizer(data)
+        
         gauss_args = (
             loc_result.xp,
             loc_result.xo,

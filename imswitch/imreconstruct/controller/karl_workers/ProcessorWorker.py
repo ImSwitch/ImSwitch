@@ -6,29 +6,26 @@ import numpy as np
 
 
 class ProcessorWorker(QtCore.QObject): 
-    
-    """
-    ... 
-    """
+
+    """ Reconstructions and assigns raw frame data to a super resolved image array. """
 
     sigTriggerUIRefresh = QtCore.Signal()
     sigSaveChunk = QtCore.Signal(np.ndarray, np.ndarray, int)
     sigMoveTimeSlider = QtCore.Signal(int)    
-    sigSaveReconTimepoint = QtCore.Signal(np.ndarray, int)
     sigProcessingFinished = QtCore.Signal()
 
     def __init__(
             self,
             processor: object, 
             raw_data: np.ndarray,
-            recon_obj: object, 
+            recon_data: object, 
             _commChannel: object, 
             cupy_available: bool = False
     ):
         super().__init__()
         self.processor = processor
         self.raw_data = raw_data
-        self.recon_obj = recon_obj
+        self.recon_data = recon_data
         self._commChannel = _commChannel
         self.refresh_rate = int(np.sqrt(len(self.processor.frame_inds)))
         self.timepoint = 0        
@@ -50,17 +47,16 @@ class ProcessorWorker(QtCore.QObject):
         chunk = self.raw_data[start:end] 
         if self.cp != None:
             chunk = self.cp.asarray(chunk)
-        proc_pixels = self.processor.process_chunk(chunk)
-        pixel_indices = self.processor.frame_inds[start:end]
-        flat_recon = self.recon_obj.reconstructed[0, 0, self.timepoint, 0].reshape(-1)
-        flat_recon[pixel_indices.ravel()] = proc_pixels.ravel()
+        proc_pixels = self.processor.process_chunk(chunk).ravel()
+        pixel_indices = self.processor.frame_inds[start:end].ravel()
+        flat_recon = self.recon_data[0, 0, self.timepoint, 0].reshape(-1)
+        flat_recon[pixel_indices] = proc_pixels
        
         # if end % self.refresh_rate == 0:
             # self.sigTriggerUIRefresh.emit()
         
         if end >= self.processor.num_frames_in_stack: 
             self.sigMoveTimeSlider.emit(self.timepoint)
-            self.sigSaveReconTimepoint.emit(self.recon_obj.reconstructed[0, 0, self.timepoint, 0], self.timepoint)
             self.sigTriggerUIRefresh.emit()
             self._commChannel.sigProcessingFinished.emit()
             self.timepoint += 1 

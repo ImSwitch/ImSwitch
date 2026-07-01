@@ -8,9 +8,7 @@ from os.path import isdir, join
 
 class DirectoryWatcher(QtCore.QObject):
 
-    """
-    ... 
-    """
+    """ Monitors a root path for timelapse folders and appends them to a queue handled by the WatcherFrameController. """
 
     sigDirectoryFound = QtCore.Signal(str)
 

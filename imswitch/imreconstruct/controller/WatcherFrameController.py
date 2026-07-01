@@ -30,7 +30,7 @@ from qtpy import QtCore
 
 class WatcherFrameController(ImRecWidgetController):
     
-    """ Linked to WatcherFrame. Coordinates the state machine on the Main Thread. """
+    """ Linked to WatcherFrame and handles the live file watching. """
 
     sigStartDirectoryWatcher = QtCore.Signal()
     sigStartFileWatcher = QtCore.Signal() 
@@ -184,6 +184,7 @@ class WatcherFrameController(ImRecWidgetController):
             return
         
         if self.zarr_stream_worker.num_time_points_proc >= self.zarr_stream_worker.num_time_points:
+            self._commChannel.sigSaveRecons.emit() 
             self._logger.debug("[handle_processing_finished] >> Directory Finished")
             self.check_for_new_directory() 
         else:
@@ -308,7 +309,7 @@ class WatcherFrameController(ImRecWidgetController):
         if not self.file_watcher:
             self._logger.debug("[skip_directory] >> No directory to skip") 
             return 
-        
+
         self._commChannel.sigStopLiveStream.emit()
         try:
             self._commChannel.sigProcessingFinished.disconnect(self.handle_processing_finished)

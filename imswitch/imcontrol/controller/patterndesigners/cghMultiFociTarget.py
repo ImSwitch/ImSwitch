@@ -109,7 +109,7 @@ class MultiFociTarget(TargetBase):
 
     # ---- methods ----- #
 
-    def build(self):
+    def _build_impl(self):
         w, h = self.width, self.height
         target = np.zeros((h, w))
         cx, cy = w / 2, h / 2

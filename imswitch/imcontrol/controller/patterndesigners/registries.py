@@ -39,7 +39,7 @@ def register_aberration(name, noll=None):
     }
 
 
-def register_target(name, params=None, feedback=False):
+def register_target(name, params=None, feedback=False,calibration=False,auto_update_param=False):
     """
     Decorator to register a Target class.
     Feedback defines if the feedback loop is available for that target.
@@ -48,6 +48,8 @@ def register_target(name, params=None, feedback=False):
         TARGETS_REGISTRY[name] = {
             "class": cls,
             "feedback": feedback,
+            "calibration": calibration,
+            "auto_update_param": auto_update_param,
             "params": params or []
         }
         return cls

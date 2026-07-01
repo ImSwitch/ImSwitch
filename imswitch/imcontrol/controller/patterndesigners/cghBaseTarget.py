@@ -62,12 +62,19 @@ class TargetBase(ABC):
 
             if old_val != new_val:
                 changed = True
-                self.params[key] = new_val
+                self._set_param(key, new_val)
 
         if changed and self.supports_feedback:
             self.reset_feedback()
 
         return changed
+    
+    def _set_param(self, key, value):
+        """
+        Default behavior: directly update params.
+        Subclasses can override this to route specific params through setters.
+        """
+        self.params[key] = value
 
 
     # ----- feedback related ----- *
@@ -155,17 +162,14 @@ class TargetBase(ABC):
             self.name = self.create_target_name()
             self._feedback_reset()
 
-    @abstractmethod
     def _adapt_target_impl(self, *args, **kwargs):
         """Subclasses with feedback support must implement this."""
         pass
     
-    @abstractmethod
     def _analyze_result_impl(self, *args, **kwargs):
         """Subclasses with feedback support must implement this."""
         pass
 
-    @abstractmethod
     def _feedback_reset(self, *args, **kwargs):
         """Optional method for additional feedback reset features."""
         pass

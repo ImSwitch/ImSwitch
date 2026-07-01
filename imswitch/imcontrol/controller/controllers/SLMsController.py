@@ -18,13 +18,18 @@ from imswitch.imcommon.model import dirtools, ostools, signaltools
 
 from ..patterndesigners.registries import PATTERNS_REGISTRY, ABERRATIONS_REGISTRY, TARGETS_REGISTRY
 from ..patterndesigners import cghComputations as cgh
+from ..patterndesigners import cghDirectSummation as direct_cgh
 from ..patterndesigners.patternEngine import PatternEngine
+from ..patterndesigners.slmSectionCalibration import SLMSectionCalibration
+from ..patterndesigners import slmsuiteComputations as slmsuite_cgh
 
 full_registry = {
     "patterns": PATTERNS_REGISTRY,
     "aberrations": ABERRATIONS_REGISTRY,
     "cgh_targets": TARGETS_REGISTRY
 }
+
+SECTION_CALIBRATIONS_KEY = "sectionCalibrations"
 
 class SLMsController(SetupModeMixin, ImConWidgetController):
     """Linked to SLMsWidget."""
@@ -46,6 +51,7 @@ class SLMsController(SetupModeMixin, ImConWidgetController):
         self._experimentalResults={}# {slmKey: {secKey: result}
         self._analysisPrms={}       # {target_name: prms}
         self._corrPatternsDir={}    # {slm_key: path}
+        self._sectionCalibrations = {} # {slmKey: {secKey: SLMSectionCalibration}}
 
         # define directories for SLM-related files
         self.slmDir = os.path.join(dirtools.UserFileDirs.Root, r'imcontrol_slm')
@@ -66,6 +72,7 @@ class SLMsController(SetupModeMixin, ImConWidgetController):
             self._slmNames[slmKey]=slmName
             self._slmKeys[slmName]=slmKey
             self._slmInfos[slmKey] = slmInfo
+            self._load_section_calibrations(slmKey)
 
             # auto-connect for manager that needs device to connection
             if device_connection:
@@ -122,6 +129,7 @@ class SLMsController(SetupModeMixin, ImConWidgetController):
         self._widget.sigDuplicateConfig.connect(self.on_duplicate_config)
         self._widget.sigSetStartupConfig.connect(self.on_set_startup_config)
         self._widget.sigOpenConfigFolder.connect(self.on_open_config_folder)
+        self._widget.sigCalibrateLinearPhase.connect(self.on_linear_phase_calibration)
 
         self._widget.sigSnapFeedback.connect(self.on_feedback_snap)
         self._widget.sigAnalysisFeedback.connect(self.on_feedback_analysis)
@@ -274,9 +282,18 @@ class SLMsController(SetupModeMixin, ImConWidgetController):
         self.update_cached_wl(slmKey,params) 
         
         # compute pattern
-        engine.compute_pattern(params)
-        # engine.phase_to_eightbits(**params.get("correction_options",{}))
-        full_frame = engine.compose_full_frame()
+        try:
+            engine.compute_pattern(params)
+            # engine.phase_to_eightbits(**params.get("correction_options",{}))
+            full_frame = engine.compose_full_frame()
+        except Exception as e:
+            self.__logger.error(traceback.format_exc())
+            self._widget.show_message_box(
+                title="SLM Pattern Update Failed",
+                msg_type="error",
+                message=f"Could not update SLM pattern:\n{e}"
+            )
+            return
 
         # send pattern to manager + widget
         if full_frame is not None:
@@ -415,6 +432,119 @@ class SLMsController(SetupModeMixin, ImConWidgetController):
             wl = params.get(secKey).get("general").get("wavelength_nm")
             if wl != self._wavelengths.get(slmKey,{}).get(secKey,0): 
                 self._wavelengths.setdefault(slmKey,{})[secKey] = wl
+
+    # ----- SLM section calibration helpers ----- #
+
+    def _load_section_calibrations(self, slmKey):
+        """Load setup-stored calibrations into the pattern engine and widget."""
+
+        self._sectionCalibrations.setdefault(slmKey, {})
+        engine = self._patternEngines.get(slmKey)
+        for secKey in self._widget._slmSectionList.get(slmKey, []):
+            calibration = self.get_section_calibration(slmKey, secKey)
+            self._sectionCalibrations[slmKey][secKey] = calibration
+            if engine is not None:
+                engine.update_section_calibration(secKey, calibration)
+            self._widget.update_section_calibration_status(
+                slmKey,
+                secKey,
+                calibration.to_dict() if calibration.is_valid() else None,
+            )
+
+    def get_section_calibration(self, slmKey, secKey):
+        """Return the stored calibration for one SLM section."""
+
+        store = self._get_section_calibration_store(slmKey, create=False)
+        raw = None
+        if isinstance(store, dict):
+            raw = store.get(secKey)
+            if raw is None and isinstance(store.get(slmKey), dict):
+                raw = store[slmKey].get(secKey)
+
+        try:
+            return SLMSectionCalibration.from_dict(raw)
+        except Exception as e:
+            self.__logger.warning(
+                f"Invalid SLM section calibration for {slmKey}/{secKey}: {e}"
+            )
+            return SLMSectionCalibration()
+
+    def set_section_calibration(self, slmKey, secKey, calibration, persist=True):
+        """Store and apply the calibration for one SLM section."""
+
+        calibration = SLMSectionCalibration.from_dict(calibration)
+        store = self._get_section_calibration_store(slmKey, create=True)
+        store[secKey] = {
+            "slmKey": slmKey,
+            "secKey": secKey,
+            "calibration": calibration.to_dict(),
+        }
+
+        self._sectionCalibrations.setdefault(slmKey, {})[secKey] = calibration
+        self._patternEngines[slmKey].update_section_calibration(secKey, calibration)
+        self._widget.update_section_calibration_status(
+            slmKey,
+            secKey,
+            calibration.to_dict() if calibration.is_valid() else None,
+        )
+
+        if persist:
+            configfiletools.saveSetupInfo(configfiletools.loadOptions()[0], self._setupInfo)
+
+    def on_linear_phase_calibration(self, slmKey, secKey, calibration_inputs):
+        """Compute and save a section calibration from a linear phase test."""
+
+        try:
+            calibration = SLMSectionCalibration.from_linear_phase_test(
+                calibration_inputs.get("period_x_px"),
+                calibration_inputs.get("measured_dx_um"),
+                calibration_inputs.get("period_y_px"),
+                calibration_inputs.get("measured_dy_um"),
+            )
+            self.set_section_calibration(slmKey, secKey, calibration, persist=True)
+            self._widget.show_message_box(
+                title="SLM Section Calibration",
+                msg_type="info",
+                message=(
+                    f"Saved calibration for {slmKey}/{secKey}:\n"
+                    f"kx_per_um = {calibration.kx_per_um:.6g}\n"
+                    f"ky_per_um = {calibration.ky_per_um:.6g}"
+                ),
+            )
+            self._widget.on_update_pattern(slmKey)
+        except Exception as e:
+            self.__logger.error(traceback.format_exc())
+            self._widget.show_message_box(
+                title="SLM Section Calibration Failed",
+                msg_type="error",
+                message=f"Could not save calibration:\n{e}",
+            )
+
+    def _get_section_calibration_store(self, slmKey, create=False):
+        managerProperties = self._get_slm_manager_properties(slmKey, create=create)
+        if managerProperties is None:
+            return {}
+
+        store = managerProperties.get(SECTION_CALIBRATIONS_KEY)
+        if isinstance(store, dict):
+            return store
+
+        if create:
+            managerProperties[SECTION_CALIBRATIONS_KEY] = {}
+            return managerProperties[SECTION_CALIBRATIONS_KEY]
+
+        return {}
+
+    def _get_slm_manager_properties(self, slmKey, create=False):
+        slmInfo = self._slmInfos.get(slmKey)
+        if slmInfo is None:
+            return None
+
+        managerProperties = getattr(slmInfo, "managerProperties", None)
+        if managerProperties is None and create:
+            managerProperties = {}
+            object.__setattr__(slmInfo, "managerProperties", managerProperties)
+        return managerProperties
 
 
     
@@ -865,15 +995,18 @@ class SLMsController(SetupModeMixin, ImConWidgetController):
         target_params = cgh_params.get(target_type)
         if cgh_params is None or target_type=="" or target_params is None:
             raise Exception(f"Could not find target parameters for {slmKey},{secKey}")
+
+        target_context = self._get_target_context_kwargs(target_type, slmKey, secKey)
         
         # get current cahed target and update or create
         target = self._targets.get(slmKey, {}).get(secKey)
         if target is None or target.target_type != target_type:
-            target = self.create_target(target_type, **target_params)
+            target = self.create_target(target_type, **target_params, **target_context)
             self._targets.setdefault(slmKey, {})[secKey] = target
             self._cghResults.setdefault(slmKey, {})[secKey] = {} # clear any previous cgh result
         else:
-            changed = target.update_params(**target_params)
+            changed = self._sync_target_context(target, target_context)
+            changed = target.update_params(**target_params) or changed
             if changed:
                 self._widget.on_feedback_reset(slmKey,secKey,emitSig=False)
                 self._cghResults.setdefault(slmKey, {})[secKey] = {} # clear any previous cgh result
@@ -889,6 +1022,37 @@ class SLMsController(SetupModeMixin, ImConWidgetController):
         
         target = target_class(**target_params)
         return target
+
+    def _get_target_context_kwargs(self, target_type, slmKey, secKey):
+        if target_type != "multi_foci_vector":
+            return {}
+
+        return {
+            "section_size": self._get_section_size(slmKey, secKey),
+            "section_calibration": self.get_section_calibration(slmKey, secKey),
+        }
+
+    def _sync_target_context(self, target, target_context):
+        changed = False
+
+        if "section_size" in target_context and hasattr(target, "set_section_size"):
+            changed = target.set_section_size(target_context["section_size"]) or changed
+
+        if (
+            "section_calibration" in target_context
+            and hasattr(target, "set_section_calibration")
+        ):
+            changed = target.set_section_calibration(
+                target_context["section_calibration"]
+            ) or changed
+
+        return changed
+
+    def _get_section_size(self, slmKey, secKey):
+        engine = self._patternEngines.get(slmKey)
+        if engine is None:
+            return None
+        return getattr(engine, "_sectionShapes", {}).get(secKey)
 
 
     def on_load_cgh(self, slmKey, secKey, path=None, msg_box=True):
@@ -979,10 +1143,21 @@ class SLMsController(SetupModeMixin, ImConWidgetController):
             previous_pattern = np.angle(self._cghResults.get(slmKey).get(secKey).get("cgh_pattern"))
         else:
             previous_pattern = None
+        slmInfo = self._slmInfos.get(slmKey)
+        pixel_size_um = getattr(slmInfo, "pixelSize", None)
+
+        # Wavelength is stored in the section's General parameters, not in cgh_params.
+        all_params = self._widget.get_params()
+        section_params = all_params.get(slmKey, {}).get(secKey, {})
+        wavelength_nm = section_params.get("general", {}).get("wavelength_nm", None)
+
 
         # dispatch computation to CGH worker
         comput_params = cgh_params.get("cgh_computation",{})
-        self._cghWorker.prepareForNewComputation(slmKey, secKey, target_array,cgh_name, comput_params, target_params,previous_pattern)
+        self._cghWorker.prepareForNewComputation(
+            slmKey, secKey, target,cgh_name, comput_params, target_params,previous_pattern,
+            pixel_size_um=pixel_size_um,wavelength_nm=wavelength_nm
+            )
         self._cghWorker.sigStartComputation.emit()
     
 
@@ -1187,7 +1362,8 @@ class SLMsController(SetupModeMixin, ImConWidgetController):
             self.__logger = initLogger(self)
 
         def prepareForNewComputation(self, slmKey, secKey, target, cgh_name, comput_params, target_params,
-                                     previous_pattern=None, quad_initial_phase=None):
+                                     previous_pattern=None, quad_initial_phase=None,pixel_size_um=None,
+                                     wavelength_nm=None,):
             self._skmKey = slmKey
             self._secKey = secKey
             self._target = target
@@ -1195,6 +1371,8 @@ class SLMsController(SetupModeMixin, ImConWidgetController):
             self._previous_pattern = previous_pattern
             self._comput_params = comput_params
             self._target_params = target_params
+            self._pixel_size_um = pixel_size_um
+            self._wavelength_nm = wavelength_nm
             self._mutex.lock()
             self._numQueuedComputations += 1
             self._mutex.unlock()
@@ -1205,7 +1383,40 @@ class SLMsController(SetupModeMixin, ImConWidgetController):
                 if self._numQueuedComputations > 1:
                     # Skip to catch up
                     return
-                pattern, performances, msg, err = cgh.gerchberg_saxton(self._target,previous_pattern=self._previous_pattern,**self._comput_params)
+                # pattern, performances, msg, err = cgh.gerchberg_saxton(self._target,previous_pattern=self._previous_pattern,**self._comput_params)
+
+                # Vector target -> direct-summation backend.
+                if (
+                    getattr(self._target, "uses_direct_summation", False)
+                    or getattr(self._target, "spot_vectors_kxy", None) is not None
+                ):
+                    pattern, performances, msg, err = direct_cgh.direct_spot_wgs_from_target(
+                        target=self._target,
+                        comput_params=self._comput_params,
+                        previous_pattern=self._previous_pattern,
+                        pixel_size_um=self._pixel_size_um,
+                        wavelength_nm=self._wavelength_nm,
+                    )
+                    # pattern, performances, msg, err = slmsuite_cgh.compressed_spot_hologram(
+                    #     target=self._target,
+                    #     comput_params=self._comput_params,
+                    #     previous_pattern=self._previous_pattern,
+                    #     pixel_size_um=self._pixel_size_um,
+                    # )
+
+                # Raster target -> legacy GS backend.
+                else:
+                    target_array = (
+                        self._target.array
+                        if hasattr(self._target, "array")
+                        else self._target
+                    )
+
+                    pattern, performances, msg, err = cgh.gerchberg_saxton(
+                        target_array,
+                        previous_pattern=self._previous_pattern,
+                        **self._comput_params,
+                    )
 
                 if pattern is None:
                     self.sigWorkerCGHComputationFailed.emit(self._skmKey, self._secKey,msg)

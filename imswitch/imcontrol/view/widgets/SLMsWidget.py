@@ -109,6 +109,7 @@ class SLMsWidget(Widget):
 
     sigConnectSLMusb = QtCore.Signal(str,bool,bool)         # slmName, state, display_msg
     sigUpdatePattern = QtCore.Signal(str, dict)             # slmKey, params
+    sigCalibrateLinearPhase = QtCore.Signal(str, str, dict) # slmKey, secKey, calibration inputs
     sigComputeCGH = QtCore.Signal(str, str,dict)            # slmKey, secKey, cgh_params
 
     sigVisualizeCghPerformances = QtCore.Signal(str, str)   # slmKey, secKey
@@ -494,9 +495,31 @@ class SLMsWidget(Widget):
 
         group = CollapsibleSection("Patterns",**_collaps_section_format)
         layout = QtWidgets.QGridLayout()
-        list_patterns = options
+        list_patterns = list(pattern_registry.keys()) if options is None else list(options)
+        if (
+            "linear_phase" in list_patterns
+            and "linear_phase_metric" in pattern_registry
+            and "linear_phase_metric" not in list_patterns
+        ):
+            list_patterns.insert(list_patterns.index("linear_phase") + 1, "linear_phase_metric")
 
         row = 0
+        calibrationLabel = QtWidgets.QLabel("Calibration: not calibrated")
+        calibrationLabel.setStyleSheet("color: #888;")
+        calibrationBtn = BetterPushButton("Calibrate linear phase")
+        setattr(self, f"{slmKey}_{secKey}_section_calibration_label", calibrationLabel)
+        setattr(self, f"{slmKey}_{secKey}_linear_phase_calibration_btn", calibrationBtn)
+
+        calibrationLayout = QtWidgets.QHBoxLayout()
+        calibrationLayout.addWidget(calibrationLabel)
+        calibrationLayout.addWidget(calibrationBtn)
+        calibrationLayout.addStretch()
+        layout.addLayout(calibrationLayout, row, 0, 1, 4)
+        calibrationBtn.clicked.connect(
+            lambda _checked=False, s=slmKey, c=secKey: self.show_linear_phase_calibration_dialog(s, c)
+        )
+        row += 1
+
         for pattern in list_patterns:
             if pattern_registry.get(pattern) is None:
                 self.__logger.warning(f"Pattern '{pattern}' is requested but not found in registry.")
@@ -1402,6 +1425,93 @@ class SLMsWidget(Widget):
                 return target_lbl
 
         return getattr(self, f"{slmKey}_{secKey}_cgh_feedback_counter", None)
+
+    # --------- calibration related --------- #
+
+    def show_linear_phase_calibration_dialog(self, slmKey, secKey):
+        dialog = QtWidgets.QDialog(self)
+        dialog.setWindowTitle("Linear phase calibration")
+        dialog.resize(360, 180)
+
+        layout = QtWidgets.QVBoxLayout(dialog)
+        form = QtWidgets.QFormLayout()
+
+        fields = [
+            ("period_x_px", "Tested period X (px)", "100"),
+            ("measured_dx_um", "Measured displacement X (um)", "1.0"),
+            ("period_y_px", "Tested period Y (px)", "100"),
+            ("measured_dy_um", "Measured displacement Y (um)", "1.0"),
+        ]
+        edits = {}
+        for key, label, default in fields:
+            edit = QtWidgets.QLineEdit(default)
+            edit.setValidator(self._make_validator(float, edit))
+            edits[key] = edit
+            form.addRow(label + ":", edit)
+
+        layout.addLayout(form)
+
+        buttonBox = QtWidgets.QDialogButtonBox(
+            QtWidgets.QDialogButtonBox.Ok | QtWidgets.QDialogButtonBox.Cancel
+        )
+        buttonBox.button(QtWidgets.QDialogButtonBox.Ok).setText("Save")
+        buttonBox.accepted.connect(dialog.accept)
+        buttonBox.rejected.connect(dialog.reject)
+        layout.addWidget(buttonBox)
+
+        if self._execDialog(dialog) != QtWidgets.QDialog.Accepted:
+            return
+
+        try:
+            values = {
+                key: self._read_float_dialog_value(edit, label)
+                for key, label, edit in (
+                    (key, label, edits[key]) for key, label, _default in fields
+                )
+            }
+        except ValueError as e:
+            self.show_message_box(
+                title="SLM Section Calibration",
+                msg_type="error",
+                message=str(e),
+            )
+            return
+
+        self.sigCalibrateLinearPhase.emit(slmKey, secKey, values)
+
+    def update_section_calibration_status(self, slmKey, secKey, calibration_dict=None):
+        label = getattr(self, f"{slmKey}_{secKey}_section_calibration_label", None)
+        if label is None:
+            return
+
+        calibration = calibration_dict or {}
+        if "calibration" in calibration:
+            calibration = calibration.get("calibration") or {}
+
+        try:
+            kx_per_um = float(calibration.get("kx_per_um", 0.0))
+            ky_per_um = float(calibration.get("ky_per_um", 0.0))
+            is_valid = kx_per_um != 0.0 and ky_per_um != 0.0
+        except Exception:
+            is_valid = False
+
+        if is_valid:
+            label.setText(
+                f"Calibration: kx={kx_per_um:.6g}, ky={ky_per_um:.6g} 1/px/um"
+            )
+            label.setStyleSheet("color: #286b2d;")
+        else:
+            label.setText("Calibration: not calibrated")
+            label.setStyleSheet("color: #888;")
+
+    def _read_float_dialog_value(self, edit, label):
+        text = self._normalize_numeric_text(edit.text())
+        if text is None or text == "":
+            raise ValueError(f"{label} is required.")
+        try:
+            return float(text)
+        except Exception:
+            raise ValueError(f"{label} must be a number.")
     
     
     # --------- Config related -------- #

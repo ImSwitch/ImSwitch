@@ -6,8 +6,12 @@ from . import analyticalPatterns
 from . import aberrationPatterns
 from . import cghMultiFociTarget
 from . import cghMultifociGaussTarget
+from . import cghMultiFociVectorTarget
+from . import cghMultiFociVectorTarget2
 
 from . import cghComputations
+from . import slmsuiteComputations
+from . import cghDirectSummation
 
 # Import the engine last (depends on registry being populated)
 from .patternEngine import PatternEngine

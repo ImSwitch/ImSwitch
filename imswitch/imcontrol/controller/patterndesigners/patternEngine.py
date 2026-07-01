@@ -2,6 +2,7 @@ import numpy as np
 from .registries import PATTERNS_REGISTRY, ABERRATIONS_REGISTRY
 from . import cghComputations as cgh
 from .aberrationPatterns import ZernikeGenerator
+from .slmSectionCalibration import SLMSectionCalibration
 from PyQt5.QtCore import QObject
 
 class PatternEngine(QObject):
@@ -25,6 +26,7 @@ class PatternEngine(QObject):
 
         self.twoPieValues = {secKey: None for secKey in self.sectionKeys}
         self.correctionPatterns = {secKey: None for secKey in self.sectionKeys}
+        self.sectionCalibrations = {secKey: SLMSectionCalibration() for secKey in self.sectionKeys}
 
         self.zernikeGenerator = ZernikeGenerator()
 
@@ -96,8 +98,9 @@ class PatternEngine(QObject):
         width = slice_x.stop - slice_x.start
         height = self.height 
 
-        general_params = params.get("general",{})
+        general_params = dict(params.get("general",{}))
         general_params["pixel_size_um"] = self.pixelSize
+        general_params["section_calibration"] = self.sectionCalibrations.get(sec_key)
         offset_x = general_params.get("center_offset_x_px",0)
         offset_y = general_params.get("center_offset_y_px",0)
 
@@ -226,6 +229,11 @@ class PatternEngine(QObject):
             self.correctionPatterns[secKey] = pattern
         else:
             raise KeyError(f"section {secKey} does not exist in pattern engine")
+
+    def update_section_calibration(self, secKey, calibration):
+        if secKey not in self.sectionCalibrations:
+            raise KeyError(f"section {secKey} does not exist in pattern engine")
+        self.sectionCalibrations[secKey] = SLMSectionCalibration.from_dict(calibration)
 
     
     # Helper Function to compute padding or cropping for one dimension

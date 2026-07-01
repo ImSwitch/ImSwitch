@@ -5,6 +5,7 @@ Analytically defined phase patterns (gratings, lenses, etc.).
 import matplotlib.pyplot as plt
 import numpy as np
 from .registries import register_pattern
+from .slmSectionCalibration import SLMSectionCalibration
 
 ### binary grating ###
 @register_pattern("binary_grating", params=[
@@ -90,6 +91,32 @@ def linear_phase(width, height, period_x, period_y,**kwargs):
     if period_y != 0:
         phase += 2 * np.pi * (Y / period_y)
 
+    phase = np.mod(phase, 2 * np.pi)
+    return np.exp(1j * phase)
+
+
+@register_pattern("linear_phase_metric", params=[
+    ("displacement_x_um", 0.0, float),
+    ("displacement_y_um", 0.0, float),
+])
+def linear_phase_metric(width, height, displacement_x_um, displacement_y_um, **kwargs):
+    """
+    Linear phase ramp defined by requested physical displacement in um.
+    """
+
+    calibration = SLMSectionCalibration.from_dict(kwargs.get("section_calibration"))
+    if not calibration.is_valid():
+        raise ValueError(
+            "linear_phase_metric requires a valid SLM section calibration. "
+            "Use 'Calibrate linear phase' for this SLM section first."
+        )
+
+    kx, ky = calibration.um_to_kxy(displacement_x_um, displacement_y_um)
+    x = np.arange(width)
+    y = np.arange(height)
+    X, Y = np.meshgrid(x, y)
+
+    phase = 2 * np.pi * (kx * X + ky * Y)
     phase = np.mod(phase, 2 * np.pi)
     return np.exp(1j * phase)
 

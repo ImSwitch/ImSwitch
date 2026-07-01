@@ -8,17 +8,19 @@ class TargetBase(ABC):
     """
     target_type: str = None # to be defined in sub-class
 
-    def __init__(self,**params):
+    def __init__(self,section_size=None,**params):
         self.__logger = initLogger(self)
 
         if self.target_type is None:
             raise NotImplementedError(
                 f"{self.__class__.__name__} must define target_type"
             )
+        
+        
+        self.section_size = section_size
 
         self.params = params
         self.update_params()
-
         self.array = None               # computed target
         self.name = None                # custom name with all parameters defined for each target
         self.feedback_count = 0         # feedback round counter
@@ -26,20 +28,62 @@ class TargetBase(ABC):
         self.analysis_performed = False
         self.analysis_prm = {}          # to be set with default parameters in sub-class constructor
 
+        self.conversion_factor_dict = None   # dict {"x:" value, "y:" value}
 
         # Build target and create its custom name (sub-class methods)
         self.array = self.build()
         self.name = self.create_target_name()
 
-
+    
+    # ---- feedback properties ----- #
     @property
     def supports_feedback(self) -> bool:
         """By default: target type does NOT support adaptive correction."""
         return False
+    
+    
+    # ---- calibration properties ----- #
+    @property
+    def needs_calibration(self) -> bool:
+        """By default: target type does NOT need calibration."""
+        return False
+    
+    @property
+    def calib_params(self):
+        """ List of parameters needed to perform calibration as a list of tuple:
+            [
+            ("param_name, default, ptype"),
+            ("param_name, default, ptype"),
+            ]
+        Must be defined in child class if needs_calibration=True.
+        """
+        return None
+    
+    # ---- general methods ----- #
 
-    @abstractmethod
     def build(self):
-        """Return a 2D array representing the target."""
+        if self.needs_calibration:
+            c = self.conversion_factor_dict
+            if not c or not isinstance(c,dict):
+                self.__logger.warning("skipping build, conversion facot misssing")
+                return None
+            # if not c:
+            #     msg = f"[{self.__class__.__name__}] needs conversion factor."
+            #     raise ValueError(msg)
+            # if not isinstance(c,dict):
+            #     msg = f"conversion_factor_dict should be a dict"
+            #     raise TypeError(msg)
+            # if c.get("x") is None or c.get("y") is None:
+            #     msg = f"conversion_factor_dict should be a dict with 'x' and 'y' keys"
+            #     raise ValueError(msg)
+        
+        array = self._build_impl()
+        return array
+    
+    @abstractmethod
+    def _build_impl(self):
+        """ Specific target build, which children class should implement.
+        Returns a 2D array representing the target."""
         pass
 
     @abstractmethod
@@ -62,13 +106,19 @@ class TargetBase(ABC):
 
             if old_val != new_val:
                 changed = True
-                self.params[key] = new_val
+                self._set_param(key, new_val)
 
         if changed and self.supports_feedback:
             self.reset_feedback()
 
         return changed
-
+    
+    def _set_param(self, key, value):
+        """
+        Default behavior: directly update params.
+        Subclasses can override this to route specific params through setters.
+        """
+        self.params[key] = value
 
     # ----- feedback related ----- *
 
@@ -155,17 +205,36 @@ class TargetBase(ABC):
             self.name = self.create_target_name()
             self._feedback_reset()
 
-    @abstractmethod
     def _adapt_target_impl(self, *args, **kwargs):
         """Subclasses with feedback support must implement this."""
         pass
     
-    @abstractmethod
     def _analyze_result_impl(self, *args, **kwargs):
         """Subclasses with feedback support must implement this."""
         pass
 
-    @abstractmethod
     def _feedback_reset(self, *args, **kwargs):
         """Optional method for additional feedback reset features."""
+        pass
+
+        
+    # ----- calibration related ----- *
+    
+    def calibrate(self,calib_values):
+        if not self.needs_calibration:
+            self.__logger.error(f"Target {self.target_type} does not allow calibration.")
+            return None
+        
+        try:
+            conv_factor_dict = self._calibration_impl(calib_values)
+            self.conv_factor = conv_factor_dict
+            return conv_factor_dict
+        except Exception as e:
+            self.__logger.error(f"Calibration failed: {e}")
+            return None
+
+    def _calibration_impl(self, calib_values): 
+        """Subclasses with calibration should implement their target-specific 
+        calibration logic. Should return conversion factor dictionnary based on 
+        calib_values."""
         pass

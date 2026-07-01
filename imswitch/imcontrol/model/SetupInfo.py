@@ -166,7 +166,11 @@ class SLMsInfo(DeviceInfo):
     If none, considered as single section. """
 
     widgetOptions: Optional[Dict[str,Any]]
-    """ Widget options just as which patterns to display """
+    """ Widget options such as which patterns to display """
+
+    conversion_factors: Optional[Dict[str,Any]]
+    """ Calibrated conversion factor which can be used to change real metric units
+        in sample space to SLM pixelized pattern. Organized by section. """
 
     correctionPatternsDir: str
     """ Directory of .bmp images provided by Hamamatsu for flatness correction

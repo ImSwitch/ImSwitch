@@ -6,6 +6,7 @@ from . import analyticalPatterns
 from . import aberrationPatterns
 from . import cghMultiFociTarget
 from . import cghMultifociGaussTarget
+from . import cghMultiFociCalibTarget
 
 from . import cghComputations
 

@@ -7,6 +7,7 @@ from PIL import Image
 import traceback
 import h5py
 import datetime
+from qtpy import QtWidgets
 
 from ..basecontrollers import ImConWidgetController, SetupModeMixin
 from imswitch.imcommon.model import initLogger
@@ -46,6 +47,7 @@ class SLMsController(SetupModeMixin, ImConWidgetController):
         self._experimentalResults={}# {slmKey: {secKey: result}
         self._analysisPrms={}       # {target_name: prms}
         self._corrPatternsDir={}    # {slm_key: path}
+        self._conv_factors={}       # {slm_key: {secKey: {"x": value_x, "y": value_y}
 
         # define directories for SLM-related files
         self.slmDir = os.path.join(dirtools.UserFileDirs.Root, r'imcontrol_slm')
@@ -110,6 +112,7 @@ class SLMsController(SetupModeMixin, ImConWidgetController):
         self._widget.sigVisualizeCghPerformances.connect(self.on_visualize_cgh_performances)
         self._widget.sigVisualizeTarget.connect(self.on_visualize_target)
         self._widget.sigShowCghResult.connect(self.on_show_cgh_result)
+        self._widget.sigTargetParamChanged.connect(self.sync_target)
         
         self._widget.sigLoadConfig.connect(self.on_load_config)
         self._widget.sigLoadAberr.connect(self.on_load_aberr)
@@ -129,6 +132,9 @@ class SLMsController(SetupModeMixin, ImConWidgetController):
         self._widget.sigResetFeedback.connect(self.on_feedback_reset)
         self._widget.sigAnalysisFeedbackPrm.connect(self.on_feedback_analysis_prm)
         self._widget.sigLoadFeedback.connect(self.on_load_feedback)
+
+        self._widget.sigCalibTarget.connect(self.on_calibrate_cgh_target)
+        self._widget.sigSetDefaultConvFactor.connect(self.on_set_default_conv_factor)
 
         # cgh worker initialization
         self._cghWorker = self.CGHWorker()
@@ -539,28 +545,25 @@ class SLMsController(SetupModeMixin, ImConWidgetController):
 
     def _set_startup_config_filename(self, slmKey, filename):
         slmName = self._slmNames.get(slmKey)
-        slmInfos = [
-            self._slmInfos.get(slmKey),
-            getattr(self._setupInfo, "slms", {}).get(slmName)
-        ]
+        slmInfo = getattr(self._setupInfo, "slms", {}).get(slmName)
+        if slmInfo is None:
+            raise KeyError(f'Could not find SLM "{slmName}" in setupInfo.slms')
 
-        seen = set()
-        for slmInfo in slmInfos:
-            if slmInfo is None or id(slmInfo) in seen:
-                continue
-            seen.add(id(slmInfo))
+        managerProperties = getattr(slmInfo, "managerProperties", None)
+        if managerProperties is None:
+            managerProperties = {}
+            object.__setattr__(slmInfo, "managerProperties", managerProperties)
 
-            managerProperties = getattr(slmInfo, "managerProperties", None)
-            if managerProperties is None:
-                managerProperties = {}
-                object.__setattr__(slmInfo, "managerProperties", managerProperties)
-
-            if filename:
-                managerProperties["startConfig"] = filename
-            else:
-                managerProperties.pop("startConfig", None)
+        if filename:
+            managerProperties["startConfig"] = filename
+        else:
+            managerProperties.pop("startConfig", None)
+            
+        # Keep local cache synced to the saved setup object.
+        self._slmInfos[slmKey] = slmInfo
 
         configfiletools.saveSetupInfo(configfiletools.loadOptions()[0], self._setupInfo)
+
 
     def on_open_config_folder(self, slmKey):
         """Open this SLM's configuration directory in the OS file browser."""
@@ -869,7 +872,8 @@ class SLMsController(SetupModeMixin, ImConWidgetController):
         # get current cahed target and update or create
         target = self._targets.get(slmKey, {}).get(secKey)
         if target is None or target.target_type != target_type:
-            target = self.create_target(target_type, **target_params)
+            section_size = self._patternEngines.get(slmKey)._sectionShapes.get(secKey)
+            target = self.create_target(target_type,section_size, **target_params)
             self._targets.setdefault(slmKey, {})[secKey] = target
             self._cghResults.setdefault(slmKey, {})[secKey] = {} # clear any previous cgh result
         else:
@@ -879,7 +883,7 @@ class SLMsController(SetupModeMixin, ImConWidgetController):
                 self._cghResults.setdefault(slmKey, {})[secKey] = {} # clear any previous cgh result
         return True
 
-    def create_target(self,target_type, **target_params):
+    def create_target(self,target_type, section_size = None,**target_params):
         """
         Creates a target object 
         """
@@ -887,7 +891,7 @@ class SLMsController(SetupModeMixin, ImConWidgetController):
         if target_class is None:
             raise KeyError(f"{target_type} not found")
         
-        target = target_class(**target_params)
+        target = target_class(section_size=section_size,**target_params)
         return target
 
 
@@ -1169,6 +1173,66 @@ class SLMsController(SetupModeMixin, ImConWidgetController):
             self._experimentalResults.setdefault(slmKey,{})[secKey]=None
             self._widget.update_feedback_count(slmKey,secKey,target.feedback_count)
 
+
+     # ----- Calibration ----- #
+
+    def on_calibrate_cgh_target(self, slmKey, secKey):
+        self.sync_target(slmKey,secKey)
+        target = self._targets.get(slmKey,{}).get(secKey,None)
+    
+        params = target.calib_params
+        if params is None:
+            self.__logger.error(f"Target {target.target_type} is not exposing calibration parameters.")
+            return
+        
+        calib_values = self._widget.CalibrateDialog.set_new_calib(self._widget, params)
+        conv_factor_dict = target.calibrate(calib_values)
+        if conv_factor_dict is None:
+            return
+        
+        self._widget.set_conv_factor_label(conv_factor_dict)
+        self._conv_factors.setdefault(slmKey,{})[secKey] = conv_factor_dict
+
+    def on_set_default_conv_factor(self,slmKey,secKey):
+        conv_factor = self._conv_factors.get(slmKey,{}).get(secKey)
+
+        error=False
+        if conv_factor is None:
+            error=True
+            self.__logger.error(f"Cannot set default conversion factor for {slmKey}, {secKey}",
+                                f" because current factor is None.")
+        elif not isinstance(conv_factor,dict):
+            error=True
+            self.__logger.error(f"Cannot set default conversion factor for {slmKey}, {secKey}",
+                                f" because expected a dict with: 'x', 'y' keys. Instead",
+                                f"got type {type(conv_factor)}, and value: {conv_factor}")
+        else:
+            try:
+                self._set_setup_config_conv_factor(slmKey, secKey, conv_factor)
+            except:
+                error = True
+                self.__logger.error(traceback.format_exc())
+
+        if error:
+            self._widget.show_message_box(
+                title="Setting default conversion factor",
+                msg_type="error",
+                message=f"Setting default conversion factor failed. Check logger for full error detail."
+            )
+        
+    
+    def _set_setup_config_conv_factor(self, slmKey, secKey, conv_factor):
+        slmName = self._slmNames.get(slmKey)
+        slmInfo = getattr(self._setupInfo, "slms", {}).get(slmName)
+        if slmInfo is None:
+            raise KeyError(f'Could not find SLM "{slmName}" in setupInfo.slms')
+        conversion_factors = getattr(slmInfo, "conversion_factors", None)
+        if conversion_factors is None:
+            conversion_factors = {}
+            object.__setattr__(slmInfo, "managerProperties", conversion_factors)
+        
+        conversion_factors.setdefault[secKey] = conv_factor
+        configfiletools.saveSetupInfo(configfiletools.loadOptions()[0], self._setupInfo)
 
 
      # ----- CGH Worker ----- #

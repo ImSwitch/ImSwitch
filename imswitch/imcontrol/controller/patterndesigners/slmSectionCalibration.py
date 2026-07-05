@@ -30,8 +30,8 @@ class SLMSectionCalibration:
         self.version = int(self.version or 1)
         self.created_at = str(self.created_at or "")
         self.source = str(self.source or "")
-        self.plane = str(self.plane or None)
-        self.cam_px_size_um = str(self.cam_px_size_um or None)
+        self.plane = self._coerce_optional_text(self.plane)
+        self.cam_px_size_um = self._coerce_optional_float(self.cam_px_size_um)
         self.metadata = dict(self.metadata or {})
 
     @classmethod
@@ -190,3 +190,21 @@ class SLMSectionCalibration:
         if not math.isfinite(value) or value == 0.0:
             raise ValueError(f"{name} must be non-zero.")
         return value
+
+    @staticmethod
+    def _coerce_optional_text(value):
+        if value is None:
+            return None
+        text = str(value).strip()
+        if text == "" or text.lower() == "none":
+            return None
+        return text
+
+    @staticmethod
+    def _coerce_optional_float(value):
+        if value is None:
+            return None
+        text = str(value).strip()
+        if text == "" or text.lower() == "none":
+            return None
+        return float(text)

@@ -137,6 +137,8 @@ class SLMsWidget(Widget):
     sigLoadFeedback = QtCore.Signal(str,str)                # slmKey, secKey
     
     sigActivePlaneChanged = QtCore.Signal(str,str,str)      # slmKey, secKey,active_plane
+    sigAddPlaneRequested = QtCore.Signal(str, str, dict)    # slmKey, secKey, plane definition
+    sigDeletePlaneRequested = QtCore.Signal(str, str, str)  # slmKey, secKey, plane name
     sigCalibrateLinearPhase = QtCore.Signal(str, str, dict) # slmKey, secKey, calibration inputs
     
     def __init__(self, *args, **kwargs):
@@ -499,24 +501,48 @@ class SLMsWidget(Widget):
         calibrationLabel = QtWidgets.QLabel("Calibration: not calibrated")
         calibrationLabel.setStyleSheet("color: #888;")
         calibrationBtn = BetterPushButton("Calibrate")
+        planeLabel = QtWidgets.QLabel("Plane:")
         activePlanesComboBox = QtWidgets.QComboBox()
-        activePlanesComboBox.addItems(["Sample Plane", "Interm Plane"])
+        activePlanesComboBox.setMinimumWidth(130)
+
+        moreBtn = QtWidgets.QToolButton()
+        moreBtn.setText("More")
+        moreBtn.setFixedHeight(20)
+        moreBtn.setPopupMode(QtWidgets.QToolButton.InstantPopup)
+        menu = QtWidgets.QMenu(moreBtn)
+        addPlaneAction = menu.addAction(
+            "Add plane...",
+            lambda s=slmKey, c=secKey: self.show_add_plane_dialog(s, c),
+        )
+        deletePlaneAction = menu.addAction(
+            "Delete plane...",
+            lambda s=slmKey, c=secKey: self.on_delete_plane_clicked(s, c),
+        )
+        deletePlaneAction.setEnabled(False)
+        moreBtn.setMenu(menu)
 
         setattr(self, f"{slmKey}_{secKey}_section_calibration_label", calibrationLabel)
         setattr(self, f"{slmKey}_{secKey}_calibration_btn", calibrationBtn)
         setattr(self, f"{slmKey}_{secKey}_active_plane", activePlanesComboBox)
+        setattr(self, f"{slmKey}_{secKey}_plane_more_btn", moreBtn)
+        setattr(self, f"{slmKey}_{secKey}_add_plane_action", addPlaneAction)
+        setattr(self, f"{slmKey}_{secKey}_delete_plane_action", deletePlaneAction)
 
         calibrationLayout = QtWidgets.QHBoxLayout()
         calibrationLayout.addWidget(calibrationLabel)
+        calibrationLayout.addWidget(planeLabel)
         calibrationLayout.addWidget(activePlanesComboBox)
         calibrationLayout.addWidget(calibrationBtn)
+        calibrationLayout.addWidget(moreBtn)
         calibrationLayout.addStretch()
         # layout.addLayout(calibrationLayout, row, 0, 1, 4)
         calibrationBtn.clicked.connect(
             lambda _checked=False, s=slmKey, c=secKey: self.show_calibration_dialog(s, c)
         )
-        activePlanesComboBox.currentTextChanged.connect(lambda text,slm=slmKey,sec=secKey:
-                                                        self.sigActivePlaneChanged.emit(slmKey,secKey,text))
+        activePlanesComboBox.currentTextChanged.connect(
+            lambda text, slm=slmKey, sec=secKey:
+            self._on_active_plane_changed(slm, sec, text)
+        )
         return calibrationLayout
     
     # Patterns section
@@ -1502,7 +1528,128 @@ class SLMsWidget(Widget):
 
     # --------- calibration related --------- #
 
+    def set_available_planes(self, slmKey, secKey, plane_names, active_plane=None):
+        combo = getattr(self, f"{slmKey}_{secKey}_active_plane", None)
+        if combo is None:
+            return
+
+        plane_names = [str(name) for name in (plane_names or [])]
+        with QtCore.QSignalBlocker(combo):
+            combo.clear()
+            combo.addItems(plane_names)
+            if active_plane in plane_names:
+                combo.setCurrentIndex(combo.findText(active_plane))
+            else:
+                combo.setCurrentIndex(-1)
+
+        self._update_plane_controls(slmKey, secKey)
+
+    def get_active_plane(self, slmKey, secKey):
+        combo = getattr(self, f"{slmKey}_{secKey}_active_plane", None)
+        if combo is None or combo.currentIndex() < 0:
+            return None
+        return combo.currentText().strip() or None
+
+    def _on_active_plane_changed(self, slmKey, secKey, text):
+        self._update_plane_controls(slmKey, secKey)
+        self.sigActivePlaneChanged.emit(slmKey, secKey, text)
+
+    def _update_plane_controls(self, slmKey, secKey):
+        deleteAction = getattr(self, f"{slmKey}_{secKey}_delete_plane_action", None)
+        if deleteAction is not None:
+            deleteAction.setEnabled(self.get_active_plane(slmKey, secKey) is not None)
+
+    def show_add_plane_dialog(self, slmKey, secKey):
+        dialog = QtWidgets.QDialog(self)
+        dialog.setWindowTitle("Add plane")
+        dialog.resize(360, 160)
+
+        layout = QtWidgets.QVBoxLayout(dialog)
+        form = QtWidgets.QFormLayout()
+
+        nameEdit = QtWidgets.QLineEdit()
+        detectorEdit = QtWidgets.QLineEdit()
+        pixelSizeEdit = QtWidgets.QLineEdit()
+        pixelSizeEdit.setValidator(self._make_validator(float, pixelSizeEdit))
+        descriptionEdit = QtWidgets.QLineEdit()
+
+        form.addRow("Plane name:", nameEdit)
+        form.addRow("Detector name:", detectorEdit)
+        form.addRow("Detector pixel size (um):", pixelSizeEdit)
+        form.addRow("Description:", descriptionEdit)
+        layout.addLayout(form)
+
+        buttonBox = QtWidgets.QDialogButtonBox(
+            QtWidgets.QDialogButtonBox.Ok | QtWidgets.QDialogButtonBox.Cancel
+        )
+        buttonBox.button(QtWidgets.QDialogButtonBox.Ok).setText("Add")
+        buttonBox.accepted.connect(dialog.accept)
+        buttonBox.rejected.connect(dialog.reject)
+        layout.addWidget(buttonBox)
+
+        if self._execDialog(dialog) != QtWidgets.QDialog.Accepted:
+            return
+
+        try:
+            planeName = nameEdit.text().strip()
+            detectorName = detectorEdit.text().strip()
+            detectorPixelSize = self._read_float_dialog_value(
+                pixelSizeEdit,
+                "Detector pixel size",
+            )
+            if not planeName:
+                raise ValueError("Plane name is required.")
+            if not detectorName:
+                raise ValueError("Detector name is required.")
+            if detectorPixelSize <= 0.0:
+                raise ValueError("Detector pixel size must be > 0.")
+        except ValueError as e:
+            self.show_message_box(
+                title="Add SLM Plane",
+                msg_type="error",
+                message=str(e),
+            )
+            return
+
+        self.sigAddPlaneRequested.emit(
+            slmKey,
+            secKey,
+            {
+                "name": planeName,
+                "detector_name": detectorName,
+                "detector_pixel_size_um": detectorPixelSize,
+                "description": descriptionEdit.text().strip(),
+            },
+        )
+
+    def on_delete_plane_clicked(self, slmKey, secKey):
+        planeName = self.get_active_plane(slmKey, secKey)
+        if not planeName:
+            return
+
+        ok = askYesNoQuestion(
+            self,
+            "Delete plane",
+            (
+                f"Delete plane '{planeName}' and all calibration files "
+                "for this plane?"
+            ),
+        )
+        if not ok:
+            return
+
+        self.sigDeletePlaneRequested.emit(slmKey, secKey, planeName)
+
     def show_calibration_dialog(self, slmKey, secKey):
+        active_plane = self.get_active_plane(slmKey, secKey)
+        if not active_plane:
+            self.show_message_box(
+                title="SLM Section Calibration",
+                msg_type="error",
+                message="Select or add a plane before saving calibration.",
+            )
+            return
+
         dialog = QtWidgets.QDialog(self)
         dialog.setWindowTitle("Linear phase calibration")
         dialog.resize(360, 180)
@@ -1510,8 +1657,6 @@ class SLMsWidget(Widget):
         layout = QtWidgets.QVBoxLayout(dialog)
         form = QtWidgets.QFormLayout()
 
-        planeCombo = getattr(self, f"{slmKey}_{secKey}_active_plane")
-        active_plane = planeCombo.currentText()
         label = QtWidgets.QLabel(f"Calibration will be set for: {active_plane}")
         font = label.font()
         font.setBold(True)
@@ -1520,7 +1665,6 @@ class SLMsWidget(Widget):
         layout.addSpacing(12)
 
         fields = [
-            ("Camera_px_size_um", "Camera pixel size (um)", "0.077"),
             ("period_x_px", "Tested period X (px)", "100"),
             ("measured_dx_um", "Measured displacement X (um)", "1.0"),
             ("period_y_px", "Tested period Y (px)", "100"),

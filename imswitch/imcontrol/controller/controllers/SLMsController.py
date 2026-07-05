@@ -22,6 +22,20 @@ from ..patterndesigners import cghComputations as cgh
 from ..patterndesigners import cghDirectSummation as direct_cgh
 from ..patterndesigners.patternEngine import PatternEngine
 from ..patterndesigners.slmSectionCalibration import SLMSectionCalibration
+from ..patterndesigners.slmPlaneCalibration import (
+    add_plane_definition,
+    clear_default_active_plane_name as clear_default_active_plane_name_in_properties,
+    delete_plane_calibration_files,
+    empty_plane_definitions,
+    get_default_active_planes,
+    load_plane_definitions,
+    load_section_calibration,
+    plane_slug,
+    remove_plane_definition,
+    save_plane_definitions,
+    save_section_calibration,
+    set_default_active_plane as set_default_active_plane_in_properties,
+)
 from ..patterndesigners import slmsuiteComputations as slmsuite_cgh
 
 
@@ -58,10 +72,11 @@ class SLMsController(SetupModeMixin, ImConWidgetController):
         self.configsDir = os.path.join(self.slmDir, 'configs')
         self.cghPatternsDir =  os.path.join(self.slmDir, 'cgh_patterns')
         self.correctionDir = os.path.join(self.slmDir, 'Corrections')
-        self.calibrationDir = os.path.join(self.slmDir, 'Calibrations')
+        self.calibrationDir = os.path.join(self.slmDir, 'calibrations')
         os.makedirs(self.configsDir, exist_ok=True)
         os.makedirs(self.cghPatternsDir, exist_ok=True)
         os.makedirs(self.calibrationDir, exist_ok=True)
+        self._planeDefinitions = self._load_plane_definitions()
 
         # initiate each slm widget and engine
         for slmName, slmManager in self._master.slmsManager:
@@ -74,6 +89,7 @@ class SLMsController(SetupModeMixin, ImConWidgetController):
             self._slmNames[slmKey]=slmName
             self._slmKeys[slmName]=slmKey
             self._slmInfos[slmKey] = slmInfo
+            self._refresh_available_planes(slmKey)
             self._load_section_calibrations_from_setup(slmKey)
 
             # auto-connect for manager that needs device to connection
@@ -135,7 +151,9 @@ class SLMsController(SetupModeMixin, ImConWidgetController):
         self._widget.sigOpenConfigFolder.connect(self.on_open_config_folder)
         
         self._widget.sigCalibrateLinearPhase.connect(self.on_linear_phase_calibration)
-        self._widget.sigsigActivePlaneChanged.connect(self.on_active_plane_changed)
+        self._widget.sigActivePlaneChanged.connect(self.on_active_plane_changed)
+        self._widget.sigAddPlaneRequested.connect(self.on_add_plane_requested)
+        self._widget.sigDeletePlaneRequested.connect(self.on_delete_plane_requested)
         
         self._widget.sigSnapFeedback.connect(self.on_feedback_snap)
         self._widget.sigAnalysisFeedback.connect(self.on_feedback_analysis)
@@ -444,54 +462,92 @@ class SLMsController(SetupModeMixin, ImConWidgetController):
 
     # ----- SLM section calibration helpers ----- #
 
+    def _load_plane_definitions(self):
+        try:
+            return load_plane_definitions(self.calibrationDir)
+        except Exception as e:
+            self.__logger.warning(f"Could not load SLM plane definitions: {e}")
+            return empty_plane_definitions()
+
+    def _plane_names(self):
+        return list((self._planeDefinitions or {}).get("planes", {}).keys())
+
+    def _refresh_available_planes(self, slmKey=None):
+        slmKeys = [slmKey] if slmKey is not None else list(self._slmNames.keys())
+        planeNames = self._plane_names()
+
+        for key in slmKeys:
+            for secKey in self._widget._slmSectionList.get(key, []):
+                activePlane = self._get_default_active_plane(key, secKey)
+                if activePlane not in planeNames:
+                    activePlane = None
+                self._widget.set_available_planes(key, secKey, planeNames, activePlane)
+
+    def _load_all_section_calibrations(self):
+        for slmKey in self._slmNames:
+            self._load_section_calibrations_from_setup(slmKey)
+
     def _load_section_calibrations_from_setup(self, slmKey):
-        """Load setup-saved calibrations into the pattern engine and widget."""
+        """Load the active plane calibration for each SLM section."""
 
         self._sectionCalibrations.setdefault(slmKey, {})
         for secKey in self._widget._slmSectionList.get(slmKey, []):
-            calibration = self.get_section_calibration(slmKey, secKey)
-            self._sectionCalibrations[slmKey][secKey] = calibration
-            self._widget.update_section_calibration_status(
-                slmKey,
-                secKey,
-                calibration.to_dict() if calibration.is_valid() else None,
+            activePlane = self._widget.get_active_plane(slmKey, secKey)
+            calibration = self.get_section_calibration(
+                slmKey, secKey, plane_name=activePlane
             )
+            self._set_section_calibration_runtime(slmKey, secKey, calibration)
 
-    def get_section_calibration(self, slmKey, secKey):
-        """Return the stored calibration for one SLM section."""
+    def get_section_calibration(self, slmKey, secKey, plane_name=None):
+        """Return the stored calibration for one SLM section and plane."""
 
-        calib = self._get_section_calibration_dict_from_setup(slmKey, create=False).get(secKey,None)
-        if not isinstance(calib, dict) or not calib:
+        plane_name = plane_name or self._widget.get_active_plane(slmKey, secKey)
+        if not plane_name:
+            return SLMSectionCalibration()
+        if plane_name not in (self._planeDefinitions or {}).get("planes", {}):
             return SLMSectionCalibration()
 
         try:
-            return SLMSectionCalibration.from_dict(calib)
+            return load_section_calibration(
+                self.calibrationDir,
+                self._get_slm_serial(slmKey),
+                secKey,
+                plane_name,
+            )
         except Exception as e:
             self.__logger.warning(
-                f"Invalid SLM section calibration for {slmKey}/{secKey}: {e}"
+                f"Invalid SLM section calibration for {slmKey}/{secKey}/{plane_name}: {e}"
             )
             return SLMSectionCalibration()
 
     def set_section_calibration(self, slmKey, secKey, calibration, persist=True):
-        """Store and apply the calibration for one SLM section."""
+        """Store and apply the calibration for one SLM section's active plane."""
+
+        planeName = self._widget.get_active_plane(slmKey, secKey)
+        if not planeName:
+            raise ValueError("Select or add an active plane before saving calibration.")
+        if planeName not in (self._planeDefinitions or {}).get("planes", {}):
+            raise ValueError(f'Plane "{planeName}" is not defined.')
 
         calibration = SLMSectionCalibration.from_dict(calibration)
-        setup_dict = self._get_section_calibration_dict_from_setup(slmKey, create=True)
-        setup_dict[secKey] = {
-            "slmKey": slmKey,
-            "secKey": secKey,
-            "calibration": calibration.to_dict(),
-        }
-
-        self._sectionCalibrations.setdefault(slmKey, {})[secKey] = calibration
-        self._widget.update_section_calibration_status(
-            slmKey,
-            secKey,
-            calibration.to_dict() if calibration.is_valid() else None,
-        )
+        planeDefinition = self._planeDefinitions["planes"].get(planeName, {})
+        calibration.plane = planeName
+        calibration.cam_px_size_um = planeDefinition.get("detector_pixel_size_um")
 
         if persist:
-            configfiletools.saveSetupInfo(configfiletools.loadOptions()[0], self._setupInfo)
+            save_section_calibration(
+                self.calibrationDir,
+                self._slmNames.get(slmKey, slmKey),
+                self._get_slm_serial(slmKey),
+                secKey,
+                planeName,
+                calibration,
+            )
+            self._set_default_active_plane(slmKey, secKey, planeName, persist=True)
+
+        self._set_section_calibration_runtime(
+            slmKey, secKey, calibration, clear_cached=True
+        )
 
     def on_linear_phase_calibration(self, slmKey, secKey, calibration_inputs):
         """Compute and save a section calibration from a linear phase test."""
@@ -508,7 +564,8 @@ class SLMsController(SetupModeMixin, ImConWidgetController):
                 title="SLM Section Calibration",
                 msg_type="info",
                 message=(
-                    f"Saved calibration for {slmKey}/{secKey}:\n"
+                    f"Saved calibration for {slmKey}/{secKey} "
+                    f"({self._widget.get_active_plane(slmKey, secKey)}):\n"
                     f"kx_per_um = {calibration.kx_per_um:.6g}\n"
                     f"ky_per_um = {calibration.ky_per_um:.6g}"
                 ),
@@ -522,21 +579,156 @@ class SLMsController(SetupModeMixin, ImConWidgetController):
                 message=f"Could not save calibration:\n{e}",
             )
 
-    def _get_section_calibration_dict_from_setup(self, slmKey, create=False) -> dict:
-        slmInfo = self._slmInfos.get(slmKey,{})
+    def on_active_plane_changed(self, slmKey, secKey, active_plane):
+        planeName = str(active_plane or "").strip() or None
+        try:
+            if planeName and planeName not in (self._planeDefinitions or {}).get("planes", {}):
+                raise ValueError(f'Plane "{planeName}" is not defined.')
+
+            self._set_default_active_plane(slmKey, secKey, planeName, persist=True)
+            calibration = self.get_section_calibration(
+                slmKey, secKey, plane_name=planeName
+            )
+            self._set_section_calibration_runtime(
+                slmKey, secKey, calibration, clear_cached=True
+            )
+        except Exception as e:
+            self.__logger.error(traceback.format_exc())
+            self._widget.show_message_box(
+                title="SLM Plane Selection Failed",
+                msg_type="error",
+                message=f"Could not switch active plane:\n{e}",
+            )
+
+    def on_add_plane_requested(self, slmKey, secKey, plane_definition):
+        try:
+            newSlug = plane_slug(plane_definition.get("name"))
+            self._planeDefinitions = add_plane_definition(
+                self._planeDefinitions,
+                plane_definition,
+            )
+            save_plane_definitions(self.calibrationDir, self._planeDefinitions)
+
+            planeName = next(
+                name for name in self._planeDefinitions["planes"]
+                if plane_slug(name) == newSlug
+            )
+            self._set_default_active_plane(slmKey, secKey, planeName, persist=False)
+            self._save_setup_info()
+            self._refresh_available_planes()
+            self._load_all_section_calibrations()
+
+            self._widget.show_message_box(
+                title="SLM Plane",
+                msg_type="info",
+                message=f'Added plane "{planeName}".',
+            )
+        except Exception as e:
+            self.__logger.error(traceback.format_exc())
+            self._widget.show_message_box(
+                title="Add SLM Plane Failed",
+                msg_type="error",
+                message=f"Could not add plane:\n{e}",
+            )
+
+    def on_delete_plane_requested(self, slmKey, secKey, plane_name):
+        planeName = str(plane_name or "").strip()
+        if not planeName:
+            return
+
+        try:
+            self._planeDefinitions = remove_plane_definition(
+                self._planeDefinitions,
+                planeName,
+            )
+            deletedFiles = delete_plane_calibration_files(
+                self.calibrationDir,
+                planeName,
+            )
+            self._clear_default_active_plane_name(planeName)
+            save_plane_definitions(self.calibrationDir, self._planeDefinitions)
+            self._save_setup_info()
+            self._refresh_available_planes()
+            self._load_all_section_calibrations()
+
+            self._widget.show_message_box(
+                title="SLM Plane",
+                msg_type="info",
+                message=(
+                    f'Deleted plane "{planeName}" and '
+                    f"{len(deletedFiles)} calibration file(s)."
+                ),
+            )
+        except Exception as e:
+            self.__logger.error(traceback.format_exc())
+            self._widget.show_message_box(
+                title="Delete SLM Plane Failed",
+                msg_type="error",
+                message=f"Could not delete plane:\n{e}",
+            )
+
+    def _set_section_calibration_runtime(
+        self, slmKey, secKey, calibration, clear_cached=False
+    ):
+        self._sectionCalibrations.setdefault(slmKey, {})[secKey] = calibration
+        self._widget.update_section_calibration_status(
+            slmKey,
+            secKey,
+            calibration.to_dict() if calibration.is_valid() else None,
+        )
+        if clear_cached:
+            self._clear_section_runtime_state(slmKey, secKey)
+
+    def _clear_section_runtime_state(self, slmKey, secKey):
+        self._targets.setdefault(slmKey, {}).pop(secKey, None)
+        self._cghResults.setdefault(slmKey, {})[secKey] = {}
+        engine = self._patternEngines.get(slmKey)
+        cache = getattr(engine, "_cachedSections", {}).get(secKey) if engine else None
+        if isinstance(cache, dict):
+            cache["cgh"] = None
+        self._widget.on_feedback_reset(slmKey, secKey, emitSig=False)
+
+    def _get_slm_serial(self, slmKey):
+        slmInfo = self._slmInfos.get(slmKey)
+        return getattr(slmInfo, "serial_number", None) or slmKey
+
+    def _get_manager_properties(self, slmKey):
+        slmName = self._slmNames.get(slmKey)
+        slmInfo = getattr(self._setupInfo, "slms", {}).get(slmName)
+        if slmInfo is None:
+            slmInfo = self._slmInfos.get(slmKey)
+        if slmInfo is None:
+            raise KeyError(f'Could not find SLM "{slmKey}" in setupInfo.slms')
+
         managerProperties = getattr(slmInfo, "managerProperties", None)
         if managerProperties is None:
-            return {}
+            managerProperties = {}
+            object.__setattr__(slmInfo, "managerProperties", managerProperties)
 
-        calib = managerProperties.get("sectionCalibrations")
-        if isinstance(calib, dict):
-            return calib
+        self._slmInfos[slmKey] = slmInfo
+        return managerProperties
 
-        if create:
-            managerProperties["sectionCalibrations"] = {}
-            return managerProperties["sectionCalibrations"]
+    def _get_default_active_plane(self, slmKey, secKey):
+        return get_default_active_planes(
+            self._get_manager_properties(slmKey)
+        ).get(secKey)
 
-        return {}
+    def _set_default_active_plane(self, slmKey, secKey, planeName, persist=True):
+        managerProperties = self._get_manager_properties(slmKey)
+        set_default_active_plane_in_properties(managerProperties, secKey, planeName)
+        if persist:
+            self._save_setup_info()
+
+    def _clear_default_active_plane_name(self, planeName):
+        for slmKey in list(self._slmNames.keys()):
+            managerProperties = self._get_manager_properties(slmKey)
+            clear_default_active_plane_name_in_properties(
+                managerProperties,
+                planeName,
+            )
+
+    def _save_setup_info(self):
+        configfiletools.saveSetupInfo(configfiletools.loadOptions()[0], self._setupInfo)
 
     
     # --------- Saving/loading related -------- #

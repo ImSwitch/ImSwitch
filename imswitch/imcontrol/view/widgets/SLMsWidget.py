@@ -521,21 +521,92 @@ class SLMsWidget(Widget):
         deletePlaneAction.setEnabled(False)
         moreBtn.setMenu(menu)
 
+        unitLabel = QtWidgets.QLabel("Unit:")
+        font = unitLabel.font()
+        font.setBold(True)
+        unitLabel.setFont(font)
+
+        unitModeWidget = QtWidgets.QWidget()
+        unitModeLayout = QtWidgets.QHBoxLayout(unitModeWidget)
+        unitModeLayout.setContentsMargins(0, 0, 0, 0)
+        unitModeLayout.setSpacing(0)
+
+        slmUnitBtn = BetterPushButton("SLM")
+        sampleUnitBtn = BetterPushButton("Sample")
+
+        slmUnitBtn.setObjectName("slmUnitBtn")
+        sampleUnitBtn.setObjectName("sampleUnitBtn")
+
+        slmUnitBtn.setCheckable(True)
+        sampleUnitBtn.setCheckable(True)
+        slmUnitBtn.setChecked(True)
+
+        unitModeStyle = """
+        QPushButton {
+            padding: 2px 8px;
+            border: 1px solid rgba(255,255,255,60);
+        }
+
+        QPushButton#slmUnitBtn {
+            border-top-left-radius: 6px;
+            border-bottom-left-radius: 6px;
+        }
+
+        QPushButton#sampleUnitBtn {
+            border-top-right-radius: 6px;
+            border-bottom-right-radius: 6px;
+        }
+
+        QPushButton:hover {
+            border: 1px solid rgba(255,255,255,120);
+        }
+
+        QPushButton:checked {
+            background-color: rgba(120,180,255,120);
+            border: 1px solid rgba(120,180,255,200);
+        }
+        """
+
+        for button in (slmUnitBtn, sampleUnitBtn):
+            button.setStyleSheet(unitModeStyle)
+            button.setSizePolicy(
+                QtWidgets.QSizePolicy.Minimum,
+                QtWidgets.QSizePolicy.Fixed
+            )
+            button.setMinimumWidth(button.sizeHint().width())
+
+        unitButtonGroup = QtWidgets.QButtonGroup(self)
+        unitButtonGroup.setExclusive(True)
+        unitButtonGroup.addButton(slmUnitBtn)
+        unitButtonGroup.addButton(sampleUnitBtn)
+
+        unitModeLayout.addWidget(slmUnitBtn)
+        unitModeLayout.addWidget(sampleUnitBtn)
+        unitModeLayout.addStretch()
+        
         setattr(self, f"{slmKey}_{secKey}_section_calibration_label", calibrationLabel)
         setattr(self, f"{slmKey}_{secKey}_calibration_btn", calibrationBtn)
         setattr(self, f"{slmKey}_{secKey}_active_plane", activePlanesComboBox)
         setattr(self, f"{slmKey}_{secKey}_plane_more_btn", moreBtn)
         setattr(self, f"{slmKey}_{secKey}_add_plane_action", addPlaneAction)
         setattr(self, f"{slmKey}_{secKey}_delete_plane_action", deletePlaneAction)
+        setattr(self, f"{slmKey}_{secKey}_unit_mode_widget", unitModeWidget)
+        setattr(self, f"{slmKey}_{secKey}_slm_unit_btn", slmUnitBtn)
+        setattr(self, f"{slmKey}_{secKey}_sample_unit_btn", sampleUnitBtn)
+        setattr(self, f"{slmKey}_{secKey}_unit_button_group", unitButtonGroup)
+        self._set_sample_unit_available(slmKey, secKey, False)
 
         calibrationLayout = QtWidgets.QHBoxLayout()
+
+        calibrationLayout.addWidget(unitLabel)
+        calibrationLayout.addWidget(unitModeWidget)
+        calibrationLayout.addStretch()
+
         calibrationLayout.addWidget(calibrationLabel)
         calibrationLayout.addWidget(planeLabel)
         calibrationLayout.addWidget(activePlanesComboBox)
         calibrationLayout.addWidget(calibrationBtn)
         calibrationLayout.addWidget(moreBtn)
-        calibrationLayout.addStretch()
-        # layout.addLayout(calibrationLayout, row, 0, 1, 4)
         calibrationBtn.clicked.connect(
             lambda _checked=False, s=slmKey, c=secKey: self.show_calibration_dialog(s, c)
         )
@@ -1731,6 +1802,18 @@ class SLMsWidget(Widget):
         else:
             label.setText("Calibration: not calibrated")
             label.setStyleSheet("color: #888;")
+
+        self._set_sample_unit_available(slmKey, secKey, is_valid)
+
+    def _set_sample_unit_available(self, slmKey, secKey, available):
+        slmUnitBtn = getattr(self, f"{slmKey}_{secKey}_slm_unit_btn", None)
+        sampleUnitBtn = getattr(self, f"{slmKey}_{secKey}_sample_unit_btn", None)
+        if slmUnitBtn is None or sampleUnitBtn is None:
+            return
+
+        if not available:
+            slmUnitBtn.setChecked(True)
+        sampleUnitBtn.setEnabled(bool(available))
 
     def _read_float_dialog_value(self, edit, label):
         text = normalize_numeric_text(edit.text())

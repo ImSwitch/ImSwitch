@@ -6,23 +6,30 @@ from .registries import register_target
 import matplotlib.pyplot as plt
 import cv2
 
-@register_target("multi_foci", feedback=True,
-params=[
-    ("Target Size X", 512, int),
-    ("Target Size Y", 512, int),
-    ("N Foci X",31, int),
-    ("N Foci Y",31, int),
-    ("Period X", 6, int),
-    ("Period Y", 6, int),
-    ("Stagger", 0.0, float),
-])
+@register_target()
 class MultiFociTarget(TargetBase):
     """
     Multi-foci target.
     """
+
     target_type = "multi_foci"
-    def __init__(self, **params):
-        super().__init__(**params)
+    _supports_feedback = True
+
+    target_params = [
+        ("target_size_x", 512, int),
+        ("target_size_y", 512, int),
+        ("n_foci_x", 31, int),
+        ("n_foci_y", 31, int),
+        ("period_x", 6, int),
+        ("period_y", 6, int),
+    ]
+
+    def __init__(self, section_size=None, section_calibration=None, **params):
+
+        super().__init__(section_size=section_size,
+                         section_calibration=section_calibration,
+                         **params)
+        
         self.analysis_prm = {
             "reuse_prev_localisation": True,
             "foci_integration_size": 5,
@@ -42,11 +49,6 @@ class MultiFociTarget(TargetBase):
             "offset_search_steps": 8
         }
         self.pattern_localization={}
-
-    # feedback allowed
-    @property
-    def supports_feedback(self):
-        return True
 
     # ---- parameters ----- #
     @property

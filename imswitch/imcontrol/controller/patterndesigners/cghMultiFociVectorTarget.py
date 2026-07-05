@@ -1,22 +1,12 @@
 import numpy as np
+import math
 
 from .cghBaseTarget import TargetBase
 from .registries import register_target
 from .slmSectionCalibration import SLMSectionCalibration
 
 
-@register_target(
-    "multi_foci_vector",
-    feedback=False,
-    params=[
-        ("Period X (um)", 10.0, float),
-        ("Period Y (um)", 10.0, float),
-        ("N Foci X", 31, int),
-        ("N Foci Y", 31, int),
-        ("Rotation Deg", 0.0, float),
-        ("Skew Deg", 0.0, float),
-    ],
-)
+@register_target()
 class MultiFociVectorTarget(TargetBase):
     """
     Metric multi-foci target for the direct-summation backend.
@@ -28,6 +18,20 @@ class MultiFociVectorTarget(TargetBase):
     """
 
     target_type = "multi_foci_vector"
+    _needs_calibration = True
+    _auto_update_param = True
+
+    target_params = [
+        ("period_x_nm", 750, int),
+        ("period_y_nm", 750, int),
+        ("fov_x_um", 35, int),
+        ("fov_y_um", 35, int),
+        ("n_foci_x", 31, int),
+        ("n_foci_y", 31, int),
+        ("rotation_deg", 0.0, float),
+        ("skew_deg", 0.0, float)
+    ]
+
     uses_direct_summation = True
     missing_calibration_message = (
         "No valid section calibration found. Calibrate linear phase first."
@@ -37,76 +41,115 @@ class MultiFociVectorTarget(TargetBase):
     _preview_max_size_px = 2048
 
     def __init__(self, section_size=None, section_calibration=None, **params):
-        self.section_size = self._coerce_section_size(section_size)
-        self.section_calibration = SLMSectionCalibration.from_dict(section_calibration)
-        print(self.section_calibration)
-
         self.spot_positions_um = None
         self.spot_vectors_kxy = None
         self.spot_amp = None
         self.lattice_indices = None
 
-        super().__init__(**params)
+        super().__init__(section_size=section_size,
+                         section_calibration=section_calibration,
+                         **params)
 
-    # ------------------------------------------------------------------
-    # Properties
-    # ------------------------------------------------------------------
+    # --- param helpers --- #
+    def _period_x_um(self):
+        return self.period_x_nm / 1000
+
+    def _period_y_um(self):
+        return self.period_y_nm / 1000
+
+    def _n_from_fov(self, fov_um, period_um):
+        return int(math.floor(fov_um / period_um)) + 1
+
+    def _fov_from_n(self, n, period_um):
+        return (int(n) - 1) * period_um
+    
+    # ---- parameters ----- #
+
+    # FOV
+    @property
+    def fov_x_um(self):
+        return self.params["fov_x_um"]
+
+    @fov_x_um.setter
+    def fov_x_um(self, value):
+        self.params["fov_x_um"] = float(value)
+        self.params["n_foci_x"] = self._n_from_fov(
+            self.params["fov_x_um"],
+            self._period_x_um(),
+        )
 
     @property
-    def period_x_um(self):
-        value = float(self.params["period_x_um"])
-        if value <= 0:
-            raise ValueError(f"period_x_um must be > 0, got {value}")
-        return value
+    def fov_y_um(self):
+        return self.params["fov_y_um"]
 
-    @period_x_um.setter
-    def period_x_um(self, value):
+    @fov_y_um.setter
+    def fov_y_um(self, value):
+        self.params["fov_y_um"] = float(value)
+        self.params["n_foci_y"] = self._n_from_fov(
+            self.params["fov_y_um"],
+            self._period_y_um()
+        )
+
+    # Periods
+    @property
+    def period_x_nm(self):
+        return self.params["period_x_nm"]
+
+    @period_x_nm.setter
+    def period_x_nm(self, value):
         value = float(value)
         if value <= 0:
             raise ValueError(f"period_x_um must be > 0, got {value}")
-        self.params["period_x_um"] = value
+        self.params["period_x_nm"] = value
+        self.params["n_foci_x"] = self._n_from_fov(
+            self.params["fov_x_um"],
+            self._period_x_um(),
+        )
 
     @property
-    def period_y_um(self):
-        value = float(self.params["period_y_um"])
-        if value <= 0:
-            raise ValueError(f"period_y_um must be > 0, got {value}")
-        return value
+    def period_y_nm(self):
+        return self.params["period_y_nm"]
 
-    @period_y_um.setter
-    def period_y_um(self, value):
+    @period_y_nm.setter
+    def period_y_nm(self, value):
         value = float(value)
         if value <= 0:
             raise ValueError(f"period_y_um must be > 0, got {value}")
-        self.params["period_y_um"] = value
+        self.params["period_y_nm"] = value
+        self.params["n_foci_y"] = self._n_from_fov(
+            self.params["fov_y_um"],
+            self._period_x_um(),
+        )
 
+    # number of foci
     @property
-    def npx(self):
-        value = int(self.params["n_foci_x"])
-        if value <= 0:
-            raise ValueError(f"n_foci_x must be > 0, got {value}")
-        return value
-
-    @npx.setter
-    def npx(self, value):
+    def n_foci_x(self):
+        return self.params["n_foci_x"]
+    @n_foci_x.setter
+    def n_foci_x(self, value):
         value = int(value)
         if value <= 0:
-            raise ValueError(f"n_foci_x must be > 0, got {value}")
+            raise ValueError(f"n_foci_y must be > 0, got {value}")
         self.params["n_foci_x"] = value
+        self.params["fov_x_um"] = self._fov_from_n(
+            self.params["n_foci_x"],
+            self._period_x_um()
+        )
 
     @property
-    def npy(self):
-        value = int(self.params["n_foci_y"])
-        if value <= 0:
-            raise ValueError(f"n_foci_y must be > 0, got {value}")
-        return value
+    def n_foci_y(self):
+        return self.params["n_foci_y"]
 
-    @npy.setter
-    def npy(self, value):
+    @n_foci_y.setter
+    def n_foci_y(self, value):
         value = int(value)
         if value <= 0:
             raise ValueError(f"n_foci_y must be > 0, got {value}")
         self.params["n_foci_y"] = value
+        self.params["fov_y_um"] = self._fov_from_n(
+            self.params["n_foci_y"],
+            self._period_y_um()
+        )
 
     @property
     def rotation_deg(self):
@@ -126,48 +169,12 @@ class MultiFociVectorTarget(TargetBase):
 
     @property
     def n_spots(self):
-        return self.npx * self.npy
+        return self.n_foci_x * self.n_foci_y
 
-    @property
-    def has_valid_section_calibration(self):
-        return self.section_calibration is not None and self.section_calibration.is_valid()
 
-    # ------------------------------------------------------------------
-    # Runtime context from controller
-    # ------------------------------------------------------------------
-
-    def set_section_calibration(self, section_calibration):
-        calibration = SLMSectionCalibration.from_dict(section_calibration)
-        old = (
-            self.section_calibration.to_dict()
-            if self.section_calibration is not None
-            else None
-        )
-        new = calibration.to_dict()
-        if old == new:
-            return False
-
-        self.section_calibration = calibration
-        self.array = self.build()
-        self.name = self.create_target_name()
-        print(self.section_calibration)
-        return True
-
-    def set_section_size(self, section_size):
-        section_size = self._coerce_section_size(section_size)
-        if self.section_size == section_size:
-            return False
-
-        self.section_size = section_size
-        self.array = self.build()
-        self.name = self.create_target_name()
-        return True
-
-    # ------------------------------------------------------------------
     # TargetBase hooks
-    # ------------------------------------------------------------------
 
-    def build(self):
+    def _build_impl(self):
         positions_um = self._make_spot_positions_um()
         self.spot_positions_um = positions_um
 
@@ -179,9 +186,9 @@ class MultiFociVectorTarget(TargetBase):
 
     def create_target_name(self):
         name = (
-            f"mfvec_{self.npx}x{self.npy}foci_"
-            f"Px{self._fmt_float(self.period_x_um)}um-"
-            f"Py{self._fmt_float(self.period_y_um)}um"
+            f"mfvec_{self.n_foci_x}x{self.n_foci_y}foci_"
+            f"Px{self._fmt_float(self.period_x_nm)}nm-"
+            f"Py{self._fmt_float(self.period_y_nm)}nm"
         )
 
         if self.rotation_deg != 0:
@@ -195,51 +202,22 @@ class MultiFociVectorTarget(TargetBase):
 
         return name
 
-    def update_params(self, **new_params) -> bool:
-        changed = False
-
-        for key, new_val in new_params.items():
-            old_val = self.params.get(key)
-            if old_val != new_val:
-                changed = True
-                self._set_param(key, new_val)
-
-        if changed:
+    def _on_target_changed(self, params_changed=None, *args, **kwargs):
+        if params_changed:
             self.spot_amp = None
-            self.array = self.build()
-            self.name = self.create_target_name()
 
-        return changed
 
-    def _set_param(self, key, value):
-        if key == "period_x_um":
-            self.period_x_um = value
-        elif key == "period_y_um":
-            self.period_y_um = value
-        elif key == "n_foci_x":
-            self.npx = value
-        elif key == "n_foci_y":
-            self.npy = value
-        elif key == "rotation_deg":
-            self.rotation_deg = value
-        elif key == "skew_deg":
-            self.skew_deg = value
-        else:
-            self.params[key] = value
-
-    # ------------------------------------------------------------------
     # Metric grid and calibration
-    # ------------------------------------------------------------------
 
     def _make_spot_positions_um(self):
-        ix = np.arange(self.npx, dtype=np.float32) - (self.npx - 1) / 2
-        iy = np.arange(self.npy, dtype=np.float32) - (self.npy - 1) / 2
+        ix = np.arange(self.n_foci_x, dtype=np.float32) - (self.n_foci_x - 1) / 2
+        iy = np.arange(self.n_foci_y, dtype=np.float32) - (self.n_foci_y - 1) / 2
 
         I, J = np.meshgrid(ix, iy, indexing="xy")
 
         skew_rad = np.deg2rad(self.skew_deg)
-        x_um = I * self.period_x_um + J * self.period_y_um * np.sin(skew_rad)
-        y_um = J * self.period_y_um * np.cos(skew_rad)
+        x_um = I * self._period_x_um() + J * self._period_y_um() * np.sin(skew_rad)
+        y_um = J * self._period_y_um() * np.cos(skew_rad)
 
         theta = np.deg2rad(self.rotation_deg)
         cos_t = np.cos(theta)
@@ -261,10 +239,7 @@ class MultiFociVectorTarget(TargetBase):
         ]
         return np.asarray(vectors, dtype=np.float32).T
 
-    # ------------------------------------------------------------------
     # Preview raster
-    # ------------------------------------------------------------------
-
     def _build_preview_array(self, positions_um):
         if positions_um is None or positions_um.size == 0:
             return np.zeros(
@@ -284,7 +259,7 @@ class MultiFociVectorTarget(TargetBase):
         span_y = max(y_max - y_min, 0.0)
 
         margin_um = max(
-            0.5 * max(self.period_x_um, self.period_y_um),
+            0.5 * max(self._period_x_um(), self._period_y_um()),
             0.08 * max(span_x, span_y),
             1.0,
         )
@@ -322,7 +297,7 @@ class MultiFociVectorTarget(TargetBase):
         return scale
 
     def _preview_spot_radius(self, scale):
-        min_period = min(self.period_x_um, self.period_y_um)
+        min_period = min(self._period_x_um(), self._period_y_um())
         return max(1, min(4, int(round(min_period * scale / 12.0))))
 
     @staticmethod
@@ -339,22 +314,7 @@ class MultiFociVectorTarget(TargetBase):
         if y0 < y1 and x0 < x1:
             target[y0:y1, x0:x1] = np.maximum(target[y0:y1, x0:x1], amp)
 
-    # ------------------------------------------------------------------
     # Utilities
-    # ------------------------------------------------------------------
-
-    @staticmethod
-    def _coerce_section_size(section_size):
-        if section_size is None:
-            return None
-        if len(section_size) != 2:
-            raise ValueError(f"section_size must be (height, width), got {section_size}")
-
-        height = int(section_size[0])
-        width = int(section_size[1])
-        if height <= 0 or width <= 0:
-            raise ValueError(f"section_size must be positive, got {section_size}")
-        return height, width
 
     @staticmethod
     def _fmt_float(value, precision=4):

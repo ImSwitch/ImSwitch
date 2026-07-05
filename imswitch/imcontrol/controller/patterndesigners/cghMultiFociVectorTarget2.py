@@ -4,23 +4,25 @@ from .cghBaseTarget import TargetBase
 from .registries import register_target
 
 
-@register_target(
-    "multi_foci_vector_2",
-    feedback=False,          # keep False for now; enable once feedback loop is implemented
-    params=[
-        ("Target Size X", 512, int),      # preview / legacy raster size
-        ("Target Size Y", 512, int),      # preview / legacy raster size
-        ("N Foci X", 31, int),
-        ("N Foci Y", 31, int),
-        ("Period X kxy", 0.8e-3, float),
-        ("Period Y kxy", 0.8e-3, float),
-        ("Rotation Deg", 0.0, float),
-        ("Skew Deg", 0.0, float),
-        ("Offset X kxy", 0.0, float),
-        ("Offset Y kxy", 0.0, float),
-        ("Stagger", 0.0, float),
-    ],
-)
+# @register_target(
+#     "multi_foci_vector_2",
+#     feedback=False,          # keep False for now; enable once feedback loop is implemented
+#     calibration=False,
+#     auto_update_param=False,
+#     params=[
+#         ("Target Size X", 512, int),      # preview / legacy raster size
+#         ("Target Size Y", 512, int),      # preview / legacy raster size
+#         ("N Foci X", 31, int),
+#         ("N Foci Y", 31, int),
+#         ("Period X kxy", 0.8e-3, float),
+#         ("Period Y kxy", 0.8e-3, float),
+#         ("Rotation Deg", 0.0, float),
+#         ("Skew Deg", 0.0, float),
+#         ("Offset X kxy", 0.0, float),
+#         ("Offset Y kxy", 0.0, float),
+#         ("Stagger", 0.0, float),
+#     ],
+# )
 class MultiFociVectorTarget2(TargetBase):
     """
     Vectorized multi-foci target.
@@ -44,6 +46,8 @@ class MultiFociVectorTarget2(TargetBase):
     """
 
     target_type = "multi_foci_vector"
+    _supports_feedback = False
+    _needs_calibration = False
 
     def __init__(self, section_size=None, **params):
         # Future feedback/correction state.

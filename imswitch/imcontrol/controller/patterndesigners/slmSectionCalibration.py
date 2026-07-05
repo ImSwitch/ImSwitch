@@ -19,6 +19,8 @@ class SLMSectionCalibration:
     version: int = 1
     created_at: str = ""
     source: str = ""
+    plane: str = None
+    cam_px_size_um: float = None
     metadata: Dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self):
@@ -28,6 +30,8 @@ class SLMSectionCalibration:
         self.version = int(self.version or 1)
         self.created_at = str(self.created_at or "")
         self.source = str(self.source or "")
+        self.plane = str(self.plane or None)
+        self.cam_px_size_um = str(self.cam_px_size_um or None)
         self.metadata = dict(self.metadata or {})
 
     @classmethod
@@ -106,6 +110,8 @@ class SLMSectionCalibration:
             "matrix_2x2": [list(row) for row in matrix] if matrix is not None else None,
             "created_at": self.created_at,
             "source": self.source,
+            "plane": self.plane,
+            "cam_px_size_um": self.cam_px_size_um,
             "metadata": dict(self.metadata),
         }
 
@@ -131,6 +137,7 @@ class SLMSectionCalibration:
                 kx_per_um = matrix[0][0]
             if ky_per_um is None:
                 ky_per_um = matrix[1][1]
+        
 
         return cls(
             kx_per_um=0.0 if kx_per_um is None else kx_per_um,
@@ -140,6 +147,8 @@ class SLMSectionCalibration:
             created_at=data.get("created_at", data.get("date", "")),
             source=data.get("source", ""),
             metadata=data.get("metadata", {}),
+            plane = data.get("plane",None),
+            cam_px_size_um = data.get("cam_px_size_um")
         )
 
     def _effective_matrix(self):

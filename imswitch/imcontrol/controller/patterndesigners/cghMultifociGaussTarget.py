@@ -9,19 +9,19 @@ _FEEDBACK_NOT_IMPLEMENTED_MSG = (
 )
 
 
-@register_target(
-    "multifoci_gauss",
-    feedback=True,
-    params=[
-        ("Target Size X", 512, int),
-        ("Target Size Y", 512, int),
-        ("N Foci X", 31, int),
-        ("N Foci Y", 31, int),
-        ("Period X", 6, int),
-        ("Period Y", 6, int),
-        ("Gaussian Size Px", 3, int),
-    ],
-)
+# @register_target(
+#     "multifoci_gauss",
+#     feedback=True,
+#     params=[
+#         ("Target Size X", 512, int),
+#         ("Target Size Y", 512, int),
+#         ("N Foci X", 31, int),
+#         ("N Foci Y", 31, int),
+#         ("Period X", 6, int),
+#         ("Period Y", 6, int),
+#         ("Gaussian Size Px", 3, int),
+#     ],
+# )
 class MultifociGaussTarget(TargetBase):
     """
     Multi-foci target with finite Gaussian spots.

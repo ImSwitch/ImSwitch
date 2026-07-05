@@ -109,14 +109,14 @@ class SLMsWidget(Widget):
 
     sigConnectSLMusb = QtCore.Signal(str,bool,bool)         # slmName, state, display_msg
     sigUpdatePattern = QtCore.Signal(str, dict)             # slmKey, params
-    sigCalibrateLinearPhase = QtCore.Signal(str, str, dict) # slmKey, secKey, calibration inputs
     sigComputeCGH = QtCore.Signal(str, str,dict)            # slmKey, secKey, cgh_params
 
     sigVisualizeCghPerformances = QtCore.Signal(str, str)   # slmKey, secKey
     sigVisualizeTarget = QtCore.Signal(str,str)             # slmKey, secKey
     sigShowCghResult = QtCore.Signal(str, str, int)         # slmKey, secKey, pad_size
-    sigTargetParamChanged = QtCore.Signal(str, str)         # slmKey, secKey
-
+    sigTargetParamChanged = QtCore.Signal(str, str,str,object) # slmKey, secKey, attrname, value
+    sigTargetChanged = QtCore.Signal(str,str)               # slmKey, secKey
+    
     sigDeleteConfig = QtCore.Signal(str,str)                # slmKey, config path
     sigRenameConfig = QtCore.Signal(str,str,str)            # slmKey, old name, new name
     sigDuplicateConfig = QtCore.Signal(str,str,str)         # slmKey, config path, new name
@@ -135,9 +135,10 @@ class SLMsWidget(Widget):
     sigResetFeedback = QtCore.Signal(str,str)               # slmKey, secKey
     sigAnalysisFeedbackPrm = QtCore.Signal(str,str)         # slmKey, secKey
     sigLoadFeedback = QtCore.Signal(str,str)                # slmKey, secKey
-    sigCalibTarget = QtCore.Signal(str,str)                 # slmKey, secKey
-    sigSetDefaultConvFactor = QtCore.Signal(str,str)        # slmKey, secKey
-
+    
+    sigActivePlaneChanged = QtCore.Signal(str,str,str)      # slmKey, secKey,active_plane
+    sigCalibrateLinearPhase = QtCore.Signal(str, str, dict) # slmKey, secKey, calibration inputs
+    
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.setMinimumSize(200,200)
@@ -166,6 +167,8 @@ class SLMsWidget(Widget):
 
         # update timers
         self._slmUpdateTimers = {}      # { slmKey: QTimer }
+        self._slmTargetUpdateTimers={}  # { slmKey: {secKey: QTimer }}
+        self._pendingTargetUpdates = {} # { slmKey: {secKey: tuple(param,value) }}
 
 
     def add_slm(self,slmName: str,slmInfo: "SLMInfo", full_registry: dict,
@@ -260,6 +263,9 @@ class SLMsWidget(Widget):
         container = QtWidgets.QWidget()
         vbox = QtWidgets.QVBoxLayout(container)
 
+        # calibration line
+        vbox.addLayout(self.create_calibration_line(slmKey,secKey))
+
         # General
         self._param_definitions[slmKey][secKey]["general"]=[]
         vbox.addWidget(self.create_general_group(slmKey,secKey))
@@ -269,7 +275,6 @@ class SLMsWidget(Widget):
         pattern_options = options.get("patterns", None)
         pattern_registry = full_registry.get("patterns",{})
         vbox.addWidget(self.create_patterns_group(slmKey,secKey,pattern_options,pattern_registry))
-
         # aberration correction
         if options.get("aberrations",True):
             self._param_definitions[slmKey][secKey]["aberrations"]=[]
@@ -489,6 +494,31 @@ class SLMsWidget(Widget):
         group.setContentLayout(layout)
         return group
     
+    def create_calibration_line(self,slmKey="slm",secKey="sec_0"):
+        
+        calibrationLabel = QtWidgets.QLabel("Calibration: not calibrated")
+        calibrationLabel.setStyleSheet("color: #888;")
+        calibrationBtn = BetterPushButton("Calibrate")
+        activePlanesComboBox = QtWidgets.QComboBox()
+        activePlanesComboBox.addItems(["Sample Plane", "Interm Plane"])
+
+        setattr(self, f"{slmKey}_{secKey}_section_calibration_label", calibrationLabel)
+        setattr(self, f"{slmKey}_{secKey}_calibration_btn", calibrationBtn)
+        setattr(self, f"{slmKey}_{secKey}_active_plane", activePlanesComboBox)
+
+        calibrationLayout = QtWidgets.QHBoxLayout()
+        calibrationLayout.addWidget(calibrationLabel)
+        calibrationLayout.addWidget(activePlanesComboBox)
+        calibrationLayout.addWidget(calibrationBtn)
+        calibrationLayout.addStretch()
+        # layout.addLayout(calibrationLayout, row, 0, 1, 4)
+        calibrationBtn.clicked.connect(
+            lambda _checked=False, s=slmKey, c=secKey: self.show_calibration_dialog(s, c)
+        )
+        activePlanesComboBox.currentTextChanged.connect(lambda text,slm=slmKey,sec=secKey:
+                                                        self.sigActivePlaneChanged.emit(slmKey,secKey,text))
+        return calibrationLayout
+    
     # Patterns section
     def create_patterns_group(self, slmKey="slm",secKey="sec_0", options=None, pattern_registry={}):
         """
@@ -508,21 +538,6 @@ class SLMsWidget(Widget):
             list_patterns.insert(list_patterns.index("linear_phase") + 1, "linear_phase_metric")
 
         row = 0
-        calibrationLabel = QtWidgets.QLabel("Calibration: not calibrated")
-        calibrationLabel.setStyleSheet("color: #888;")
-        calibrationBtn = BetterPushButton("Calibrate linear phase")
-        setattr(self, f"{slmKey}_{secKey}_section_calibration_label", calibrationLabel)
-        setattr(self, f"{slmKey}_{secKey}_linear_phase_calibration_btn", calibrationBtn)
-
-        calibrationLayout = QtWidgets.QHBoxLayout()
-        calibrationLayout.addWidget(calibrationLabel)
-        calibrationLayout.addWidget(calibrationBtn)
-        calibrationLayout.addStretch()
-        layout.addLayout(calibrationLayout, row, 0, 1, 4)
-        calibrationBtn.clicked.connect(
-            lambda _checked=False, s=slmKey, c=secKey: self.show_linear_phase_calibration_dialog(s, c)
-        )
-        row += 1
 
         for pattern in list_patterns:
             if pattern_registry.get(pattern) is None:
@@ -683,8 +698,8 @@ class SLMsWidget(Widget):
             _widget = QtWidgets.QWidget()
             layout = QtWidgets.QGridLayout(_widget)
             row = 0
-            if infos.get("calibration"):
-                row = self.add_calibration(layout,row,slmKey,secKey,conv_factor)
+            # if infos.get("calibration"):
+            #     row = self.add_calibration(layout,row,slmKey,secKey,conv_factor)
             row = self.add_generic_pattern(layout, row, slmKey, secKey, "cgh",target_name,infos["params"],
                                     add_checkbox=False, per_row=2,auto_update=False,
                                     auto_target_update=infos.get("auto_update_param"))
@@ -696,6 +711,8 @@ class SLMsWidget(Widget):
             stack.addWidget(_widget)
 
         combo.currentIndexChanged.connect(lambda idx: stack.setCurrentIndex(idx))
+        combo.currentIndexChanged.connect(lambda _, slmKey=slmKey, secKey=secKey: 
+                                          self.sigTargetChanged.emit(slmKey,secKey))
         targetLayout.addWidget(stack)
 
         cghLayout.addWidget(targetBox)
@@ -860,31 +877,31 @@ class SLMsWidget(Widget):
     # ------------------------------------- #
     #       UI-BUILD HELPER FUNCTIONS       #
     # ------------------------------------- #
-    def add_calibration(self,layout,row,slmKey,secKey,default_conv_factor=None):
-        calibbtn = BetterPushButton("Calibrate")
-        layout.addWidget(calibbtn, row, 0,1,1)
-        lbl = QtWidgets.QLabel("Conversion factor:")
-        layout.addWidget(lbl, row, 1,1,1)
+    # def add_calibration(self,layout,row,slmKey,secKey,default_conv_factor=None):
+    #     calibbtn = BetterPushButton("Calibrate")
+    #     layout.addWidget(calibbtn, row, 0,1,1)
+    #     lbl = QtWidgets.QLabel("Conversion factor:")
+    #     layout.addWidget(lbl, row, 1,1,1)
 
-        _lbl = default_conv_factor if default_conv_factor is not None else ""
-        conv_factor_lbl = QtWidgets.QLabel(_lbl)
-        layout.addWidget(conv_factor_lbl, row, 2,1,1)
+    #     _lbl = default_conv_factor if default_conv_factor is not None else ""
+    #     conv_factor_lbl = QtWidgets.QLabel(_lbl)
+    #     layout.addWidget(conv_factor_lbl, row, 2,1,1)
 
-        attr_name = f"{slmKey}_{secKey}_cgh_convfactorlbl"
-        setattr(self, attr_name, conv_factor_lbl)
+    #     attr_name = f"{slmKey}_{secKey}_cgh_convfactorlbl"
+    #     setattr(self, attr_name, conv_factor_lbl)
 
-        setasdefaultbtn = BetterPushButton("Set as default")
-        layout.addWidget(setasdefaultbtn, row, 3,1,1)
+    #     setasdefaultbtn = BetterPushButton("Set as default")
+    #     layout.addWidget(setasdefaultbtn, row, 3,1,1)
 
-        setasdefaultbtn.clicked.connect(
-            lambda _, s=self.sigSetDefaultConvFactor, slm=slmKey, sec=secKey: s.emit(slm,sec)
-        )
+    #     setasdefaultbtn.clicked.connect(
+    #         lambda _, s=self.sigSetDefaultConvFactor, slm=slmKey, sec=secKey: s.emit(slm,sec)
+    #     )
         
-        calibbtn.clicked.connect(
-            lambda _, s=self.sigCalibTarget, slm=slmKey, sec=secKey: s.emit(slm,sec)
-            )
+    #     calibbtn.clicked.connect(
+    #         lambda _, s=self.sigCalibTarget, slm=slmKey, sec=secKey: s.emit(slm,sec)
+    #         )
         
-        return row+1
+    #     return row+1
 
 
     def add_param_grid(self, slmKey, secKey,section_name, params, start_row, layout,sub_section=None,
@@ -983,8 +1000,8 @@ class SLMsWidget(Widget):
                     widget.stateChanged.connect(lambda state, 
                                                 key=slmKey: self._schedulePatternUpdate(key))
                 elif auto_target_update:
-                    widget.stateChanged.connect(lambda state, slmKey=slmKey, secKey=secKey:
-                                                self.sigTargetParamChanged(slmKey,secKey))
+                    widget.stateChanged.connect(lambda state, slmKey=slmKey, secKey=secKey, attrname=attrname:
+                                                self._scheduleTargetUpdate(slmKey,secKey,attrname,state))
                 col += 1
 
             # LineEdit
@@ -1002,11 +1019,11 @@ class SLMsWidget(Widget):
                 layout.addWidget(widget, row, col + 1,1,1)
                 if auto_update:
                     widget.textChanged.connect(
-                        lambda text, slmKey=slmKey: self._lineEditUpdate(text, slmKey)
+                        lambda text, slmKey=slmKey: self._lineEditUpdate(slmKey, text)
                         )
                 elif auto_target_update:
-                    widget.textChanged.connect(lambda state, slmKey=slmKey, secKey=secKey:
-                                                self.sigTargetParamChanged(slmKey,secKey))
+                    widget.textChanged.connect(lambda text, slmKey=slmKey, secKey=secKey, attrname=attrname:
+                                                self._lineEditTargetUpdate(slmKey,secKey,attrname,text))
                 col += 2
                 
 
@@ -1020,8 +1037,8 @@ class SLMsWidget(Widget):
                 if auto_update:
                     widget.currentIndexChanged.connect(lambda key=slmKey: self._schedulePatternUpdate(key))
                 elif auto_target_update:
-                    widget.currentIndexChanged.connect(lambda state, slmKey=slmKey, secKey=secKey:
-                                                self.sigTargetParamChanged(slmKey,secKey))
+                    widget.currentIndexChanged.connect(lambda value, slmKey=slmKey, secKey=secKey, attrname=attrname:
+                                                        self._scheduleTargetUpdate(slmKey,secKey,attrname,value))
                 col += 2
 
             else:   
@@ -1041,7 +1058,7 @@ class SLMsWidget(Widget):
                     attr_parts.append(sub_section)
                 attr_parts.append(attrname)
                 full_attrname = clean_attr_name("_".join(attr_parts))
-
+                
                 # set attribute on self
                 setattr(self, full_attrname, widget)
 
@@ -1118,6 +1135,8 @@ class SLMsWidget(Widget):
             elif ptype == "choice":
                 # Expect default to be a list of options
                 params.append(("combo", attr_name, default, attr_name))
+            elif ptype == bool:
+                params.append(("checkbox", attr_name, default, attr_name))
             else:
                 # Fallback to string line edit
                 params.append(("lineedit", attr_name, str(default), attr_name))
@@ -1223,6 +1242,7 @@ class SLMsWidget(Widget):
         full_attrname = clean_attr_name(f"{slmKey}_{secKey}_{attrname}")
         widget = getattr(self, full_attrname, None)
         if widget is None:
+            self.__logger.debug(f"{full_attrname} not found")
             return
 
         # --- Restore according to widget type ---
@@ -1303,7 +1323,8 @@ class SLMsWidget(Widget):
         """ Returns current target selected in combo box of slmKey, secKey """
         attrname = f"{slmKey}_{secKey}_cgh_general_target_type"
         if hasattr(self,attrname):
-            return getattr(self,attrname).currentText()
+            target_type = getattr(self,attrname).currentText()
+            return clean_attr_name(target_type)
         return None
     
     def get_cgh_params(self,slmKey,secKey):
@@ -1320,26 +1341,14 @@ class SLMsWidget(Widget):
     #       LOGIC HANDLING FUNCTIONS        #
     # ------------------------------------- #
 
-    # --- cgh target calibration --- #
+    def on_new_target_params(self,slmKey,secKey,target_type,new_params):
+        current_target = self.getCurrentTargetType(slmKey,secKey)
+        if current_target != target_type:
+            raise RuntimeError(f"Expected target to be {target_type} but got {current_target}")
+        for param_name,value in new_params.items():
+            attrname = f"{target_type}_{param_name}"
+            self.set_widget_value(slmKey,secKey,attrname,"lineedit",value)
 
-    def set_conv_factor_label(self, slmKey, secKey, conv_factor_dict: dict):
-        attr_name = f"{slmKey}_{secKey}_cgh_convfactorlbl"
-        if not hasattr(self,attr_name):
-            return
-        
-        widget = getattr(self, attr_name)
-
-        x = conv_factor_dict.get("x")
-        y = conv_factor_dict.get("y")
-        if x is None or y is None:
-            self.__logger.error("Conversion factor expected to be a dict with: 'x' and 'y' keys")
-            return
-        lbl = f"Conversion factor: X: {round(x,3)}, Y: {round(x,3)}"
-        try:
-            widget.setText(lbl)
-        except Exception as e:
-            self.__logger.error(f"Error while setting  conversion factor label in widget: {e}")
-    
 
     # --------- tab renaming -------- #
     def rename_tab(self,slmKey, tabWidget, index):
@@ -1493,7 +1502,7 @@ class SLMsWidget(Widget):
 
     # --------- calibration related --------- #
 
-    def show_linear_phase_calibration_dialog(self, slmKey, secKey):
+    def show_calibration_dialog(self, slmKey, secKey):
         dialog = QtWidgets.QDialog(self)
         dialog.setWindowTitle("Linear phase calibration")
         dialog.resize(360, 180)
@@ -1501,7 +1510,17 @@ class SLMsWidget(Widget):
         layout = QtWidgets.QVBoxLayout(dialog)
         form = QtWidgets.QFormLayout()
 
+        planeCombo = getattr(self, f"{slmKey}_{secKey}_active_plane")
+        active_plane = planeCombo.currentText()
+        label = QtWidgets.QLabel(f"Calibration will be set for: {active_plane}")
+        font = label.font()
+        font.setBold(True)
+        label.setFont(font)
+        layout.addWidget(label)
+        layout.addSpacing(12)
+
         fields = [
+            ("Camera_px_size_um", "Camera pixel size (um)", "0.077"),
             ("period_x_px", "Tested period X (px)", "100"),
             ("measured_dx_um", "Measured displacement X (um)", "1.0"),
             ("period_y_px", "Tested period Y (px)", "100"),
@@ -1570,7 +1589,7 @@ class SLMsWidget(Widget):
             label.setStyleSheet("color: #888;")
 
     def _read_float_dialog_value(self, edit, label):
-        text = self._normalize_numeric_text(edit.text())
+        text = normalize_numeric_text(edit.text())
         if text is None or text == "":
             raise ValueError(f"{label} is required.")
         try:
@@ -2297,6 +2316,14 @@ class SLMsWidget(Widget):
 
     # --------- typing validators/formatting and auto-update -------- #
 
+    def _lineEditUpdate(self, slmKey, text):
+        """
+        To avoid updating empty text.
+        """
+        if text.strip() == "":
+            return  # skip empty input
+        self._schedulePatternUpdate(slmKey)
+
     def _get_slm_timer(self,slmKey):
         if slmKey not in self._slmUpdateTimers:
             timer = QtCore.QTimer(self)
@@ -2309,14 +2336,43 @@ class SLMsWidget(Widget):
         timer = self._get_slm_timer(slmKey)
         timer.start(_DEBOUNCE_TIME)
 
-    def _lineEditUpdate(self, text, slmKey):
+
+    def _lineEditTargetUpdate(self,slmKey,secKey,param_name,text):
         """
         To avoid updating empty text.
         """
         if text.strip() == "":
             return  # skip empty input
-        self._schedulePatternUpdate(slmKey)
+        self._scheduleTargetUpdate(slmKey,secKey,param_name,text)
 
+    def _get_target_update_timer(self, slmKey, secKey):
+        timers = self._slmTargetUpdateTimers.setdefault(slmKey, {})
+
+        if secKey not in timers:
+            timer = QtCore.QTimer(self)
+            timer.setSingleShot(True)
+            timer.timeout.connect(
+                partial(self._emit_target_param_changed, slmKey, secKey)
+            )
+            timers[secKey] = timer
+
+        return timers[secKey]
+
+    def _scheduleTargetUpdate(self, slmKey, secKey, param_name, value):
+        self._pendingTargetUpdates.setdefault(slmKey, {})[secKey] = (param_name,value)
+        timer = self._get_target_update_timer(slmKey, secKey)
+        timer.start(_DEBOUNCE_TIME)
+
+
+    def _emit_target_param_changed(self, slmKey, secKey):
+        param_name, value = self._pendingTargetUpdates[slmKey][secKey]
+
+        self.sigTargetParamChanged.emit(
+            slmKey,
+            secKey,
+            param_name,
+            value,
+        )
 
     def _make_validator(self, pythontype, widget):
         if pythontype is int:
@@ -2331,60 +2387,60 @@ class SLMsWidget(Widget):
         return None
     
 
-    # -------------------------------#
-    #       CALIBRATION DIALOG       # 
-    # -------------------------------#
+    # # -------------------------------#
+    # #       CALIBRATION DIALOG       # 
+    # # -------------------------------#
 
-    class CalibrateDialog(QtWidgets.QDialog):
-        def __init__(self, parent, params=None, title="Target Real Space Calibration"):
-            if params is None:
-                raise RuntimeError("Calibrate dialog expect a parameter list")
+    # class CalibrateDialog(QtWidgets.QDialog):
+    #     def __init__(self, parent, params=None, title="Target Real Space Calibration"):
+    #         if params is None:
+    #             raise RuntimeError("Calibrate dialog expect a parameter list")
             
-            super().__init__(parent)
-            self.setWindowTitle(title)
+    #         super().__init__(parent)
+    #         self.setWindowTitle(title)
             
-            layout = QtWidgets.QGridLayout()
+    #         layout = QtWidgets.QGridLayout()
             
-            self.attr_to_parms = {}
+    #         self.attr_to_parms = {}
 
-            row=0
-            for param_name, default, ptype in params:
-                if ptype in ("float", "int",float, int):
-                    lbl = QtWidgets.QLabel(param_name + ":")
-                    widget = QtWidgets.QLineEdit(str(default))
+    #         row=0
+    #         for param_name, default, ptype in params:
+    #             if ptype in ("float", "int",float, int):
+    #                 lbl = QtWidgets.QLabel(param_name + ":")
+    #                 widget = QtWidgets.QLineEdit(str(default))
 
-                    layout.addWidget(lbl,row,0,1,1)
-                    layout.addWidget(widget,row,1,1)
-                else:
-                    # other types?
-                    continue
+    #                 layout.addWidget(lbl,row,0,1,1)
+    #                 layout.addWidget(widget,row,1,1)
+    #             else:
+    #                 # other types?
+    #                 continue
                 
-                attr_name = clean_attr_name(param_name)
-                self.attr_to_parms[attr_name] = param_name
-                setattr(self,attr_name,widget)
-                row+=1
-            self.button_box = QtWidgets.QDialogButtonBox(
-                QtWidgets.QDialogButtonBox.Save | QtWidgets.QDialogButtonBox.Cancel
-            )
-            self.button_box.accepted.connect(self.accept)
-            self.button_box.rejected.connect(self.reject)
+    #             attr_name = clean_attr_name(param_name)
+    #             self.attr_to_parms[attr_name] = param_name
+    #             setattr(self,attr_name,widget)
+    #             row+=1
+    #         self.button_box = QtWidgets.QDialogButtonBox(
+    #             QtWidgets.QDialogButtonBox.Save | QtWidgets.QDialogButtonBox.Cancel
+    #         )
+    #         self.button_box.accepted.connect(self.accept)
+    #         self.button_box.rejected.connect(self.reject)
             
-            layout.addWidget(self.button_box, row, 2)
-            self.setLayout(layout)
+    #         layout.addWidget(self.button_box, row, 2)
+    #         self.setLayout(layout)
 
-        def get_calib_values(self):
-            values = {}
-            for key, item in self.attr_to_parms:
-                widget = getattr(self, item)
-                value = normalize_numeric_text(widget.text())
-                values[key] = value
+    #     def get_calib_values(self):
+    #         values = {}
+    #         for key, item in self.attr_to_parms:
+    #             widget = getattr(self, item)
+    #             value = normalize_numeric_text(widget.text())
+    #             values[key] = value
                 
-        @classmethod
-        def set_new_calib(cls, parent_widget, params):
-            dialog = cls(parent_widget,params)
-            if dialog.exec_() == QtWidgets.QDialog.Accepted:
-                return dialog.get_calib_values()
-            return None
+    #     @classmethod
+    #     def set_new_calib(cls, parent_widget, params):
+    #         dialog = cls(parent_widget,params)
+    #         if dialog.exec_() == QtWidgets.QDialog.Accepted:
+    #             return dialog.get_calib_values()
+    #         return None
 
 
 
@@ -2439,6 +2495,7 @@ def make_display_name(param_name: str) -> str:
     Leaves strings that already look like display names unchanged.
     """
     _units = {"mm", "um", "nm", "px", "degrees", "deg", "rad", "radians"}
+    _acronyms = {"fov": "FOV", "slm": "SLM", "cgh": "CGH", "roi": "ROI"}
 
     # --- If it's already formatted, just return as-is ---
     if " " in param_name or "(" in param_name or re.search(r"[A-Z].*[A-Z]", param_name):
@@ -2446,10 +2503,20 @@ def make_display_name(param_name: str) -> str:
 
     # --- Otherwise, convert snake_case to displayable form ---
     parts = param_name.split("_")
-    display_parts = [
-        f"({p})" if p.lower() in _units else p.capitalize()
-        for p in parts if p
-    ]
+    display_parts = []
+
+    for p in parts:
+        if not p:
+            continue
+        p_low = p.lower()
+
+        if p_low in _units:
+            display_parts.append(f"({p_low})")
+        elif p_low in _acronyms:
+            display_parts.append(_acronyms[p_low])
+        else:
+            display_parts.append(p.capitalize())
+
     return " ".join(display_parts)
 
 

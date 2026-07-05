@@ -5,10 +5,8 @@ from .registries import PATTERNS_REGISTRY, ABERRATIONS_REGISTRY, TARGETS_REGISTR
 from . import analyticalPatterns
 from . import aberrationPatterns
 from . import cghMultiFociTarget
-from . import cghMultifociGaussTarget
 from . import cghMultiFociCalibTarget
 from . import cghMultiFociVectorTarget
-from . import cghMultiFociVectorTarget2
 
 from . import cghComputations
 from . import slmsuiteComputations

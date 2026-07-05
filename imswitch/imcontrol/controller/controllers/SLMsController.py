@@ -24,13 +24,12 @@ from ..patterndesigners.patternEngine import PatternEngine
 from ..patterndesigners.slmSectionCalibration import SLMSectionCalibration
 from ..patterndesigners import slmsuiteComputations as slmsuite_cgh
 
+
 full_registry = {
     "patterns": PATTERNS_REGISTRY,
     "aberrations": ABERRATIONS_REGISTRY,
     "cgh_targets": TARGETS_REGISTRY
 }
-
-SECTION_CALIBRATIONS_KEY = "sectionCalibrations"
 
 class SLMsController(SetupModeMixin, ImConWidgetController):
     """Linked to SLMsWidget."""
@@ -59,8 +58,10 @@ class SLMsController(SetupModeMixin, ImConWidgetController):
         self.configsDir = os.path.join(self.slmDir, 'configs')
         self.cghPatternsDir =  os.path.join(self.slmDir, 'cgh_patterns')
         self.correctionDir = os.path.join(self.slmDir, 'Corrections')
+        self.calibrationDir = os.path.join(self.slmDir, 'Calibrations')
         os.makedirs(self.configsDir, exist_ok=True)
         os.makedirs(self.cghPatternsDir, exist_ok=True)
+        os.makedirs(self.calibrationDir, exist_ok=True)
 
         # initiate each slm widget and engine
         for slmName, slmManager in self._master.slmsManager:
@@ -73,7 +74,7 @@ class SLMsController(SetupModeMixin, ImConWidgetController):
             self._slmNames[slmKey]=slmName
             self._slmKeys[slmName]=slmKey
             self._slmInfos[slmKey] = slmInfo
-            self._load_section_calibrations(slmKey)
+            self._load_section_calibrations_from_setup(slmKey)
 
             # auto-connect for manager that needs device to connection
             if device_connection:
@@ -118,7 +119,8 @@ class SLMsController(SetupModeMixin, ImConWidgetController):
         self._widget.sigVisualizeCghPerformances.connect(self.on_visualize_cgh_performances)
         self._widget.sigVisualizeTarget.connect(self.on_visualize_target)
         self._widget.sigShowCghResult.connect(self.on_show_cgh_result)
-        self._widget.sigTargetParamChanged.connect(self.sync_target)
+        self._widget.sigTargetParamChanged.connect(self.update_single_target_param)
+        self._widget.sigTargetChanged.connect(self.sync_target)
         
         self._widget.sigLoadConfig.connect(self.on_load_config)
         self._widget.sigLoadAberr.connect(self.on_load_aberr)
@@ -131,8 +133,10 @@ class SLMsController(SetupModeMixin, ImConWidgetController):
         self._widget.sigDuplicateConfig.connect(self.on_duplicate_config)
         self._widget.sigSetStartupConfig.connect(self.on_set_startup_config)
         self._widget.sigOpenConfigFolder.connect(self.on_open_config_folder)
+        
         self._widget.sigCalibrateLinearPhase.connect(self.on_linear_phase_calibration)
-
+        self._widget.sigsigActivePlaneChanged.connect(self.on_active_plane_changed)
+        
         self._widget.sigSnapFeedback.connect(self.on_feedback_snap)
         self._widget.sigAnalysisFeedback.connect(self.on_feedback_analysis)
         self._widget.sigUpdateTarget.connect(self.on_feedback_update_target)
@@ -140,8 +144,8 @@ class SLMsController(SetupModeMixin, ImConWidgetController):
         self._widget.sigAnalysisFeedbackPrm.connect(self.on_feedback_analysis_prm)
         self._widget.sigLoadFeedback.connect(self.on_load_feedback)
 
-        self._widget.sigCalibTarget.connect(self.on_calibrate_cgh_target)
-        self._widget.sigSetDefaultConvFactor.connect(self.on_set_default_conv_factor)
+        # self._widget.sigCalibTarget.connect(self.on_calibrate_cgh_target)
+        # self._widget.sigSetDefaultConvFactor.connect(self.on_set_default_conv_factor)
 
         # cgh worker initialization
         self._cghWorker = self.CGHWorker()
@@ -440,16 +444,13 @@ class SLMsController(SetupModeMixin, ImConWidgetController):
 
     # ----- SLM section calibration helpers ----- #
 
-    def _load_section_calibrations(self, slmKey):
-        """Load setup-stored calibrations into the pattern engine and widget."""
+    def _load_section_calibrations_from_setup(self, slmKey):
+        """Load setup-saved calibrations into the pattern engine and widget."""
 
         self._sectionCalibrations.setdefault(slmKey, {})
-        engine = self._patternEngines.get(slmKey)
         for secKey in self._widget._slmSectionList.get(slmKey, []):
             calibration = self.get_section_calibration(slmKey, secKey)
             self._sectionCalibrations[slmKey][secKey] = calibration
-            if engine is not None:
-                engine.update_section_calibration(secKey, calibration)
             self._widget.update_section_calibration_status(
                 slmKey,
                 secKey,
@@ -459,15 +460,12 @@ class SLMsController(SetupModeMixin, ImConWidgetController):
     def get_section_calibration(self, slmKey, secKey):
         """Return the stored calibration for one SLM section."""
 
-        store = self._get_section_calibration_store(slmKey, create=False)
-        raw = None
-        if isinstance(store, dict):
-            raw = store.get(secKey)
-            if raw is None and isinstance(store.get(slmKey), dict):
-                raw = store[slmKey].get(secKey)
+        calib = self._get_section_calibration_dict_from_setup(slmKey, create=False).get(secKey,None)
+        if not isinstance(calib, dict) or not calib:
+            return SLMSectionCalibration()
 
         try:
-            return SLMSectionCalibration.from_dict(raw)
+            return SLMSectionCalibration.from_dict(calib)
         except Exception as e:
             self.__logger.warning(
                 f"Invalid SLM section calibration for {slmKey}/{secKey}: {e}"
@@ -478,15 +476,14 @@ class SLMsController(SetupModeMixin, ImConWidgetController):
         """Store and apply the calibration for one SLM section."""
 
         calibration = SLMSectionCalibration.from_dict(calibration)
-        store = self._get_section_calibration_store(slmKey, create=True)
-        store[secKey] = {
+        setup_dict = self._get_section_calibration_dict_from_setup(slmKey, create=True)
+        setup_dict[secKey] = {
             "slmKey": slmKey,
             "secKey": secKey,
             "calibration": calibration.to_dict(),
         }
 
         self._sectionCalibrations.setdefault(slmKey, {})[secKey] = calibration
-        self._patternEngines[slmKey].update_section_calibration(secKey, calibration)
         self._widget.update_section_calibration_status(
             slmKey,
             secKey,
@@ -525,32 +522,21 @@ class SLMsController(SetupModeMixin, ImConWidgetController):
                 message=f"Could not save calibration:\n{e}",
             )
 
-    def _get_section_calibration_store(self, slmKey, create=False):
-        managerProperties = self._get_slm_manager_properties(slmKey, create=create)
+    def _get_section_calibration_dict_from_setup(self, slmKey, create=False) -> dict:
+        slmInfo = self._slmInfos.get(slmKey,{})
+        managerProperties = getattr(slmInfo, "managerProperties", None)
         if managerProperties is None:
             return {}
 
-        store = managerProperties.get(SECTION_CALIBRATIONS_KEY)
-        if isinstance(store, dict):
-            return store
+        calib = managerProperties.get("sectionCalibrations")
+        if isinstance(calib, dict):
+            return calib
 
         if create:
-            managerProperties[SECTION_CALIBRATIONS_KEY] = {}
-            return managerProperties[SECTION_CALIBRATIONS_KEY]
+            managerProperties["sectionCalibrations"] = {}
+            return managerProperties["sectionCalibrations"]
 
         return {}
-
-    def _get_slm_manager_properties(self, slmKey, create=False):
-        slmInfo = self._slmInfos.get(slmKey)
-        if slmInfo is None:
-            return None
-
-        managerProperties = getattr(slmInfo, "managerProperties", None)
-        if managerProperties is None and create:
-            managerProperties = {}
-            object.__setattr__(slmInfo, "managerProperties", managerProperties)
-        return managerProperties
-
 
     
     # --------- Saving/loading related -------- #
@@ -986,36 +972,57 @@ class SLMsController(SetupModeMixin, ImConWidgetController):
 
     # ----- CGH related methods ----- #
 
-    def sync_target(self, slmKey, secKey):
-        """
-        Sync target object with target parameters for a given SLM section.
-        Exception is raised if cgh params cannot be found in slmKey, secKey.
-        """
-        # get target parameters
+    def _get_current_target_params(self,slmKey,secKey):
         cgh_params = self._widget.get_cgh_params(slmKey,secKey)
         target_type = cgh_params.get("cgh_general",{}).get("target_type","")
         target_params = cgh_params.get(target_type)
         if cgh_params is None or target_type=="" or target_params is None:
             raise Exception(f"Could not find target parameters for {slmKey},{secKey}")
+        return target_type, target_params
 
-        target_context = self._get_target_context_kwargs(target_type, slmKey, secKey)
+    def update_single_target_param(self, slmKey, secKey, param_name, value):
+        """ Light update of one single target parameter."""
+        target = self._targets.get(slmKey, {}).get(secKey)
+        if target is None:
+            return
         
+        target_type = self._widget.getCurrentTargetType(slmKey,secKey)
+        if target.target_type != target_type:
+            return
+        
+        else:
+            changed = target.update_single_param(param_name,value)
+            if changed:
+                new_params = target.get_target_params()
+                self._widget.on_new_target_params(slmKey,secKey,target_type,new_params)
+                self._widget.on_feedback_reset(slmKey,secKey,emitSig=False)
+                self._cghResults.setdefault(slmKey, {})[secKey] = {} # clear any previous cgh result
+
+    def sync_target(self, slmKey, secKey):
+        """
+        Sync target object with target parameters for a given SLM section.
+        Exception is raised if cgh params cannot be found in slmKey, secKey.
+        """
+        target_type, target_params = self._get_current_target_params(slmKey,secKey)
+
+        # get section size and calibration
+        section_size = self._get_section_size(slmKey,secKey)
+        section_calibration = self._sectionCalibrations.get(slmKey,{}).get(secKey,{})
+
         # get current cahed target and update or create
         target = self._targets.get(slmKey, {}).get(secKey)
         if target is None or target.target_type != target_type:
-            section_size = self._patternEngines.get(slmKey)._sectionShapes.get(secKey)
-            target = self.create_target(target_type,section_size, **target_params)
+            target = self.create_target(target_type,section_size, section_calibration, **target_params)
             self._targets.setdefault(slmKey, {})[secKey] = target
             self._cghResults.setdefault(slmKey, {})[secKey] = {} # clear any previous cgh result
         else:
-            changed = self._sync_target_context(target, target_context)
-            changed = target.update_params(**target_params) or changed
+            changed = target.update_params(section_size, section_calibration, **target_params)
             if changed:
                 self._widget.on_feedback_reset(slmKey,secKey,emitSig=False)
                 self._cghResults.setdefault(slmKey, {})[secKey] = {} # clear any previous cgh result
         return True
 
-    def create_target(self,target_type, section_size = None,**target_params):
+    def create_target(self,target_type, section_size = None,section_calibration=None,**target_params):
         """
         Creates a target object 
         """
@@ -1023,33 +1030,9 @@ class SLMsController(SetupModeMixin, ImConWidgetController):
         if target_class is None:
             raise KeyError(f"{target_type} not found")
         
-        target = target_class(section_size=section_size,**target_params)
+        target = target_class(section_size=section_size, section_calibration=section_calibration, **target_params)
         return target
 
-    def _get_target_context_kwargs(self, target_type, slmKey, secKey):
-        if target_type != "multi_foci_vector":
-            return {}
-
-        return {
-            "section_size": self._get_section_size(slmKey, secKey),
-            "section_calibration": self.get_section_calibration(slmKey, secKey),
-        }
-
-    def _sync_target_context(self, target, target_context):
-        changed = False
-
-        if "section_size" in target_context and hasattr(target, "set_section_size"):
-            changed = target.set_section_size(target_context["section_size"]) or changed
-
-        if (
-            "section_calibration" in target_context
-            and hasattr(target, "set_section_calibration")
-        ):
-            changed = target.set_section_calibration(
-                target_context["section_calibration"]
-            ) or changed
-
-        return changed
 
     def _get_section_size(self, slmKey, secKey):
         engine = self._patternEngines.get(slmKey)
@@ -1350,63 +1333,63 @@ class SLMsController(SetupModeMixin, ImConWidgetController):
 
      # ----- Calibration ----- #
 
-    def on_calibrate_cgh_target(self, slmKey, secKey):
-        self.sync_target(slmKey,secKey)
-        target = self._targets.get(slmKey,{}).get(secKey,None)
+    # def on_calibrate_cgh_target(self, slmKey, secKey):
+    #     self.sync_target(slmKey,secKey)
+    #     target = self._targets.get(slmKey,{}).get(secKey,None)
     
-        params = target.calib_params
-        if params is None:
-            self.__logger.error(f"Target {target.target_type} is not exposing calibration parameters.")
-            return
+    #     params = target.calib_params
+    #     if params is None:
+    #         self.__logger.error(f"Target {target.target_type} is not exposing calibration parameters.")
+    #         return
         
-        calib_values = self._widget.CalibrateDialog.set_new_calib(self._widget, params)
-        conv_factor_dict = target.calibrate(calib_values)
-        if conv_factor_dict is None:
-            return
+    #     calib_values = self._widget.CalibrateDialog.set_new_calib(self._widget, params)
+    #     conv_factor_dict = target.calibrate(calib_values)
+    #     if conv_factor_dict is None:
+    #         return
         
-        self._widget.set_conv_factor_label(conv_factor_dict)
-        self._conv_factors.setdefault(slmKey,{})[secKey] = conv_factor_dict
+    #     self._widget.set_conv_factor_label(conv_factor_dict)
+    #     self._conv_factors.setdefault(slmKey,{})[secKey] = conv_factor_dict
 
-    def on_set_default_conv_factor(self,slmKey,secKey):
-        conv_factor = self._conv_factors.get(slmKey,{}).get(secKey)
+    # def on_set_default_conv_factor(self,slmKey,secKey):
+    #     conv_factor = self._conv_factors.get(slmKey,{}).get(secKey)
 
-        error=False
-        if conv_factor is None:
-            error=True
-            self.__logger.error(f"Cannot set default conversion factor for {slmKey}, {secKey}",
-                                f" because current factor is None.")
-        elif not isinstance(conv_factor,dict):
-            error=True
-            self.__logger.error(f"Cannot set default conversion factor for {slmKey}, {secKey}",
-                                f" because expected a dict with: 'x', 'y' keys. Instead",
-                                f"got type {type(conv_factor)}, and value: {conv_factor}")
-        else:
-            try:
-                self._set_setup_config_conv_factor(slmKey, secKey, conv_factor)
-            except:
-                error = True
-                self.__logger.error(traceback.format_exc())
+    #     error=False
+    #     if conv_factor is None:
+    #         error=True
+    #         self.__logger.error(f"Cannot set default conversion factor for {slmKey}, {secKey}",
+    #                             f" because current factor is None.")
+    #     elif not isinstance(conv_factor,dict):
+    #         error=True
+    #         self.__logger.error(f"Cannot set default conversion factor for {slmKey}, {secKey}",
+    #                             f" because expected a dict with: 'x', 'y' keys. Instead",
+    #                             f"got type {type(conv_factor)}, and value: {conv_factor}")
+    #     else:
+    #         try:
+    #             self._set_setup_config_conv_factor(slmKey, secKey, conv_factor)
+    #         except:
+    #             error = True
+    #             self.__logger.error(traceback.format_exc())
 
-        if error:
-            self._widget.show_message_box(
-                title="Setting default conversion factor",
-                msg_type="error",
-                message=f"Setting default conversion factor failed. Check logger for full error detail."
-            )
+    #     if error:
+    #         self._widget.show_message_box(
+    #             title="Setting default conversion factor",
+    #             msg_type="error",
+    #             message=f"Setting default conversion factor failed. Check logger for full error detail."
+    #         )
         
     
-    def _set_setup_config_conv_factor(self, slmKey, secKey, conv_factor):
-        slmName = self._slmNames.get(slmKey)
-        slmInfo = getattr(self._setupInfo, "slms", {}).get(slmName)
-        if slmInfo is None:
-            raise KeyError(f'Could not find SLM "{slmName}" in setupInfo.slms')
-        conversion_factors = getattr(slmInfo, "conversion_factors", None)
-        if conversion_factors is None:
-            conversion_factors = {}
-            object.__setattr__(slmInfo, "managerProperties", conversion_factors)
+    # def _set_setup_config_conv_factor(self, slmKey, secKey, conv_factor):
+    #     slmName = self._slmNames.get(slmKey)
+    #     slmInfo = getattr(self._setupInfo, "slms", {}).get(slmName)
+    #     if slmInfo is None:
+    #         raise KeyError(f'Could not find SLM "{slmName}" in setupInfo.slms')
+    #     conversion_factors = getattr(slmInfo, "conversion_factors", None)
+    #     if conversion_factors is None:
+    #         conversion_factors = {}
+    #         object.__setattr__(slmInfo, "managerProperties", conversion_factors)
         
-        conversion_factors.setdefault[secKey] = conv_factor
-        configfiletools.saveSetupInfo(configfiletools.loadOptions()[0], self._setupInfo)
+    #     conversion_factors.setdefault[secKey] = conv_factor
+    #     configfiletools.saveSetupInfo(configfiletools.loadOptions()[0], self._setupInfo)
 
 
      # ----- CGH Worker ----- #

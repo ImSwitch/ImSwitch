@@ -39,18 +39,72 @@ def register_aberration(name, noll=None):
     }
 
 
-def register_target(name, params=None, feedback=False,calibration=False,auto_update_param=False):
+def register_target(
+    name=None,
+    *,
+    params=None,
+    feedback=None,
+    calibration=None,
+    auto_update_param=None,
+):
     """
     Decorator to register a Target class.
-    Feedback defines if the feedback loop is available for that target.
+
+    If arguments are omitted, values are read from class attributes:
+        - target_type
+        - target_params
+        - _supports_feedback
+        - _needs_calibration
+        - _auto_update_param
     """
+
     def decorator(cls):
-        TARGETS_REGISTRY[name] = {
+        target_name = name or getattr(cls, "target_type", None)
+
+        if target_name is None:
+            raise ValueError(
+                f"{cls.__name__} must define target_type or pass a name to @register_target"
+            )
+
+        cls.target_type = target_name
+
+        registry_params = _use_arg_or_class_value(
+            params,
+            getattr(cls, "target_params", []),
+        )
+
+        registry_feedback = _use_arg_or_class_value(
+            feedback,
+            getattr(cls, "_supports_feedback", False),
+        )
+
+        registry_calibration = _use_arg_or_class_value(
+            calibration,
+            getattr(cls, "_needs_calibration", False),
+        )
+
+        registry_auto_update = _use_arg_or_class_value(
+            auto_update_param,
+            getattr(cls, "_auto_update_param", False),
+        )
+
+        TARGETS_REGISTRY[target_name] = {
             "class": cls,
-            "feedback": feedback,
-            "calibration": calibration,
-            "auto_update_param": auto_update_param,
-            "params": params or []
+            "feedback": registry_feedback,
+            "calibration": registry_calibration,
+            "auto_update_param": registry_auto_update,
+            "params": registry_params or [],
         }
+
         return cls
+
     return decorator
+
+
+def _use_arg_or_class_value(arg_value, class_value):
+    """
+    Decorator arguments default to None.
+    If the user explicitly passed True or False, keep it.
+    Otherwise, use the value defined on the class.
+    """
+    return class_value if arg_value is None else arg_value

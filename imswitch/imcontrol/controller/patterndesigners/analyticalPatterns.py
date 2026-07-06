@@ -6,14 +6,15 @@ import matplotlib.pyplot as plt
 import numpy as np
 from .registries import register_pattern
 from .slmSectionCalibration import SLMSectionCalibration
-
+from .paramDef import param
+from .converters import PeriodDisplacementConverter
 ### binary grating ###
 @register_pattern("binary_grating", params=[
-    ("period_x", 0, int),
-    ("period_y", 0, int),
-    ("phase_offset",0, float),
-    ("duty_x", 0.5, float),
-    ("duty_y", 0.5, float),
+    param("period_x", 0, int),
+    param("period_y", 0, int),
+    param("phase_offset",0, float),
+    param("duty_x", 0.5, float),
+    param("duty_y", 0.5, float),
 ])
 def binary_grating(width, height, period_x, period_y,phase_offset=0, duty_x=0.5, duty_y=0.5,**kwargs):
     """
@@ -68,13 +69,18 @@ def sinusoidal_grating(width, height, period_x, period_y, power_x=0.5, power_y=0
 
 
 
-
-
 ### linear phase (blazed grating) ###
-@register_pattern("linear_phase", params=[
-    ("period_x", 0, int),
-    ("period_y", 0, int),
-])
+@register_pattern(
+    "linear_phase", 
+    params=[
+        param("period_x", 0, int,min_value=-4000,max_value=4000,
+              metric_available=True,metric_label="Displacement X (um)",
+              converter=PeriodDisplacementConverter),
+        param("period_y", 0, int,min_value=-4000,max_value=4000,
+              metric_available=True,metric_label="Displacement Y (um)",
+              converter=PeriodDisplacementConverter),
+    ]
+)
 def linear_phase(width, height, period_x, period_y,**kwargs):
     """
     Linear (blazed) phase ramp.
@@ -96,8 +102,8 @@ def linear_phase(width, height, period_x, period_y,**kwargs):
 
 
 @register_pattern("linear_phase_metric", params=[
-    ("displacement_x_um", 0.0, float),
-    ("displacement_y_um", 0.0, float),
+    param("displacement_x_um", 0.0, float),
+    param("displacement_y_um", 0.0, float),
 ])
 def linear_phase_metric(width, height, displacement_x_um, displacement_y_um, **kwargs):
     """
@@ -123,9 +129,9 @@ def linear_phase_metric(width, height, displacement_x_um, displacement_y_um, **k
 
 ### lens phase (spherical wavefront) ###
 @register_pattern("lens_phase", params=[
-    ("focal_mm", 225, float),
-    ("wavelength_nm", 488, int),
-    ("pixel_size_um", 12.5, float)
+    param("focal_mm", 225, float),
+    param("wavelength_nm", 488, int),
+    param("pixel_size_um", 12.5, float)
 ])
 def lens_phase(width, height, focal_mm, wavelength_nm, pixel_size_um=12.5,**kwargs):
     """
@@ -156,7 +162,7 @@ def lens_phase(width, height, focal_mm, wavelength_nm, pixel_size_um=12.5,**kwar
 
 ### Vortex Phase (Spiral Phase Plate) ###
 @register_pattern("vortex", params=[
-    ("charge", 1, int),
+    param("charge", 1, int),
 ])
 def vortex(width, height, charge, **kwargs):
     """
@@ -182,8 +188,8 @@ def vortex(width, height, charge, **kwargs):
 
 ### Top Hat (Circular Phase Piston) ###
 @register_pattern("top_hat", params=[
-    ("radius_px", 100, int),
-    ("phase_shift", 3.14, float), # Default to pi
+   param("radius_px", 100, int),
+   param("phase_shift", 3.14, float), # Default to pi
 ])
 def top_hat(width, height, radius_px, phase_shift=3.14, **kwargs):
     """
@@ -209,7 +215,7 @@ def top_hat(width, height, radius_px, phase_shift=3.14, **kwargs):
 
 ### Half Moon X (Vertical Split) ###
 @register_pattern("half_moon_x", params=[
-    ("phase_shift", 3.14, float),
+    param("phase_shift", 3.14, float),
 ])
 def half_moon_x(width, height, phase_shift=3.14, **kwargs):
     """
@@ -234,7 +240,7 @@ def half_moon_x(width, height, phase_shift=3.14, **kwargs):
 
 ### Half Moon Y (Horizontal Split) ###
 @register_pattern("half_moon_y", params=[
-    ("phase_shift", 3.14, float),
+    param("phase_shift", 3.14, float),
 ])
 def half_moon_y(width, height, phase_shift=3.14, **kwargs):
     """

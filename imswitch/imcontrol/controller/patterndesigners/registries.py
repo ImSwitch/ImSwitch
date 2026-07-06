@@ -1,9 +1,23 @@
+from .paramDef import ParamDef, param
 
 PATTERNS_REGISTRY = {}
 ABERRATIONS_REGISTRY = {}
 TARGETS_REGISTRY = {}
 
-def register_pattern(name, params=None):
+def normalize_param_def(value) -> ParamDef:
+    if isinstance(value, ParamDef):
+        return value
+
+    # Temporary backward compatibility
+    if isinstance(value, tuple) and len(value) == 3:
+        key, default, ptype = value
+        return param(key, default, ptype)
+
+    raise TypeError(f"Expected ParamDef, got {value!r}")
+
+
+### PATTERNS ###
+def register_pattern(name, params=None, allows_metric = False, metric_param=None):
     """
     Decorator function to register a pattern and its parameters.
     Example:
@@ -19,11 +33,21 @@ def register_pattern(name, params=None):
     def decorator(func):
         PATTERNS_REGISTRY[name] = {
             "func": func,
-            "params": params or []
+            "params": [
+                normalize_param_def(p) for p in (params or [])
+            ],
         }
         return func
     return decorator
 
+
+### ABERRATIONS ###
+ABERRATION_COEFF_PARAM = param(
+    "coeff",
+    0.0,
+    float,
+    label="Coefficient",
+)
 
 def register_aberration(name, noll=None):
     """
@@ -34,11 +58,12 @@ def register_aberration(name, noll=None):
     """
 
     ABERRATIONS_REGISTRY[name] = {
-        "params": [("coeff", 0.0, float)],
-        "noll": noll
+        "params": [ABERRATION_COEFF_PARAM],
+        "noll": noll,
     }
 
 
+### TARGETS ###
 def register_target(
     name=None,
     *,
@@ -93,7 +118,9 @@ def register_target(
             "feedback": registry_feedback,
             "calibration": registry_calibration,
             "auto_update_param": registry_auto_update,
-            "params": registry_params or [],
+            "params": [
+                normalize_param_def(p) for p in (registry_params or [])
+            ]
         }
 
         return cls

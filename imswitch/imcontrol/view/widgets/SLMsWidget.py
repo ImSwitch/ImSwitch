@@ -60,7 +60,7 @@ There are two ways of registering parameters:
         /!\ Don't forget to connect the widget changes to self._schedulePatternUpdate(slmKey) to trigger pattern updates.
 """
 
-
+from imswitch.imcontrol.controller.patterndesigners.paramDef import ParamDef, as_param_def
 
 from qtpy import QtCore, QtWidgets, QtGui
 from imswitch.imcontrol.view.guitools import CollapsibleSection, BetterPushButton
@@ -583,7 +583,7 @@ class SLMsWidget(Widget):
         unitModeLayout.addWidget(slmUnitBtn)
         unitModeLayout.addWidget(sampleUnitBtn)
         unitModeLayout.addStretch()
-        
+
         setattr(self, f"{slmKey}_{secKey}_section_calibration_label", calibrationLabel)
         setattr(self, f"{slmKey}_{secKey}_calibration_btn", calibrationBtn)
         setattr(self, f"{slmKey}_{secKey}_active_plane", activePlanesComboBox)
@@ -1218,25 +1218,29 @@ class SLMsWidget(Widget):
             params = [("checkbox", pattern_name, None, "active")]
 
         # Add one row per parameter
-        for param_name, default, ptype in param_defs:
+        for raw_def in param_defs:
+            pdef = as_param_def(raw_def)
 
-            if param_name in _ignore:
+            if pdef.key in _ignore:
                 continue
             
-            # define attribute name
-            attr_name = pattern_name if single_param_mode else param_name
-
-            if ptype in ("float", "int",float, int):
-                clean_type = resolve_type(ptype) # ensure type is correct
-                params.append(("lineedit", attr_name, default, attr_name, clean_type))
-            elif ptype == "choice":
-                # Expect default to be a list of options
-                params.append(("combo", attr_name, default, attr_name))
-            elif ptype == bool:
-                params.append(("checkbox", attr_name, default, attr_name))
+            if single_param_mode:
+                attr_name=pattern_name
+                display_label = make_display_name(pattern_name)
             else:
-                # Fallback to string line edit
-                params.append(("lineedit", attr_name, str(default), attr_name))
+                attr_name = pdef.key
+                display_label = pdef.display_label
+            
+            if pdef.choices is not None:
+                params.append(("combo",display_label,list(pdef.choices),attr_name))
+            
+            elif pdef.ptype is bool:
+                params.append(("checkbox", display_label, pdef.default, attr_name))
+            
+            elif pdef.ptype in (int,float):
+                params.append(("lineedit", display_label, pdef.default, attr_name, pdef))
+            else:
+                params.append(("lineedit", display_label, pdef.default, attr_name, pdef))
 
         sub_section = pattern_name if use_subsection else None
 
@@ -1402,6 +1406,7 @@ class SLMsWidget(Widget):
             try:
                 val = json.loads(normalized_text)  
             except Exception:
+                val=None
                 pass
             
         elif ptype == "checkbox":
@@ -2601,18 +2606,33 @@ class SLMsWidget(Widget):
             value,
         )
 
-    def _make_validator(self, pythontype, widget):
-        if pythontype is int:
-            return QtGui.QIntValidator(widget)
+    def _make_validator(self, definition, widget):
+        if isinstance(definition,ParamDef):
+            ptype=definition.ptype
+            minimum=definition.min_value
+            maximum=definition.max_value
+        else:
+            ptype=definition
+            minimum=None
+            maximum=None
+        
+        if ptype is int:
+            validator = QtGui.QIntValidator(widget)
 
-        if pythontype is float:
-            v = QtGui.QDoubleValidator(widget)
-            v.setNotation(QtGui.QDoubleValidator.StandardNotation)
-            v.setLocale(QtCore.QLocale(QtCore.QLocale.C))
-            return v
+        elif ptype is float:
+            validator = QtGui.QDoubleValidator(widget)
+            validator.setNotation(QtGui.QDoubleValidator.StandardNotation)
+            validator.setLocale(QtCore.QLocale(QtCore.QLocale.C))
+        
+        else:
+            return None
 
-        return None
-    
+        if minimum is not None:
+            validator.setBottom(minimum)
+        if maximum is not None:
+            validator.setTop(maximum)
+        
+        return validator
 
     # # -------------------------------#
     # #       CALIBRATION DIALOG       # 

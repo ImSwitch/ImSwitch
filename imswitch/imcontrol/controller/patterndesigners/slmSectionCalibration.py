@@ -5,9 +5,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Dict, Optional, Tuple
 
-
 Matrix2x2 = Tuple[Tuple[float, float], Tuple[float, float]]
-
 
 @dataclass
 class SLMSectionCalibration:
@@ -208,3 +206,4 @@ class SLMSectionCalibration:
         if text == "" or text.lower() == "none":
             return None
         return float(text)
+    

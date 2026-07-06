@@ -5,6 +5,7 @@ from .cghBaseTarget import TargetBase
 from .registries import register_target
 from .slmSectionCalibration import SLMSectionCalibration
 
+from .paramDef import param
 
 @register_target()
 class MultiFociVectorTarget(TargetBase):
@@ -22,14 +23,14 @@ class MultiFociVectorTarget(TargetBase):
     _auto_update_param = True
 
     target_params = [
-        ("period_x_nm", 750, int),
-        ("period_y_nm", 750, int),
-        ("fov_x_um", 35, int),
-        ("fov_y_um", 35, int),
-        ("n_foci_x", 31, int),
-        ("n_foci_y", 31, int),
-        ("rotation_deg", 0.0, float),
-        ("skew_deg", 0.0, float)
+        param("period_x_nm", 750, int),
+        param("period_y_nm", 750, int),
+        param("fov_x_um", 35, int),
+        param("fov_y_um", 35, int),
+        param("n_foci_x", 31, int),
+        param("n_foci_y", 31, int),
+        param("rotation_deg", 0.0, float),
+        param("skew_deg", 0.0, float)
     ]
 
     uses_direct_summation = True

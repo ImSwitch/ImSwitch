@@ -6,6 +6,8 @@ from .registries import register_target
 import matplotlib.pyplot as plt
 import cv2
 
+from .paramDef import param
+
 @register_target()
 class MultiFociTarget(TargetBase):
     """
@@ -16,12 +18,12 @@ class MultiFociTarget(TargetBase):
     _supports_feedback = True
 
     target_params = [
-        ("target_size_x", 512, int),
-        ("target_size_y", 512, int),
-        ("n_foci_x", 31, int),
-        ("n_foci_y", 31, int),
-        ("period_x", 6, int),
-        ("period_y", 6, int),
+        param("target_size_x", 512, int),
+        param("target_size_y", 512, int),
+        param("n_foci_x", 31, int),
+        param("n_foci_y", 31, int),
+        param("period_x", 6, int),
+        param("period_y", 6, int),
     ]
 
     def __init__(self, section_size=None, section_calibration=None, **params):

@@ -61,7 +61,12 @@ There are two ways of registering parameters:
 """
 
 from imswitch.imcontrol.controller.patterndesigners.paramDef import ParamDef, as_param_def
-
+from imswitch.imcontrol.controller.patterndesigners.paramGeneral import (
+    GENERAL_PARAMS,
+    CGH_COMPUTATION_PARAMS,
+    CGH_GENERAL_PARAMS,
+    CORRECTION_PARAMS,
+)
 from qtpy import QtCore, QtWidgets, QtGui
 from imswitch.imcontrol.view.guitools import CollapsibleSection, BetterPushButton
 from imswitch.imcommon.view.guitools.dialogtools import askForTextInput,askYesNoQuestion,askForTwoTextInputs
@@ -474,11 +479,20 @@ class SLMsWidget(Widget):
     def create_correction_options_group(self, slmKey="slm",secKey="sec_0"):
         group = CollapsibleSection("Correction",**_collaps_section_format)
         layout = QtWidgets.QGridLayout()
-        params = [
-            ('checkbox', 'Apply correction pattern', True),
-            ('checkbox', 'Apply 2π value correction', True, "apply_twopi_value"),
-        ]
-        self.add_param_grid(slmKey, secKey,"correction_options",params, 0, layout, per_row=0)
+        self.add_param_grid_from_def(
+            slmKey,
+            secKey,
+            "correction_options",
+            CORRECTION_PARAMS,
+            start_row=0,
+            layout=layout,
+            per_row=0
+        )
+        # params = [
+        #     ('checkbox', 'Apply correction pattern', True),
+        #     ('checkbox', 'Apply 2π value correction', True, "apply_twopi_value"),
+        # ]
+        # self.add_param_grid(slmKey, secKey,"correction_options",params, 0, layout, per_row=0)
         group.setContentLayout(layout)
         return group
 
@@ -486,13 +500,15 @@ class SLMsWidget(Widget):
     def create_general_group(self,slmKey="slm",secKey="sec_0"):
         group = CollapsibleSection("General",**_collaps_section_format)
         layout = QtWidgets.QGridLayout()
-        params = [
-            ('lineedit','Wavelength (nm)','488', 'Wavelength (nm)', int),
-            ('lineedit','Pupil Radius (px)', 0, 'Pupil Radius (px)', int),
-            ('lineedit','Center Offset X (px)', 0, 'Center Offset X (px)', int),
-            ('lineedit','Center Offset Y (px)', 0, 'Center Offset Y (px)', int),
-        ]
-        self.add_param_grid(slmKey, secKey,"general",params, 0, layout, per_row=1)
+        self.add_param_grid_from_def(
+            slmKey,
+            secKey,
+            section_name="general",
+            param_defs=GENERAL_PARAMS,
+            start_row=0,
+            layout=layout,
+            per_row=1,
+        )
         group.setContentLayout(layout)
         return group
     
@@ -1176,6 +1192,99 @@ class SLMsWidget(Widget):
             row+=1
 
         return row
+    
+    def add_param_grid_from_def(
+        self,
+        slmKey,
+        secKey,
+        section_name,
+        param_defs,
+        start_row,
+        layout,
+        sub_section=None,
+        per_row="all",
+        width=60,
+        auto_update=True,
+        auto_target_update=False,
+    ):
+        """
+        Convert ParamDef objects to the tuple format expected by
+        add_param_grid(), then delegate the UI construction to it.
+        """
+        params = []
+
+        for param_def in param_defs:
+            if param_def.hidden:
+                continue
+
+            # Explicit widget type, or infer it from the parameter definition.
+            widget_type = param_def.widget
+
+            if widget_type is None:
+                if param_def.choices is not None:
+                    widget_type = "combo"
+                elif param_def.ptype is bool:
+                    widget_type = "checkbox"
+                else:
+                    widget_type = "lineedit"
+
+            if widget_type == "lineedit":
+                params.append(
+                    (
+                        "lineedit",
+                        param_def.display_label,
+                        param_def.default,
+                        param_def.key,
+                        param_def.ptype,
+                    )
+                )
+
+            elif widget_type == "checkbox":
+                params.append(
+                    (
+                        "checkbox",
+                        param_def.display_label,
+                        param_def.default,
+                        param_def.key,
+                    )
+                )
+
+            elif widget_type in ("combo", "combobox"):
+                if param_def.choices is None:
+                    raise ValueError(
+                        f"Parameter '{param_def.key}' uses a combo widget "
+                        "but defines no choices."
+                    )
+
+                params.append(
+                    (
+                        "combo",
+                        param_def.display_label,
+                        [str(choice) for choice in param_def.choices],
+                        param_def.key,
+                    )
+                )
+
+            else:
+                raise ValueError(
+                    f"Unsupported widget type '{widget_type}' "
+                    f"for parameter '{param_def.key}'."
+                )
+        
+        return self.add_param_grid(
+            slmKey=slmKey,
+            secKey=secKey,
+            section_name=section_name,
+            params=params,
+            start_row=start_row,
+            layout=layout,
+            sub_section=sub_section,
+            per_row=per_row,
+            width=width,
+            auto_update=auto_update,
+            auto_target_update=auto_target_update,
+        )
+
 
 
     def add_generic_pattern(self, layout, row, slmKey, secKey, section_name, pattern_name, param_defs,

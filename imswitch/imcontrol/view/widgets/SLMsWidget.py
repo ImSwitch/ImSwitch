@@ -60,15 +60,16 @@ There are two ways of registering parameters:
         /!\ Don't forget to connect the widget changes to self._schedulePatternUpdate(slmKey) to trigger pattern updates.
 """
 
-from imswitch.imcontrol.controller.patterndesigners.paramDef import ParamDef, as_param_def
+# from ....imcommon.view.guitools.paramFields import ParamForm, PIXEL_MODE, METRIC_MODE
+from imswitch.imcontrol.controller.patterndesigners.paramDef import ParamDef, as_param_def, param
 from imswitch.imcontrol.controller.patterndesigners.paramGeneral import (
-    GENERAL_PARAMS,
-    CGH_COMPUTATION_PARAMS,
-    CGH_GENERAL_PARAMS,
-    CORRECTION_PARAMS,
+    GENERAL_PARAMS,CGH_COMPUTATION_PARAMS,CORRECTION_PARAMS,
 )
+from dataclasses import replace
 from qtpy import QtCore, QtWidgets, QtGui
-from imswitch.imcontrol.view.guitools import CollapsibleSection, BetterPushButton
+from imswitch.imcontrol.view.guitools import (
+    CollapsibleSection, BetterPushButton, ParamForm, PIXEL_MODE, METRIC_MODE
+)
 from imswitch.imcommon.view.guitools.dialogtools import askForTextInput,askYesNoQuestion,askForTwoTextInputs
 import pyqtgraph as pg
 from .basewidgets import Widget
@@ -172,6 +173,10 @@ class SLMsWidget(Widget):
         self._param_definitions = {}    # list of parameters stored by slmKey[secKey][sectionName]
         self._currentConfigs = {}       # {slmKey: {"path": currentConfigPath, "date": date, "info": info}}
 
+        self._paramForms = {}
+        self._sectionUnitModes = {}
+        self._sectionCalibrations = {}
+        
         # update timers
         self._slmUpdateTimers = {}      # { slmKey: QTimer }
         self._slmTargetUpdateTimers={}  # { slmKey: {secKey: QTimer }}
@@ -187,6 +192,11 @@ class SLMsWidget(Widget):
         self._slmSectionList[slmKey] = []
         self._slmNames[slmKey] = slmName
         self._param_definitions[slmKey] = {}
+        
+        self._paramForms[slmKey] = {}
+        self._sectionUnitModes[slmKey] = {}
+        self._sectionCalibrations[slmKey] = {}
+
         self._tab_names_dict[slmKey] = {}
 
         # slm container
@@ -266,6 +276,10 @@ class SLMsWidget(Widget):
         Create one complete SLM section.
         """
         self._param_definitions[slmKey][secKey]={}
+
+        self._paramForms.setdefault(slmKey, {})[secKey] = {}
+        self._sectionUnitModes.setdefault(slmKey, {})[secKey] = PIXEL_MODE
+        self._sectionCalibrations.setdefault(slmKey, {})[secKey] = None
 
         container = QtWidgets.QWidget()
         vbox = QtWidgets.QVBoxLayout(container)
@@ -479,36 +493,50 @@ class SLMsWidget(Widget):
     def create_correction_options_group(self, slmKey="slm",secKey="sec_0"):
         group = CollapsibleSection("Correction",**_collaps_section_format)
         layout = QtWidgets.QGridLayout()
-        self.add_param_grid_from_def(
-            slmKey,
-            secKey,
-            "correction_options",
-            CORRECTION_PARAMS,
-            start_row=0,
-            layout=layout,
-            per_row=0
+        form = ParamForm(
+            name="correction_options",
+            definitions=CORRECTION_PARAMS,
+            calibration_provider=None,
+            per_row=0,
+            use_subsection=False,
+            editor_width=60,
+            show_complementary=False,
         )
-        # params = [
-        #     ('checkbox', 'Apply correction pattern', True),
-        #     ('checkbox', 'Apply 2π value correction', True, "apply_twopi_value"),
-        # ]
-        # self.add_param_grid(slmKey, secKey,"correction_options",params, 0, layout, per_row=0)
+        
+        form.sigValueChanged.connect(
+            lambda _key, _value, slm=slmKey:self._schedulePatternUpdate(slm)
+        )
+        self._register_param_form(slmKey,secKey,"general",form)
+        form.set_unit_mode(
+            self._sectionUnitModes.get(slmKey, {}).get(secKey, PIXEL_MODE)
+        )
+        form.add_to_grid(layout=layout,start_row=0)
         group.setContentLayout(layout)
         return group
 
     # General section
-    def create_general_group(self,slmKey="slm",secKey="sec_0"):
-        group = CollapsibleSection("General",**_collaps_section_format)
+    def create_general_group(self, slmKey="slm", secKey="sec_0"):
+        group = CollapsibleSection("General",**_collaps_section_format,)
         layout = QtWidgets.QGridLayout()
-        self.add_param_grid_from_def(
-            slmKey,
-            secKey,
-            section_name="general",
-            param_defs=GENERAL_PARAMS,
-            start_row=0,
-            layout=layout,
+
+        form = ParamForm(
+            name="general",
+            definitions=GENERAL_PARAMS,
+            calibration_provider=None,
             per_row=1,
+            use_subsection=False,
+            editor_width=60,
+            show_complementary=False,
         )
+        
+        form.sigValueChanged.connect(
+            lambda _key, _value, slm=slmKey:self._schedulePatternUpdate(slm)
+        )
+        self._register_param_form(slmKey,secKey,"general",form)
+        form.set_unit_mode(
+            self._sectionUnitModes.get(slmKey, {}).get(secKey, PIXEL_MODE)
+        )
+        form.add_to_grid(layout=layout,start_row=0)
         group.setContentLayout(layout)
         return group
     
@@ -548,13 +576,13 @@ class SLMsWidget(Widget):
         unitModeLayout.setSpacing(0)
 
         slmUnitBtn = BetterPushButton("SLM")
-        sampleUnitBtn = BetterPushButton("Sample")
+        metricUnitBtn = BetterPushButton("Metric")
 
         slmUnitBtn.setObjectName("slmUnitBtn")
-        sampleUnitBtn.setObjectName("sampleUnitBtn")
+        metricUnitBtn.setObjectName("sampleUnitBtn")
 
         slmUnitBtn.setCheckable(True)
-        sampleUnitBtn.setCheckable(True)
+        metricUnitBtn.setCheckable(True)
         slmUnitBtn.setChecked(True)
 
         unitModeStyle = """
@@ -583,7 +611,7 @@ class SLMsWidget(Widget):
         }
         """
 
-        for button in (slmUnitBtn, sampleUnitBtn):
+        for button in (slmUnitBtn, metricUnitBtn):
             button.setStyleSheet(unitModeStyle)
             button.setSizePolicy(
                 QtWidgets.QSizePolicy.Minimum,
@@ -594,10 +622,10 @@ class SLMsWidget(Widget):
         unitButtonGroup = QtWidgets.QButtonGroup(self)
         unitButtonGroup.setExclusive(True)
         unitButtonGroup.addButton(slmUnitBtn)
-        unitButtonGroup.addButton(sampleUnitBtn)
+        unitButtonGroup.addButton(metricUnitBtn)
 
         unitModeLayout.addWidget(slmUnitBtn)
-        unitModeLayout.addWidget(sampleUnitBtn)
+        unitModeLayout.addWidget(metricUnitBtn)
         unitModeLayout.addStretch()
 
         setattr(self, f"{slmKey}_{secKey}_section_calibration_label", calibrationLabel)
@@ -608,9 +636,18 @@ class SLMsWidget(Widget):
         setattr(self, f"{slmKey}_{secKey}_delete_plane_action", deletePlaneAction)
         setattr(self, f"{slmKey}_{secKey}_unit_mode_widget", unitModeWidget)
         setattr(self, f"{slmKey}_{secKey}_slm_unit_btn", slmUnitBtn)
-        setattr(self, f"{slmKey}_{secKey}_sample_unit_btn", sampleUnitBtn)
+        setattr(self, f"{slmKey}_{secKey}_sample_unit_btn", metricUnitBtn)
         setattr(self, f"{slmKey}_{secKey}_unit_button_group", unitButtonGroup)
         self._set_sample_unit_available(slmKey, secKey, False)
+
+        slmUnitBtn.toggled.connect(
+            lambda checked, slm=slmKey, sec=secKey:
+                checked and self.set_section_unit_mode(slm, sec, PIXEL_MODE)
+        )
+        metricUnitBtn.toggled.connect(
+            lambda checked, slm=slmKey, sec=secKey:
+                checked and self.set_section_unit_mode(slm, sec, METRIC_MODE)
+        )
 
         calibrationLayout = QtWidgets.QHBoxLayout()
 
@@ -643,12 +680,6 @@ class SLMsWidget(Widget):
         group = CollapsibleSection("Patterns",**_collaps_section_format)
         layout = QtWidgets.QGridLayout()
         list_patterns = list(pattern_registry.keys()) if options is None else list(options)
-        if (
-            "linear_phase" in list_patterns
-            and "linear_phase_metric" in pattern_registry
-            and "linear_phase_metric" not in list_patterns
-        ):
-            list_patterns.insert(list_patterns.index("linear_phase") + 1, "linear_phase_metric")
 
         row = 0
 
@@ -670,6 +701,7 @@ class SLMsWidget(Widget):
 
         spacer = QtWidgets.QSpacerItem(0, 20, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Fixed)
         layout.addItem(spacer, row, 0)
+        layout.setColumnStretch(layout.columnCount(), 1)
         group.setContentLayout(layout)
         return group
 
@@ -681,12 +713,28 @@ class SLMsWidget(Widget):
         row = 0
 
         # checkbox to easily activate/deactivate correction
-        use_aberr = QtWidgets.QCheckBox("Apply aberrations correction")
-        group.addHeaderWidget(use_aberr)
-        setattr(self, f"{slmKey}_{secKey}_aberrations_active", use_aberr)
-        self._param_definitions[slmKey][secKey]["aberrations"].append(
-            ("checkbox","aberrations_active")
+        activeForm = ParamForm(
+            name="aberrations_general",
+            definitions=[
+                param(
+                    "aberrations_active", True,bool,"Apply aberrations correction"
+                )
+            ],
+            parent=group,
+            use_subsection=False,
+            per_row=1,
         )
+
+        self._register_param_form(slmKey, secKey,"aberrations",activeForm)
+
+        activeField = activeForm.field("aberrations_active")
+        group.addHeaderWidget(activeField.editor)
+        activeField.sigValueChanged.connect(
+            lambda _key, _value, slm=slmKey:self._schedulePatternUpdate(slm)
+        )
+
+        # Temporary compatibility
+        setattr(self,f"{slmKey}_{secKey}_aberrations_active",activeField.editor,)
 
         # Save/Load buttons
         loadAberrBtn = BetterPushButton("Load")
@@ -746,22 +794,53 @@ class SLMsWidget(Widget):
         cghLayout = QtWidgets.QVBoxLayout()
         cghLayout.setSpacing(10)
         generalsubsec = "cgh_general"
-        self._param_definitions[slmKey][secKey]["cgh"].setdefault(generalsubsec, [])
 
         # --- 1. General Controls ---
 
-        # checkbox and label (next to header of collapsible section)
-        use_cgh_checkbox = QtWidgets.QCheckBox("Use CGH")
+        target_names = list(registry.keys())
+        if not target_names:
+            target_names = [""]
+        default_target = target_names[0]
+
+        cgh_general_defs = [
+            param("active", False, bool, "Use CGH"),
+            param("target_type",default_target,str,"Target Type",choices=target_names)
+        ]
+
+        generalForm = ParamForm(
+            name=generalsubsec,
+            definitions=cgh_general_defs,
+            calibration_provider=lambda slm=slmKey, sec=secKey: (
+                self._sectionCalibrations.get(slm, {}).get(sec)
+            ),
+            parent=group,
+            per_row=1,
+            use_subsection=True,
+            editor_width=120,
+            show_complementary=False,
+        )
+
+        self._register_param_form(slmKey,secKey,"cgh",generalForm)
+
+        # active checkbox
+        activeField = generalForm.field("active")
+        group.addHeaderWidget(activeField.editor)
+        activeField.sigValueChanged.connect(
+            lambda _key, _value, slm=slmKey: self._schedulePatternUpdate(slm)
+        )
+
+        # for compatibility 
+        setattr(self, f"{slmKey}_{secKey}_{generalsubsec}_active", activeField.editor)
+        
+
+        # in use label (next to header of collapsible section)
         inUseLabelPrefix = QtWidgets.QLabel("In use:  ")
         inUseLabel = QtWidgets.QLabel("None")
         inUseLabel.setStyleSheet("color: #888;")
 
-        group.addHeaderWidget(use_cgh_checkbox)
         group.addHeaderWidget(inUseLabelPrefix)
         group.addHeaderWidget(inUseLabel)
         generalLayout = QtWidgets.QHBoxLayout()
-
-        setattr(self, f"{slmKey}_{secKey}_{generalsubsec}_active", use_cgh_checkbox)
         setattr(self, f"{slmKey}_{secKey}_cgh_in_use_label", inUseLabel)
         
         # save and load btn (inside collapsible section)
@@ -776,27 +855,20 @@ class SLMsWidget(Widget):
         generalLayout.addStretch()
         cghLayout.addLayout(generalLayout)
 
-        self._param_definitions[slmKey][secKey]["cgh"][generalsubsec].append(
-            ("checkbox","active")
-        )
 
         # --- 2. Target Definition Area ---
         targetBox = QtWidgets.QGroupBox("Target Definition")
         targetLayout = QtWidgets.QVBoxLayout(targetBox)
-
-        # target type + visualize button
-        targets_list=[make_display_name(target_name) for target_name in registry.keys()]
         typeLayout = QtWidgets.QHBoxLayout()
-        typeLayout.addWidget(QtWidgets.QLabel("Target Type:"))
-        combo = QtWidgets.QComboBox()
-        combo.addItems(targets_list)
-        setattr(self, f"{slmKey}_{secKey}_{generalsubsec}_target_type", combo)
-        typeLayout.addWidget(combo)
 
-        self._param_definitions[slmKey][secKey]["cgh"][generalsubsec].append(
-            ("combo","target_type"),
-        )
+        targetTypeField = generalForm.field("target_type")
+        typeLayout.addWidget(targetTypeField.label)
+        typeLayout.addWidget(targetTypeField.editor)
 
+        # for compatibility 
+        setattr(self, f"{slmKey}_{secKey}_{generalsubsec}_target_type", targetTypeField.editor)
+
+        # visualize btn
         visualizeTargetBtn = BetterPushButton("Visualize Target")
         setattr(self, f"{slmKey}_{secKey}_cgh_visualize_target_btn", visualizeTargetBtn)
         typeLayout.addWidget(visualizeTargetBtn)
@@ -811,11 +883,11 @@ class SLMsWidget(Widget):
             _widget = QtWidgets.QWidget()
             layout = QtWidgets.QGridLayout(_widget)
             row = 0
-            # if infos.get("calibration"):
-            #     row = self.add_calibration(layout,row,slmKey,secKey,conv_factor)
-            row = self.add_generic_pattern(layout, row, slmKey, secKey, "cgh",target_name,infos["params"],
-                                    add_checkbox=False, per_row=2,auto_update=False,
-                                    auto_target_update=infos.get("auto_update_param"))
+            row = self.add_generic_pattern(
+                layout, row, slmKey, secKey, "cgh",target_name,infos["params"],add_checkbox=False, 
+                per_row=2,auto_update=False,auto_target_update=infos.get("auto_update_param")
+                )
+            
             if infos.get("feedback",False):
                 spacer = QtWidgets.QSpacerItem(0, 10, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Fixed)
                 layout.addItem(spacer, row, 0)
@@ -823,11 +895,16 @@ class SLMsWidget(Widget):
 
             stack.addWidget(_widget)
 
-        combo.currentIndexChanged.connect(lambda idx: stack.setCurrentIndex(idx))
-        combo.currentIndexChanged.connect(lambda _, slmKey=slmKey, secKey=secKey: 
-                                          self.sigTargetChanged.emit(slmKey,secKey))
-        targetLayout.addWidget(stack)
+        # connect combobox changes
+        targetTypeField.editor.currentIndexChanged.connect(stack.setCurrentIndex)
+        targetTypeField.sigValueChanged.connect(
+            lambda _key, _value, slm=slmKey, sec=secKey:self.sigTargetChanged.emit(slm, sec)
+        )
 
+        # Explicitly synchronize the initial stack page.
+        stack.setCurrentIndex(targetTypeField.editor.currentIndex())
+
+        targetLayout.addWidget(stack)
         cghLayout.addWidget(targetBox)
 
         # --- 3. Computation Area ---
@@ -840,61 +917,90 @@ class SLMsWidget(Widget):
         self._param_definitions[slmKey][secKey]["cgh"].setdefault(computsubsec, [])
         computeBox = QtWidgets.QGroupBox("Computation Settings")
         computeLayout = QtWidgets.QVBoxLayout(computeBox)
-        
-        # algorithm parameters
-        weightedgsCheckbox=QtWidgets.QCheckBox("Weighted-GS")
-        weightedgsCheckbox.setChecked(True)
-        niterEdit = QtWidgets.QLineEdit("50")
-        niterEdit.setFixedWidth(50)
-        phaseFixingCheckbox = QtWidgets.QCheckBox("Phase fixing")
-        phaseFixingCheckbox.setChecked(True)
-        phaseFixingValue = QtWidgets.QLineEdit("30")
-        phaseFixingValue.setFixedWidth(50)
 
-        quadPhaseCheckBox = QtWidgets.QCheckBox("Quad. Init. Phase")
-        quadPhaseCoeff = QtWidgets.QLineEdit("0.004")
-        quadPhaseCoeff.setFixedWidth(50)
-
-        setattr(self, f"{slmKey}_{secKey}_{computsubsec}_weighted_gs", weightedgsCheckbox)
-        setattr(self, f"{slmKey}_{secKey}_{computsubsec}_n_iterations", niterEdit)
-        setattr(self, f"{slmKey}_{secKey}_{computsubsec}_phase_fixing", phaseFixingCheckbox)
-        setattr(self, f"{slmKey}_{secKey}_{computsubsec}_phase_fixing_value", phaseFixingValue)
-        setattr(self, f"{slmKey}_{secKey}_{computsubsec}_quad_phase", quadPhaseCheckBox)
-        setattr(self, f"{slmKey}_{secKey}_{computsubsec}_quad_phase_coeff", quadPhaseCoeff)
-
-
-        # params layout
-        paramsLayout = QtWidgets.QVBoxLayout()
-
-        row1 = QtWidgets.QHBoxLayout()
-        row1.addWidget(weightedgsCheckbox)
-        row1.addWidget(QtWidgets.QLabel("Iterations:"))
-        row1.addWidget(niterEdit)
-        row1.addWidget(phaseFixingCheckbox)
-        row1.addWidget(QtWidgets.QLabel("Phase:"))
-        row1.addWidget(phaseFixingValue)
-        row1.addStretch()
-
-        row2 = QtWidgets.QHBoxLayout()
-        row2.addWidget(quadPhaseCheckBox)
-        row2.addWidget(QtWidgets.QLabel("Coeff:"))
-        row2.addWidget(quadPhaseCoeff)
-        row2.addStretch()
-
-        paramsLayout.addLayout(row1)
-        paramsLayout.addLayout(row2)
+        paramsLayout = QtWidgets.QGridLayout()
         computeLayout.addLayout(paramsLayout)
         cghLayout.addWidget(computeBox)
-
-        self._param_definitions[slmKey][secKey]["cgh"][computsubsec].extend([
-            ("checkbox","weighted_gs"),
-            ("lineedit","n_iterations"),
-            ("checkbox","phase_fixing"),
-            ("lineedit","phase_fixing_value"),
-            ("checkbox","quad_phase"),
-            ("lineedit","quad_phase_coeff"),
-        ]
+        
+        form = ParamForm(
+            name=computsubsec,
+            definitions=CGH_COMPUTATION_PARAMS,
+            calibration_provider=None,
+            per_row=1,
+            use_subsection=True,
+            editor_width=60,
+            show_complementary=False,
+            parent=computeBox,
         )
+
+        self._register_param_form(slmKey,secKey,"cgh",form)
+        form.set_unit_mode(
+            self._sectionUnitModes.get(slmKey, {}).get(secKey, PIXEL_MODE)
+        )
+
+        layout_spec = [
+            ["weighted_gs","n_iterations","phase_fixing","phase_fixing_value",],
+            ["quad_phase", "quad_phase_coeff"],
+        ]
+
+        row = form.add_to_grid(
+            layout=paramsLayout,start_row=0,layout_spec=layout_spec,
+        )
+        
+        # # algorithm parameters
+        # weightedgsCheckbox=QtWidgets.QCheckBox("Weighted-GS")
+        # weightedgsCheckbox.setChecked(True)
+        # niterEdit = QtWidgets.QLineEdit("50")
+        # niterEdit.setFixedWidth(50)
+        # phaseFixingCheckbox = QtWidgets.QCheckBox("Phase fixing")
+        # phaseFixingCheckbox.setChecked(True)
+        # phaseFixingValue = QtWidgets.QLineEdit("30")
+        # phaseFixingValue.setFixedWidth(50)
+
+        # quadPhaseCheckBox = QtWidgets.QCheckBox("Quad. Init. Phase")
+        # quadPhaseCoeff = QtWidgets.QLineEdit("0.004")
+        # quadPhaseCoeff.setFixedWidth(50)
+
+        # setattr(self, f"{slmKey}_{secKey}_{computsubsec}_weighted_gs", weightedgsCheckbox)
+        # setattr(self, f"{slmKey}_{secKey}_{computsubsec}_n_iterations", niterEdit)
+        # setattr(self, f"{slmKey}_{secKey}_{computsubsec}_phase_fixing", phaseFixingCheckbox)
+        # setattr(self, f"{slmKey}_{secKey}_{computsubsec}_phase_fixing_value", phaseFixingValue)
+        # setattr(self, f"{slmKey}_{secKey}_{computsubsec}_quad_phase", quadPhaseCheckBox)
+        # setattr(self, f"{slmKey}_{secKey}_{computsubsec}_quad_phase_coeff", quadPhaseCoeff)
+
+
+        # # params layout
+        # paramsLayout = QtWidgets.QVBoxLayout()
+
+        # row1 = QtWidgets.QHBoxLayout()
+        # row1.addWidget(weightedgsCheckbox)
+        # row1.addWidget(QtWidgets.QLabel("Iterations:"))
+        # row1.addWidget(niterEdit)
+        # row1.addWidget(phaseFixingCheckbox)
+        # row1.addWidget(QtWidgets.QLabel("Phase:"))
+        # row1.addWidget(phaseFixingValue)
+        # row1.addStretch()
+
+        # row2 = QtWidgets.QHBoxLayout()
+        # row2.addWidget(quadPhaseCheckBox)
+        # row2.addWidget(QtWidgets.QLabel("Coeff:"))
+        # row2.addWidget(quadPhaseCoeff)
+        # row2.addStretch()
+
+        # paramsLayout.addLayout(row1)
+        # paramsLayout.addLayout(row2)
+        # computeLayout.addLayout(paramsLayout)
+        # cghLayout.addWidget(computeBox)
+
+        # self._param_definitions[slmKey][secKey]["cgh"][computsubsec].extend([
+        #     ("checkbox","weighted_gs"),
+        #     ("lineedit","n_iterations"),
+        #     ("checkbox","phase_fixing"),
+        #     ("lineedit","phase_fixing_value"),
+        #     ("checkbox","quad_phase"),
+        #     ("lineedit","quad_phase_coeff"),
+        # ]
+        # )
 
         # --- 4. Compute + Save Row ---
         bottomBtnLayout = QtWidgets.QHBoxLayout()
@@ -930,8 +1036,6 @@ class SLMsWidget(Widget):
         
         loadPatternBtn.clicked.connect(lambda: self.sigLoadCgh.emit(slmKey, secKey))
         saveCghBtn.clicked.connect(lambda: self.sigSaveCgh.emit(slmKey, secKey))
-
-        use_cgh_checkbox.stateChanged.connect(lambda state, key=slmKey: self._schedulePatternUpdate(key))
 
         return group
 
@@ -1193,186 +1297,111 @@ class SLMsWidget(Widget):
 
         return row
     
-    def add_param_grid_from_def(
-        self,
-        slmKey,
-        secKey,
-        section_name,
-        param_defs,
-        start_row,
-        layout,
-        sub_section=None,
-        per_row="all",
-        width=60,
-        auto_update=True,
-        auto_target_update=False,
-    ):
-        """
-        Convert ParamDef objects to the tuple format expected by
-        add_param_grid(), then delegate the UI construction to it.
-        """
-        params = []
 
-        for param_def in param_defs:
-            if param_def.hidden:
-                continue
+    def add_generic_pattern(
+            self,
+            layout,
+            row,
+            slmKey,
+            secKey,
+            section_name,
+            pattern_name,
+            param_defs,
+            add_checkbox=True,
+            single_param_mode=False,
+            use_subsection=True,
+            per_row="all",
+            auto_update=True,
+            auto_target_update=False,
+        ):
+            """Build and register a ParamForm from ParamDef metadata.
 
-            # Explicit widget type, or infer it from the parameter definition.
-            widget_type = param_def.widget
+            This is used by analytic patterns, CGH targets and aberrations.
+            ParamForm stores canonical values, so get_params() returns the
+            same dictionaries expected by PatternEngine and TargetBase.
+            """
 
-            if widget_type is None:
-                if param_def.choices is not None:
-                    widget_type = "combo"
-                elif param_def.ptype is bool:
-                    widget_type = "checkbox"
-                else:
-                    widget_type = "lineedit"
+            ignored_keys = {"wavelength_nm", "pixel_size_um"}
+            definitions = []
 
-            if widget_type == "lineedit":
-                params.append(
-                    (
-                        "lineedit",
-                        param_def.display_label,
-                        param_def.default,
-                        param_def.key,
-                        param_def.ptype,
+            if add_checkbox:
+                definitions.append(
+                    ParamDef(
+                        "active",False,bool,label=make_display_name(pattern_name),widget="checkbox"
                     )
                 )
 
-            elif widget_type == "checkbox":
-                params.append(
-                    (
-                        "checkbox",
-                        param_def.display_label,
-                        param_def.default,
-                        param_def.key,
-                    )
-                )
+            for raw_def in param_defs:
+                pdef = as_param_def(raw_def)
 
-            elif widget_type in ("combo", "combobox"):
-                if param_def.choices is None:
-                    raise ValueError(
-                        f"Parameter '{param_def.key}' uses a combo widget "
-                        "but defines no choices."
-                    )
+                if pdef.key in ignored_keys:
+                    continue
 
-                params.append(
-                    (
-                        "combo",
-                        param_def.display_label,
-                        [str(choice) for choice in param_def.choices],
-                        param_def.key,
-                    )
-                )
+                definitions.append(pdef)
 
+            if per_row == "all" or per_row is None:
+                form_per_row = max(1, len(definitions))
             else:
-                raise ValueError(
-                    f"Unsupported widget type '{widget_type}' "
-                    f"for parameter '{param_def.key}'."
+                form_per_row = max(1, int(per_row))
+
+            form = ParamForm(
+                name=pattern_name,
+                definitions=definitions,
+                calibration_provider=lambda slm=slmKey, sec=secKey: (
+                    self._sectionCalibrations.get(slm, {}).get(sec)
+                ),
+                per_row=form_per_row,
+                use_subsection=use_subsection,
+                editor_width=60,
+                show_complementary=False,
+            )
+
+            if auto_update:
+                form.sigValueChanged.connect(
+                    lambda _key, _value, slm=slmKey:self._schedulePatternUpdate(slm)
                 )
-        
-        return self.add_param_grid(
-            slmKey=slmKey,
-            secKey=secKey,
-            section_name=section_name,
-            params=params,
-            start_row=start_row,
-            layout=layout,
-            sub_section=sub_section,
-            per_row=per_row,
-            width=width,
-            auto_update=auto_update,
-            auto_target_update=auto_target_update,
-        )
+            elif auto_target_update:
+                form.sigValueChanged.connect(
+                    lambda key, value, slm=slmKey, sec=secKey: self._scheduleTargetUpdate(slm, sec,key,value)
+                )
 
+            self._register_param_form(slmKey,secKey,section_name,form)
 
+            # Compatibility layer: expose the underlying editors using the same
+            # dynamic attribute names as before. To be removed once all direct
+            # widget lookups have migrated to ParamForm.field().
+            for key, field in form.fields.items():
+                attr_parts = [slmKey, secKey]
+                if use_subsection:
+                    attr_parts.append(pattern_name)
+                attr_parts.append(key)
+                setattr(self,clean_attr_name("_".join(attr_parts)),field.editor)
 
-    def add_generic_pattern(self, layout, row, slmKey, secKey, section_name, pattern_name, param_defs,
-                          add_checkbox=True, single_param_mode = False, use_subsection=True,per_row="all",
-                          auto_update=True,auto_target_update=False):
-        
-        """
-        Auto-generate UI for a pattern using its registered param metadata, such as ("period_x", 0, "int"), 
-        by preparing parameters to be sent to `add_param_grid`.
-        
-        IMPORTANT NOTES:
-        ----------------
-        1/ `single_param_mode` is used for patterns that have a single coefficient parameter only, e.g. Zernike modes:
-            Horizontal Coma: [   ]
-            Vertical Coma: [   ]
-            ...
+            # Sections are initially in pixel mode. If the form is added later,
+            # synchronize it with the current section mode.
+            form.set_unit_mode(
+                self._sectionUnitModes.get(slmKey, {}).get(secKey, PIXEL_MODE)
+            )
 
-        2/ the widget type is deduced from the parameter type (ptype) in the registry, e.g.:
-            - "float" or "int"  ==> lineedit
-            - "choice"          ==> combo
+            row = form.add_to_grid(layout=layout,start_row=row)
+            return row
 
-        3/ certain parameters are hard-coded to be ignored (e.g. "wavelength_nm", "pixel_size_um"): those are parameters
-        present in the registry because they are needed for the pattern computation, but already defined elsewhere in the
-        UI (wavelength) or config file (pixel size).
-
-        4/ if `use_subsection` is True, the pattern_name is used as sub-section name in the param_definitions structure.
-        e.g.: ["slm1"]["sec_0"]["patterns"]["lens_phase"] 
-
-        5/ param_defs is a list of tuples defining each parameter with 3 or 4 elements:
-            - (param_name, default_value, ptype).
-
-        """
-
-        
-        _ignore = ["wavelength_nm","pixel_size_um"]  # patternparameters to ignore
-        params = []
-
-        # Add pattern activation checkbox
-        if add_checkbox:
-            params = [("checkbox", pattern_name, None, "active")]
-
-        # Add one row per parameter
-        for raw_def in param_defs:
-            pdef = as_param_def(raw_def)
-
-            if pdef.key in _ignore:
-                continue
-            
-            if single_param_mode:
-                attr_name=pattern_name
-                display_label = make_display_name(pattern_name)
-            else:
-                attr_name = pdef.key
-                display_label = pdef.display_label
-            
-            if pdef.choices is not None:
-                params.append(("combo",display_label,list(pdef.choices),attr_name))
-            
-            elif pdef.ptype is bool:
-                params.append(("checkbox", display_label, pdef.default, attr_name))
-            
-            elif pdef.ptype in (int,float):
-                params.append(("lineedit", display_label, pdef.default, attr_name, pdef))
-            else:
-                params.append(("lineedit", display_label, pdef.default, attr_name, pdef))
-
-        sub_section = pattern_name if use_subsection else None
-
-        # Add grid to layout, set attribute and update param definitions with add_param_grid
-        row = self.add_param_grid(
-            slmKey, secKey, section_name, params, row, layout,
-            per_row=per_row, sub_section=sub_section,auto_update=auto_update,
-            auto_target_update=auto_target_update
-        )
-
-        return row
 
 
 
     # ------------------------------------- #
     #       PARAMS GET/SET FUNCTIONS        #
     # ------------------------------------- #
-
     def get_params(self):
-        """ Gather all parameter values from the UI widgets according to
-        the meta-structure stored in self._param_definitions."""
+        """Return all parameters in canonical units.
+
+        Manual controls are read through the legacy registry. ParamForms are
+        then merged into the same nested output dictionary.
+        """
 
         all_params = {}
+
+        # Existing/manual controls.
         for slmKey, tab_dict in self._param_definitions.items():
             all_params[slmKey] = {}
 
@@ -1382,24 +1411,32 @@ class SLMsWidget(Widget):
                 for section_name, param_list in section_dict.items():
                     section_values = {}
 
-                    if isinstance(param_list, dict): # sub-sections
-                        sub_section_dict = param_list
-                        for sub_section_name, sub_section_param_list in sub_section_dict.items():
+                    if isinstance(param_list, dict):
+                        for sub_section_name, sub_section_param_list in param_list.items():
                             sub_section_values = {}
+
                             for ptype, attrname in sub_section_param_list:
-                                val = self.get_widget_value(slmKey, secKey, f"{sub_section_name}_{attrname}", ptype)
-                                if val is None:
-                                    continue
-                                sub_section_values[attrname] = val
-                            
+                                val = self.get_widget_value(
+                                    slmKey,
+                                    secKey,
+                                    "{}_{}".format(sub_section_name, attrname),
+                                    ptype,
+                                )
+                                if val is not None:
+                                    sub_section_values[attrname] = val
+
                             section_values[sub_section_name] = sub_section_values
 
-                    else: # regular section
+                    else:
                         for ptype, attrname in param_list:
-                            val = self.get_widget_value(slmKey, secKey, attrname, ptype)
+                            val = self.get_widget_value(
+                                slmKey, secKey, attrname, ptype
+                            )
                             if val is None:
                                 self.__logger.warning(
-                                    f"Failed to get value for {slmKey}_{secKey}_{attrname} ({ptype}), skipping..."
+                                    "Failed to get value for {}_{}_{} ({})".format(
+                                        slmKey, secKey, attrname, ptype
+                                    )
                                 )
                                 continue
 
@@ -1407,17 +1444,35 @@ class SLMsWidget(Widget):
 
                     all_params[slmKey][secKey][section_name] = section_values
 
+        # New ParamDef-based forms. Their values are already canonical.
+        for slmKey, section_forms in self._paramForms.items():
+            slm_values = all_params.setdefault(slmKey, {})
+
+            for secKey, groups in section_forms.items():
+                sec_values = slm_values.setdefault(secKey, {})
+
+                for section_name, forms in groups.items():
+                    section_values = sec_values.setdefault(section_name, {})
+
+                    for form in forms:
+                        values = form.values()
+
+                        if form.use_subsection:
+                            section_values[form.name] = values
+                        else:
+                            section_values.update(values)
+
         return all_params
 
-
     def set_params(self, params_dict):
-        """
-        Restore all parameter values into the UI widgets from a dictionary
-        matching the structure returned by get_params().
-        """
+        """Restore legacy widgets and ParamForms from canonical config values."""
+
+        # Existing/manual widgets.
         for slmKey, tab_dict in params_dict.items():
             if slmKey not in self._param_definitions:
-                self.__logger.warning(f"SLM key '{slmKey}' not found in param definitions, skipping...")
+                self.__logger.warning(
+                    "SLM key '{}' not found, skipping".format(slmKey)
+                )
                 continue
 
             for secKey, section_dict in tab_dict.items():
@@ -1425,26 +1480,61 @@ class SLMsWidget(Widget):
                     continue
 
                 for section_name, param_values in section_dict.items():
-                    if section_name not in self._param_definitions[slmKey][secKey]:
+                    definition_entry = self._param_definitions[slmKey][secKey].get(
+                        section_name
+                    )
+                    if definition_entry is None:
                         continue
-                    
-                    if isinstance(self._param_definitions[slmKey][secKey][section_name], dict): # sub-sections
-                        sub_section_dict = param_values 
-                        for sub_section_name, sub_section_param_values in sub_section_dict.items():
-                            if sub_section_name not in self._param_definitions[slmKey][secKey][section_name]:
+
+                    if isinstance(definition_entry, dict):
+                        for sub_section_name, sub_section_param_values in param_values.items():
+                            if sub_section_name not in definition_entry:
                                 continue
-                            for ptype, attrname in self._param_definitions[slmKey][secKey][section_name][sub_section_name]:
+
+                            for ptype, attrname in definition_entry[sub_section_name]:
                                 if attrname not in sub_section_param_values:
                                     continue
-                                
-                                self.set_widget_value(slmKey, secKey, f"{sub_section_name}_{attrname}", ptype, 
-                                                    sub_section_param_values.get(attrname))
 
-                    else: # regular section
-                       for ptype, attrname in self._param_definitions[slmKey][secKey][section_name]:
+                                self.set_widget_value(
+                                    slmKey,
+                                    secKey,
+                                    "{}_{}".format(sub_section_name, attrname),
+                                    ptype,
+                                    sub_section_param_values[attrname],
+                                )
+
+                    else:
+                        for ptype, attrname in definition_entry:
                             if attrname not in param_values:
                                 continue
-                            self.set_widget_value(slmKey, secKey, attrname, ptype, param_values.get(attrname))
+
+                            self.set_widget_value(
+                                slmKey,
+                                secKey,
+                                attrname,
+                                ptype,
+                                param_values[attrname],
+                            )
+
+        # ParamForms.
+        for slmKey, section_forms in self._paramForms.items():
+            slm_values = params_dict.get(slmKey, {})
+
+            for secKey, groups in section_forms.items():
+                sec_values = slm_values.get(secKey, {})
+
+                for section_name, forms in groups.items():
+                    section_values = sec_values.get(section_name, {})
+
+                    for form in forms:
+                        if form.use_subsection:
+                            values = section_values.get(form.name, {})
+                        else:
+                            values = section_values
+
+                        if isinstance(values, dict):
+                            form.set_values(values, emit=False)
+
 
 
     def set_widget_value(self, slmKey, secKey, attrname, ptype, val):
@@ -1712,6 +1802,113 @@ class SLMsWidget(Widget):
         return getattr(self, f"{slmKey}_{secKey}_cgh_feedback_counter", None)
 
     # --------- calibration related --------- #
+    
+    def set_section_calibration(self, slmKey, secKey, calibration):
+        """Set the active runtime calibration used by this section's forms."""
+        self._sectionCalibrations.setdefault(slmKey, {})[secKey] = calibration
+
+        sample_btn = getattr(
+            self,
+            "{}_{}_sampleUnitBtn".format(slmKey, secKey),
+            None,
+        )
+        if sample_btn is not None:
+            sample_btn.setEnabled(
+                calibration is not None
+                or not self._section_has_metric_fields(slmKey, secKey)
+            )
+
+        current_mode = self._sectionUnitModes.get(slmKey, {}).get(
+            secKey, PIXEL_MODE
+        )
+        if calibration is not None and not calibration.is_valid():
+            calibration = None
+
+        if calibration is None and current_mode == METRIC_MODE:
+            self.set_section_unit_mode(
+                slmKey,
+                secKey,
+                PIXEL_MODE,
+                schedule_update=False,
+                show_error=False,
+            )
+            return
+
+        for form in self.iter_section_param_forms(slmKey, secKey):
+            form.refresh()
+
+
+    def set_section_unit_mode(
+        self,
+        slmKey,
+        secKey,
+        mode,
+        schedule_update=True,
+        show_error=True,
+    ):
+        """Switch every ParamForm in one section between pixels and metric."""
+        if mode not in (PIXEL_MODE, METRIC_MODE):
+            raise ValueError("Unknown unit mode: {}".format(mode))
+
+        calibration = self._sectionCalibrations.get(slmKey, {}).get(secKey)
+        requires_calibration = self._section_has_metric_fields(slmKey, secKey)
+
+        if mode == METRIC_MODE and requires_calibration and calibration is None:
+            self._sync_section_unit_buttons(slmKey, secKey, PIXEL_MODE)
+            if show_error:
+                self.show_message_box(
+                    title="Metric units unavailable",
+                    msg_type="warning",
+                    message="No valid calibration is loaded for this section.",
+                )
+            return False
+
+        try:
+            for form in self.iter_section_param_forms(slmKey, secKey):
+                form.set_unit_mode(mode)
+        except Exception as error:
+            self._sync_section_unit_buttons(slmKey, secKey, PIXEL_MODE)
+            if show_error:
+                self.show_message_box(
+                    title="Could not change units",
+                    msg_type="error",
+                    message=str(error),
+                )
+            return False
+
+        self._sectionUnitModes.setdefault(slmKey, {})[secKey] = mode
+        self._sync_section_unit_buttons(slmKey, secKey, mode)
+
+        if schedule_update:
+            self._schedulePatternUpdate(slmKey)
+
+        return True
+
+
+    def _sync_section_unit_buttons(self, slmKey, secKey, mode):
+        slm_btn = getattr(
+            self,
+            "{}_{}_slmUnitBtn".format(slmKey, secKey),
+            None,
+        )
+        sample_btn = getattr(
+            self,
+            "{}_{}_sampleUnitBtn".format(slmKey, secKey),
+            None,
+        )
+
+        if slm_btn is None or sample_btn is None:
+            return
+
+        slm_blocker = QtCore.QSignalBlocker(slm_btn)
+        sample_blocker = QtCore.QSignalBlocker(sample_btn)
+        try:
+            slm_btn.setChecked(mode == PIXEL_MODE)
+            sample_btn.setChecked(mode == METRIC_MODE)
+        finally:
+            del slm_blocker
+            del sample_blocker
+
 
     def set_available_planes(self, slmKey, secKey, plane_names, active_plane=None):
         combo = getattr(self, f"{slmKey}_{secKey}_active_plane", None)
@@ -2798,6 +2995,38 @@ class SLMsWidget(Widget):
     #             return dialog.get_calib_values()
     #         return None
 
+
+    def _register_param_form(self, slmKey, secKey, section_name, form):
+        self._paramForms.setdefault(slmKey, {}).setdefault(
+            secKey, {}
+        ).setdefault(section_name, []).append(form)
+
+
+    def iter_section_param_forms(self, slmKey, secKey):
+        groups = self._paramForms.get(slmKey, {}).get(secKey, {})
+        for forms in groups.values():
+            for form in forms:
+                yield form
+
+
+    def get_param_form(self, slmKey, secKey, section_name, form_name):
+        forms = (
+            self._paramForms.get(slmKey, {})
+            .get(secKey, {})
+            .get(section_name, [])
+        )
+        for form in forms:
+            if form.name == form_name:
+                return form
+        return None
+
+
+    def _section_has_metric_fields(self, slmKey, secKey):
+        for form in self.iter_section_param_forms(slmKey, secKey):
+            for field in form.fields.values():
+                if field.definition.metric_available:
+                    return True
+        return False
 
 
 # -------------------------------#

@@ -10,3 +10,4 @@ from .FileWatcher import FileWatcher
 from .CollapsibleSection import CollapsibleSection
 from .JsonEditorDialog import JsonEditorDialog
 from .InfoButton import InfoButton
+from .paramFields import ParamForm,PIXEL_MODE,METRIC_MODE

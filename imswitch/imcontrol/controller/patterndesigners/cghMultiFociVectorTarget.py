@@ -23,10 +23,10 @@ class MultiFociVectorTarget(TargetBase):
     _auto_update_param = True
 
     target_params = [
-        param("period_x_nm", 750, int),
-        param("period_y_nm", 750, int),
-        param("fov_x_um", 35, int),
-        param("fov_y_um", 35, int),
+        param("period_x_nm", 750, float),
+        param("period_y_nm", 750, float),
+        param("fov_x_um", 35, float),
+        param("fov_y_um", 35, float),
         param("n_foci_x", 31, int),
         param("n_foci_y", 31, int),
         param("rotation_deg", 0.0, float),

@@ -110,6 +110,18 @@ class ParamDef:
     def display_label(self) -> str:
         return self.label or make_display_name(self.key)
 
+    @property
+    def display_choices(self) -> tuple[str, ...]:
+        if self.choices is None:
+            return ()
+
+        return tuple(
+            make_display_name(choice)
+            if isinstance(choice, str)
+            else str(choice)
+            for choice in self.choices
+        )
+
     def validate(self, value: Any) -> Any:
         """
         Convert and validate a parameter value.

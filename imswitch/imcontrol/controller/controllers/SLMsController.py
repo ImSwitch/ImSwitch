@@ -676,6 +676,7 @@ class SLMsController(SetupModeMixin, ImConWidgetController):
             secKey,
             calibration.to_dict() if calibration.is_valid() else None,
         )
+        self._widget.set_section_calibration(slmKey,secKey,calibration)
         if clear_cached:
             self._clear_section_runtime_state(slmKey, secKey)
 

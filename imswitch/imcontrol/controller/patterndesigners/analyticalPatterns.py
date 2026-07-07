@@ -75,10 +75,10 @@ def sinusoidal_grating(width, height, period_x, period_y, power_x=0.5, power_y=0
     params=[
         param("period_x", 0, int,min_value=-4000,max_value=4000,
               metric_available=True,metric_label="Displacement X (um)",
-              converter=PeriodDisplacementConverter),
+              converter=PeriodDisplacementConverter(axis="x")),
         param("period_y", 0, int,min_value=-4000,max_value=4000,
               metric_available=True,metric_label="Displacement Y (um)",
-              converter=PeriodDisplacementConverter),
+              converter=PeriodDisplacementConverter(axis="y")),
     ]
 )
 def linear_phase(width, height, period_x, period_y,**kwargs):

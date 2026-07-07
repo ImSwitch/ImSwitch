@@ -58,9 +58,9 @@ def register_aberration(name, noll=None):
     """
 
     ABERRATIONS_REGISTRY[name] = {
-        "params": [ABERRATION_COEFF_PARAM],
-        "noll": noll,
-    }
+            "params": [param(name,0.0,float)],
+            "noll": noll,
+        }
 
 
 ### TARGETS ###

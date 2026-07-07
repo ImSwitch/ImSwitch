@@ -1,4 +1,4 @@
-from .paramDef import ParamDef, param
+from imswitch.imcommon.model.paramDef import ParamDef, param
 
 PATTERNS_REGISTRY = {}
 ABERRATIONS_REGISTRY = {}

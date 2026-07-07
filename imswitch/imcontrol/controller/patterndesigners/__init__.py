@@ -12,6 +12,8 @@ from . import cghComputations
 from . import slmsuiteComputations
 from . import cghDirectSummation
 
+from . import units
+
 # Import the engine last (depends on registry being populated)
 from .patternEngine import PatternEngine
 

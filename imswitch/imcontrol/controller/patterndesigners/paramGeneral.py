@@ -1,6 +1,6 @@
 # patterndesigners/generalParams.py
 
-from .paramDef import param
+from ....imcommon.model.paramDef import param
 
 GENERAL_PARAMS = [
     param("wavelength_nm", 488, int, "Wavelength (nm)", min_value=350, max_value=1200),

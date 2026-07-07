@@ -60,19 +60,23 @@ There are two ways of registering parameters:
         /!\ Don't forget to connect the widget changes to self._schedulePatternUpdate(slmKey) to trigger pattern updates.
 """
 
-# from ....imcommon.view.guitools.paramFields import ParamForm, PIXEL_MODE, METRIC_MODE
-from imswitch.imcontrol.controller.patterndesigners.paramDef import ParamDef, as_param_def, param
+
+from .basewidgets import Widget
+
+from imswitch.imcommon.view.guitools import CollapsibleSection, BetterPushButton, ParamForm
+from imswitch.imcommon.view.guitools.dialogtools import askForTextInput,askYesNoQuestion,askForTwoTextInputs
+from imswitch.imcommon.model.paramDef import ParamDef, param
+from imswitch.imcontrol.controller.patterndesigners.units import SLM_UNIT,METRIC_UNIT
 from imswitch.imcontrol.controller.patterndesigners.paramGeneral import (
-    GENERAL_PARAMS,CGH_COMPUTATION_PARAMS,CORRECTION_PARAMS,
+    GENERAL_PARAMS,
+    CGH_COMPUTATION_PARAMS,
+    CORRECTION_PARAMS,
 )
+
 from dataclasses import replace
 from qtpy import QtCore, QtWidgets, QtGui
-from imswitch.imcontrol.view.guitools import (
-    CollapsibleSection, BetterPushButton, ParamForm, PIXEL_MODE, METRIC_MODE
-)
-from imswitch.imcommon.view.guitools.dialogtools import askForTextInput,askYesNoQuestion,askForTwoTextInputs
+
 import pyqtgraph as pg
-from .basewidgets import Widget
 from imswitch.imcommon.model import initLogger
 import re
 import json
@@ -82,9 +86,12 @@ from functools import partial
 import h5py
 import os
 import datetime
+
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from imswitch.imcontrol.model.SetupInfo import SLMInfo
+
+
 
 _collaps_section_format = {
     "button_height": 20,
@@ -94,6 +101,30 @@ _collaps_section_format = {
 # debounce time for SLM refresh when changing parameter
 _DEBOUNCE_TIME = 800 # 800ms
 
+def as_param_def(definition) -> ParamDef:
+    """
+    Convert a legacy parameter tuple into a ParamDef.
+
+    Accepted formats
+    ----------------
+    ParamDef
+        Returned unchanged.
+
+    tuple
+        Expected format: ``(key, default, ptype)``.
+    """
+    if isinstance(definition, ParamDef):
+        return definition
+
+    if isinstance(definition, tuple) and len(definition) == 3:
+        key, default, ptype = definition
+        return param(key, default, ptype)
+
+    raise TypeError(
+        "Expected ParamDef or (key, default, type) tuple, got {!r}".format(
+            definition
+        )
+    )
 
 class SLMsWidget(Widget):
     """Widget containing SLM interface, patterns, and CGH controls."""
@@ -278,7 +309,7 @@ class SLMsWidget(Widget):
         self._param_definitions[slmKey][secKey]={}
 
         self._paramForms.setdefault(slmKey, {})[secKey] = {}
-        self._sectionUnitModes.setdefault(slmKey, {})[secKey] = PIXEL_MODE
+        self._sectionUnitModes.setdefault(slmKey, {})[secKey] = SLM_UNIT
         self._sectionCalibrations.setdefault(slmKey, {})[secKey] = None
 
         container = QtWidgets.QWidget()
@@ -496,7 +527,7 @@ class SLMsWidget(Widget):
         form = ParamForm(
             name="correction_options",
             definitions=CORRECTION_PARAMS,
-            calibration_provider=None,
+            conversion_context=None,
             per_row=0,
             use_subsection=False,
             editor_width=60,
@@ -508,7 +539,7 @@ class SLMsWidget(Widget):
         )
         self._register_param_form(slmKey,secKey,"general",form)
         form.set_unit_mode(
-            self._sectionUnitModes.get(slmKey, {}).get(secKey, PIXEL_MODE)
+            self._sectionUnitModes.get(slmKey, {}).get(secKey, SLM_UNIT)
         )
         form.add_to_grid(layout=layout,start_row=0)
         group.setContentLayout(layout)
@@ -522,7 +553,7 @@ class SLMsWidget(Widget):
         form = ParamForm(
             name="general",
             definitions=GENERAL_PARAMS,
-            calibration_provider=None,
+            conversion_context=None,
             per_row=1,
             use_subsection=False,
             editor_width=60,
@@ -534,7 +565,7 @@ class SLMsWidget(Widget):
         )
         self._register_param_form(slmKey,secKey,"general",form)
         form.set_unit_mode(
-            self._sectionUnitModes.get(slmKey, {}).get(secKey, PIXEL_MODE)
+            self._sectionUnitModes.get(slmKey, {}).get(secKey, SLM_UNIT)
         )
         form.add_to_grid(layout=layout,start_row=0)
         group.setContentLayout(layout)
@@ -642,11 +673,11 @@ class SLMsWidget(Widget):
 
         slmUnitBtn.toggled.connect(
             lambda checked, slm=slmKey, sec=secKey:
-                checked and self.set_section_unit_mode(slm, sec, PIXEL_MODE)
+                checked and self.set_section_unit_mode(slm, sec, SLM_UNIT)
         )
         metricUnitBtn.toggled.connect(
             lambda checked, slm=slmKey, sec=secKey:
-                checked and self.set_section_unit_mode(slm, sec, METRIC_MODE)
+                checked and self.set_section_unit_mode(slm, sec, METRIC_UNIT)
         )
 
         calibrationLayout = QtWidgets.QHBoxLayout()
@@ -697,7 +728,8 @@ class SLMsWidget(Widget):
             else:
                 info = pattern_registry[pattern]
                 row = self.add_generic_pattern(layout, row, slmKey, secKey, "patterns", 
-                                               pattern, info["params"],) 
+                                               pattern, info["params"],
+                                               show_complementary_unit=False) 
 
         spacer = QtWidgets.QSpacerItem(0, 20, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Fixed)
         layout.addItem(spacer, row, 0)
@@ -770,7 +802,7 @@ class SLMsWidget(Widget):
         # Parameter rows
         for aberr_name, aberr_info in aberrations_registry.items():
             row = self.add_generic_pattern(layout, row, slmKey, secKey, "aberrations",aberr_name,aberr_info["params"],
-                                           use_subsection=False, add_checkbox=False, single_param_mode=True)
+                                           use_subsection=False, add_checkbox=False)
         layout.addItem(spacer,row,0,1,2)
 
         # finalize group
@@ -810,7 +842,7 @@ class SLMsWidget(Widget):
         generalForm = ParamForm(
             name=generalsubsec,
             definitions=cgh_general_defs,
-            calibration_provider=lambda slm=slmKey, sec=secKey: (
+            conversion_context=lambda slm=slmKey, sec=secKey: (
                 self._sectionCalibrations.get(slm, {}).get(sec)
             ),
             parent=group,
@@ -925,7 +957,7 @@ class SLMsWidget(Widget):
         form = ParamForm(
             name=computsubsec,
             definitions=CGH_COMPUTATION_PARAMS,
-            calibration_provider=None,
+            conversion_context=None,
             per_row=1,
             use_subsection=True,
             editor_width=60,
@@ -935,7 +967,7 @@ class SLMsWidget(Widget):
 
         self._register_param_form(slmKey,secKey,"cgh",form)
         form.set_unit_mode(
-            self._sectionUnitModes.get(slmKey, {}).get(secKey, PIXEL_MODE)
+            self._sectionUnitModes.get(slmKey, {}).get(secKey, SLM_UNIT)
         )
 
         layout_spec = [
@@ -1094,31 +1126,7 @@ class SLMsWidget(Widget):
     # ------------------------------------- #
     #       UI-BUILD HELPER FUNCTIONS       #
     # ------------------------------------- #
-    # def add_calibration(self,layout,row,slmKey,secKey,default_conv_factor=None):
-    #     calibbtn = BetterPushButton("Calibrate")
-    #     layout.addWidget(calibbtn, row, 0,1,1)
-    #     lbl = QtWidgets.QLabel("Conversion factor:")
-    #     layout.addWidget(lbl, row, 1,1,1)
 
-    #     _lbl = default_conv_factor if default_conv_factor is not None else ""
-    #     conv_factor_lbl = QtWidgets.QLabel(_lbl)
-    #     layout.addWidget(conv_factor_lbl, row, 2,1,1)
-
-    #     attr_name = f"{slmKey}_{secKey}_cgh_convfactorlbl"
-    #     setattr(self, attr_name, conv_factor_lbl)
-
-    #     setasdefaultbtn = BetterPushButton("Set as default")
-    #     layout.addWidget(setasdefaultbtn, row, 3,1,1)
-
-    #     setasdefaultbtn.clicked.connect(
-    #         lambda _, s=self.sigSetDefaultConvFactor, slm=slmKey, sec=secKey: s.emit(slm,sec)
-    #     )
-        
-    #     calibbtn.clicked.connect(
-    #         lambda _, s=self.sigCalibTarget, slm=slmKey, sec=secKey: s.emit(slm,sec)
-    #         )
-        
-    #     return row+1
 
 
     def add_param_grid(self, slmKey, secKey,section_name, params, start_row, layout,sub_section=None,
@@ -1308,11 +1316,11 @@ class SLMsWidget(Widget):
             pattern_name,
             param_defs,
             add_checkbox=True,
-            single_param_mode=False,
             use_subsection=True,
             per_row="all",
             auto_update=True,
             auto_target_update=False,
+            show_complementary_unit=False
         ):
             """Build and register a ParamForm from ParamDef metadata.
 
@@ -1347,13 +1355,13 @@ class SLMsWidget(Widget):
             form = ParamForm(
                 name=pattern_name,
                 definitions=definitions,
-                calibration_provider=lambda slm=slmKey, sec=secKey: (
+                conversion_context=lambda slm=slmKey, sec=secKey: (
                     self._sectionCalibrations.get(slm, {}).get(sec)
                 ),
                 per_row=form_per_row,
                 use_subsection=use_subsection,
                 editor_width=60,
-                show_complementary=False,
+                show_complementary=show_complementary_unit,
             )
 
             if auto_update:
@@ -1380,7 +1388,7 @@ class SLMsWidget(Widget):
             # Sections are initially in pixel mode. If the form is added later,
             # synchronize it with the current section mode.
             form.set_unit_mode(
-                self._sectionUnitModes.get(slmKey, {}).get(secKey, PIXEL_MODE)
+                self._sectionUnitModes.get(slmKey, {}).get(secKey, SLM_UNIT)
             )
 
             row = form.add_to_grid(layout=layout,start_row=row)
@@ -1819,16 +1827,16 @@ class SLMsWidget(Widget):
             )
 
         current_mode = self._sectionUnitModes.get(slmKey, {}).get(
-            secKey, PIXEL_MODE
+            secKey, SLM_UNIT
         )
         if calibration is not None and not calibration.is_valid():
             calibration = None
 
-        if calibration is None and current_mode == METRIC_MODE:
+        if calibration is None and current_mode == METRIC_UNIT:
             self.set_section_unit_mode(
                 slmKey,
                 secKey,
-                PIXEL_MODE,
+                SLM_UNIT,
                 schedule_update=False,
                 show_error=False,
             )
@@ -1847,14 +1855,14 @@ class SLMsWidget(Widget):
         show_error=True,
     ):
         """Switch every ParamForm in one section between pixels and metric."""
-        if mode not in (PIXEL_MODE, METRIC_MODE):
+        if mode not in (SLM_UNIT, METRIC_UNIT):
             raise ValueError("Unknown unit mode: {}".format(mode))
 
         calibration = self._sectionCalibrations.get(slmKey, {}).get(secKey)
         requires_calibration = self._section_has_metric_fields(slmKey, secKey)
 
-        if mode == METRIC_MODE and requires_calibration and calibration is None:
-            self._sync_section_unit_buttons(slmKey, secKey, PIXEL_MODE)
+        if mode == METRIC_UNIT and requires_calibration and calibration is None:
+            self._sync_section_unit_buttons(slmKey, secKey, SLM_UNIT)
             if show_error:
                 self.show_message_box(
                     title="Metric units unavailable",
@@ -1867,7 +1875,7 @@ class SLMsWidget(Widget):
             for form in self.iter_section_param_forms(slmKey, secKey):
                 form.set_unit_mode(mode)
         except Exception as error:
-            self._sync_section_unit_buttons(slmKey, secKey, PIXEL_MODE)
+            self._sync_section_unit_buttons(slmKey, secKey, SLM_UNIT)
             if show_error:
                 self.show_message_box(
                     title="Could not change units",
@@ -1903,8 +1911,8 @@ class SLMsWidget(Widget):
         slm_blocker = QtCore.QSignalBlocker(slm_btn)
         sample_blocker = QtCore.QSignalBlocker(sample_btn)
         try:
-            slm_btn.setChecked(mode == PIXEL_MODE)
-            sample_btn.setChecked(mode == METRIC_MODE)
+            slm_btn.setChecked(mode == SLM_UNIT)
+            sample_btn.setChecked(mode == METRIC_UNIT)
         finally:
             del slm_blocker
             del sample_blocker
@@ -3024,7 +3032,7 @@ class SLMsWidget(Widget):
     def _section_has_metric_fields(self, slmKey, secKey):
         for form in self.iter_section_param_forms(slmKey, secKey):
             for field in form.fields.values():
-                if field.definition.metric_available:
+                if field.definition.conversion_available:
                     return True
         return False
 

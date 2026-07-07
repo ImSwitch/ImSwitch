@@ -6,8 +6,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from .registries import register_pattern
 from .slmSectionCalibration import SLMSectionCalibration
-from .paramDef import param
-from .converters import PeriodDisplacementConverter
+from ....imcommon.model.paramDef import param
+from .paramConverters import PeriodDisplacementConverter
 ### binary grating ###
 @register_pattern("binary_grating", params=[
     param("period_x", 0, int),
@@ -74,11 +74,13 @@ def sinusoidal_grating(width, height, period_x, period_y, power_x=0.5, power_y=0
     "linear_phase", 
     params=[
         param("period_x", 0, int,min_value=-4000,max_value=4000,
-              metric_available=True,metric_label="Displacement X (um)",
-              converter=PeriodDisplacementConverter(axis="x")),
+              conversion_available=True,converted_label="Displacement X (um)",
+              converter=PeriodDisplacementConverter(axis="x"),
+              widget="spinbox"),
         param("period_y", 0, int,min_value=-4000,max_value=4000,
-              metric_available=True,metric_label="Displacement Y (um)",
-              converter=PeriodDisplacementConverter(axis="y")),
+              conversion_available=True,converted_label="Displacement Y (um)",
+              converter=PeriodDisplacementConverter(axis="y"),
+              widget="spinbox"),
     ]
 )
 def linear_phase(width, height, period_x, period_y,**kwargs):

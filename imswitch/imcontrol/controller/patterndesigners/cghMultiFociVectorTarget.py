@@ -5,7 +5,7 @@ from .cghBaseTarget import TargetBase
 from .registries import register_target
 from .slmSectionCalibration import SLMSectionCalibration
 
-from .paramDef import param
+from ....imcommon.model.paramDef import param
 
 @register_target()
 class MultiFociVectorTarget(TargetBase):

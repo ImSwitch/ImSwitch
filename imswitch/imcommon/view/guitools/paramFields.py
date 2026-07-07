@@ -1,7 +1,7 @@
 """Generic parameter editors driven by ParamDef.
 
 ParamDef stores the converter *class*. Each ParamField creates a temporary
-converter using the calibration of its own SLM section, so calibration state is
+converter using the conversion context of its own SLM section, so context state is
 never shared through the registry.
 """
 
@@ -18,18 +18,15 @@ from typing import (
 )
 
 if TYPE_CHECKING:
-    from imswitch.imcontrol.controller.patterndesigners.paramDef import ParamDef
+    from imswitch.imcommon.model.paramDef import ParamDef
 
-PIXEL_MODE = "pixels"
-METRIC_MODE = "metric"
-_VALID_UNIT_MODES = (PIXEL_MODE, METRIC_MODE)
 
 
 class ParamField(QtWidgets.QWidget):
     """Runtime editor for one ParamDef.
 
     The field always stores a validated canonical value in SLM/pixel units.
-    Metric mode only changes how this canonical value is displayed and edited.
+    Unit mode only changes how this canonical value is displayed and edited.
     """
 
     sigValueChanged = QtCore.Signal(str, object)  # key, canonical value
@@ -40,7 +37,7 @@ class ParamField(QtWidgets.QWidget):
     def __init__(
         self,
         definition: ParamDef,
-        calibration_provider: Optional[Callable[[], Any]] = None,
+        conversion_context: Optional[Callable[[], Any]] = None,
         parent: Optional[QtWidgets.QWidget] = None,
         editor_width: int = 70,
         show_complementary: bool = False,
@@ -48,8 +45,14 @@ class ParamField(QtWidgets.QWidget):
         super().__init__(parent)
 
         self.definition = definition
-        self._calibration_provider = calibration_provider or (lambda: None)
-        self._unit_mode = PIXEL_MODE
+        self.conversion_context = conversion_context or (lambda: None)
+
+        self._canonical_unit = (
+            self.definition.converter.canonical_unit
+            if self.definition.converter is not None else None
+        )
+        self._unit_mode = self._canonical_unit
+
         self._canonical_value = definition.validate(definition.default)
         self._last_error = ""
         self._show_complementary = bool(show_complementary)
@@ -91,15 +94,18 @@ class ParamField(QtWidgets.QWidget):
         if emit and changed:
             self.sigValueChanged.emit(self.key, canonical)
 
-    def set_unit_mode(self, mode: str) -> None:
-        """Switch display mode without changing the canonical value."""
-        if mode not in _VALID_UNIT_MODES:
-            raise ValueError("Unknown unit mode: {}".format(mode))
+    def set_unit_mode(self, unit: str) -> None:
+        converter = self.definition.converter
+        if converter is None:
+            return
 
-        if mode == METRIC_MODE and self.definition.metric_available:
-            self._require_calibration()
+        if unit not in converter.supported_units:
+            raise ValueError(
+                f"Unit '{unit}' is not supported for parameter "
+                f"'{self.definition.key}'"
+            )
 
-        self._unit_mode = mode
+        self._unit_mode = unit
         self._render()
 
     def refresh(self) -> None:
@@ -171,12 +177,11 @@ class ParamField(QtWidgets.QWidget):
             editor.setMinimumWidth(editor_width)
 
         elif editor_type in ("spinbox", "int_spinbox"):
-            # A metric representation can be fractional even when the canonical
-            # pixel value is int. Therefore metric-capable parameters use a
+            # A converted representation can be fractional even when the canonical
+            # pixel value is int. Therefore conversion-capable parameters use a
             # QDoubleSpinBox in both modes.
-            if self.definition.metric_available:
+            if self.definition.conversion_available:
                 editor = QtWidgets.QDoubleSpinBox()
-                editor.setDecimals(6)
             else:
                 editor = QtWidgets.QSpinBox()
             editor.setKeyboardTracking(False)
@@ -184,7 +189,6 @@ class ParamField(QtWidgets.QWidget):
 
         elif editor_type in ("double_spinbox", "doublespinbox"):
             editor = QtWidgets.QDoubleSpinBox()
-            editor.setDecimals(6)
             editor.setKeyboardTracking(False)
             editor.setMinimumWidth(editor_width)
 
@@ -231,54 +235,27 @@ class ParamField(QtWidgets.QWidget):
         ):
             self.editor.valueChanged.connect(self._commit_editor)
 
-
-    def _on_editor_changed(self, *args):
-        if isinstance(self.editor, QtWidgets.QLineEdit):
-            text = self.editor.text()
-
-            if text.strip() == "":
-                return
-
-        try:
-            displayed_value = self._read_editor()
-            canonical_value = self._to_canonical(displayed_value)
-        except (TypeError, ValueError):
-            return
-
-        if canonical_value == self._canonical_value:
-            return
-
-        self._canonical_value = canonical_value
-        self.sigValueChanged.emit(
-            self.definition.key,
-            canonical_value,
-        )
-
-        self._update_complementary_label()
-
     # ------------------------------------------------------------------
     # Conversion
     # ------------------------------------------------------------------
 
-    def _calibration(self) -> Any:
-        return self._calibration_provider()
+    def _conversion_context(self) -> Any:
+        return self.conversion_context()
 
-    def _require_calibration(self) -> Any:
-        calibration = self._calibration()
-        if calibration is None:
+    def _require_conversion_context(self) -> Any:
+        conversion_context = self._conversion_context()
+        if conversion_context is None:
             raise RuntimeError(
-                "{} requires a valid section calibration in metric mode".format(
-                    self.key
-                )
+                f"{self.key} requires a valid section conversion context"
             )
-        return calibration
+        return conversion_context
 
     def _converter(self) -> Any:
         converter = self.definition.converter
 
         if converter is None:
             raise RuntimeError(
-                f"{self.definition.key} has no metric converter"
+                f"{self.definition.key} has no converter"
             )
 
         if isinstance(converter, type):
@@ -290,38 +267,22 @@ class ParamField(QtWidgets.QWidget):
 
         return converter
 
+    def _to_unit(self, canonical_value: Any, unit: str) -> Any:
+        if not self.definition.conversion_available:
+            return canonical_value
 
-    def _call_converter(
-        self,
-        method_name: str,
-        value: Any,
-    ) -> Any:
-        calibration = self._require_calibration()
         converter = self._converter()
-        method = getattr(converter, method_name)
+        context = self._require_conversion_context()
+        return converter.to_unit(canonical_value, unit, context)
 
-        return method(value, calibration)
-
-
-    def _to_metric(self, canonical_value: Any) -> Any:
-        return self._call_converter(
-            "to_metric",
-            canonical_value,
-        )
-
-
-    def _to_canonical(self, displayed_value: Any) -> Any:
+    def _to_canonical(self, value:Any) -> Any:
         if (
-            self._unit_mode == METRIC_MODE
-            and self.definition.metric_available
+            self.definition.conversion_available
+            and self._unit_mode != self._canonical_unit
         ):
-            displayed_value = self._call_converter(
-                "to_slm",
-                displayed_value,
-            )
+            value = self._to_unit(value, self._canonical_unit)
 
-        return self.definition.validate(displayed_value)
-
+        return self.definition.validate(value)
     # ------------------------------------------------------------------
     # Editor reading/writing
     # ------------------------------------------------------------------
@@ -335,8 +296,7 @@ class ParamField(QtWidgets.QWidget):
             return self.editor.currentText() if value is None else value
 
         if isinstance(
-            self.editor,
-            (QtWidgets.QSpinBox, QtWidgets.QDoubleSpinBox),
+            self.editor,(QtWidgets.QSpinBox, QtWidgets.QDoubleSpinBox)
         ):
             return self.editor.value()
 
@@ -346,17 +306,8 @@ class ParamField(QtWidgets.QWidget):
                 return None
             raise ValueError("{} cannot be empty".format(self.key))
 
-        # Metric values are generally floating point even if canonical pixels
-        # are ints. ParamDef.validate() performs the canonical type conversion
-        # after the converter has run.
-        if self._unit_mode == METRIC_MODE and self.definition.metric_available:
-            return float(text)
+        return self._parse_editor_text(text)
 
-        if self.definition.ptype is int:
-            return int(text)
-        if self.definition.ptype is float:
-            return float(text)
-        return self.definition.ptype(text)
 
     def _write_editor(self, displayed_value: Any) -> None:
         self._updating_editor = True
@@ -448,14 +399,12 @@ class ParamField(QtWidgets.QWidget):
             self.complementaryLabel.hide()
             return
         
-        metric_display = (
-            self._unit_mode == METRIC_MODE
-            and self.definition.metric_available
-        )
-
-        if metric_display:
-            displayed_value = self._to_metric(self._canonical_value)
-            label = self.definition.metric_label or self.definition.display_label
+        if (
+            self.definition.conversion_available
+            and self._unit_mode != self._canonical_unit
+        ):
+            displayed_value = self._to_unit(self._canonical_value, self._unit_mode)
+            label = self.definition.converted_label or self.definition.display_label
         else:
             displayed_value = self._canonical_value
             label = self.definition.display_label
@@ -476,7 +425,7 @@ class ParamField(QtWidgets.QWidget):
 
         pdef = self.definition
 
-        if self._unit_mode == PIXEL_MODE or not pdef.metric_available:
+        if self._unit_mode == self._canonical_unit or not pdef.conversion_available:
             minimum = pdef.min_value
             maximum = pdef.max_value
             step = pdef.step
@@ -490,14 +439,16 @@ class ParamField(QtWidgets.QWidget):
                     converted.append(None)
                 else:
                     try:
-                        converted.append(float(self._to_metric(boundary)))
+                        val = self._to_unit(boundary,self._unit_mode)
+                        type = self._converter().type_for_unit(self._unit_mode)
+                        converted.append(type(val))
                     except Exception:
                         converted.append(None)
 
             valid_boundaries = [v for v in converted if v is not None]
             minimum = min(valid_boundaries) if valid_boundaries else None
             maximum = max(valid_boundaries) if valid_boundaries else None
-            step = None  # A canonical step is not generally constant in metric space.
+            step = None  # A canonical step is not generally constant in converted space.
 
         if isinstance(self.editor, QtWidgets.QSpinBox):
             low_default, high_default = -2147483647, 2147483647
@@ -523,33 +474,52 @@ class ParamField(QtWidgets.QWidget):
             if step is not None:
                 self.editor.setSingleStep(float(step))
 
-            if self._unit_mode == PIXEL_MODE and pdef.ptype is int:
-                self.editor.setDecimals(0)
+            converter = pdef.converter
+            if converter is None:
+                decimals = 0 if pdef.ptype is int else 4
             else:
-                self.editor.setDecimals(6)
+                decimals = self._converter().decimals_by_unit.get(self._unit_mode, 4)
+            self.editor.setDecimals(decimals)
 
     def _update_complementary_label(self) -> None:
-        if not self._show_complementary or not self.definition.metric_available:
+        if not self._show_complementary or not self.definition.conversion_available:
             self.complementaryLabel.hide()
             return
 
         try:
-            if self._unit_mode == METRIC_MODE:
+            if self._unit_mode != self._canonical_unit:
                 text = "({}: {})".format(
                     self.definition.display_label,
                     self._format_value(self._canonical_value),
                 )
             else:
-                metric_value = self._to_metric(self._canonical_value)
+                complementary_unit = next(
+                    unit
+                    for unit in self._converter().supported_units
+                    if unit != self._canonical_unit
+                )
+                complementary_value = self._to_unit(
+                    self._canonical_value,
+                    complementary_unit,
+                )
                 text = "({}: {})".format(
-                    self.definition.metric_label or "Metric",
-                    self._format_value(metric_value),
+                    self.definition.converted_label or complementary_unit or "",
+                    self._format_value(complementary_value),
                 )
             self.complementaryLabel.setText(text)
             self.complementaryLabel.show()
         except Exception:
-            self.complementaryLabel.setText("(metric unavailable)")
+            self.complementaryLabel.setText("(unavailable)")
             self.complementaryLabel.show()
+
+    def _parse_editor_text(self, text):
+
+        if self.definition.conversion_available:
+            converter = self._converter()
+            value_type = converter.type_for_unit(self._unit_mode)
+        else:
+            value_type = self.definition.ptype
+        return value_type(text)
 
 
 class ParamForm(QtCore.QObject):
@@ -561,7 +531,7 @@ class ParamForm(QtCore.QObject):
         self,
         name: str,
         definitions: Sequence[ParamDef],
-        calibration_provider: Optional[Callable[[], Any]] = None,
+        conversion_context: Optional[Callable[[], Any]] = None,
         parent: Optional[QtWidgets.QWidget] = None,
         per_row: int = 1,
         use_subsection: bool = True,
@@ -572,14 +542,19 @@ class ParamForm(QtCore.QObject):
 
         self.name = name
         self.use_subsection = bool(use_subsection)
-        self._unit_mode = PIXEL_MODE
+
+        self._unit_mode = (
+            definitions[0].converter.canonical_unit
+            if definitions[0].converter is not None else None
+        )
+
         self._fields: Dict[str, ParamField] = {}
         self._per_row = max(1, int(per_row))
 
         for definition in definitions:
             field = ParamField(
                 definition=definition,
-                calibration_provider=calibration_provider,
+                conversion_context=conversion_context,
                 parent=None,
                 editor_width=editor_width,
                 show_complementary=show_complementary,
@@ -605,51 +580,20 @@ class ParamForm(QtCore.QObject):
                 field.set_value(value, emit=emit)
 
     def set_unit_mode(self, mode: str) -> None:
-        # Render every field through the same API. Non-metric fields simply keep
-        # their normal representation.
         for field in self._fields.values():
             field.set_unit_mode(mode)
         self._unit_mode = mode
 
     def refresh(self) -> None:
-        """Refresh fields whose display depends on calibration."""
+        """Refresh fields whose display depends on conversion."""
         for field in self._fields.values():
-            if field.definition.metric_available:
+            if field.definition.conversion_available:
                 field.refresh()
 
     def canonical_definitions(self) -> Iterable[ParamDef]:
         for field in self._fields.values():
             yield field.definition
 
-    # def add_to_grid(self,layout: QtWidgets.QGridLayout,start_row: int) -> int:
-    #     """Insert all fields into an existing shared grid.
-    #     Returns the next unused row.
-    #     """
-
-    #     visible_fields = [
-    #         field
-    #         for field in self._fields.values()
-    #         if not field.definition.hidden
-    #     ]
-
-    #     if not visible_fields:
-    #         return start_row
-
-    #     row = start_row
-    #     column = 0
-    #     fields_in_row = 0
-
-    #     for field in visible_fields:
-    #         if fields_in_row >= self._per_row:
-    #             row += 1
-    #             column = 0
-    #             fields_in_row = 0
-
-    #         column = field.add_to_grid(layout=layout,row=row,column=column)
-
-    #         fields_in_row += 1
-
-    #     return row + 1
 
     def add_to_grid(
         self,

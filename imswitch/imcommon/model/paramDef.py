@@ -1,7 +1,10 @@
+from __future__ import annotations
 import re
 from dataclasses import dataclass
-from typing import Any, Optional, Sequence, Union
-from .converters import Converter
+from typing import Any, Optional, Sequence, Union, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from . import Converter
 
 Number = Union[int, float]
 
@@ -93,8 +96,8 @@ class ParamDef:
     max_value: Optional[Number] = None
     step: Optional[Number] = None
 
-    metric_available: bool = False
-    metric_label: Optional[str] = None
+    conversion_available: bool = False
+    converted_label: Optional[str] = None
     converter: Optional[Converter] = None
 
     choices: Optional[Sequence[Any]] = None
@@ -194,19 +197,15 @@ class ParamDef:
 
         return converted_value
     
-    def to_metric(self,value,slmCalib):
-        if not self.metric_available or not self.converter:
-            raise RuntimeError(f"Cannot convert parameter {self.label}")
-        
-        metric = self.converter.to_metric(value)
-        return metric
-    
-    def to_slm_pixels(self,value,slmCalib):
-        if not self.metric_available or not self.converter:
-            raise RuntimeError(f"Cannot convert parameter {self.label}")
-        
-        slm_pixels = self.converter.to_slm_pixels(value)
-        return slm_pixels
+    def to_unit(self, value, unit, conversion_context=None):
+        if self.converter is None:
+            return value
+
+        return self.converter.to_unit(
+            value,
+            unit,
+            context=conversion_context,
+        )
 
 
 def param(
@@ -216,8 +215,8 @@ def param(
     label: Optional[str] = None,
     min_value: Optional[Number] = None,
     max_value: Optional[Number] = None,
-    metric_available: Optional[bool] = False,
-    metric_label: Optional[str] = None,
+    conversion_available: Optional[bool] = False,
+    converted_label: Optional[str] = None,
     converter: Optional[callable] = None,
     step: Optional[Number] = None,
     choices: Optional[Sequence[Any]] = None,
@@ -237,8 +236,8 @@ def param(
         label=label,
         min_value=min_value,
         max_value=max_value,
-        metric_available=metric_available,
-        metric_label=metric_label,
+        conversion_available=conversion_available,
+        converted_label=converted_label,
         converter=converter,
         step=step,
         choices=choices,

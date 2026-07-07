@@ -6,7 +6,7 @@ from .registries import register_target
 import matplotlib.pyplot as plt
 import cv2
 
-from .paramDef import param
+from ....imcommon.model.paramDef import param
 
 @register_target()
 class MultiFociTarget(TargetBase):

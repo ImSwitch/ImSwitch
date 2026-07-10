@@ -1,7 +1,7 @@
 from __future__ import annotations
 import re
 from dataclasses import dataclass
-from typing import Any, Optional, Sequence, Union, TYPE_CHECKING
+from typing import Any, Optional, Sequence, Union, TYPE_CHECKING, Tuple
 
 if TYPE_CHECKING:
     from . import Converter
@@ -113,7 +113,7 @@ class ParamDef:
         return self.label or make_display_name(self.key)
 
     @property
-    def display_choices(self) -> tuple[str, ...]:
+    def display_choices(self) -> Tuple[str, ...]:
         if self.choices is None:
             return ()
 

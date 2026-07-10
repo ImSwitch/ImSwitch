@@ -36,7 +36,7 @@ from __future__ import annotations
 
 import traceback
 import numpy as np
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Tuple
 
 if TYPE_CHECKING:
     from ..targets import Target
@@ -58,7 +58,7 @@ def compute(
     target: Target,
     compute_params: dict=None,
     previous_pattern: np.ndarray =None,
-) -> tuple[np.ndarray, list, str, str]:
+) -> Tuple[np.ndarray, list, str, str]:
     """
     Convenience wrapper for ImSwitch Target objects.
 

@@ -96,7 +96,7 @@ import h5py
 import os
 import datetime
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Tuple
 if TYPE_CHECKING:
     from imswitch.imcontrol.model.SetupInfo import SLMInfo
 
@@ -1936,7 +1936,7 @@ class SLMsWidget(Widget):
         return wavelength_nm
 
 
-    def get_current_target_params(self, slmKey, secKey) -> tuple[str, dict]:
+    def get_current_target_params(self, slmKey, secKey) -> Tuple[str, dict]:
         """
         Return the current target key and its canonical parameters.
         """
@@ -1980,7 +1980,7 @@ class SLMsWidget(Widget):
 
         return cgh_params
 
-    def get_current_cgh_computation(self, slmKey, secKey) -> tuple [str, dict]:
+    def get_current_cgh_computation(self, slmKey, secKey) -> Tuple [str, dict]:
         """
         Returns the algorithm key and canonical computation parameters
         for the currently selected CGH target.

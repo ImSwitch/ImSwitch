@@ -11,7 +11,7 @@ import traceback
 from ...registries import register_cgh_algorithm
 
 from imswitch.imcommon.model.paramDef import param
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING, Union, Tuple
 if TYPE_CHECKING:
     from ..targets import Target
 
@@ -32,7 +32,7 @@ def compute(
     target: Union[Target, np.ndarray],
     compute_params: dict=None,
     previous_pattern: np.ndarray =None,
-) -> tuple[np.ndarray, list, str, str]:
+) -> Tuple[np.ndarray, list, str, str]:
     """ 
     Performs the (weighted) Gerchberg-Saxton algorithm with optional cooperative stop.
 

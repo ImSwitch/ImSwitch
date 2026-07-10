@@ -1,11 +1,11 @@
 from abc import ABC
-from typing import Union
+from typing import Union, Tuple
 
 Number = Union[int, float]
 
 class Converter(ABC):
     canonical_unit: str
-    supported_units: tuple[str, ...]
+    supported_units: Tuple[str, ...]
     types_by_unit = dict
     decimals_by_unit = dict
 

@@ -1,5 +1,5 @@
 from numbers import Number
-from typing import Any, Dict, Optional, Sequence
+from typing import Any, Dict, Optional, Sequence, Tuple
 
 from qtpy import QtCore, QtWidgets
 
@@ -73,7 +73,7 @@ class ParamSection(QtCore.QObject):
 
         self._conversion_context = conversion_context
         self._forms: Dict[str, ParamForm] = {}
-        self._form_definitions: Dict[str, tuple[ParamDef, ...]] = {}
+        self._form_definitions: Dict[str, Tuple[ParamDef, ...]] = {}
         self._form_labels: Dict[str, str] = {}
 
         self._runtime_summary: Any = None
@@ -227,7 +227,7 @@ class ParamSection(QtCore.QObject):
     # ------------------------------------------------------------------
 
     @property
-    def forms(self) -> tuple[ParamForm, ...]:
+    def forms(self) -> Tuple[ParamForm, ...]:
         """Return the general form followed by all regular forms."""
 
         forms = []
@@ -298,7 +298,7 @@ class ParamSection(QtCore.QObject):
 
         self.summary_label.set_full_text(summary)
 
-    def _build_summary_items(self) -> list[str]:
+    def _build_summary_items(self) -> list:
         if self.summary_mode == "none":
             return []
 

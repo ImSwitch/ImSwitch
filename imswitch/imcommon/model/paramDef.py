@@ -8,7 +8,6 @@ if TYPE_CHECKING:
 
 Number = Union[int, float]
 
-
 def clean_attr_name(label: str) -> str:
     """
     Convert a label string to a valid attribute name:

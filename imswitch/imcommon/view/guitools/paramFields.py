@@ -311,29 +311,27 @@ class ParamField(QtWidgets.QWidget):
 
     def _write_editor(self, displayed_value: Any) -> None:
         self._updating_editor = True
+
         try:
-            blocker = QtCore.QSignalBlocker(self.editor)
-            try:
-                if isinstance(self.editor, QtWidgets.QCheckBox):
-                    self.editor.setChecked(bool(displayed_value))
+            if isinstance(self.editor, QtWidgets.QCheckBox):
+                self.editor.setChecked(bool(displayed_value))
 
-                elif isinstance(self.editor, QtWidgets.QComboBox):
-                    index = self.editor.findData(displayed_value)
-                    if index < 0:
-                        index = self.editor.findText(str(displayed_value))
-                    if index >= 0:
-                        self.editor.setCurrentIndex(index)
+            elif isinstance(self.editor, QtWidgets.QComboBox):
+                index = self.editor.findData(displayed_value)
+                if index < 0:
+                    index = self.editor.findText(str(displayed_value))
+                if index >= 0:
+                    self.editor.setCurrentIndex(index)
 
-                elif isinstance(self.editor, QtWidgets.QSpinBox):
-                    self.editor.setValue(int(displayed_value))
+            elif isinstance(self.editor, QtWidgets.QSpinBox):
+                self.editor.setValue(int(displayed_value))
 
-                elif isinstance(self.editor, QtWidgets.QDoubleSpinBox):
-                    self.editor.setValue(float(displayed_value))
+            elif isinstance(self.editor, QtWidgets.QDoubleSpinBox):
+                self.editor.setValue(float(displayed_value))
 
-                else:
-                    self.editor.setText(self._format_value(displayed_value))
-            finally:
-                del blocker
+            else:
+                self.editor.setText(self._format_value(displayed_value))
+
         finally:
             self._updating_editor = False
 

@@ -1,20 +1,25 @@
 import numpy as np
-from .cghBaseTarget import TargetBase
-from .cghUtils import fft_constrained_frequency_estimation, refine_foci_positions, crop_with_preview, sum_around
-from .cghUtils import fft_frequency_estimation, estimate_lattice_offset
-from .registries import register_target
+from .base import Target
+
+from ..feedback.localization import (
+    fft_constrained_frequency_estimation, refine_foci_positions, crop_with_preview, 
+    sum_around, fft_frequency_estimation, estimate_lattice_offset
+)
+
+from ...registries import register_target
 import matplotlib.pyplot as plt
 import cv2
 
-from ....imcommon.model.paramDef import param
+from imswitch.imcommon.model.paramDef import param
 
 @register_target()
-class MultiFociTarget(TargetBase):
+class MultiFociTarget(Target):
     """
     Multi-foci target.
     """
 
     target_type = "multi_foci"
+    algorithm = "gerchberg_saxton"
     _supports_feedback = True
 
     target_params = [

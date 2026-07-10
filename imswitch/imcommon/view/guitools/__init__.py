@@ -12,3 +12,4 @@ from .JsonEditorDialog import JsonEditorDialog
 from .InfoButton import InfoButton
 from .paramFields import ParamForm, ParamField
 from .ElidedLabel import ElidedLabel
+from .ParamSection import ParamSection, SECTION_META_KEY, SECTION_ACTIVE_KEY

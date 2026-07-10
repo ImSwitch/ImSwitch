@@ -1,7 +1,7 @@
 import numpy as np
 
-from .cghBaseTarget import TargetBase
-from .registries import register_target
+from .base import Target
+from ...registries import register_target
 
 
 # @register_target(
@@ -23,7 +23,7 @@ from .registries import register_target
 #         ("Stagger", 0.0, float),
 #     ],
 # )
-class MultiFociVectorTarget2(TargetBase):
+class MultiFociVectorTarget2(Target):
     """
     Vectorized multi-foci target.
 
@@ -41,17 +41,18 @@ class MultiFociVectorTarget2(TargetBase):
 
     self.array : np.ndarray, shape (height, width)
         2D raster preview only. This is kept for compatibility with the
-        current TargetBase / Visualize Target workflow. The slmsuite backend
+        current Target / Visualize Target workflow. The slmsuite backend
         should use spot_vectors_kxy, not this raster array.
     """
 
     target_type = "multi_foci_vector"
+    algorithm = "direct_summation"
     _supports_feedback = False
     _needs_calibration = False
 
     def __init__(self, section_size=None, **params):
         # Future feedback/correction state.
-        # These must exist before TargetBase.__init__ calls self.build().
+        # These must exist before Target.__init__ calls self.build().
         self.base_vectors_kxy = None
         self.spot_vectors_kxy = None
         self.local_offsets_kxy = None
@@ -172,7 +173,7 @@ class MultiFociVectorTarget2(TargetBase):
         return self.npx * self.npy
 
     # ------------------------------------------------------------------
-    # TargetBase hooks
+    # Target hooks
     # ------------------------------------------------------------------
 
     def build(self):
@@ -324,7 +325,7 @@ class MultiFociVectorTarget2(TargetBase):
         Convert floating kxy vectors into a simple 2D preview raster.
 
         This is only for visualization and compatibility with the current
-        TargetBase workflow. It should not be used by the slmsuite backend.
+        Target workflow. It should not be used by the slmsuite backend.
         """
 
         h, w = self.height, self.width
@@ -480,7 +481,7 @@ class MultiFociVectorTarget2(TargetBase):
         """
         Future-proof feedback reset.
 
-        TargetBase.reset_feedback() calls build before this hook, so we rebuild
+        Target.reset_feedback() calls build before this hook, so we rebuild
         once more after clearing vector feedback state.
         """
 

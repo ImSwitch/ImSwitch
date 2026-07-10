@@ -1,0 +1,10 @@
+GENERAL_KEY = "general"
+PATTERNS_KEY = "patterns"
+ABERRATIONS_KEY = "aberrations"
+CGH_KEY = "cgh"
+CORRECTION_OPTIONS_KEY = "correction_options"
+
+CGH_TARGETS_KEY = "cgh_targets"
+CGH_GENERAL_KEY = "cgh_general"
+CGH_COMPUTATION_KEY = "cgh_computation"
+CGH_ALGORITHMS_KEY = "cgh_algorithms"

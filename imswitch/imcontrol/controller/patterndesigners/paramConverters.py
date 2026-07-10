@@ -1,6 +1,6 @@
 
 
-from .units import SLM_UNIT, METRIC_UNIT
+from .schema import SLM_UNIT, METRIC_UNIT
 from imswitch.imcommon.model import Converter
 
 

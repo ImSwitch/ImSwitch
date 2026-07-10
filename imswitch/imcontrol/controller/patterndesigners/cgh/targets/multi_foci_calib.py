@@ -1,14 +1,18 @@
 import numpy as np
-from .cghBaseTarget import TargetBase
-from .cghUtils import fft_constrained_frequency_estimation, refine_foci_positions, crop_with_preview, sum_around
-from .cghUtils import fft_frequency_estimation, estimate_lattice_offset
-from .registries import register_target
+from .base import Target
+
+from ..feedback.localization import (
+    fft_constrained_frequency_estimation, refine_foci_positions, crop_with_preview, 
+    sum_around, fft_frequency_estimation, estimate_lattice_offset
+)
+
+from ...registries import register_target
 import matplotlib.pyplot as plt
 import cv2
 import math
 
 @register_target()
-class MultiFociCalibTarget(TargetBase):
+class MultiFociCalibTarget(Target):
     """
     Multi-foci target - more user friendly:
         - User enters period in sample space directly
@@ -16,6 +20,7 @@ class MultiFociCalibTarget(TargetBase):
     """
 
     target_type = "multi_foci_calib"
+    algorithm = "gerchberg_saxton"
     _needs_calibration = True
     _auto_update_param = True
 

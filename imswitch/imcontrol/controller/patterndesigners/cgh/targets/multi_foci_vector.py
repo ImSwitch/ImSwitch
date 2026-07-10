@@ -1,14 +1,14 @@
 import numpy as np
 import math
 
-from .cghBaseTarget import TargetBase
-from .registries import register_target
-from .slmSectionCalibration import SLMSectionCalibration
+from .base import Target
+from ...registries import register_target
+from ...slmSectionCalibration import SLMSectionCalibration
 
-from ....imcommon.model.paramDef import param
+from imswitch.imcommon.model.paramDef import param
 
 @register_target()
-class MultiFociVectorTarget(TargetBase):
+class MultiFociVectorTarget(Target):
     """
     Metric multi-foci target for the direct-summation backend.
 
@@ -19,6 +19,7 @@ class MultiFociVectorTarget(TargetBase):
     """
 
     target_type = "multi_foci_vector"
+    algorithm = "direct_summation"
     _needs_calibration = True
     _auto_update_param = True
 
@@ -33,7 +34,6 @@ class MultiFociVectorTarget(TargetBase):
         param("skew_deg", 0.0, float)
     ]
 
-    uses_direct_summation = True
     missing_calibration_message = (
         "No valid section calibration found. Calibrate linear phase first."
     )
@@ -173,7 +173,7 @@ class MultiFociVectorTarget(TargetBase):
         return self.n_foci_x * self.n_foci_y
 
 
-    # TargetBase hooks
+    # Target hooks
 
     def _build_impl(self):
         positions_um = self._make_spot_positions_um()

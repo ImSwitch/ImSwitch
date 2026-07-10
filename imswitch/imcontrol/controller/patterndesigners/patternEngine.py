@@ -1,8 +1,13 @@
 import numpy as np
 from .registries import PATTERNS_REGISTRY, ABERRATIONS_REGISTRY
-from . import cghComputations as cgh
 from .aberrationPatterns import ZernikeGenerator
 from PyQt5.QtCore import QObject
+
+from imswitch.imcommon.view.guitools import SECTION_META_KEY, SECTION_ACTIVE_KEY
+
+def _section_is_active(section_params, default=True):
+    metadata = section_params.get(SECTION_META_KEY, {})
+    return bool(metadata.get(SECTION_ACTIVE_KEY, default))
 
 class PatternEngine(QObject):
     """Class handling pattern generation for SLMs."""
@@ -73,7 +78,8 @@ class PatternEngine(QObject):
             sec_param = params.get(sec_key)
             if sec_param is not None:
                 self.compute_section(sec_key=sec_key,params=sec_param)
-                self.phase_to_eightbits(sec_key,**sec_param.get("correction_options",{}))
+                correction_params = self._set_correction_params(sec_param)
+                self.phase_to_eightbits(sec_key,**correction_params)
             else:
                 print(f"tab{n}'s parameters not found")
 
@@ -103,11 +109,19 @@ class PatternEngine(QObject):
 
         # === Analytic patterns ===
         patterns_to_combine = []
-        for pattern_name, pattern_params in params.get("patterns", {}).items():
-            if pattern_params.get("active", False) and pattern_name in PATTERNS_REGISTRY:
-                func = PATTERNS_REGISTRY[pattern_name].get("func")
-                pattern = func(width, height, **pattern_params,**general_params)
-                patterns_to_combine.append(pattern)
+        patterns_params = params.get("patterns", {})
+        
+        if _section_is_active(patterns_params, default=True):
+            for pattern_name, pattern_params in params.get("patterns", {}).items():
+                if pattern_name == SECTION_META_KEY:
+                    continue
+                if (
+                    pattern_params.get(SECTION_ACTIVE_KEY, False) 
+                    and pattern_name in PATTERNS_REGISTRY
+                ):
+                    func = PATTERNS_REGISTRY[pattern_name].get("func")
+                    pattern = func(width, height, **pattern_params,**general_params)
+                    patterns_to_combine.append(pattern)
 
         analyticPatterns = (
             np.prod(patterns_to_combine, axis=0)
@@ -117,9 +131,12 @@ class PatternEngine(QObject):
 
         # === Aberrations ===
         aberrations = None
-        if params.get("aberrations", {}).get("aberrations_active",True):
+        aberration_params = params.get("aberrations", {})
+        if _section_is_active(aberration_params, default=True):
             zernike_coeffs = {}
             for name, coeff in params.get("aberrations", {}).items():
+                if name == SECTION_META_KEY:
+                    continue
                 if name in ABERRATIONS_REGISTRY:
                     noll = ABERRATIONS_REGISTRY[name]["noll"]
                     zernike_coeffs[noll] = coeff
@@ -130,7 +147,8 @@ class PatternEngine(QObject):
         combined = analyticPatterns * (aberrations if aberrations is not None else 1)
 
         # === CGH ===
-        if params.get("cgh", {}).get("cgh_general", {}).get("active", False):
+        cgh_params = params.get("cgh", {})
+        if _section_is_active(cgh_params, default=False):
             cgh_pattern = self._cachedSections[sec_key]["cgh"]
         else:
             cgh_pattern = None
@@ -239,3 +257,16 @@ class PatternEngine(QObject):
             return None, start
         else:
             return (0, 0), None
+
+
+    def _set_correction_params(self, sec_param):
+        correction_params = sec_param.get("correction_options", {})
+
+        corrections_active = _section_is_active(correction_params,default=True)
+        correction_params.pop(SECTION_META_KEY, None)
+
+        if not corrections_active:
+            correction_params["apply_twopi_value"] = False
+            correction_params["apply_correction_pattern"] = False
+
+        return correction_params

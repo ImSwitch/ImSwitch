@@ -32,7 +32,7 @@ The structure is:
 
 Where:
 - groupName : parameter group (e.g. "pattern", "aberrations", "output")
-- subsection : optional further subdivision inside group (e.g. pattern name, "cgh_general", "cgh_computation")
+- subsection : optional further subdivision inside group (e.g. pattern name, SECTION_META_KEY, "cgh_computation")
 - each parameter is defined by a tuple:
     * widget_type : one of ("checkbox", "combobox", "lineedit", ...)
     * attr_name : used to reference parameter
@@ -63,14 +63,23 @@ There are two ways of registering parameters:
 
 from .basewidgets import Widget
 
-from imswitch.imcommon.view.guitools import CollapsibleSection, BetterPushButton, ParamForm
-from imswitch.imcommon.view.guitools.dialogtools import askForTextInput,askYesNoQuestion,askForTwoTextInputs
+from imswitch.imcommon.view.guitools import (
+    CollapsibleSection, BetterPushButton, ParamForm, ParamSection, 
+    SECTION_META_KEY, SECTION_ACTIVE_KEY
+)
+from imswitch.imcommon.view.guitools.dialogtools import (
+    askForTextInput,askYesNoQuestion,askForTwoTextInputs
+)
 from imswitch.imcommon.model.paramDef import ParamDef, param
-from imswitch.imcontrol.controller.patterndesigners.units import SLM_UNIT,METRIC_UNIT
-from imswitch.imcontrol.controller.patterndesigners.paramGeneral import (
+from imswitch.imcontrol.controller.patterndesigners.schema import (
+    SLM_UNIT,
+    METRIC_UNIT,
     GENERAL_PARAMS,
-    CGH_COMPUTATION_PARAMS,
     CORRECTION_PARAMS,
+)
+from imswitch.imcontrol.controller.patterndesigners.schema import (
+    GENERAL_KEY,PATTERNS_KEY,ABERRATIONS_KEY,CORRECTION_OPTIONS_KEY,
+    CGH_KEY,CGH_TARGETS_KEY,CGH_GENERAL_KEY,CGH_COMPUTATION_KEY,CGH_ALGORITHMS_KEY
 )
 
 from dataclasses import replace
@@ -146,7 +155,7 @@ class SLMsWidget(Widget):
 
     sigConnectSLMusb = QtCore.Signal(str,bool,bool)         # slmName, state, display_msg
     sigUpdatePattern = QtCore.Signal(str, dict)             # slmKey, params
-    sigComputeCGH = QtCore.Signal(str, str,dict)            # slmKey, secKey, cgh_params
+    sigComputeCGH = QtCore.Signal(str, str)                 # slmKey, secKey
 
     sigVisualizeCghPerformances = QtCore.Signal(str, str)   # slmKey, secKey
     sigVisualizeTarget = QtCore.Signal(str,str)             # slmKey, secKey
@@ -204,9 +213,11 @@ class SLMsWidget(Widget):
         self._param_definitions = {}    # list of parameters stored by slmKey[secKey][sectionName]
         self._currentConfigs = {}       # {slmKey: {"path": currentConfigPath, "date": date, "info": info}}
 
+        self._paramSections = {}
         self._paramForms = {}
         self._sectionUnitModes = {}
         self._sectionCalibrations = {}
+        self._cghComputationForms = {}
         
         # update timers
         self._slmUpdateTimers = {}      # { slmKey: QTimer }
@@ -319,28 +330,33 @@ class SLMsWidget(Widget):
         vbox.addLayout(self.create_calibration_line(slmKey,secKey))
 
         # General
-        self._param_definitions[slmKey][secKey]["general"]=[]
+        self._param_definitions[slmKey][secKey][GENERAL_KEY]=[]
         vbox.addWidget(self.create_general_group(slmKey,secKey))
 
         # Patterns
-        self._param_definitions[slmKey][secKey]["patterns"]={}
-        pattern_options = options.get("patterns", None)
-        pattern_registry = full_registry.get("patterns",{})
+        self._param_definitions[slmKey][secKey][PATTERNS_KEY]={}
+        pattern_options = options.get(PATTERNS_KEY, None)
+        pattern_registry = full_registry.get(PATTERNS_KEY,{})
         vbox.addWidget(self.create_patterns_group(slmKey,secKey,pattern_options,pattern_registry))
         # aberration correction
-        if options.get("aberrations",True):
-            self._param_definitions[slmKey][secKey]["aberrations"]=[]
-            aberrations_registry = full_registry.get("aberrations",{})
+        if options.get(ABERRATIONS_KEY,True):
+            self._param_definitions[slmKey][secKey][ABERRATIONS_KEY]=[]
+            aberrations_registry = full_registry.get(ABERRATIONS_KEY,{})
             vbox.addWidget(self.create_aberrations_group(slmKey,secKey,aberrations_registry))
 
         # CGH
-        if options.get("cgh",True):
-            self._param_definitions[slmKey][secKey]["cgh"]={}
-            vbox.addWidget(self.create_cgh_group(slmKey,secKey,full_registry.get("cgh_targets"),
-                                                 conv_factor = options.get("conv_factor", None)))
+        if options.get(CGH_KEY,True):
+            self._param_definitions[slmKey][secKey][CGH_KEY]={}
+            vbox.addWidget(self.create_cgh_group(
+                slmKey,
+                secKey,
+                targets_registry = full_registry.get(CGH_TARGETS_KEY),
+                algorithms_registry = full_registry.get(CGH_ALGORITHMS_KEY)
+            )
+        )
 
         # final correction options
-        self._param_definitions[slmKey][secKey]["correction_options"]=[]
+        self._param_definitions[slmKey][secKey][CORRECTION_OPTIONS_KEY]=[]
         vbox.addWidget(self.create_correction_options_group(slmKey,secKey))
 
         vbox.addStretch()
@@ -521,55 +537,64 @@ class SLMsWidget(Widget):
     # -------------------------------------------- #
 
     # Correction options
-    def create_correction_options_group(self, slmKey="slm",secKey="sec_0"):
-        group = CollapsibleSection("Correction",**_collaps_section_format)
-        layout = QtWidgets.QGridLayout()
-        form = ParamForm(
-            name="correction_options",
+    def create_correction_options_group(self,slmKey="slm",secKey="sec_0"):
+        section = ParamSection(
+            name=CORRECTION_OPTIONS_KEY,
+            title="Correction",
+            active_def=param("active",True,bool,"Apply corrections"),
+            summary_mode="enabled_fields",
+            conversion_context=None,
+            collapsible_kwargs=_collaps_section_format,
+            summary_max_width=260,
+        )
+
+        section.add_form(
+            name="correction_values",
             definitions=CORRECTION_PARAMS,
-            conversion_context=None,
-            per_row=0,
             use_subsection=False,
+            per_row=100,
             editor_width=60,
             show_complementary=False,
         )
-        
-        form.sigValueChanged.connect(
-            lambda _key, _value, slm=slmKey:self._schedulePatternUpdate(slm)
-        )
-        self._register_param_form(slmKey,secKey,"general",form)
-        form.set_unit_mode(
-            self._sectionUnitModes.get(slmKey, {}).get(secKey, SLM_UNIT)
-        )
-        form.add_to_grid(layout=layout,start_row=0)
-        group.setContentLayout(layout)
-        return group
 
-    # General section
+        section.set_unit_mode(self._sectionUnitModes.get(slmKey, {}).get(secKey, SLM_UNIT)
+        )
+
+        section.sigValueChanged.connect(
+            lambda _form_name, _key, _value, slm=slmKey: self._schedulePatternUpdate(slm)
+        )
+
+        self._register_param_section( slmKey,secKey, CORRECTION_OPTIONS_KEY, section)
+
+        return section.widget
+
     def create_general_group(self, slmKey="slm", secKey="sec_0"):
-        group = CollapsibleSection("General",**_collaps_section_format,)
-        layout = QtWidgets.QGridLayout()
-
-        form = ParamForm(
-            name="general",
-            definitions=GENERAL_PARAMS,
+        section = ParamSection(
+            name=GENERAL_KEY,
+            title="General",
+            summary_mode="none",
             conversion_context=None,
-            per_row=1,
+            collapsible_kwargs=_collaps_section_format,
+        )
+
+        section.add_form(
+            name="general_values",
+            definitions=GENERAL_PARAMS,
             use_subsection=False,
+            per_row=1,
             editor_width=60,
             show_complementary=False,
         )
-        
-        form.sigValueChanged.connect(
-            lambda _key, _value, slm=slmKey:self._schedulePatternUpdate(slm)
+
+        section.set_unit_mode(self._sectionUnitModes.get(slmKey, {}).get(secKey, SLM_UNIT))
+
+        section.sigValueChanged.connect(
+            lambda _form_name, _key, _value, slm=slmKey:self._schedulePatternUpdate(slm)
         )
-        self._register_param_form(slmKey,secKey,"general",form)
-        form.set_unit_mode(
-            self._sectionUnitModes.get(slmKey, {}).get(secKey, SLM_UNIT)
-        )
-        form.add_to_grid(layout=layout,start_row=0)
-        group.setContentLayout(layout)
-        return group
+
+        self._register_param_section(slmKey, secKey,GENERAL_KEY,section,)
+
+        return section.widget
     
     def create_calibration_line(self,slmKey="slm",secKey="sec_0"):
         
@@ -700,376 +725,626 @@ class SLMsWidget(Widget):
         )
         return calibrationLayout
     
-    # Patterns section
-    def create_patterns_group(self, slmKey="slm",secKey="sec_0", options=None, pattern_registry={}):
-        """
-        Create the Patterns group with collapsible section.
-        """
+    # # Patterns section
+
+    def create_patterns_group(self,slmKey="slm",secKey="sec_0",options=None,pattern_registry=None):
+        pattern_registry = pattern_registry or {}
+
         if options is None:
-            self.__logger.warning("No patterns options, using all available patterns from registry.")
+            self.__logger.warning(
+                "No pattern options specified; using all registered patterns."
+            )
+            pattern_names = list(pattern_registry.keys())
+        else:
+            pattern_names = list(options)
 
-        group = CollapsibleSection("Patterns",**_collaps_section_format)
-        layout = QtWidgets.QGridLayout()
-        list_patterns = list(pattern_registry.keys()) if options is None else list(options)
+        section = ParamSection(
+            name=PATTERNS_KEY,
+            title="Patterns",
+            active_def=param("active",True, bool,"Use Patterns"),
+            summary_mode="active_forms",
+            conversion_context=lambda slm=slmKey, sec=secKey: (
+                self._sectionCalibrations.get(slm, {}).get(sec)
+            ),
+            collapsible_kwargs=_collaps_section_format,
+            summary_max_width=240,
+        )
 
-        row = 0
+        for pattern_name in pattern_names:
+            pattern_info = pattern_registry.get(pattern_name)
 
-        for pattern in list_patterns:
-            if pattern_registry.get(pattern) is None:
-                self.__logger.warning(f"Pattern '{pattern}' is requested but not found in registry.")
+            if pattern_info is None:
+                self.__logger.warning(
+                    f"Pattern '{pattern_name}' was requested but "
+                    f"was not found in the pattern registry."
+                )
                 continue
 
-            # first see if specific builder exists (overriding default registry-based one)
-            builder = getattr(self, f"add{pattern}", None)
-            if builder is not None:
-                row = builder(layout, row, slmKey, secKey)
+            section.add_form(
+                name=pattern_name,
+                definitions=pattern_info["params"],
+                add_active_field=True,
+                active_default=False,
+                use_subsection=True,
 
-            # if not, use the generic pattern builder which uses the registry
-            else:
-                info = pattern_registry[pattern]
-                row = self.add_generic_pattern(layout, row, slmKey, secKey, "patterns", 
-                                               pattern, info["params"],
-                                               show_complementary_unit=False) 
+                # Keep all parameters for one pattern on the same row,
+                # preserving the current layout.
+                per_row=100,
 
-        spacer = QtWidgets.QSpacerItem(0, 20, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Fixed)
-        layout.addItem(spacer, row, 0)
-        layout.setColumnStretch(layout.columnCount(), 1)
-        group.setContentLayout(layout)
-        return group
+                editor_width=60,
+                show_complementary=False,
+            )
 
+        section.set_unit_mode(self._sectionUnitModes.get(slmKey, {}).get(secKey, SLM_UNIT))
 
+        # One signal connection for the whole section.
+        section.sigValueChanged.connect(
+            lambda _form_name, _key, _value, slm=slmKey:self._schedulePatternUpdate(slm)
+        )
+
+        self._register_param_section(slmKey, secKey,PATTERNS_KEY,section)
+
+        return section.widget
+
+    
     # Aberrations section
-    def create_aberrations_group(self, slmKey="slm",secKey="sec_0",aberrations_registry={}):
-        group = CollapsibleSection("Aberrations",**_collaps_section_format)
-        layout = QtWidgets.QGridLayout()
+    def create_aberrations_group(self,slmKey="slm",secKey="sec_0",aberrations_registry={}):
+
+        section = ParamSection(
+            name=ABERRATIONS_KEY,
+            title="Aberrations",
+            active_def=param( "active",True,bool,"Apply aberrations correction"),
+            summary_mode="nonzero_fields",
+            conversion_context=None,
+            collapsible_kwargs=_collaps_section_format,
+            summary_max_width=240,
+        )
+
+        layout = section.layout
         row = 0
 
-        # checkbox to easily activate/deactivate correction
-        activeForm = ParamForm(
-            name="aberrations_general",
-            definitions=[
-                param(
-                    "aberrations_active", True,bool,"Apply aberrations correction"
-                )
-            ],
-            parent=group,
-            use_subsection=False,
-            per_row=1,
-        )
-
-        self._register_param_form(slmKey, secKey,"aberrations",activeForm)
-
-        activeField = activeForm.field("aberrations_active")
-        group.addHeaderWidget(activeField.editor)
-        activeField.sigValueChanged.connect(
-            lambda _key, _value, slm=slmKey:self._schedulePatternUpdate(slm)
-        )
-
-        # Temporary compatibility
-        setattr(self,f"{slmKey}_{secKey}_aberrations_active",activeField.editor,)
-
-        # Save/Load buttons
+        # Save / Load row
         loadAberrBtn = BetterPushButton("Load")
         saveAberrBtn = BetterPushButton("Save")
+
         loadedLabel = QtWidgets.QLabel("Loaded: None")
         loadedLabel.setStyleSheet("color: #888;")
 
-        setattr(self, f"{slmKey}_save_aberrations_btn", saveAberrBtn)
-        setattr(self, f"{slmKey}_{secKey}_load_aberrations_btn", loadAberrBtn)
-        setattr(self, f"{slmKey}_{secKey}_load_aberrations_label", loadedLabel)
+        setattr(self,f"{slmKey}_{secKey}_save_aberrations_btn",saveAberrBtn)
+        setattr(self,f"{slmKey}_{secKey}_load_aberrations_btn",loadAberrBtn,)
+        setattr(self,f"{slmKey}_{secKey}_load_aberrations_label",loadedLabel)
 
         layout.addWidget(saveAberrBtn, row, 0)
         layout.addWidget(loadAberrBtn, row, 1)
         layout.addWidget(loadedLabel, row, 2)
         row += 1
-        spacer = QtWidgets.QSpacerItem(0, 10, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Fixed)
-        layout.addItem(spacer, row, 0, 1, 2)
+
+        layout.addItem(
+            QtWidgets.QSpacerItem(0,10,QtWidgets.QSizePolicy.Minimum,QtWidgets.QSizePolicy.Fixed),
+            row,0,1,3,
+        )
         row += 1
-        
+
         # Column headers
-        header_font = QtGui.QFont()
-        header_font.setBold(True)
+        headerFont = QtGui.QFont()
+        headerFont.setBold(True)
 
-        lbl_aberr = QtWidgets.QLabel("Aberration")
-        lbl_aberr.setFont(header_font)
-        lbl_coeff = QtWidgets.QLabel("Coefficient (λ)")
-        lbl_coeff.setFont(header_font)
+        aberrationLabel = QtWidgets.QLabel("Aberration")
+        aberrationLabel.setFont(headerFont)
 
-        layout.addWidget(lbl_aberr, row, 0)
-        layout.addWidget(lbl_coeff, row, 1)
+        coefficientLabel = QtWidgets.QLabel("Coefficient (λ)")
+        coefficientLabel.setFont(headerFont)
+
+        layout.addWidget(aberrationLabel, row, 0)
+        layout.addWidget(coefficientLabel, row, 1)
         row += 1
 
-        # Parameter rows
-        for aberr_name, aberr_info in aberrations_registry.items():
-            row = self.add_generic_pattern(layout, row, slmKey, secKey, "aberrations",aberr_name,aberr_info["params"],
-                                           use_subsection=False, add_checkbox=False)
-        layout.addItem(spacer,row,0,1,2)
+        # Coefficient forms
+        for aberrationName, aberrationInfo in aberrations_registry.items():
+            form = section.add_form(
+                name=aberrationName,
+                definitions=aberrationInfo["params"],
+                use_subsection=False,
+                per_row=1,
+                editor_width=60,
+                show_complementary=False,
+                mount=False,
+            )
 
-        # finalize group
-        group.setContentLayout(layout)
+            row = form.add_to_grid(layout=layout,start_row=row)
+        
+        layout.addItem(
+            QtWidgets.QSpacerItem(0,10,QtWidgets.QSizePolicy.Minimum,QtWidgets.QSizePolicy.Fixed),
+            row,0,1,3,
+        )
+        layout.setColumnStretch(2, 1)
 
-        # signal connection
-        loadAberrBtn.clicked.connect(lambda: self.sigLoadAberr.emit(slmKey,secKey))
-        saveAberrBtn.clicked.connect(lambda: self.on_save_aberr(slmKey,secKey))
+        section.set_unit_mode(self._sectionUnitModes.get(slmKey, {}).get(secKey, SLM_UNIT))
+        section.sigValueChanged.connect(
+            lambda _form_name, _key, _value, slm=slmKey:self._schedulePatternUpdate(slm)
+        )
 
-        return group
+        self._register_param_section( slmKey, secKey,ABERRATIONS_KEY,section)
 
+        # Temporary legacy alias.
+        setattr(self,f"{slmKey}_{secKey}_aberrations_active",section.active_field.editor)
+
+        loadAberrBtn.clicked.connect(
+            lambda _checked=False, slm=slmKey, sec=secKey: self.sigLoadAberr.emit(slm, sec)
+        )
+
+        saveAberrBtn.clicked.connect(
+            lambda _checked=False, slm=slmKey, sec=secKey: self.on_save_aberr(slm, sec)
+        )
+
+        return section.widget
+
+   
 
     # CGH patterns section
-    def create_cgh_group(self, slmKey="slm",secKey="sec_0",registry=None,conv_factor=None):
+    def create_cgh_group(
+        self,
+        slmKey="slm",
+        secKey="sec_0",
+        targets_registry=None,
+        algorithms_registry=None
+    ):
+        targets_registry = targets_registry or {}
 
-        # NOTE: general cgh parameters stored in subsection "cgh_general":
-        # ==> related attributes will be named accordingly:
-        # self.{slmKey}_{secKey}_cgh_general_{attrname}
-
-        group = CollapsibleSection("CGH Pattern",**_collaps_section_format)
-        cghLayout = QtWidgets.QVBoxLayout()
-        cghLayout.setSpacing(10)
-        generalsubsec = "cgh_general"
-
-        # --- 1. General Controls ---
-
-        target_names = list(registry.keys())
+        target_names = list(targets_registry.keys())
         if not target_names:
             target_names = [""]
+        elif not algorithms_registry:
+            raise ValueError ("algorithms registry cannot be None if targets are registered")
+
         default_target = target_names[0]
 
-        cgh_general_defs = [
-            param("active", False, bool, "Use CGH"),
-            param("target_type",default_target,str,"Target Type",choices=target_names)
-        ]
+        
+        # ====================== #
+        #   Section Definition   #
+        # ====================== #
 
-        generalForm = ParamForm(
-            name=generalsubsec,
-            definitions=cgh_general_defs,
+
+        section = ParamSection(
+            name=CGH_KEY,
+            title="CGH Pattern",
+            active_def=param("active",False,bool,"Use CGH"),
+            section_definitions=[
+                param("target_type",default_target,str,"Target Type",choices=target_names)
+            ],
+            summary_mode="runtime_value",
             conversion_context=lambda slm=slmKey, sec=secKey: (
                 self._sectionCalibrations.get(slm, {}).get(sec)
             ),
-            parent=group,
-            per_row=1,
-            use_subsection=True,
-            editor_width=120,
-            show_complementary=False,
+            collapsible_kwargs=_collaps_section_format,
+            summary_max_width=240,
         )
-
-        self._register_param_form(slmKey,secKey,"cgh",generalForm)
-
-        # active checkbox
-        activeField = generalForm.field("active")
-        group.addHeaderWidget(activeField.editor)
-        activeField.sigValueChanged.connect(
-            lambda _key, _value, slm=slmKey: self._schedulePatternUpdate(slm)
-        )
-
-        # for compatibility 
-        setattr(self, f"{slmKey}_{secKey}_{generalsubsec}_active", activeField.editor)
         
+        # ParamSection owns the outer grid. The existing CGH interface remains
+        # organized inside one vertical layout.
+        cghLayout = QtWidgets.QVBoxLayout()
+        cghLayout.setSpacing(10)
 
-        # in use label (next to header of collapsible section)
-        inUseLabelPrefix = QtWidgets.QLabel("In use:  ")
-        inUseLabel = QtWidgets.QLabel("None")
-        inUseLabel.setStyleSheet("color: #888;")
+        section.layout.addLayout(cghLayout, 0, 0)
+        section.layout.setColumnStretch(0, 1)
+        
+        # section active and target-choices fields connection
+        activeField = section.active_field
+        targetTypeField = section.section_field("target_type")
 
-        group.addHeaderWidget(inUseLabelPrefix)
-        group.addHeaderWidget(inUseLabel)
+        section.active_field.sigValueChanged.connect(
+            lambda _key, _value, slmKey=slmKey:
+            self._schedulePatternUpdate(slmKey)
+        )
+        targetTypeField.sigValueChanged.connect(
+            lambda _key, _value, slmKey=slmKey, secKey=secKey:
+            self.sigTargetChanged.emit(slmKey,secKey)
+        )
+
+        # Temporary compatibility aliases.
+        setattr(self,f"{slmKey}_{secKey}_cgh_general_active",activeField.editor)
+        setattr(self, f"{slmKey}_{secKey}_cgh_general_target_type", targetTypeField.editor)
+
+        # Keep the old label attribute available temporarily.
+        if section.summary_label is not None:
+            setattr(self,f"{slmKey}_{secKey}_cgh_in_use_label", section.summary_label)
+
+
+        # ====================== #
+        #   Section components   #
+        # ====================== #
+       
+        # 1. Save / Load controls
+
         generalLayout = QtWidgets.QHBoxLayout()
-        setattr(self, f"{slmKey}_{secKey}_cgh_in_use_label", inUseLabel)
-        
-        # save and load btn (inside collapsible section)
+
         loadPatternBtn = BetterPushButton("Load Pattern")
         saveCghBtn = BetterPushButton("Save CGH")
 
-        setattr(self, f"{slmKey}_{secKey}_save_cgh_btn", saveCghBtn)
-        setattr(self, f"{slmKey}_{secKey}_cgh_load_btn", loadPatternBtn)
+        setattr(self,f"{slmKey}_{secKey}_save_cgh_btn",saveCghBtn)
+        setattr(self,f"{slmKey}_{secKey}_cgh_load_btn",loadPatternBtn,)
 
         generalLayout.addWidget(loadPatternBtn)
         generalLayout.addWidget(saveCghBtn)
         generalLayout.addStretch()
+
         cghLayout.addLayout(generalLayout)
 
+        # ------------------------- #
+        # 2. Target definition area #
+        # ------------------------- #
 
-        # --- 2. Target Definition Area ---
         targetBox = QtWidgets.QGroupBox("Target Definition")
         targetLayout = QtWidgets.QVBoxLayout(targetBox)
-        typeLayout = QtWidgets.QHBoxLayout()
 
-        targetTypeField = generalForm.field("target_type")
+        typeLayout = QtWidgets.QHBoxLayout()
         typeLayout.addWidget(targetTypeField.label)
         typeLayout.addWidget(targetTypeField.editor)
 
-        # for compatibility 
-        setattr(self, f"{slmKey}_{secKey}_{generalsubsec}_target_type", targetTypeField.editor)
-
-        # visualize btn
         visualizeTargetBtn = BetterPushButton("Visualize Target")
-        setattr(self, f"{slmKey}_{secKey}_cgh_visualize_target_btn", visualizeTargetBtn)
+        setattr(self,f"{slmKey}_{secKey}_cgh_visualize_target_btn",visualizeTargetBtn)
+
         typeLayout.addWidget(visualizeTargetBtn)
         typeLayout.addStretch()
+
         targetLayout.addLayout(typeLayout)
 
-        # target parameters based on registry
         stack = QtWidgets.QStackedWidget()
-        setattr(self, f"{slmKey}_{secKey}_cghParamStack", stack)
+        setattr(self,f"{slmKey}_{secKey}_cghParamStack",stack)
 
-        for target_name,infos in registry.items():
-            _widget = QtWidgets.QWidget()
-            layout = QtWidgets.QGridLayout(_widget)
-            row = 0
-            row = self.add_generic_pattern(
-                layout, row, slmKey, secKey, "cgh",target_name,infos["params"],add_checkbox=False, 
-                per_row=2,auto_update=False,auto_target_update=infos.get("auto_update_param")
+        for target_name, infos in targets_registry.items():
+            targetWidget = QtWidgets.QWidget()
+            targetParamsLayout = QtWidgets.QGridLayout(targetWidget)
+
+            # ===== Target parameters ===== #
+
+            targetForm = section.add_form(
+                name=target_name,
+                definitions=infos["params"],
+                use_subsection=True,
+                per_row=2,
+                editor_width=60,
+                show_complementary=False,
+                mount=False,
+            )
+
+            # Temporary compatibility aliases used by methods such as
+            # on_new_target_params().
+            for key, field in targetForm.fields.items():
+                attrname=clean_attr_name(f"{slmKey}_{secKey}_{target_name}_{key}")
+                setattr(self,attrname,field.editor)
+
+            row = targetForm.add_to_grid(
+                layout=targetParamsLayout,
+                start_row=0,
+            )
+
+            # auto update signal connection
+            if infos.get("auto_update_param", False):
+                targetForm.sigValueChanged.connect(
+                    lambda key,value,slmKey=slmKey,secKey=secKey:
+                    self._scheduleTargetUpdate(slmKey,secKey,key,value)
                 )
             
-            if infos.get("feedback",False):
-                spacer = QtWidgets.QSpacerItem(0, 10, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Fixed)
-                layout.addItem(spacer, row, 0)
-                self.add_feedback_buttons(layout,row,slmKey,secKey,target_name)
+            # ===== Feedback ===== #
 
-            stack.addWidget(_widget)
+            if infos.get("feedback", False):
+                spacer = QtWidgets.QSpacerItem(0,10,QtWidgets.QSizePolicy.Minimum,QtWidgets.QSizePolicy.Fixed)
+                targetParamsLayout.addItem(spacer,row,0)
+                row += 1
+                row = self.add_feedback_buttons(targetParamsLayout,row,slmKey,secKey, target_name)
 
-        # connect combobox changes
+
+            # ===== Computation Parameters ===== #
+            algorithm_name = infos["algorithm"]
+            algorithm_info = algorithms_registry[algorithm_name]
+            computationFormName = f"{target_name}_{CGH_COMPUTATION_KEY}"
+            displayComputationName = make_display_name(computationFormName)
+            computeBox = QtWidgets.QGroupBox(displayComputationName)
+            computeLayout = QtWidgets.QGridLayout(computeBox)
+            computationForm = section.add_form(
+                    name=computationFormName,
+                    definitions=algorithm_info["params"],
+                    use_subsection=True,
+                    per_row=2,
+                    editor_width=60,
+                    show_complementary=False,
+                    mount=False,
+                )
+            
+            self._cghComputationForms.setdefault(slmKey, {}).setdefault(secKey, {})[target_name] = {
+                "algorithm": algorithm_name,
+                "form_name": computationFormName,
+                "form": computationForm,
+            }
+
+            targetParamsLayout.setColumnStretch(targetParamsLayout.columnCount(),1,)
+            stack.addWidget(targetWidget)
+            computationForm.add_to_grid(layout=computeLayout,start_row=0)
+
+            for key, field in computationForm.fields.items():
+                attrname = clean_attr_name( f"{slmKey}_{secKey}_{computationFormName}_{key}")
+                setattr(self, attrname, field.editor)
+
+            columnSpan = max(1, targetParamsLayout.columnCount())
+            targetParamsLayout.addWidget(computeBox,row, 0,1,columnSpan)
+            row += 1
+
+        # UI Synchronization: combox box change --> stack change
         targetTypeField.editor.currentIndexChanged.connect(stack.setCurrentIndex)
-        targetTypeField.sigValueChanged.connect(
-            lambda _key, _value, slm=slmKey, sec=secKey:self.sigTargetChanged.emit(slm, sec)
-        )
 
-        # Explicitly synchronize the initial stack page.
+        # Explicitly synchronize the initial page.
         stack.setCurrentIndex(targetTypeField.editor.currentIndex())
 
         targetLayout.addWidget(stack)
         cghLayout.addWidget(targetBox)
 
-        # --- 3. Computation Area ---
 
-        # computation parameters stored in subsection "cgh_computation":
-        # ==> related attributes will be named accordingly:
-        # self.{slmKey}_{secKey}_cgh_general_{attrname}
+        # ------------------------------------ #
+        # 3. Compute / visualization controls
+        # ------------------------------------ #
 
-        computsubsec = "cgh_computation"
-        self._param_definitions[slmKey][secKey]["cgh"].setdefault(computsubsec, [])
-        computeBox = QtWidgets.QGroupBox("Computation Settings")
-        computeLayout = QtWidgets.QVBoxLayout(computeBox)
-
-        paramsLayout = QtWidgets.QGridLayout()
-        computeLayout.addLayout(paramsLayout)
-        cghLayout.addWidget(computeBox)
-        
-        form = ParamForm(
-            name=computsubsec,
-            definitions=CGH_COMPUTATION_PARAMS,
-            conversion_context=None,
-            per_row=1,
-            use_subsection=True,
-            editor_width=60,
-            show_complementary=False,
-            parent=computeBox,
-        )
-
-        self._register_param_form(slmKey,secKey,"cgh",form)
-        form.set_unit_mode(
-            self._sectionUnitModes.get(slmKey, {}).get(secKey, SLM_UNIT)
-        )
-
-        layout_spec = [
-            ["weighted_gs","n_iterations","phase_fixing","phase_fixing_value",],
-            ["quad_phase", "quad_phase_coeff"],
-        ]
-
-        row = form.add_to_grid(
-            layout=paramsLayout,start_row=0,layout_spec=layout_spec,
-        )
-        
-        # # algorithm parameters
-        # weightedgsCheckbox=QtWidgets.QCheckBox("Weighted-GS")
-        # weightedgsCheckbox.setChecked(True)
-        # niterEdit = QtWidgets.QLineEdit("50")
-        # niterEdit.setFixedWidth(50)
-        # phaseFixingCheckbox = QtWidgets.QCheckBox("Phase fixing")
-        # phaseFixingCheckbox.setChecked(True)
-        # phaseFixingValue = QtWidgets.QLineEdit("30")
-        # phaseFixingValue.setFixedWidth(50)
-
-        # quadPhaseCheckBox = QtWidgets.QCheckBox("Quad. Init. Phase")
-        # quadPhaseCoeff = QtWidgets.QLineEdit("0.004")
-        # quadPhaseCoeff.setFixedWidth(50)
-
-        # setattr(self, f"{slmKey}_{secKey}_{computsubsec}_weighted_gs", weightedgsCheckbox)
-        # setattr(self, f"{slmKey}_{secKey}_{computsubsec}_n_iterations", niterEdit)
-        # setattr(self, f"{slmKey}_{secKey}_{computsubsec}_phase_fixing", phaseFixingCheckbox)
-        # setattr(self, f"{slmKey}_{secKey}_{computsubsec}_phase_fixing_value", phaseFixingValue)
-        # setattr(self, f"{slmKey}_{secKey}_{computsubsec}_quad_phase", quadPhaseCheckBox)
-        # setattr(self, f"{slmKey}_{secKey}_{computsubsec}_quad_phase_coeff", quadPhaseCoeff)
-
-
-        # # params layout
-        # paramsLayout = QtWidgets.QVBoxLayout()
-
-        # row1 = QtWidgets.QHBoxLayout()
-        # row1.addWidget(weightedgsCheckbox)
-        # row1.addWidget(QtWidgets.QLabel("Iterations:"))
-        # row1.addWidget(niterEdit)
-        # row1.addWidget(phaseFixingCheckbox)
-        # row1.addWidget(QtWidgets.QLabel("Phase:"))
-        # row1.addWidget(phaseFixingValue)
-        # row1.addStretch()
-
-        # row2 = QtWidgets.QHBoxLayout()
-        # row2.addWidget(quadPhaseCheckBox)
-        # row2.addWidget(QtWidgets.QLabel("Coeff:"))
-        # row2.addWidget(quadPhaseCoeff)
-        # row2.addStretch()
-
-        # paramsLayout.addLayout(row1)
-        # paramsLayout.addLayout(row2)
-        # computeLayout.addLayout(paramsLayout)
-        # cghLayout.addWidget(computeBox)
-
-        # self._param_definitions[slmKey][secKey]["cgh"][computsubsec].extend([
-        #     ("checkbox","weighted_gs"),
-        #     ("lineedit","n_iterations"),
-        #     ("checkbox","phase_fixing"),
-        #     ("lineedit","phase_fixing_value"),
-        #     ("checkbox","quad_phase"),
-        #     ("lineedit","quad_phase_coeff"),
-        # ]
-        # )
-
-        # --- 4. Compute + Save Row ---
         bottomBtnLayout = QtWidgets.QHBoxLayout()
+
         computeCghBtn = BetterPushButton("Compute CGH")
         plotCghPerfBtn = BetterPushButton("Plot Perf")
         showResultBtn = BetterPushButton("Show Result (FFT)")
+
         padSizeLabel = QtWidgets.QLabel("Result Pad Size:")
         padSizeValue = QtWidgets.QLineEdit("1024")
 
-        setattr(self, f"{slmKey}_{secKey}_compute_cgh_btn", computeCghBtn)
-        setattr(self, f"{slmKey}_{secKey}_plot_cfg_perf_btn", plotCghPerfBtn)
-        setattr(self, f"{slmKey}_{secKey}_show_cgh_result_btn", showResultBtn)
-        setattr(self, f"{slmKey}_{secKey}_pad_size_cgh_result", padSizeValue)
+        setattr(self,f"{slmKey}_{secKey}_compute_cgh_btn",computeCghBtn)
+        setattr(self,f"{slmKey}_{secKey}_plot_cfg_perf_btn", plotCghPerfBtn)
+        setattr(self, f"{slmKey}_{secKey}_show_cgh_result_btn",showResultBtn)
+        setattr(self, f"{slmKey}_{secKey}_pad_size_cgh_result",padSizeValue)
 
         bottomBtnLayout.addWidget(computeCghBtn,alignment=QtCore.Qt.AlignLeft)
-        bottomBtnLayout.addWidget(plotCghPerfBtn,alignment=QtCore.Qt.AlignLeft)
-        bottomBtnLayout.addWidget(showResultBtn,alignment=QtCore.Qt.AlignLeft)
+        bottomBtnLayout.addWidget(plotCghPerfBtn, alignment=QtCore.Qt.AlignLeft)
+        bottomBtnLayout.addWidget(showResultBtn, alignment=QtCore.Qt.AlignLeft)
         bottomBtnLayout.addWidget(padSizeLabel,alignment=QtCore.Qt.AlignLeft)
         bottomBtnLayout.addWidget(padSizeValue,alignment=QtCore.Qt.AlignLeft)
         bottomBtnLayout.addStretch()
+
         cghLayout.addLayout(bottomBtnLayout)
 
-        # --- finalize group ---
-        group.setContentLayout(cghLayout)
 
-        # signal connection
-        computeCghBtn.clicked.connect(lambda: self.on_compute_cgh(slmKey, secKey))
-
-        plotCghPerfBtn.clicked.connect(lambda: self.sigVisualizeCghPerformances.emit(slmKey, secKey))
-        visualizeTargetBtn.clicked.connect(lambda: self.sigVisualizeTarget.emit(slmKey, secKey))
-        showResultBtn.clicked.connect(lambda: self.sigShowCghResult.emit(
-            slmKey, secKey, int(padSizeValue.text())))
+        # ==================== #
+        #   Finalize section   #
+        # ==================== #
         
-        loadPatternBtn.clicked.connect(lambda: self.sigLoadCgh.emit(slmKey, secKey))
-        saveCghBtn.clicked.connect(lambda: self.sigSaveCgh.emit(slmKey, secKey))
+        section.set_unit_mode(self._sectionUnitModes.get(slmKey, {}).get(secKey, SLM_UNIT))
 
-        return group
+        # Register all metadata, target and computation forms at once.
+        self._register_param_section( slmKey, secKey,CGH_KEY, section)
+
+        computeCghBtn.clicked.connect(
+            lambda _checked=False, slm=slmKey, sec=secKey:self.on_compute_cgh(slm, sec)
+        )
+
+        plotCghPerfBtn.clicked.connect(
+            lambda _checked=False, slm=slmKey, sec=secKey:self.sigVisualizeCghPerformances.emit(slm, sec)
+        )
+
+        visualizeTargetBtn.clicked.connect(
+            lambda _checked=False, slm=slmKey, sec=secKey:self.sigVisualizeTarget.emit(slm, sec)
+        )
+
+        showResultBtn.clicked.connect(
+            lambda _checked=False, slm=slmKey, sec=secKey, edit=padSizeValue:
+                self.sigShowCghResult.emit( slm,sec,int(edit.text()))
+        )
+
+        loadPatternBtn.clicked.connect(
+            lambda _checked=False, slm=slmKey, sec=secKey:self.sigLoadCgh.emit(slm, sec)
+        )
+
+        saveCghBtn.clicked.connect(
+            lambda _checked=False, slm=slmKey, sec=secKey:self.sigSaveCgh.emit(slm, sec)
+        )
+
+        return section.widget
+
+
+    # def create_cgh_group(self, slmKey="slm",secKey="sec_0",registry=None,conv_factor=None):
+
+    #     # NOTE: general cgh parameters stored in subsection SECTION_META_KEY:
+    #     # ==> related attributes will be named accordingly:
+    #     # self.{slmKey}_{secKey}_cgh_general_{attrname}
+
+    #     group = CollapsibleSection("CGH Pattern",**_collaps_section_format)
+    #     cghLayout = QtWidgets.QVBoxLayout()
+    #     cghLayout.setSpacing(10)
+    #     generalsubsec = SECTION_META_KEY
+    #     legacy_generalsubsec = "cgh_general"
+
+    #     # --- 1. General Controls ---
+
+    #     target_names = list(registry.keys())
+    #     if not target_names:
+    #         target_names = [""]
+    #     default_target = target_names[0]
+
+    #     cgh_general_defs = [
+    #         param("active", False, bool, "Use CGH"),
+    #         param("target_type",default_target,str,"Target Type",choices=target_names)
+    #     ]
+
+    #     generalForm = ParamForm(
+    #         name=generalsubsec,
+    #         definitions=cgh_general_defs,
+    #         conversion_context=lambda slm=slmKey, sec=secKey: (
+    #             self._sectionCalibrations.get(slm, {}).get(sec)
+    #         ),
+    #         parent=group,
+    #         per_row=1,
+    #         use_subsection=True,
+    #         editor_width=120,
+    #         show_complementary=False,
+    #     )
+
+    #     self._register_param_form(slmKey,secKey,"cgh",generalForm)
+
+    #     # active checkbox
+    #     activeField = generalForm.field("active")
+    #     group.addHeaderWidget(activeField.editor)
+    #     activeField.sigValueChanged.connect(
+    #         lambda _key, _value, slm=slmKey: self._schedulePatternUpdate(slm)
+    #     )
+
+    #     # for compatibility 
+    #     setattr(self, f"{slmKey}_{secKey}_{legacy_generalsubsec}_active", activeField.editor)
+        
+
+    #     # in use label (next to header of collapsible section)
+    #     inUseLabelPrefix = QtWidgets.QLabel("In use:  ")
+    #     inUseLabel = QtWidgets.QLabel("None")
+    #     inUseLabel.setStyleSheet("color: #888;")
+
+    #     group.addHeaderWidget(inUseLabelPrefix)
+    #     group.addHeaderWidget(inUseLabel)
+    #     generalLayout = QtWidgets.QHBoxLayout()
+    #     setattr(self, f"{slmKey}_{secKey}_cgh_in_use_label", inUseLabel)
+        
+    #     # save and load btn (inside collapsible section)
+    #     loadPatternBtn = BetterPushButton("Load Pattern")
+    #     saveCghBtn = BetterPushButton("Save CGH")
+
+    #     setattr(self, f"{slmKey}_{secKey}_save_cgh_btn", saveCghBtn)
+    #     setattr(self, f"{slmKey}_{secKey}_cgh_load_btn", loadPatternBtn)
+
+    #     generalLayout.addWidget(loadPatternBtn)
+    #     generalLayout.addWidget(saveCghBtn)
+    #     generalLayout.addStretch()
+    #     cghLayout.addLayout(generalLayout)
+
+
+    #     # --- 2. Target Definition Area ---
+    #     targetBox = QtWidgets.QGroupBox("Target Definition")
+    #     targetLayout = QtWidgets.QVBoxLayout(targetBox)
+    #     typeLayout = QtWidgets.QHBoxLayout()
+
+    #     targetTypeField = generalForm.field("target_type")
+    #     typeLayout.addWidget(targetTypeField.label)
+    #     typeLayout.addWidget(targetTypeField.editor)
+
+    #     # for compatibility 
+    #     setattr(self, f"{slmKey}_{secKey}_{legacy_generalsubsec}_target_type", targetTypeField.editor)
+
+    #     # visualize btn
+    #     visualizeTargetBtn = BetterPushButton("Visualize Target")
+    #     setattr(self, f"{slmKey}_{secKey}_cgh_visualize_target_btn", visualizeTargetBtn)
+    #     typeLayout.addWidget(visualizeTargetBtn)
+    #     typeLayout.addStretch()
+    #     targetLayout.addLayout(typeLayout)
+
+    #     # target parameters based on registry
+    #     stack = QtWidgets.QStackedWidget()
+    #     setattr(self, f"{slmKey}_{secKey}_cghParamStack", stack)
+
+    #     for target_name,infos in registry.items():
+    #         _widget = QtWidgets.QWidget()
+    #         layout = QtWidgets.QGridLayout(_widget)
+    #         row = 0
+    #         row = self.add_generic_pattern(
+    #             layout, row, slmKey, secKey, "cgh",target_name,infos["params"],add_checkbox=False, 
+    #             per_row=2,auto_update=False,auto_target_update=infos.get("auto_update_param")
+    #             )
+            
+    #         if infos.get("feedback",False):
+    #             spacer = QtWidgets.QSpacerItem(0, 10, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Fixed)
+    #             layout.addItem(spacer, row, 0)
+    #             self.add_feedback_buttons(layout,row,slmKey,secKey,target_name)
+
+    #         stack.addWidget(_widget)
+
+    #     # connect combobox changes
+    #     targetTypeField.editor.currentIndexChanged.connect(stack.setCurrentIndex)
+    #     targetTypeField.sigValueChanged.connect(
+    #         lambda _key, _value, slm=slmKey, sec=secKey:self.sigTargetChanged.emit(slm, sec)
+    #     )
+
+    #     # Explicitly synchronize the initial stack page.
+    #     stack.setCurrentIndex(targetTypeField.editor.currentIndex())
+
+    #     targetLayout.addWidget(stack)
+    #     cghLayout.addWidget(targetBox)
+
+    #     # --- 3. Computation Area ---
+
+    #     # computation parameters stored in subsection "cgh_computation":
+    #     # ==> related attributes will be named accordingly:
+    #     # self.{slmKey}_{secKey}_cgh_computation_{attrname}
+
+    #     computsubsec = "cgh_computation"
+    #     self._param_definitions[slmKey][secKey]["cgh"].setdefault(computsubsec, [])
+    #     computeBox = QtWidgets.QGroupBox("Computation Settings")
+    #     computeLayout = QtWidgets.QVBoxLayout(computeBox)
+
+    #     paramsLayout = QtWidgets.QGridLayout()
+    #     computeLayout.addLayout(paramsLayout)
+    #     cghLayout.addWidget(computeBox)
+        
+    #     form = ParamForm(
+    #         name=computsubsec,
+    #         definitions=CGH_COMPUTATION_PARAMS,
+    #         conversion_context=None,
+    #         per_row=1,
+    #         use_subsection=True,
+    #         editor_width=60,
+    #         show_complementary=False,
+    #         parent=computeBox,
+    #     )
+
+    #     self._register_param_form(slmKey,secKey,"cgh",form)
+    #     form.set_unit_mode(
+    #         self._sectionUnitModes.get(slmKey, {}).get(secKey, SLM_UNIT)
+    #     )
+
+    #     layout_spec = [
+    #         ["weighted_gs","n_iterations","phase_fixing","phase_fixing_value",],
+    #         ["quad_phase", "quad_phase_coeff"],
+    #     ]
+
+    #     row = form.add_to_grid(
+    #         layout=paramsLayout,start_row=0,layout_spec=layout_spec,
+    #     )
+        
+    #     # --- 4. Compute + Save Row ---
+    #     bottomBtnLayout = QtWidgets.QHBoxLayout()
+    #     computeCghBtn = BetterPushButton("Compute CGH")
+    #     plotCghPerfBtn = BetterPushButton("Plot Perf")
+    #     showResultBtn = BetterPushButton("Show Result (FFT)")
+    #     padSizeLabel = QtWidgets.QLabel("Result Pad Size:")
+    #     padSizeValue = QtWidgets.QLineEdit("1024")
+
+    #     setattr(self, f"{slmKey}_{secKey}_compute_cgh_btn", computeCghBtn)
+    #     setattr(self, f"{slmKey}_{secKey}_plot_cfg_perf_btn", plotCghPerfBtn)
+    #     setattr(self, f"{slmKey}_{secKey}_show_cgh_result_btn", showResultBtn)
+    #     setattr(self, f"{slmKey}_{secKey}_pad_size_cgh_result", padSizeValue)
+
+    #     bottomBtnLayout.addWidget(computeCghBtn,alignment=QtCore.Qt.AlignLeft)
+    #     bottomBtnLayout.addWidget(plotCghPerfBtn,alignment=QtCore.Qt.AlignLeft)
+    #     bottomBtnLayout.addWidget(showResultBtn,alignment=QtCore.Qt.AlignLeft)
+    #     bottomBtnLayout.addWidget(padSizeLabel,alignment=QtCore.Qt.AlignLeft)
+    #     bottomBtnLayout.addWidget(padSizeValue,alignment=QtCore.Qt.AlignLeft)
+    #     bottomBtnLayout.addStretch()
+    #     cghLayout.addLayout(bottomBtnLayout)
+
+    #     # --- finalize group ---
+    #     group.setContentLayout(cghLayout)
+
+    #     # signal connection
+    #     computeCghBtn.clicked.connect(lambda: self.on_compute_cgh(slmKey, secKey))
+
+    #     plotCghPerfBtn.clicked.connect(lambda: self.sigVisualizeCghPerformances.emit(slmKey, secKey))
+    #     visualizeTargetBtn.clicked.connect(lambda: self.sigVisualizeTarget.emit(slmKey, secKey))
+    #     showResultBtn.clicked.connect(lambda: self.sigShowCghResult.emit(
+    #         slmKey, secKey, int(padSizeValue.text())))
+        
+    #     loadPatternBtn.clicked.connect(lambda: self.sigLoadCgh.emit(slmKey, secKey))
+    #     saveCghBtn.clicked.connect(lambda: self.sigSaveCgh.emit(slmKey, secKey))
+
+    #     return group
 
     def add_feedback_buttons(self, layout, row, slmKey, secKey, target_name):
         """
@@ -1326,7 +1601,7 @@ class SLMsWidget(Widget):
 
             This is used by analytic patterns, CGH targets and aberrations.
             ParamForm stores canonical values, so get_params() returns the
-            same dictionaries expected by PatternEngine and TargetBase.
+            same dictionaries expected by PatternEngine and Target.
             """
 
             ignored_keys = {"wavelength_nm", "pixel_size_um"}
@@ -1370,7 +1645,8 @@ class SLMsWidget(Widget):
                 )
             elif auto_target_update:
                 form.sigValueChanged.connect(
-                    lambda key, value, slm=slmKey, sec=secKey: self._scheduleTargetUpdate(slm, sec,key,value)
+                    lambda key, value, slm=slmKey, sec=secKey: 
+                    self._scheduleTargetUpdate(slm, sec,key,value)
                 )
 
             self._register_param_form(slmKey,secKey,section_name,form)
@@ -1472,8 +1748,11 @@ class SLMsWidget(Widget):
 
         return all_params
 
+
     def set_params(self, params_dict):
         """Restore legacy widgets and ParamForms from canonical config values."""
+
+        params_dict = self._normalize_section_metadata(params_dict)
 
         # Existing/manual widgets.
         for slmKey, tab_dict in params_dict.items():
@@ -1516,13 +1795,7 @@ class SLMsWidget(Widget):
                             if attrname not in param_values:
                                 continue
 
-                            self.set_widget_value(
-                                slmKey,
-                                secKey,
-                                attrname,
-                                ptype,
-                                param_values[attrname],
-                            )
+                            self.set_widget_value(slmKey,secKey,attrname,ptype,param_values[attrname])
 
         # ParamForms.
         for slmKey, section_forms in self._paramForms.items():
@@ -1542,6 +1815,11 @@ class SLMsWidget(Widget):
 
                         if isinstance(values, dict):
                             form.set_values(values, emit=False)
+            
+        for slm_sections in self._paramSections.values():
+            for sections in slm_sections.values():
+                for section in sections.values():
+                    section.refresh_summary()
 
 
 
@@ -1586,7 +1864,7 @@ class SLMsWidget(Widget):
 
         if (
             ptype == "combo"
-            and attrname == "cgh_general_target_type"
+            and attrname == f"cgh_general_target_type"
             and combo_idx >= 0
         ):
             stack = getattr(self, f"{slmKey}_{secKey}_cghParamStack", None)
@@ -1626,24 +1904,97 @@ class SLMsWidget(Widget):
             val = None
 
         return val
-
-
-    def getCurrentTargetType(self,slmKey,secKey):
-        """ Returns current target selected in combo box of slmKey, secKey """
-        attrname = f"{slmKey}_{secKey}_cgh_general_target_type"
-        if hasattr(self,attrname):
-            target_type = getattr(self,attrname).currentText()
-            return clean_attr_name(target_type)
-        return None
     
-    def get_cgh_params(self,slmKey,secKey):
-        """ Returns current cgh params set in slmKey, secKey"""
+    
+    # ------------------------------------------------------- #
+    #       Convenience API to get specific parameters        #
+    # ------------------------------------------------------- #
+    def get_param_section_values(self,slmKey: str,secKey: str,section_name: str, ):
+        """
+        Return the current canonical values of one registered ParamSection.
+        """
+        forms = self._paramForms.get(slmKey, {}).get(secKey, {}).get(section_name)
+        if forms is None:
+            return None
+
+        section_values = {}
+        for form in forms:
+            values = form.values()
+            if form.use_subsection:
+                section_values[form.name] = values
+            else:
+                section_values.update(values)
+
+        return section_values
+
+    def get_wavelength(self,slmKey,secKey) -> float:
         all_params = self.get_params()
         sec_params = all_params.get(slmKey, {}).get(secKey, {})
-        cgh_params = sec_params.get("cgh", None)
-        if cgh_params is not None:
-            return cgh_params
-        return None
+        wavelength_nm = sec_params.get(GENERAL_KEY, {}).get("wavelength_nm",None)
+        if wavelength_nm is None:
+            raise Exception(f"Wavelength value not found for {slmKey},{secKey}")
+        return wavelength_nm
+
+
+    def get_current_target_params(self, slmKey, secKey) -> tuple[str, dict]:
+        """
+        Return the current target key and its canonical parameters.
+        """
+        target_type = self.get_current_target_type(slmKey, secKey)
+        if not target_type:
+            raise KeyError( f"Current target type not found for {slmKey}, {secKey}")
+
+        target_form = self.get_param_form(
+            slmKey,secKey,CGH_KEY, target_type,
+        )
+
+        if target_form is None:
+            raise KeyError(
+                f"Target form '{target_type}' not registered for {slmKey}, {secKey}"
+            )
+
+        return target_type, target_form.values()
+    
+    def get_current_target_type(self, slmKey, secKey) -> str:
+        """Return the currently selected target registry key."""
+        section = (
+            self._paramSections .get(slmKey, {}).get(secKey, {}) .get(CGH_KEY)
+        )
+
+        if section is None:
+            return None
+
+        return section.section_field("target_type").value()
+    
+    def get_cgh_params(self, slmKey, secKey) -> dict :
+        """Return all canonical parameters of the CGH section."""
+
+        cgh_params = self.get_param_section_values(
+            slmKey,secKey, CGH_KEY,
+        )
+
+        if cgh_params is None:
+            raise KeyError(
+                f"CGH section not registered for {slmKey}, {secKey}"
+            )
+
+        return cgh_params
+
+    def get_current_cgh_computation(self, slmKey, secKey) -> tuple [str, dict]:
+        """
+        Returns the algorithm key and canonical computation parameters
+        for the currently selected CGH target.
+        """
+        target_name = self.get_current_target_type(slmKey, secKey)
+
+        try:
+            computation = self._cghComputationForms[slmKey][secKey][target_name]
+        except KeyError as exc:
+            raise KeyError(
+                f"No CGH computation registered for {slmKey}, {secKey}, target '{target_name}'"
+            ) from exc
+
+        return computation["algorithm"],computation["form"].values()
 
 
     # ------------------------------------- #
@@ -1651,7 +2002,7 @@ class SLMsWidget(Widget):
     # ------------------------------------- #
 
     def on_new_target_params(self,slmKey,secKey,target_type,new_params):
-        current_target = self.getCurrentTargetType(slmKey,secKey)
+        current_target = self.get_current_target_type(slmKey,secKey)
         if current_target != target_type:
             raise RuntimeError(f"Expected target to be {target_type} but got {current_target}")
         for param_name,value in new_params.items():
@@ -1759,7 +2110,7 @@ class SLMsWidget(Widget):
                     btn.setText("Computing...")
                     btn.setEnabled(False)
 
-        self.sigComputeCGH.emit(slmKey,secKey, cgh_params)
+        self.sigComputeCGH.emit(slmKey,secKey)
         
     
     def on_cgh_computation_result(self, slmKey,secKey, success, msg=None,cgh_name=None):
@@ -1797,7 +2148,7 @@ class SLMsWidget(Widget):
 
     def _get_current_feedback_counter(self, slmKey, secKey):
         cgh_params = self.get_cgh_params(slmKey, secKey) or {}
-        target_type = cgh_params.get("cgh_general", {}).get("target_type")
+        target_type = cgh_params.get(SECTION_META_KEY, {}).get("target_type")
         if target_type:
             target_lbl = getattr(
                 self,
@@ -2694,13 +3045,13 @@ class SLMsWidget(Widget):
         all_params = self.get_params()
         slm_params = all_params.get(slmKey, {})
         sec_params = slm_params.get(secKey, {})
-        aberr_params = sec_params.get("aberrations", {})
+        aberr_params = sec_params.get(ABERRATIONS_KEY, {})
         self.sigSaveAberr.emit(slmKey,secKey,aberr_params)
     
                 
     def on_aberr_loaded(self,slmKey,secKey,aberr_params,label_name,msg_box=False):
         try:
-            self.set_params({slmKey: {secKey: {"aberrations": aberr_params}}})
+            self.set_params({slmKey: {secKey: {ABERRATIONS_KEY: aberr_params}}})
             self.update_label(slmKey,secKey,"load_aberrations_label",f"Loaded: {label_name}")
             self.on_update_pattern(slmKey)
         except Exception as e:
@@ -2712,6 +3063,13 @@ class SLMsWidget(Widget):
 
     def update_label(self,slmKey,secKey,attr_suffix,label):
         """ Helper function to change label names"""
+        if attr_suffix == "cgh_in_use_label":
+            section = (self._paramSections.get(slmKey, {}).get(secKey, {}).get(CGH_KEY))
+
+            if section is not None:
+                section.set_summary_value(label)
+                return
+            
         label_widget = getattr(self,f"{slmKey}_{secKey}_{attr_suffix}",None)
         if label_widget:
             label_widget.setText(label)
@@ -3004,6 +3362,35 @@ class SLMsWidget(Widget):
     #         return None
 
 
+    def _register_param_section(
+        self,
+        slmKey: str,
+        secKey: str,
+        section_name: str,
+        section: ParamSection,
+    ) -> None:
+        sections = self._paramSections.setdefault(
+            slmKey,
+            {},
+        ).setdefault(
+            secKey,
+            {},
+        )
+
+        if section_name in sections:
+            raise KeyError(
+                f"ParamSection already registered for "
+                f"{slmKey}/{secKey}/{section_name}"
+            )
+
+        sections[section_name] = section
+
+        # Keep using the existing ParamForm get/set system.
+        for form in section.forms:
+            self._register_param_form(
+                slmKey,secKey,section_name,form
+            )
+
     def _register_param_form(self, slmKey, secKey, section_name, form):
         self._paramForms.setdefault(slmKey, {}).setdefault(
             secKey, {}
@@ -3019,9 +3406,7 @@ class SLMsWidget(Widget):
 
     def get_param_form(self, slmKey, secKey, section_name, form_name):
         forms = (
-            self._paramForms.get(slmKey, {})
-            .get(secKey, {})
-            .get(section_name, [])
+            self._paramForms.get(slmKey, {}).get(secKey, {}).get(section_name, [])
         )
         for form in forms:
             if form.name == form_name:
@@ -3036,6 +3421,141 @@ class SLMsWidget(Widget):
                     return True
         return False
 
+
+    def _normalize_section_metadata(self, params_dict):
+        """
+        Convert legacy section metadata to the reserved ``_section`` subsection.
+
+        New values already stored under ``_section`` take precedence.
+        Legacy values only fill missing metadata fields.
+
+        Migrations
+        ----------
+        patterns.patterns_general
+            -> patterns._section
+
+        cgh.cgh_general
+            -> cgh._section
+
+        aberrations.aberrations_active
+            -> aberrations._section.active
+
+        correction_options.corrections_active
+            -> correction_options._section.active
+
+        Correction sections without an explicit active value default to active.
+        """
+        import copy
+        normalized = copy.deepcopy(params_dict)
+
+        def merge_metadata(section_values, legacy_key):
+            legacy_values = section_values.pop(legacy_key, None)
+
+            if legacy_values is None:
+                return
+
+            if not isinstance(legacy_values, dict):
+                self.__logger.warning(
+                    f"Expected legacy metadata '{legacy_key}' to be a "
+                    f"dictionary, got {type(legacy_values).__name__}."
+                )
+                return
+
+            metadata = section_values.setdefault(SECTION_META_KEY, {})
+
+            if not isinstance(metadata, dict):
+                raise TypeError(
+                    f"Expected '{SECTION_META_KEY}' to contain a dictionary, "
+                    f"got {type(metadata).__name__}."
+                )
+
+            # New-schema values take precedence.
+            for key, value in legacy_values.items():
+                metadata.setdefault(key, value)
+
+        for slm_values in normalized.values():
+            if not isinstance(slm_values, dict):
+                continue
+
+            for sec_key, sec_values in slm_values.items():
+                if (
+                    not isinstance(sec_key, str)
+                    or not sec_key.startswith("sec_")
+                    or not isinstance(sec_values, dict)
+                ):
+                    continue
+
+                # Patterns
+                patterns = sec_values.get(PATTERNS_KEY)
+                if isinstance(patterns, dict):
+                    merge_metadata(
+                        patterns,
+                        legacy_key="patterns_general",
+                    )
+
+                # CGH
+                cgh = sec_values.get(CGH_KEY)
+                if isinstance(cgh, dict):
+                    merge_metadata(
+                        cgh,
+                        legacy_key="cgh_general",
+                    )
+
+                # Aberrations
+                aberrations = sec_values.get(ABERRATIONS_KEY)
+                if isinstance(aberrations, dict):
+                    legacy_active = aberrations.pop(
+                        "aberrations_active",
+                        None,
+                    )
+
+                    metadata = aberrations.setdefault(
+                        SECTION_META_KEY,
+                        {},
+                    )
+
+                    if not isinstance(metadata, dict):
+                        raise TypeError(
+                            f"Expected 'aberrations.{SECTION_META_KEY}' "
+                            f"to contain a dictionary."
+                        )
+
+                    if legacy_active is not None:
+                        metadata.setdefault(
+                            "active",
+                            bool(legacy_active),
+                        )
+                    else:
+                        metadata.setdefault("active", True)
+
+                # Correction options
+                corrections = sec_values.get(CORRECTION_OPTIONS_KEY)
+                if isinstance(corrections, dict):
+                    legacy_active = corrections.pop(
+                        "corrections_active",
+                        None,
+                    )
+
+                    metadata = corrections.setdefault(
+                        SECTION_META_KEY,
+                        {},
+                    )
+
+                    if not isinstance(metadata, dict):
+                        raise TypeError(
+                            f"Expected 'correction_options.{SECTION_META_KEY}' "
+                            f"to contain a dictionary."
+                        )
+
+                    if legacy_active is not None:
+                        metadata.setdefault(
+                            "active",
+                            bool(legacy_active),
+                        )
+                    else:
+                        metadata.setdefault("active", True)
+
+        return normalized
 
 # -------------------------------#
 #       Helper functions         # 

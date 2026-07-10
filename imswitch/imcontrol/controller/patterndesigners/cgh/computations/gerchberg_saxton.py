@@ -2,19 +2,50 @@
 Computer Generated Holograms (CGH) using Gerchberg-Saxton algorithm and variants.
 """
 
+from __future__ import annotations
 import numpy as np
 import matplotlib.pyplot as plt
 import traceback
 
-def gerchberg_saxton(target, n_iterations=30, phase_fixing=False, phase_fixing_value=20, 
-                     weighted_gs=True, initial_phase=None,previous_pattern=None, 
-                     quad_phase=False,quad_phase_coeff=None):
+
+from ...registries import register_cgh_algorithm
+
+from imswitch.imcommon.model.paramDef import param
+from typing import TYPE_CHECKING, Union
+if TYPE_CHECKING:
+    from ..targets import Target
+
+GERCHBERG_SAXTON_PARAMS = [
+    param("weighted_gs", True, bool, "Weighted-GS"),
+    param("n_iterations", 50, int, "Iterations", min_value=1, max_value=300),
+    param("phase_fixing", True, bool, "Phase fixing"),
+    param("phase_fixing_value", 30, int, "Phase", min_value=1),
+    param("quad_phase", False, bool, "Quad. Init. Phase"),
+    param("quad_phase_coeff", 0.004, float, "Coeff"),
+]
+
+@register_cgh_algorithm(
+    "gerchberg_saxton",
+    params=GERCHBERG_SAXTON_PARAMS,
+)
+def compute(
+    target: Union[Target, np.ndarray],
+    compute_params: dict=None,
+    previous_pattern: np.ndarray =None,
+) -> tuple[np.ndarray, list, str, str]:
     """ 
     Performs the (weighted) Gerchberg-Saxton algorithm with optional cooperative stop.
 
     Args:
         target: np.array - dtype(np.uint8)
             image target
+        comput_params: dict
+            computation parameters (see below)
+        previous_pattern: np.array, default=None
+            result of previous feedback loop iteration as a complex field.If given, its phase
+            is use as the algo initial phase (overriding compute_params["initial_phase]"
+    
+    Allowed compute_params keys:
         n_iterations: int, default=30
             number of iterations performed
         phase_fixing: bool, default=False
@@ -23,9 +54,6 @@ def gerchberg_saxton(target, n_iterations=30, phase_fixing=False, phase_fixing_v
             whether to use weighted version of Gerchberg-Saxton algorithm
         initial_phase: np.array, default=None
             initial guess for the slm phase - only used if not using previous_pattern and quad_phase.
-        previous_pattern: np.array, default=None
-            result of previous feedback loop iteration as a complex field. If given, its phase
-            is use as the algo initial phase (overriding arg:`initial_phase`)
         quad_phase: bool, default = False
             if true, and no `previous_pattern`, sets the initial phase as a quadratic
             phase with a coefficient value `quad_phase_coeff`.
@@ -38,6 +66,24 @@ def gerchberg_saxton(target, n_iterations=30, phase_fixing=False, phase_fixing_v
         performances: list of performances = [(efficiency, uniformity, std)] for each iteration.
         msg: str, error message if any.
     """
+    
+    weighted_gs = compute_params.get("weighted_gs", True)
+    n_iterations = compute_params.get("n_iterations", 30)
+    phase_fixing = compute_params.get("phase_fixing", True)
+    phase_fixing_value = compute_params.get("phase_fixing_value", 20)
+    initial_phase = compute_params.get("initial_phase", None)
+    quad_phase = compute_params.get("quad_phase", False)
+    quad_phase_coeff = compute_params.get("quad_phase_coeff", None)
+    
+    if not isinstance(target, np.ndarray):
+        try:
+            target = target.array
+        except AttributeError as exc:
+            raise ArithmeticError(
+                f"Gerchberg-Saxton algorithm needs a np.ndarray or a " 
+                f"valid Target object with a 'array' attribute"
+            ) from exc
+
     size = target.shape
 
     if len(size) != 2:
@@ -126,48 +172,6 @@ def gerchberg_saxton(target, n_iterations=30, phase_fixing=False, phase_fixing_v
 
     field_slm = np.exp(1j*phase_slm)
     return field_slm, performances, msg, err
-
-        
-
-
-
-def simulate_propagation_fft(cgh_pattern, padding=True, pad_size = 2048):
-    """Simulate propagation of CGH pattern to sample plane using FFT.
-    Expects cgh_pattern to be a 2D array of complex values (SLM plane).
-    if padding: pads the input to max_pad size with zeros before propagation and then crops back.
-    Returns normalized intensity pattern at sample plane."""
-
-    if padding and pad_size is not None:
-        h,w = cgh_pattern.shape
-        pad_y = pad_size - h
-        pad_x = pad_size - w
-        if pad_x < 0 or pad_y < 0:
-            padding = False
-        else:
-            cgh_pattern = np.pad(
-                cgh_pattern,
-                (
-                    (pad_y // 2, (pad_y + 1) // 2),
-                    (pad_x // 2, (pad_x + 1) // 2)
-                ),
-                mode='constant'
-            )
-    else:
-        padding = False
-
-    field_slm = cgh_pattern
-    field_sample = np.fft.fftshift(np.fft.fft2(np.fft.ifftshift(field_slm)))
-    intensity_sample = np.abs(field_sample) ** 2
-    intensity_sample = intensity_sample / np.max(intensity_sample)  # Normalize
-
-    if padding:
-        # crop back to original size
-        h,w = cgh_pattern.shape
-        start_y = (h - (h - pad_y)) // 2
-        start_x = (w - (w - pad_x)) // 2
-        intensity_sample = intensity_sample[start_y:start_y + (h - pad_y), start_x:start_x + (w - pad_x)]
-
-    return intensity_sample
 
 
 

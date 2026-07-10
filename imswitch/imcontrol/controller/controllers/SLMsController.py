@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import glob
 import json
 import os
@@ -9,6 +11,8 @@ import h5py
 import datetime
 from qtpy import QtWidgets
 
+from typing import TYPE_CHECKING, Callable
+
 from ..basecontrollers import ImConWidgetController, SetupModeMixin
 from imswitch.imcommon.model import initLogger
 from imswitch.imcontrol.model import configfiletools
@@ -17,9 +21,9 @@ from imswitch.imcommon.view.guitools.dialogtools import askYesNoQuestion
 from imswitch.imcommon.framework import Signal, Thread, Worker, Mutex
 from imswitch.imcommon.model import dirtools, ostools, signaltools
 
-from ..patterndesigners.registries import PATTERNS_REGISTRY, ABERRATIONS_REGISTRY, TARGETS_REGISTRY
-from ..patterndesigners import cghComputations as cgh
-from ..patterndesigners import cghDirectSummation as direct_cgh
+from ..patterndesigners.registries import PATTERNS_REGISTRY, ABERRATIONS_REGISTRY, TARGETS_REGISTRY, CGH_ALGORITHMS_REGISTRY
+from ..patterndesigners.cgh import gerchberg_saxton, direct_summation, propagation
+
 from ..patterndesigners.patternEngine import PatternEngine
 from ..patterndesigners.slmSectionCalibration import SLMSectionCalibration
 from ..patterndesigners.slmPlaneCalibration import (
@@ -36,14 +40,22 @@ from ..patterndesigners.slmPlaneCalibration import (
     save_section_calibration,
     set_default_active_plane as set_default_active_plane_in_properties,
 )
-from ..patterndesigners import slmsuiteComputations as slmsuite_cgh
 
+from ..patterndesigners.schema import (
+    GENERAL_KEY,PATTERNS_KEY,ABERRATIONS_KEY,CORRECTION_OPTIONS_KEY,
+    CGH_KEY,CGH_TARGETS_KEY,CGH_GENERAL_KEY,CGH_COMPUTATION_KEY,CGH_ALGORITHMS_KEY
+)
 
 full_registry = {
-    "patterns": PATTERNS_REGISTRY,
-    "aberrations": ABERRATIONS_REGISTRY,
-    "cgh_targets": TARGETS_REGISTRY
+    PATTERNS_KEY: PATTERNS_REGISTRY,
+    ABERRATIONS_KEY: ABERRATIONS_REGISTRY,
+    CGH_TARGETS_KEY: TARGETS_REGISTRY,
+    CGH_ALGORITHMS_KEY: CGH_ALGORITHMS_REGISTRY,
 }
+
+
+if TYPE_CHECKING:
+    from ..patterndesigners.cgh.targets import Target
 
 class SLMsController(SetupModeMixin, ImConWidgetController):
     """Linked to SLMsWidget."""
@@ -288,14 +300,16 @@ class SLMsController(SetupModeMixin, ImConWidgetController):
 
         # check if wl changed and update correction pattern only if needed
         for secKey in sectList:
-            wl = params.get(secKey).get("general").get("wavelength_nm")
+            # wl = params.get(secKey).get("general").get("wavelength_nm")
+            wl = self._widget.get_wavelength(slmKey,secKey)
             if wl != self._wavelengths.get(slmKey,{}).get(secKey,0): 
                 msg = self.update_correction_patterns(slmKey,secKey,wl)
                 if msg is not None: msgs.append(msg)
 
         # check if wl changed and update 2Pi value only if necessary 
         for secKey in sectList:
-            wl = params.get(secKey).get("general").get("wavelength_nm")
+            # wl = params.get(secKey).get("general").get("wavelength_nm")
+            wl = self._widget.get_wavelength(slmKey,secKey)
             if wl != self._wavelengths.get(slmKey,{}).get(secKey,0):
                 msg =  self.update_twopie_value(slmKey,secKey,wl)
                 if msg is not None: msgs.append(msg)
@@ -456,7 +470,8 @@ class SLMsController(SetupModeMixin, ImConWidgetController):
         """ Update cached wavelengths of `slmKey` with wavelenghts in `params` for each section"""
         sectList = self._widget._slmSectionList.get(slmKey)
         for secKey in sectList:
-            wl = params.get(secKey).get("general").get("wavelength_nm")
+            # wl = params.get(secKey).get("general").get("wavelength_nm")
+            wl = self._widget.get_wavelength(slmKey,secKey)
             if wl != self._wavelengths.get(slmKey,{}).get(secKey,0): 
                 self._wavelengths.setdefault(slmKey,{})[secKey] = wl
 
@@ -1165,21 +1180,13 @@ class SLMsController(SetupModeMixin, ImConWidgetController):
 
     # ----- CGH related methods ----- #
 
-    def _get_current_target_params(self,slmKey,secKey):
-        cgh_params = self._widget.get_cgh_params(slmKey,secKey)
-        target_type = cgh_params.get("cgh_general",{}).get("target_type","")
-        target_params = cgh_params.get(target_type)
-        if cgh_params is None or target_type=="" or target_params is None:
-            raise Exception(f"Could not find target parameters for {slmKey},{secKey}")
-        return target_type, target_params
-
     def update_single_target_param(self, slmKey, secKey, param_name, value):
         """ Light update of one single target parameter."""
         target = self._targets.get(slmKey, {}).get(secKey)
         if target is None:
             return
         
-        target_type = self._widget.getCurrentTargetType(slmKey,secKey)
+        target_type = self._widget.get_current_target_type(slmKey,secKey)
         if target.target_type != target_type:
             return
         
@@ -1196,7 +1203,7 @@ class SLMsController(SetupModeMixin, ImConWidgetController):
         Sync target object with target parameters for a given SLM section.
         Exception is raised if cgh params cannot be found in slmKey, secKey.
         """
-        target_type, target_params = self._get_current_target_params(slmKey,secKey)
+        target_type, target_params = self._widget.get_current_target_params(slmKey,secKey)
 
         # get section size and calibration
         section_size = self._get_section_size(slmKey,secKey)
@@ -1295,21 +1302,15 @@ class SLMsController(SetupModeMixin, ImConWidgetController):
                                       message=f"Could not save CGH pattern:\n{e}")
             raise
 
-    def on_compute_cgh(self, slmKey, secKey, cgh_params):
+    def on_compute_cgh(self, slmKey, secKey):
         """Initiate CGH computation for given SLM and section."""
 
         if self._cghWorker.is_running:
             return
 
-        cgh_general = cgh_params.get("cgh_general", {})
-        
-        # Target preparation
-        target_type = cgh_general.get("target_type",None)
-        target_params = cgh_params.get(target_type, None)
         try:
             self.sync_target(slmKey, secKey)
             target = self._targets.get(slmKey).get(secKey)
-            target_array = target.array
             feedback_count = target.feedback_count
             cgh_name = target.name
             target_params = dict(target.params)
@@ -1322,21 +1323,22 @@ class SLMsController(SetupModeMixin, ImConWidgetController):
             previous_pattern = np.angle(self._cghResults.get(slmKey).get(secKey).get("cgh_pattern"))
         else:
             previous_pattern = None
-        slmInfo = self._slmInfos.get(slmKey)
-        pixel_size_um = getattr(slmInfo, "pixelSize", None)
 
-        # Wavelength is stored in the section's General parameters, not in cgh_params.
-        all_params = self._widget.get_params()
-        section_params = all_params.get(slmKey, {}).get(secKey, {})
-        wavelength_nm = section_params.get("general", {}).get("wavelength_nm", None)
+        # get remaining params: wavelength, pixel size
+        pixel_size_um = self._slmInfos.get(slmKey).pixelSize
+        wavelength_nm = self._widget.get_wavelength(slmKey,secKey)
 
+        # get cgh_algorithm and corresponding parameters
+        algorithm, compute_params = self._widget.get_current_cgh_computation(slmKey,secKey)
+        algorithm_info = CGH_ALGORITHMS_REGISTRY[algorithm]
+        compute_func = algorithm_info["func"]
+        print(compute_func)
 
-        # dispatch computation to CGH worker
-        comput_params = cgh_params.get("cgh_computation",{})
+        # dispatch computation to thread
         self._cghWorker.prepareForNewComputation(
-            slmKey, secKey, target,cgh_name, comput_params, target_params,previous_pattern,
-            pixel_size_um=pixel_size_um,wavelength_nm=wavelength_nm
-            )
+            slmKey,secKey, target, target_params,cgh_name,compute_func,
+            compute_params, previous_pattern,pixel_size_um, wavelength_nm
+        )
         self._cghWorker.sigStartComputation.emit()
     
 
@@ -1398,7 +1400,7 @@ class SLMsController(SetupModeMixin, ImConWidgetController):
                                           message="No CGH pattern computed yet for the selected SLM and section.")
             return
         
-        result = cgh.simulate_propagation_fft(cgh_array, padding=True, pad_size=pad_size)
+        result = propagation.simulate_propagation_fft(cgh_array, padding=True, pad_size=pad_size)
         self._widget.plot_cgh_result(result)
 
     def on_load_feedback(self,slmKey,secKey,path=None):
@@ -1418,7 +1420,7 @@ class SLMsController(SetupModeMixin, ImConWidgetController):
     def on_feedback_analysis_prm(self,slmKey,secKey):
         """ Retrieves analysis parameters of the current target, opens JSON editor dialog
         enabling user to modify them, and upates target analysis paramters."""
-        target_type = self._widget.getCurrentTargetType(slmKey,secKey)
+        target_type = self._widget.get_current_target_type(slmKey,secKey)
         if target_type is None:
             return
         target = self._targets.get(slmKey,{}).get(secKey,None)
@@ -1600,16 +1602,30 @@ class SLMsController(SetupModeMixin, ImConWidgetController):
             self.is_running = False
             self.__logger = initLogger(self)
 
-        def prepareForNewComputation(self, slmKey, secKey, target, cgh_name, comput_params, target_params,
-                                     previous_pattern=None, quad_initial_phase=None,pixel_size_um=None,
-                                     wavelength_nm=None,):
+        def prepareForNewComputation(
+                self, 
+                slmKey: str, 
+                secKey: str, 
+                target: Target, 
+                target_params: dict, 
+                cgh_name: str, 
+                compute_func: Callable, 
+                compute_params: dict, 
+                previous_pattern: np.ndarray = None,
+                pixel_size_um: float = None,
+                wavelength_nm: float =None,
+        ):
             self._skmKey = slmKey
             self._secKey = secKey
+            
             self._target = target
-            self._cgh_name = cgh_name
-            self._previous_pattern = previous_pattern
-            self._comput_params = comput_params
             self._target_params = target_params
+            self._cgh_name = cgh_name,
+            
+            self._compute_func = compute_func
+            self._compute_params = compute_params
+            
+            self._previous_pattern = previous_pattern
             self._pixel_size_um = pixel_size_um
             self._wavelength_nm = wavelength_nm
             self._mutex.lock()
@@ -1622,40 +1638,45 @@ class SLMsController(SetupModeMixin, ImConWidgetController):
                 if self._numQueuedComputations > 1:
                     # Skip to catch up
                     return
+                print(self._compute_func)
+                pattern, performances, msg, err = self._compute_func(
+                        self._target, self._compute_params, self._previous_pattern,
+                )
+
                 # pattern, performances, msg, err = cgh.gerchberg_saxton(self._target,previous_pattern=self._previous_pattern,**self._comput_params)
 
-                # Vector target -> direct-summation backend.
-                if (
-                    getattr(self._target, "uses_direct_summation", False)
-                    or getattr(self._target, "spot_vectors_kxy", None) is not None
-                ):
-                    pattern, performances, msg, err = direct_cgh.direct_spot_wgs_from_target(
-                        target=self._target,
-                        comput_params=self._comput_params,
-                        previous_pattern=self._previous_pattern,
-                        pixel_size_um=self._pixel_size_um,
-                        wavelength_nm=self._wavelength_nm,
-                    )
-                    # pattern, performances, msg, err = slmsuite_cgh.compressed_spot_hologram(
-                    #     target=self._target,
-                    #     comput_params=self._comput_params,
-                    #     previous_pattern=self._previous_pattern,
-                    #     pixel_size_um=self._pixel_size_um,
-                    # )
+                # # Vector target -> direct-summation backend.
+                # if (
+                #     getattr(self._target, "uses_direct_summation", False)
+                #     or getattr(self._target, "spot_vectors_kxy", None) is not None
+                # ):
+                #     pattern, performances, msg, err = direct_summation.compute(
+                #         target=self._target,
+                #         comput_params=self._compute_params,
+                #         previous_pattern=self._previous_pattern,
+                #         pixel_size_um=self._pixel_size_um,
+                #         wavelength_nm=self._wavelength_nm,
+                #     )
+                #     # pattern, performances, msg, err = slmsuite_cgh.compressed_spot_hologram(
+                #     #     target=self._target,
+                #     #     comput_params=self._comput_params,
+                #     #     previous_pattern=self._previous_pattern,
+                #     #     pixel_size_um=self._pixel_size_um,
+                #     # )
 
-                # Raster target -> legacy GS backend.
-                else:
-                    target_array = (
-                        self._target.array
-                        if hasattr(self._target, "array")
-                        else self._target
-                    )
+                # # Raster target -> legacy GS backend.
+                # else:
+                #     target_array = (
+                #         self._target.array
+                #         if hasattr(self._target, "array")
+                #         else self._target
+                #     )
 
-                    pattern, performances, msg, err = cgh.gerchberg_saxton(
-                        target_array,
-                        previous_pattern=self._previous_pattern,
-                        **self._comput_params,
-                    )
+                #     pattern, performances, msg, err = gerchberg_saxton.compute(
+                #         target_array,
+                #         previous_pattern=self._previous_pattern,
+                #         **self._compute_params,
+                #     )
 
                 if pattern is None:
                     self.sigWorkerCGHComputationFailed.emit(self._skmKey, self._secKey,msg)
@@ -1666,7 +1687,7 @@ class SLMsController(SetupModeMixin, ImConWidgetController):
                         "cgh_name": self._cgh_name,
                         "cgh_pattern": pattern,
                         "performances": performances,
-                        "comput_params": self._comput_params,
+                        "comput_params": self._compute_params,
                         "target_params": self._target_params,
                     }
 

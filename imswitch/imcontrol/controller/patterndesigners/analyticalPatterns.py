@@ -103,37 +103,9 @@ def linear_phase(width, height, period_x, period_y,**kwargs):
     return np.exp(1j * phase)
 
 
-@register_pattern("linear_phase_metric", params=[
-    param("displacement_x_um", 0.0, float),
-    param("displacement_y_um", 0.0, float),
-])
-def linear_phase_metric(width, height, displacement_x_um, displacement_y_um, **kwargs):
-    """
-    Linear phase ramp defined by requested physical displacement in um.
-    """
-
-    calibration = SLMSectionCalibration.from_dict(kwargs.get("section_calibration"))
-    if not calibration.is_valid():
-        raise ValueError(
-            "linear_phase_metric requires a valid SLM section calibration. "
-            "Use 'Calibrate linear phase' for this SLM section first."
-        )
-
-    kx, ky = calibration.um_to_kxy(displacement_x_um, displacement_y_um)
-    x = np.arange(width)
-    y = np.arange(height)
-    X, Y = np.meshgrid(x, y)
-
-    phase = 2 * np.pi * (kx * X + ky * Y)
-    phase = np.mod(phase, 2 * np.pi)
-    return np.exp(1j * phase)
-
-
 ### lens phase (spherical wavefront) ###
 @register_pattern("lens_phase", params=[
     param("focal_mm", 225, float),
-    param("wavelength_nm", 488, int),
-    param("pixel_size_um", 12.5, float)
 ])
 def lens_phase(width, height, focal_mm, wavelength_nm, pixel_size_um=12.5,**kwargs):
     """
@@ -262,3 +234,32 @@ def half_moon_y(width, height, phase_shift=3.14, **kwargs):
     phase[mask, :] = phase_shift
 
     return np.exp(1j * phase)
+
+
+
+
+
+# @register_pattern("linear_phase_metric", params=[
+#     param("displacement_x_um", 0.0, float),
+#     param("displacement_y_um", 0.0, float),
+# ])
+# def linear_phase_metric(width, height, displacement_x_um, displacement_y_um, **kwargs):
+#     """
+#     Linear phase ramp defined by requested physical displacement in um.
+#     """
+
+#     calibration = SLMSectionCalibration.from_dict(kwargs.get("section_calibration"))
+#     if not calibration.is_valid():
+#         raise ValueError(
+#             "linear_phase_metric requires a valid SLM section calibration. "
+#             "Use 'Calibrate linear phase' for this SLM section first."
+#         )
+
+#     kx, ky = calibration.um_to_kxy(displacement_x_um, displacement_y_um)
+#     x = np.arange(width)
+#     y = np.arange(height)
+#     X, Y = np.meshgrid(x, y)
+
+#     phase = 2 * np.pi * (kx * X + ky * Y)
+#     phase = np.mod(phase, 2 * np.pi)
+#     return np.exp(1j * phase)

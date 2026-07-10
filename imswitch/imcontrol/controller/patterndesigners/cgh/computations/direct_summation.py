@@ -32,18 +32,33 @@ This is meant to be close to the physical phase-ramp convention used by SLM
 steering:
     phase = 2π / lambda * x_physical * kx
 """
+from __future__ import annotations
 
 import traceback
 import numpy as np
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from ..targets import Target
 
 
-def direct_spot_wgs_from_target(
-    target,
-    comput_params=None,
-    previous_pattern=None,
-    pixel_size_um=None,
-    wavelength_nm=None,
-):
+from ...registries import register_cgh_algorithm
+from imswitch.imcommon.model.paramDef import param
+
+DIRECT_SUMMATION_PARAMS = [
+    param("weighted_gs", True, bool, "Weighted-GS"),
+    param("n_iterations", 50, int, "Iterations", min_value=1, max_value=300),
+]
+
+@register_cgh_algorithm(
+    "direct_summation",
+    params=DIRECT_SUMMATION_PARAMS,
+)
+def compute(
+    target: Target,
+    compute_params: dict=None,
+    previous_pattern: np.ndarray =None,
+) -> tuple[np.ndarray, list, str, str]:
     """
     Convenience wrapper for ImSwitch Target objects.
 
@@ -56,7 +71,7 @@ def direct_spot_wgs_from_target(
             target.section_size     : tuple, computation shape as (height, width)
             target.array            : np.ndarray, fallback preview array for shape
 
-    comput_params : dict
+    compute_params : dict
         Reuses the existing CGH computation params from the widget:
             n_iterations
             weighted_gs
@@ -77,18 +92,12 @@ def direct_spot_wgs_from_target(
     previous_pattern:
         Previous phase or complex field used as initialization.
 
-    pixel_size_um:
-        SLM pixel size in microns. Can be scalar or (x, y).
-
-    wavelength_nm:
-        Wavelength in nm.
-
     Returns
     -------
     field_slm, performances, msg, err
     """
 
-    comput_params = comput_params or {}
+    compute_params = compute_params or {}
 
     spot_vectors_kxy = getattr(target, "spot_vectors_kxy", None)
     if spot_vectors_kxy is None:
@@ -114,9 +123,7 @@ def direct_spot_wgs_from_target(
         shape=shape,
         spot_amp=spot_amp,
         previous_pattern=previous_pattern,
-        pixel_size_um=pixel_size_um,
-        wavelength_nm=wavelength_nm,
-        **comput_params,
+        **compute_params,
     )
 
 
@@ -130,8 +137,6 @@ def direct_spot_wgs(
     previous_pattern=None,
     quad_phase=False,
     quad_phase_coeff=None,
-    phase_fixing=False,
-    phase_fixing_value=20,
     cuda=True,
     direct_cuda=None,
     direct_kxy_scale=None,
@@ -142,8 +147,6 @@ def direct_spot_wgs(
     direct_min_weight_update=0.2,
     direct_max_weight_update=5.0,
     direct_free_gpu_memory=False,
-    pixel_size_um=None,
-    wavelength_nm=None,
     **unused_kwargs,
 ):
     """
@@ -240,9 +243,7 @@ def direct_spot_wgs(
         amp_target = amp_target / (xp.mean(amp_target) + 1e-12)
 
         scale_x, scale_y = _resolve_kxy_scale(
-            direct_kxy_scale=direct_kxy_scale,
-            pixel_size_um=pixel_size_um,
-            wavelength_nm=wavelength_nm,
+            direct_kxy_scale=direct_kxy_scale
         )
 
         scale_x = dtype_float(scale_x)
@@ -386,11 +387,6 @@ def direct_spot_wgs(
             f"sign={float(sign):.0f})."
         )
 
-        # phase_fixing is accepted for compatibility with the existing UI,
-        # but intentionally ignored in this first direct-summation backend.
-        if phase_fixing:
-            msg += " Note: phase_fixing is ignored by cghDirectSummation."
-
         return field_np, performances, msg, None
 
     except Exception as e:
@@ -466,7 +462,7 @@ def _get_array_module(use_cuda):
 #     s = float(pixel_size_um) / wavelength_um
 #     return s, s
 
-def _resolve_kxy_scale(direct_kxy_scale=None, pixel_size_um=None, wavelength_nm=None):
+def _resolve_kxy_scale(direct_kxy_scale=None):
     """
     Return (scale_x, scale_y).
 
@@ -475,9 +471,6 @@ def _resolve_kxy_scale(direct_kxy_scale=None, pixel_size_um=None, wavelength_nm=
 
     Therefore the direct-summation phase is:
         exp(± i 2π * (kx*x + ky*y))
-
-    pixel_size_um and wavelength_nm are intentionally ignored here.
-    They may be kept in the function signature for backward compatibility.
     """
 
     if direct_kxy_scale is not None:

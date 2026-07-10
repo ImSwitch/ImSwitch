@@ -2,16 +2,19 @@ from abc import ABC, abstractmethod
 from imswitch.imcommon.model import initLogger
 import traceback
 import numpy as np
-from .slmSectionCalibration import SLMSectionCalibration
+from ...slmSectionCalibration import SLMSectionCalibration
+
+from ...registries import CGH_ALGORITHMS_REGISTRY
 
 _UNSET = object()
 
-class TargetBase(ABC):
+class Target(ABC):
     """
     Base class for all CGH targets.
     """
 
     target_type: str = None 
+    algorithm: str = None
     target_params = []
 
     _supports_feedback = False
@@ -32,11 +35,18 @@ class TargetBase(ABC):
                 f"{cls.__name__} must define target_params as a non-empty list."
             )
 
+        # check that children defines a proper algorithm
+        algorithm  = cls.__dict__.get("algorithm",None)
+        if not isinstance(algorithm, str) or not algorithm:
+            raise TypeError(
+                f"{cls.__name__} must define algorithm as a non-empty string."
+            )
+        
         # Enforce feedback implementation if the child declares feedback support.
         if getattr(cls, "_supports_feedback", False):
             for method_name in ("_analyze_result_impl", "_adapt_target_impl"):
                 child_method = getattr(cls, method_name, None)
-                base_method = getattr(TargetBase, method_name)
+                base_method = getattr(Target, method_name)
 
                 if child_method is base_method:
                     raise TypeError(
